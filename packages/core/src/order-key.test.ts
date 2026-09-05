@@ -262,9 +262,10 @@ describe('a thousand random inserts', () => {
     for (let step = 0; step < 1000; step += 1) {
       const index = Math.floor(random() * (list.length + 1));
       const orderKey = orderKeyForIndex(list, index);
-      expect(isOrderKey(orderKey), `step ${String(step)} produced ${JSON.stringify(orderKey)}`).toBe(
-        true,
-      );
+      expect(
+        isOrderKey(orderKey),
+        `step ${String(step)} produced ${JSON.stringify(orderKey)}`,
+      ).toBe(true);
       list.splice(index, 0, { id: `id-${String(step)}`, orderKey });
     }
 

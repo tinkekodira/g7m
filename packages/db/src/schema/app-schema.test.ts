@@ -237,9 +237,10 @@ describe('what PowerSync requires of the Postgres schema', () => {
       .filter((t) => !referenceTables.has(t.name))
       .filter((t) => !t.columns.some((c) => c.name === 'user_id'))
       .map((t) => t.name);
-    expect(missing, 'user tables synced without user_id would be rejected by RLS on upload').toEqual(
-      [],
-    );
+    expect(
+      missing,
+      'user tables synced without user_id would be rejected by RLS on upload',
+    ).toEqual([]);
   });
 
   it('syncs order_key wherever Postgres has one, or the list order is lost offline', () => {
