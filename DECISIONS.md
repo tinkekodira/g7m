@@ -584,3 +584,126 @@ see [ADR-0004](#adr-0004--git-hooks-without-husky-or-lint-staged) and
 **Open, for the owner:** the copyright line reads `tinkekodira`. Replace it with
 your legal name if you ever want to enforce it — a GitHub handle is weaker
 evidence of ownership than a name.
+
+---
+
+## ADR-0020 — Enumerated values are `text` with a CHECK, not Postgres enums
+
+**Chosen:** `mechanic text not null check (mechanic in ('compound','isolation'))`
+and the same shape for every other enumerated column.
+
+**Rejected:** native `create type ... as enum`.
+
+**Why:** two reasons, both about the road ahead rather than today.
+
+1. **Enums are hard to shrink.** Postgres can add a value to an enum but not
+   remove or rename one without recreating the type and rewriting every column
+   that uses it. `set_type`, `load_type` and `record_type` are all things a v1
+   is likely to get slightly wrong. A CHECK constraint is dropped and re-added
+   in one statement.
+2. **PowerSync replicates to SQLite, which has no enums.** They arrive as text
+   at the other end regardless, so the native type buys type safety only on the
+   half of the system that already has the strictest guarantees.
+
+**Cost accepted:** slightly weaker introspection, and Drizzle will type these as
+`string` unless we narrow them by hand in Phase 2. Narrowing them in TypeScript
+is a one-line union per column and gives us the same safety at the layer that
+actually writes the queries.
+
+---
+
+## ADR-0021 — `user_id` is denormalised onto child tables, kept honest by composite foreign keys
+
+**Chosen:** `routine_exercises`, `session_exercises`, `session_sets` and
+`personal_records` each carry their own `user_id`, and each child declares a
+composite foreign key onto `(id, user_id)` of its parent.
+
+**Rejected:** reaching the owner through a join in the RLS policy, e.g.
+`using (exists (select 1 from workout_sessions s where s.id = session_id and
+s.user_id = auth.uid()))`.
+
+**Why:** the joining form is evaluated **per row**. On the logger's hot path —
+a session with a few hundred sets, read on every screen open — that is the
+difference between instant and noticeable, and it degrades as history grows.
+PowerSync sync rules also want a direct column to bucket on; deriving the bucket
+through a join is possible but slower and more fragile.
+
+**Why it is safe.** Denormalised ownership is normally a bug waiting to happen:
+nothing stops a child row claiming a different owner than its parent, and now
+the two disagree. The composite foreign key removes that possibility
+structurally rather than by convention — the parent declares `unique (id,
+user_id)`, the child references *both* columns, and Postgres refuses any insert
+where they do not match. There is no trigger to forget and no application code
+to get wrong.
+
+Verified by a test: inserting a `routine_exercise` owned by Judy that points at
+Ivan's routine is rejected by the database.
+
+---
+
+## ADR-0022 — The schema is tested against real Postgres, in-process, with PGlite
+
+**Chosen:** `@electric-sql/pglite` — Postgres compiled to WebAssembly — as a dev
+dependency of `packages/db`. A harness applies the real migration files to a
+fresh database and the tests assert against it.
+
+**Rejected:** `supabase start` with Docker; testing against a shared hosted
+Supabase project; not testing the schema at all and finding out at `db push`.
+
+**Why:** the development machine has no Docker, so the alternative was writing
+several hundred lines of SQL that could not be executed until a Supabase project
+existed. That is exactly the situation where a subtle mistake — a policy that
+never fires, a constraint that is not quite what the comment claims — survives
+into production.
+
+PGlite needs no Docker, no network and no `supabase` binary. The whole suite
+runs in about two seconds, so it gates every pull request rather than being a
+thing someone remembers to run.
+
+**What it is not.** PGlite is Postgres, not Supabase. There is no GoTrue, no
+PostgREST, no Realtime. The harness stubs the pieces the migrations actually
+touch: the `anon` / `authenticated` / `service_role` roles, an `auth.users`
+table, and `auth.uid()` implemented the way Supabase implements it — reading the
+`sub` claim from the `request.jwt.claims` setting. That is faithful enough to
+exercise RLS as a genuinely signed-in user, which is the part worth testing.
+
+It also runs Postgres 18 where Supabase runs 15, so it can accept syntax the
+real project rejects. `supabase db push` remains the final word; this catches
+the mistakes long before that.
+
+**One trap worth recording**, because it made the RLS tests silently vacuous
+before it was caught: PGlite runs each `exec()` in its own implicit transaction,
+so `SET LOCAL ROLE authenticated` is reverted before the next statement and
+every query runs as the superuser — which bypasses RLS entirely. The harness
+uses session-scoped `SET ROLE` instead. A test that asserts isolation while
+running as a superuser passes for the wrong reason and protects nothing.
+
+---
+
+## ADR-0023 — Exercise search uses a generated column, because `array_to_string` is not IMMUTABLE
+
+**Chosen:** an IMMUTABLE helper, `public.exercise_search_text(name, aliases)`, a
+stored generated column `exercises.search_text` built from it, and one GIN
+trigram index on that column.
+
+**Rejected:** a trigram index directly on the expression
+`array_to_string(aliases, ' ')`; a trigger-maintained plain column; separate
+indexes on `name` and `aliases`.
+
+**Why:** Brief §7 wants fuzzy search across `name` **and** `aliases`, so that
+"bp" finds bench press and "incline db" finds incline dumbbell press. The
+obvious implementation does not compile: `array_to_string` is not marked
+IMMUTABLE, and Postgres refuses non-immutable functions in both index
+expressions and generated columns. It is genuinely immutable for `text[]` input,
+so a thin declared-immutable wrapper is correct rather than a lie.
+
+A generated column was preferred over a trigger because it cannot drift — there
+is no ordering of triggers to reason about and no path that updates the row
+without updating the search text.
+
+**Note for Phase 2/3:** Postgres logical replication does not carry generated
+columns, so `search_text` stays server-side. The offline mirror the brief asks
+for is a SQLite FTS5 index built locally over the same two fields — same
+behaviour, different mechanism, and the two must be kept deliberately in step.
+
+Verified by tests using the brief's own examples.

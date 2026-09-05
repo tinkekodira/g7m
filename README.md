@@ -219,7 +219,7 @@ Work proceeds one phase at a time, stopping at each boundary.
 | # | Phase | State |
 | --- | --- | --- |
 | 0 | Foundation and de-risking | **In review** |
-| 1 | Data — schema, RLS, seed, auth | Not started |
+| 1 | Data — schema, RLS, seed, auth | **In progress** — schema and RLS done |
 | 2 | Offline — PowerSync, local SQLite, repositories | Blocked on the [iOS spike](./docs/spikes/powersync-ios.md) — harness built, needs a Mac |
 | 3 | Exercise library — search, filters, detail, video | Not started |
 | 4 | Logging — the hot path | Not started |
