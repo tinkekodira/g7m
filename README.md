@@ -29,15 +29,15 @@ are recorded in [`DECISIONS.md`](./DECISIONS.md).
 | UI | React 19 + Vite 7 |
 | Styling | Tailwind CSS v4, CSS-first token layer in `packages/ui` |
 | 3D | three.js via `@react-three/fiber` + `@react-three/drei` *(Phase 5)* |
-| Client state | Zustand — UI state only *(Phase 3)* |
+| Client state | Zustand — UI state only |
 | Routing | React Router *(Phase 3)* |
 | Mobile shell | Capacitor 7 — iOS, Android |
 | Desktop shell | Tauri 2 — Windows, macOS |
-| Backend | Supabase (Postgres, Auth, Storage, Edge Functions), EU region *(Phase 1)* |
+| Backend | Supabase (Postgres, Auth, Storage, Edge Functions), Frankfurt |
 | Local DB | SQLite *(Phase 2)* |
 | Sync | PowerSync *(Phase 2, [gated on a spike](./docs/spikes/powersync-ios.md))* |
 | Local query typing | Drizzle ORM, SQLite mode *(Phase 2)* |
-| Validation | Zod at every boundary *(Phase 1)* |
+| Validation | Zod at every boundary |
 | Testing | Vitest (unit) + Playwright (E2E on the web build) |
 
 One React codebase renders in a WKWebView on iOS and macOS, an Android WebView,
@@ -219,7 +219,7 @@ Work proceeds one phase at a time, stopping at each boundary.
 | # | Phase | State |
 | --- | --- | --- |
 | 0 | Foundation and de-risking | **In review** |
-| 1 | Data — schema, RLS, seed, auth | **In progress** — schema, RLS and seed done; auth next |
+| 1 | Data — schema, RLS, seed, auth | **Complete** |
 | 2 | Offline — PowerSync, local SQLite, repositories | Blocked on the [iOS spike](./docs/spikes/powersync-ios.md) — harness built, needs a Mac |
 | 3 | Exercise library — search, filters, detail, video | Not started |
 | 4 | Logging — the hot path | Not started |
