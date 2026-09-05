@@ -35,7 +35,7 @@ are recorded in [`DECISIONS.md`](./DECISIONS.md).
 | Desktop shell | Tauri 2 — Windows, macOS |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions), Frankfurt |
 | Local DB | SQLite *(Phase 2)* |
-| Sync | PowerSync *(Phase 2, [gated on a spike](./docs/spikes/powersync-ios.md))* |
+| Sync | PowerSync — OPFS-backed SQLite, [verified on 3 engines](./docs/spikes/powersync-ios.md) *(Phase 2)* |
 | Local query typing | Drizzle ORM, SQLite mode *(Phase 2)* |
 | Validation | Zod at every boundary |
 | Testing | Vitest (unit) + Playwright (E2E on the web build) |
@@ -71,7 +71,7 @@ what makes the 3D anatomy model viable everywhere without a rewrite.
 | --- | --- |
 | Web | nothing further |
 | Android | Android Studio, JDK 21, Android SDK 34+ |
-| iOS | **macOS**, Xcode 15+, CocoaPods |
+| iOS | Delivered as a Home Screen web app — no Mac needed. A native Capacitor build still requires macOS + Xcode (ADR-0026) |
 | Windows | [Rust](https://rustup.rs), Microsoft C++ Build Tools (WebView2 ships with Windows 11) |
 | macOS | Rust, Xcode Command Line Tools |
 
@@ -220,7 +220,7 @@ Work proceeds one phase at a time, stopping at each boundary.
 | --- | --- | --- |
 | 0 | Foundation and de-risking | **In review** |
 | 1 | Data — schema, RLS, seed, auth | **Complete** |
-| 2 | Offline — PowerSync, local SQLite, repositories | Blocked on the [iOS spike](./docs/spikes/powersync-ios.md) — harness built, needs a Mac |
+| 2 | Offline — PowerSync, local SQLite, repositories | **Unblocked** — [spike resolved](./docs/spikes/powersync-ios.md), PowerSync stays |
 | 3 | Exercise library — search, filters, detail, video | Not started |
 | 4 | Logging — the hot path | Not started |
 | 5 | 3D anatomy — viewer, raycasting, exercise panel | Not started |

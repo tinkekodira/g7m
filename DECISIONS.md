@@ -875,3 +875,86 @@ trying to write one owned by her**, and an anonymous caller reads nothing.
 
 Two throwaway accounts on `@example.com` (IANA-reserved, undeliverable) remain
 in the project and can be deleted from Dashboard → Authentication → Users.
+
+---
+
+## ADR-0026 — iOS ships as a Home Screen web app, and the spike resolves to "keep PowerSync"
+
+**Supersedes the fallback plan in [ADR-0014](#adr-0014--the-powersync-ios-spike-is-split-and-half-of-it-is-deferred)
+and [ADR-0016](#adr-0016--the-powersync-fallback-is-not-what-the-brief-assumed).**
+
+### The spike is resolved: outcome 1
+
+`OPFSCoopSyncVFS`, `AccessHandlePoolVFS` and `IDBBatchAtomicVFS` all open, write
+1,000 rows and survive process death on **Chromium, WebView2 and WebKit on iOS
+18.7**. `OPFSWriteAheadVFS` fails on WebKit and is excluded on every platform.
+
+**PowerSync stays.** The `@capacitor-community/sqlite` plus hand-rolled sync
+queue that §3 prepared for is not needed. Full numbers in
+[`docs/spikes/powersync-ios.md`](./docs/spikes/powersync-ios.md).
+
+Phase 2 configuration, decided:
+
+- Default `OPFSCoopSyncVFS`; runtime-fall back to `IDBBatchAtomicVFS` when OPFS
+  is unavailable; never select `OPFSWriteAheadVFS`.
+- Call `navigator.storage.persist()` at startup. The harness only *queried*
+  `persisted()`, which returned false on all three engines — that records "we
+  never asked", not "refused". iOS clears unrequested storage after about a
+  week, and this app is explicitly for people who may not train for a fortnight.
+
+### iOS is delivered as a Home Screen web app, not a native build
+
+**Chosen:** ship the web build as an installable PWA. Users add it to the iPhone
+Home Screen.
+
+**Rejected:** a Capacitor iOS build (needs a Mac, which does not exist here);
+waiting for Mac access before shipping anything to a phone.
+
+**Why:** the owner develops on Windows and owns an iPhone. A Capacitor iOS app
+cannot be built without macOS and Xcode — no amount of paying Apple changes
+that. So the choice was between a usable app on the actual phone today, and a
+native app on nobody's phone indefinitely. For a private v1 that is not on the
+App Store, the Home Screen route costs nothing and works now. The spike above
+was run this way and behaved correctly.
+
+**`apps/mobile` is parked, not deleted.** The Capacitor shell still builds in CI
+and remains the path to a native app whenever a Mac appears — or to Android, if
+an Android device ever does. It is simply not the delivery mechanism for v1.
+
+### What this costs, and what Phase 4 has to do about it
+
+Three §8 requirements for the logger are affected. None is fatal; all need
+designing around rather than discovering later.
+
+| §8 requirement | On an iOS Home Screen app |
+| --- | --- |
+| Keep the screen awake during a session | ✅ Screen Wake Lock API, WebKit 16.4+ |
+| Haptic feedback on set completion | ❌ **No Vibration API on iOS**, at all |
+| Rest timer fires a notification when it ends | ⚠️ **No local scheduled notifications** |
+
+**Haptics** simply do not exist on iOS in a web context. Android and desktop
+browsers have the Vibration API; WebKit has never shipped it and shows no sign
+of doing so. Set-completion feedback on iOS has to be visual and audible
+instead. That is a real downgrade for a screen used one-handed in poor light,
+and it should be designed for deliberately rather than left as a silent no-op.
+
+**Notifications** are the sharper problem. iOS 16.4+ supports Web Push for
+Home Screen apps, but there is **no way to schedule a local notification** — the
+Notifications API can only fire while the page is running, and a backgrounded
+web app is suspended. So "rest timer continues in the background and fires a
+notification" cannot work as written. The workable design is: hold a wake lock
+for the duration of an active session so the app stays foreground and the timer
+stays visible and audible. That is a bigger change to the Phase 4 design than it
+sounds, and is flagged here so it is not discovered while building the logger.
+
+**A web app manifest is now required**, not optional — name, icons,
+`display: standalone`, `theme_color` matching `--bg-base`. Phase 2 work.
+
+### One caveat on the spike result
+
+A Home Screen web app and a Capacitor WKWebView both run WebKit but do not share
+a storage context. This result is strong evidence that WebKit's OPFS is sound on
+iOS 18, which was the risk the brief identified. It is not proof about the
+Capacitor shell. Since Home Screen *is* the shipping target for v1, that gap
+does not block anything — but re-run the harness in a real Capacitor build the
+first time a Mac is available.
