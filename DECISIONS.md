@@ -1151,3 +1151,74 @@ with `replication` and `select`, not as `postgres`. The credential is revocable
 on its own and cannot drop anything. The `create role` statement is in
 `docs/powersync-setup.md` rather than in a migration, because it carries a
 password and this repository is public.
+
+---
+
+## ADR-0031 — Setting up the instance, and a correction to how PowerSync meets RLS
+
+The `Development` instance was provisioned on 2026-09-05 and is connected to the
+Supabase project. `docs/powersync-setup.md` is rewritten from what actually
+happened rather than from what the documentation implied; five things were
+wrong, and two of them would have failed silently.
+
+### The correction: RLS does apply, once
+
+[ADR-0030](#adr-0030--sync-rules-the-publication-and-the-client-schema-are-one-source-of-truth)
+says replication "reads the write-ahead log, underneath the permission system.
+Row level security does not apply to it." The security conclusion drawn from
+that — that the `user_data` bucket parameter is the access control, not RLS — is
+correct and unchanged. The mechanism was stated too broadly.
+
+PowerSync does two different reads:
+
+- **Streaming changes** come from logical decoding of the WAL, which is not
+  filtered by RLS. This is the part ADR-0030 described.
+- **The initial snapshot** of each table is an ordinary `SELECT` on an ordinary
+  connection, and it obeys RLS like anything else.
+
+So the replication role needs `BYPASSRLS`, which the first version of the guide
+did not grant. Deploying without it produces fourteen `PSYNC_S1145` warnings —
+one per table — and **lets you deploy anyway**. The result would not have been a
+restricted view of the data. It would have been zero rows in every table,
+because `powersync_replication` is not the `authenticated` role, so even the
+`for select to authenticated using (true)` policies on the reference tables do
+not match it. Sync would have reported healthy and delivered nothing.
+
+`BYPASSRLS` is not a weakening. It grants the snapshot read the same reach the
+streaming path already had.
+
+### The other four
+
+**The sign-up URL was invented.** `accounts.journeyapps.com/portal/powersync`
+returns 404. The guide now says to navigate from `powersync.com`, and says why:
+guessing portal subpaths produced one 404, and searching for the product name
+landed on an unrelated low-code platform's trial dashboard.
+
+**"Sync rules" is called "Sync Streams" in the dashboard.** Same
+`bucket_definitions:` YAML, different sidebar label — and a reader who cannot
+find "Sync rules" will conclude the instance does not support them.
+
+**The Sync Streams editor autosaves a draft that looks deployed.** It says "Saved
+locally" and keeps the pasted YAML across reloads, while Health continues to
+report *No Sync Streams Configured*. This is the second silent failure of the
+five: everything reads as configured and no device receives anything. The guide
+now insists on **Validate, then Deploy**, and names the symptom in the
+troubleshooting table.
+
+**Connection details come from Supabase's "Direct" tab**, reached from the
+Connect button — not from a Project Settings page. The URI it shows embeds the
+`postgres` user, which is exactly the credential step 2 exists to avoid using,
+so the guide now says to take the host and discard the rest.
+
+### On the placeholder password
+
+The guide's `create role` statement carried the literal placeholder
+`PUT-A-LONG-RANDOM-PASSWORD-HERE`, and it was run verbatim. Because
+`docs/powersync-setup.md` is committed to a public repository, that briefly made
+the replication role's password a published string. It was rotated with
+`alter role … with password` before the role was used for anything.
+
+A placeholder that is *valid input* is a trap in a document meant to be
+copy-pasted. The guide now puts the rotation command next to the creation
+command rather than in a note underneath, and gives a one-line generator so
+there is something to paste that is not the placeholder.
