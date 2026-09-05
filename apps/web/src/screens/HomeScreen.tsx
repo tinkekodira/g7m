@@ -3,6 +3,7 @@ import { Button } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
+import { describeDataError, retryOnceIfTransient } from '../lib/errors.js';
 import {
   describePersistence,
   formatBytes,
@@ -18,6 +19,16 @@ import {
  * database trigger created on signup. Phase 3 replaces it with the exercise
  * library.
  */
+
+/**
+ * The Supabase client is untyped until Phase 2b generates a Database type
+ * with `supabase gen types`. Until then, the shape of a row is asserted at
+ * the one place it is read, rather than spread as `any` through the file.
+ */
+interface ProfileRow {
+  readonly display_name: string | null;
+  readonly unit_system: string;
+}
 
 interface Snapshot {
   readonly displayName: string | null;
@@ -53,7 +64,11 @@ export function HomeScreen() {
       // the signup trigger fired, and the two counts prove an authenticated
       // user can read reference data that an anonymous one cannot.
       const [profile, exercises, muscles] = await Promise.all([
-        supabase.from('profiles').select('display_name, unit_system').single(),
+        // Retried once: a device clock a second or two ahead of the server
+        // makes the freshly issued token look like it came from the future.
+        retryOnceIfTransient(() =>
+          supabase.from('profiles').select('display_name, unit_system').single(),
+        ),
         supabase.from('exercises').select('*', { count: 'exact', head: true }),
         supabase.from('muscles').select('*', { count: 'exact', head: true }),
       ]);
@@ -62,7 +77,7 @@ export function HomeScreen() {
 
       const failure = profile.error ?? exercises.error ?? muscles.error;
       if (failure !== null) {
-        setLoadError(failure.message);
+        setLoadError(describeDataError(failure.message));
         return;
       }
       if (profile.data === null) {
@@ -72,9 +87,10 @@ export function HomeScreen() {
         return;
       }
 
+      const row = profile.data as unknown as ProfileRow;
       setSnapshot({
-        displayName: profile.data.display_name as string | null,
-        unitSystem: String(profile.data.unit_system),
+        displayName: row.display_name,
+        unitSystem: row.unit_system,
         exerciseCount: exercises.count ?? 0,
         muscleCount: muscles.count ?? 0,
       });
@@ -106,7 +122,7 @@ export function HomeScreen() {
         <h2 className="mb-3 text-lg font-semibold text-primary">Your account</h2>
         {loadError !== null ? (
           <p role="alert" className="text-sm text-danger">
-            Could not load your profile: {loadError}
+            {loadError}
           </p>
         ) : snapshot === null ? (
           <p className="text-sm text-muted">Loading…</p>
