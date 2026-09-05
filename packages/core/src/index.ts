@@ -12,3 +12,5 @@
 
 export * from './units.js';
 export * from './one-rep-max.js';
+export * from './order-key.js';
+export * from './exercise-search.js';

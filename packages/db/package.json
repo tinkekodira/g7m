@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Drizzle schema, migrations, repository layer, PowerSync setup.",
+  "description": "The local SQLite schema, sync rules, repository layer and PowerSync setup.",
   "exports": {
     ".": "./src/index.ts"
   },
@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8"
+  },
+  "dependencies": {
+    "@powersync/web": "2.3.0"
   }
 }

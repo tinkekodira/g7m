@@ -22,13 +22,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
     "mobile:sync": "pnpm --filter @g7m/mobile sync",
     "desktop:dev": "pnpm --filter @g7m/desktop dev",
     "desktop:build": "pnpm --filter @g7m/desktop build",
     "db:push": "supabase db push",
     "db:diff": "supabase db diff --linked",
-    "db:status": "supabase migration list --linked"
+    "db:status": "supabase migration list --linked",
+    "sync-rules": "vitest run -u packages/db/src/schema/sync-rules.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
