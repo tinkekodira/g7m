@@ -14,11 +14,17 @@
 #              device; Postgres has no write policy on these tables at all.
 #
 #   user_data  parameterised by the user id in the Supabase JWT, so a device
-#              receives only rows it owns. PowerSync replicates through a
-#              logical replication slot, which bypasses row level security
-#              entirely — so this parameter is not an optimisation, it is the
-#              access control. A mistake here publishes one user's training
-#              history to another.
+#              receives only rows it owns. This parameter is not an
+#              optimisation, it is the access control: PowerSync follows the
+#              write-ahead log, and logical decoding is not filtered by row
+#              level security, so RLS is not what separates one user's training
+#              history from another's. A mistake here publishes one to the
+#              other.
+#
+#              (RLS does still apply to the one-off SELECT PowerSync makes when
+#              it first snapshots a table, which is why the replication role
+#              needs BYPASSRLS — without it the snapshot reads zero rows. See
+#              docs/powersync-setup.md step 2.)
 
 bucket_definitions:
   catalogue:

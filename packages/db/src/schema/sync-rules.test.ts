@@ -26,8 +26,27 @@ describe('the committed sync rules', () => {
   });
 });
 
+/**
+ * The rules with the comment lines removed, folded onto one line.
+ *
+ * Comments have to go before anything greps for SQL. The file's header explains
+ * what the buckets do, in prose that naturally contains words like SELECT and
+ * table — and a regex looking for `SELECT … FROM muscle_groups` will happily
+ * anchor on a sentence and capture half the document. That is not hypothetical:
+ * adding one sentence about RLS to the header broke these tests, which is a
+ * test reading its own preamble rather than the rules.
+ */
+function statements(yaml: string): string {
+  return yaml
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => !line.startsWith('#'))
+    .join(' ');
+}
+
 describe('what the rules must say', () => {
   const yaml = renderSyncRules();
+  const flattened = statements(yaml);
 
   it('defines exactly the two buckets', () => {
     expect(yaml).toContain('bucket_definitions:');
@@ -42,8 +61,8 @@ describe('what the rules must say', () => {
   /**
    * The one that would be a data breach rather than a bug.
    *
-   * PowerSync replicates through a logical replication slot, which bypasses row
-   * level security completely. If a user-owned table were listed in the
+   * PowerSync follows the write-ahead log, and logical decoding is not filtered
+   * by row level security. If a user-owned table were listed in the
    * unparameterised `catalogue` bucket, every device would receive every user's
    * rows and Postgres would never object.
    */
@@ -53,10 +72,6 @@ describe('what the rules must say', () => {
       .filter((name) => !isReferenceTable(name));
 
     expect(userTables.length).toBeGreaterThan(0);
-    const flattened = yaml
-      .split('\n')
-      .map((line) => line.trim())
-      .join(' ');
     for (const table of userTables) {
       const statement = new RegExp(`SELECT [^;]*? FROM ${table}\\b[^-]*`).exec(flattened);
       expect(statement, `no SELECT found for ${table}`).not.toBeNull();
@@ -67,7 +82,10 @@ describe('what the rules must say', () => {
   });
 
   it('puts no user-owned table in the shared catalogue bucket', () => {
-    const catalogue = yaml.slice(yaml.indexOf('catalogue:'), yaml.indexOf('user_data:'));
+    const catalogue = flattened.slice(
+      flattened.indexOf('catalogue:'),
+      flattened.indexOf('user_data:'),
+    );
     for (const table of AppSchema.tables) {
       if (isReferenceTable(table.name)) continue;
       expect(catalogue, `${table.name} appears in the shared bucket`).not.toContain(
@@ -77,7 +95,10 @@ describe('what the rules must say', () => {
   });
 
   it('syncs every reference table to everyone, unfiltered', () => {
-    const catalogue = yaml.slice(yaml.indexOf('catalogue:'), yaml.indexOf('user_data:'));
+    const catalogue = flattened.slice(
+      flattened.indexOf('catalogue:'),
+      flattened.indexOf('user_data:'),
+    );
     for (const name of REFERENCE_TABLE_NAMES) {
       expect(catalogue, `${name} is missing from the catalogue bucket`).toContain(` FROM ${name}`);
     }
@@ -89,10 +110,6 @@ describe('what the rules must say', () => {
    * the device with nothing logged anywhere to say why.
    */
   it('selects every column the client schema declares, plus id', () => {
-    const flattened = yaml
-      .split('\n')
-      .map((line) => line.trim())
-      .join(' ');
     for (const table of AppSchema.tables) {
       const statement = new RegExp(`SELECT ([^;]*?) FROM ${table.name}\\b`).exec(flattened);
       expect(statement, `no SELECT for ${table.name}`).not.toBeNull();
@@ -110,11 +127,11 @@ describe('what the rules must say', () => {
    * not deliver before Postgres 18, and which the client rebuilds locally.
    */
   it('never uses SELECT *', () => {
-    expect(yaml).not.toContain('SELECT *');
+    expect(flattened).not.toContain('SELECT *');
   });
 
   it('does not sync the generated search column', () => {
-    expect(yaml).not.toContain('search_text');
+    expect(flattened).not.toContain('search_text');
   });
 
   it('renders the same bytes every time, so the snapshot is stable', () => {

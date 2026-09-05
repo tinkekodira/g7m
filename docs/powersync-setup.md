@@ -1,14 +1,18 @@
 # Setting up the PowerSync instance
 
-This is the one part of Phase 2 that cannot be done from the repository, because
-it needs the database password — which must never be pasted into a chat, a
-commit, or a CI variable.
+**Status: done once, on 2026-09-05.** The `Development` instance for the `g7m`
+project is live and connected. This document is now two things: the record of
+how it was done, and the procedure for doing it again — a production instance,
+or a rebuild after something is torn down.
 
-Everything the instance needs from the codebase is already generated and
-committed. You are connecting it up, not configuring it by hand.
+It stays a manual procedure because it needs the database password, which must
+never be pasted into a chat, a commit, or a CI variable.
 
 **Time:** about twenty minutes.
 **You will need:** the Supabase project, and its database password.
+
+Everything the instance needs from the codebase is already generated and
+committed. You are connecting it up, not configuring it by hand.
 
 ---
 
@@ -19,14 +23,24 @@ steps below look paranoid.
 
 PowerSync does not call the API. It attaches to a Postgres **logical replication
 slot** and follows the write-ahead log directly — which is how a set logged on
-one device appears on another in about a second. Reading the WAL happens
-underneath Postgres' permission system, so **row level security does not apply
-to it**. Every row in every published table is visible to PowerSync.
+one device appears on another in about a second.
 
-What keeps one user's training history away from another is therefore not RLS.
-It is the `user_data` bucket in `powersync/sync-rules.yaml`, which filters on
-the user id inside the signed Supabase JWT that each device presents. That file
-is generated from the client schema and checked by tests for exactly this
+Two consequences, and they pull in opposite directions:
+
+- **Streaming changes are not filtered by row level security.** Logical decoding
+  reads the WAL underneath the permission system. Every change to every
+  published table is visible to PowerSync.
+- **The initial snapshot of each table _is_.** Before it can stream changes,
+  PowerSync reads each table once with an ordinary `SELECT`, over an ordinary
+  connection, as an ordinary role — and that read obeys RLS like any other.
+
+So the role needs `BYPASSRLS` (step 2), or the first read returns nothing and
+sync appears to work while delivering empty tables.
+
+And what keeps one user's training history away from another is therefore **not
+RLS**. It is the `user_data` bucket in `powersync/sync-rules.yaml`, which filters
+on the user id inside the signed Supabase JWT that each device presents. That
+file is generated from the client schema and checked by tests for exactly this
 reason.
 
 RLS still does its job everywhere else — direct PostgREST reads, and the writes
@@ -46,11 +60,18 @@ In the repository root:
 pnpm db:push
 ```
 
+> `pnpm` is not on PATH on the development machine. Use Corepack, which ships
+> with Node:
+>
+> ```
+> "C:\Program Files\nodejs\corepack.cmd" pnpm db:push
+> ```
+
 That applies `supabase/migrations/20260905140000_powersync_publication.sql`,
 which creates a publication named `powersync` covering the fourteen tables the
 app syncs — and nothing else. It does not include the `auth` schema.
 
-Confirm it landed. In the Supabase dashboard, **SQL Editor**, run:
+Confirm it landed. In the Supabase dashboard, **SQL Editor → New query**, run:
 
 ```sql
 select tablename from pg_publication_tables where pubname = 'powersync' order by 1;
@@ -76,82 +97,134 @@ In the Supabase **SQL Editor**, run this — with your own password substituted:
 create role powersync_replication with replication login password 'PUT-A-LONG-RANDOM-PASSWORD-HERE';
 grant usage on schema public to powersync_replication;
 grant select on all tables in schema public to powersync_replication;
+alter role powersync_replication bypassrls;
 ```
 
-Notes on that password:
+**Substitute the password before running it.** The placeholder above is
+committed to a public repository, so running this verbatim creates a role whose
+password is published on GitHub. If that happens, fix it immediately:
 
-- Generate something long and random. It is typed twice — here and in the
-  PowerSync dashboard — and never again.
-- **Do not send it to me, and do not put it in the repository.** This SQL is
-  deliberately not a migration for that reason: a committed migration is public.
-- `replication` is the privilege that lets it read the WAL. `select` is what
-  lets PowerSync read the initial snapshot of each table.
+```sql
+alter role powersync_replication with password 'A-NEW-LONG-RANDOM-ONE';
+```
+
+Generate the password rather than inventing one — in PowerShell:
+
+```powershell
+[System.Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+Notes on the four statements:
+
+- `replication` is the privilege that lets it read the WAL.
+- `select` is what lets it read the initial snapshot of each table.
+- **`bypassrls` is what lets that snapshot actually return rows.** Without it,
+  PowerSync's first read of every table is filtered by RLS — and since this role
+  is not `authenticated`, even the `for select to authenticated using (true)`
+  policies on the reference tables do not match it. The result is not a
+  restricted view, it is *zero rows everywhere*. The dashboard reports this as
+  fourteen `PSYNC_S1145` warnings and lets you deploy anyway.
+- The password is typed twice — here and in the PowerSync dashboard — and never
+  again. **Do not send it to anyone, and do not put it in the repository.** This
+  SQL is deliberately not a migration for that reason.
 
 > If you would rather use the plain `postgres` connection string to get moving,
 > it will work. It is a worse position to be in and worth coming back to.
 
 ---
 
-## Step 3 — Create the PowerSync instance
+## Step 3 — Create the PowerSync project
 
-1. Sign up at **https://accounts.journeyapps.com/portal/powersync** — the free
-   tier is enough for this.
-2. Create a new instance. Pick the region closest to your Supabase project,
-   which is **Frankfurt / eu-central**. Region matters here: every write makes a
-   round trip, and putting the instance on another continent from the database
-   is a latency cost you pay forever.
-3. When it asks for the database connection, give it:
+Go to **https://www.powersync.com/** and sign up, then follow it through to the
+dashboard.
 
-   | Field | Value |
-   | --- | --- |
-   | Host / URI | from Supabase → **Project Settings → Database → Connection string** |
-   | Port | **5432** — the direct connection, *not* the 6543 pooler |
-   | Database | `postgres` |
-   | Username | `powersync_replication` (from step 2) |
-   | Password | the one you generated |
+> Navigate from the front page rather than guessing a portal URL. Several
+> plausible-looking `accounts.journeyapps.com/...` paths are dead, and searching
+> for "PowerSync" can land you on an unrelated low-code platform's trial signup.
 
-   **Port 5432, not 6543.** The pooler multiplexes connections and cannot carry
-   a replication slot. Pointing PowerSync at it produces a connection error that
-   does not mention pooling.
+1. **Create a New Project.** Name it `g7m`. It opens on an environment called
+   `Development` — the instance you are configuring. A separate production
+   instance is a later decision, not something to set up now.
+2. **Database Connections → Connect to Source Database.**
 
-4. Run its connection test. It should report that it can connect and that
-   logical replication is available. Supabase ships with `wal_level = logical`
-   already set, so there is nothing to change.
+Get the connection details from Supabase: **Connect** (top of the dashboard) →
+the **Direct** tab. That gives a URI of the form
+`postgresql://postgres:[YOUR-PASSWORD]@db.<project-ref>.supabase.co:5432/postgres`.
+Take the host out of it and ignore the rest — in particular ignore the `postgres`
+username, which is not what you are using.
+
+| Field | Value |
+| --- | --- |
+| Host | `db.<project-ref>.supabase.co` |
+| Port | **5432** |
+| Database | `postgres` |
+| Username | `powersync_replication` — **not** `postgres` |
+| Password | the one you generated in step 2 |
+
+**Port 5432, not 6543.** The pooler multiplexes connections and cannot carry a
+replication slot. Pointing PowerSync at it produces a connection error that does
+not mention pooling.
+
+Leave SSL required. Supabase ships with `wal_level = logical` already set, so
+there is nothing to change there.
+
+Submitting the form provisions a deployment, which takes a minute or two.
 
 ---
 
 ## Step 4 — Tell PowerSync how to trust a Supabase login
 
-PowerSync has to verify that the JWT a device presents really came from your
-Supabase project, and pull the user id out of it. In the instance settings there
-is a client-authentication section with a Supabase option.
+**Client Auth** in the sidebar. PowerSync has to verify that the JWT a device
+presents really came from your Supabase project, and pull the user id out of it.
 
-Supabase issues JWTs in one of two ways, and which one you have decides what to
-paste:
+1. Tick **Use Supabase Auth**. This tells PowerSync to expect Supabase-shaped
+   tokens — the issuer, the `authenticated` audience. It does not itself supply
+   a key.
+2. Supply the key, in **one** of two ways:
 
-- **Asymmetric keys (newer projects, and what you should prefer).** Supabase
-  publishes a JWKS endpoint at
-  `https://<your-project-ref>.supabase.co/auth/v1/.well-known/jwks.json`.
-  Give PowerSync that URL. Nothing secret is involved — it is a public key.
-- **A shared HS256 secret (older projects).** Supabase → **Project Settings →
-  API → JWT Settings → JWT Secret**. Paste that into PowerSync.
-  **This one is a secret.** Same rule as the database password: dashboard only,
-  never chat, never the repository.
+   - **JWKS URI** — the modern method, and the one to prefer. Paste:
+     ```
+     https://<your-project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+     ```
+     Nothing secret is involved; it publishes a public key.
+   - **Supabase JWT Secret**, marked *Legacy* — only if the project has no
+     asymmetric keys. Supabase → **Project Settings → API → JWT Settings → JWT
+     Secret**. **This one is a secret**: dashboard only, never chat, never the
+     repository.
 
-Check Supabase → **Project Settings → API → JWT Keys** to see which you have.
-If a JWKS URL is offered, use it.
+   Check Supabase → **Project Settings → API → JWT Keys** to see which you have.
+
+3. Leave **Development tokens**, **JWT Audience** and **HS256 authentication
+   tokens** alone. The first is a testing convenience; the other two are for
+   auth setups this project does not use.
+
+4. **Save and Deploy.**
 
 ---
 
 ## Step 5 — Deploy the sync rules
 
-Open `powersync/sync-rules.yaml` from the repository, copy the whole file, and
-paste it into the instance's **Sync rules** editor, then deploy.
+**Sync Streams** in the sidebar, which opens the **Sync Streams Editor**.
 
-Do not hand-edit it there. It is generated from the client schema — the same
-schema the app compiles against — and a test fails the build if the committed
-file and the schema disagree. If you need it changed, it changes in
-`packages/db/src/schema/app-schema.ts` and you run:
+> The dashboard calls these Sync Streams; the file and the documentation call
+> them sync rules. Same thing — the editor takes the `bucket_definitions:` YAML
+> unchanged.
+
+Open `powersync/sync-rules.yaml` from the repository, copy the whole file, and
+paste it into the editor. Then:
+
+1. **Validate.** Checks the YAML without deploying.
+2. **Deploy.**
+
+Both, in that order. The editor autosaves a **draft** locally and says "Saved
+locally" underneath — which looks like success and is not. Until you press
+Deploy, Health still reports *No Sync Streams Configured* and no device receives
+anything.
+
+Do not hand-edit the rules in the dashboard. They are generated from the client
+schema — the same schema the app compiles against — and a test fails the build
+if the committed file and the schema disagree. If they need to change, change
+`packages/db/src/schema/app-schema.ts` and run:
 
 ```
 pnpm sync-rules
@@ -159,46 +232,60 @@ pnpm sync-rules
 
 then paste and redeploy.
 
-If the editor rejects `SELECT request.user_id() AS user_id`, your instance is on
+If the editor rejects `SELECT request.user_id() AS user_id`, the instance is on
 an older sync-rules dialect: replace that one line with
-`SELECT token_parameters.user_id AS user_id`, and tell me so I can change the
-generator.
+`SELECT token_parameters.user_id AS user_id`, and say so, because the generator
+needs changing too.
 
 ---
 
-## Step 6 — Send me the instance URL
+## Step 6 — Check Health, then hand over the instance URL
 
-The dashboard shows an instance URL that looks like:
+**Health** should read **"All clear! No issues to address"**, with the source
+database listed and the deploy history showing completed entries.
+
+The instance URL is on the **Connect** screen and looks like:
 
 ```
-https://<something>.powersync.journeyapps.com
+https://<instance-id>.powersync.journeyapps.com
 ```
 
 **That URL is safe to share and safe to commit.** It is not a credential — a
 device still has to present a valid Supabase JWT to get anything out of it, and
 the sync rules decide what that is. It is the same category of public as the
-Supabase anon key.
+Supabase publishable key.
 
-Paste it to me and I will wire it in: `VITE_POWERSYNC_URL` in `.env.local` for
-local development, and the GitHub Actions variable that builds the Pages
-deployment.
+It goes in two places, both already wired to read it:
+
+- `VITE_POWERSYNC_URL` in `.env.local`, for local development.
+- The `VITE_POWERSYNC_URL` repository variable, which `.github/workflows/pages.yml`
+  passes to the Pages build.
+
+You can confirm an instance is up without any credentials:
+
+```
+curl -s -o /dev/null -w "%{http_code}\n" https://<instance-id>.powersync.journeyapps.com/probes/liveness
+```
+
+`200` means the service is running. The root path returns `404`; that is normal
+and says nothing.
 
 ---
 
-## Your turn — the short version
+## The short version
 
 1. `pnpm db:push`
-2. Run the `create role` SQL from step 2 in the Supabase SQL editor, with a
-   password you generate.
-3. Create a PowerSync instance in Frankfurt, connected on **port 5432** as
+2. Run the four-statement `create role` block from step 2 in the Supabase SQL
+   editor, **with a password you generate**.
+3. Create a PowerSync project at powersync.com, connected on **port 5432** as
    `powersync_replication`.
-4. Point its Supabase auth at your JWKS URL (or paste the JWT secret).
-5. Paste `powersync/sync-rules.yaml` into Sync rules and deploy.
-6. Send me the instance URL.
+4. Client Auth → tick **Use Supabase Auth**, paste the JWKS URI, Save and Deploy.
+5. Sync Streams → paste `powersync/sync-rules.yaml` → **Validate** → **Deploy**.
+6. Health should be all clear. Hand over the instance URL.
 
-**Never send me:** the database password, the `powersync_replication` password,
-or the Supabase JWT secret. If one is ever pasted into a chat or a commit,
-rotate it rather than hoping.
+**Never share:** the database password, the `powersync_replication` password, or
+the Supabase JWT secret. If one is ever pasted into a chat or a commit, rotate
+it rather than hoping.
 
 ---
 
@@ -208,9 +295,11 @@ rotate it rather than hoping.
 | --- | --- |
 | Connection times out | Pooler port. Use 5432, not 6543. |
 | Authentication failed | The role was created in a different project, or the password has a character the URI form mangles — prefer the separate-fields form over a single URI. |
+| `PSYNC_S1145`, one per table: "Row Level Security is enabled on table …" | The role has no `BYPASSRLS`. Run the `alter role` from step 2. The deploy is allowed to proceed regardless, and would sync nothing. |
+| Health says *No Sync Streams Configured* after pasting the rules | The draft was saved but never deployed. Press **Deploy** in the Sync Streams Editor. |
 | Connects, replicates nothing | The publication is missing. Re-run the check query in step 1. |
 | Sync rules rejected | Older dialect — see the `token_parameters` note in step 5. |
 | Devices sync reference data but no user data | Auth is misconfigured: PowerSync is not extracting a user id from the JWT, so the `user_data` bucket matches nothing. Check step 4. |
 
-That last row is the one worth memorising, because it looks like a data problem
-and is not.
+The last two rows are the ones worth remembering, because both look like data
+problems and neither is.
