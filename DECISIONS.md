@@ -710,3 +710,83 @@ for is a SQLite FTS5 index built locally over the same two fields — same
 behaviour, different mechanism, and the two must be kept deliberately in step.
 
 Verified by tests using the brief's own examples.
+
+---
+
+## ADR-0024 — Seed data ships as migrations, and six things seeding taught us
+
+**Chosen:** the muscle groups, muscles, equipment and 50 exercises are
+**migrations** under `supabase/migrations/`, not files under `supabase/seed/`.
+Every insert is idempotent on `slug` with an `on conflict do update`.
+
+**Rejected:** `supabase/seed/*.sql` with `supabase db seed`.
+
+**Why:** this is data the application cannot run without — an app with no
+muscles has no anatomy model and no exercise panel. `db seed` only runs during
+a local `db reset`, which needs Docker, and there is no Docker here. Migrations
+deploy through `db push`, which is the only path we have to the real project.
+The idempotent form means correcting a cue later is a one-line follow-up
+migration rather than a delete-and-reinsert that would break foreign keys from
+anyone's logged sessions.
+
+`supabase/seed/` stays for what it is actually good at: development-only
+fixtures — fake users, fake sessions — that must never reach production.
+
+### What writing the seed data found
+
+Seeding is where a schema meets reality. Six things surfaced that reading the
+brief could not have:
+
+**1. `is_time_based`, a missing column.** A plank and a farmer carry are
+prescribed in seconds, not repetitions, and nothing in §5 could say so. Writing
+`60` into a reps column produces a personal record of "60 reps of plank" and a
+volume calculation that is nonsense. One boolean fixes it: the logger shows a
+timer, 1RM estimation is skipped, and volume treats the set as time under
+tension.
+
+**2. The §5 equipment list is missing a back extension bench.** Without it the
+back extension had to be mapped to "bodyweight only", which would have the
+generator prescribe it to someone training in a hotel room. Added as a 29th
+item, flagged in the migration.
+
+**3. Nothing in the 50 exercises trains the neck.** `sternocleidomastoid` is
+seeded so the model is anatomically complete but marked `is_selectable = false`,
+which is exactly what the flag exists for (§5). A selectable muscle with no
+exercises opens an empty panel, and a user cannot tell that from a bug.
+
+**4. Rotation was missing as a movement pattern**, and the obliques had no
+exercise anywhere as a primary mover. Swapped the dumbbell curl — the fourth of
+four biceps exercises — for a cable woodchop. Biceps keep three, the obliques
+get a panel, and anti-rotation joins the covered patterns.
+
+**5. Trigram search ranks the wrong squat.** Ordering by `similarity()` alone is
+length-sensitive: "Front Squat" scores higher than "Barbell Back Squat" simply
+for being shorter, so a beginner typing "squat" is handed the harder, rarer
+lift. The ranking contract is now tiered — exact match, then prefix, then
+substring, with `popularity_rank` breaking ties inside a tier, and fuzzy
+similarity only as a last resort for genuine typos. Pinned by tests; Phase 3
+implements it in the repository layer.
+
+**6. Five pieces of equipment have no exercise yet** — decline bench, hip thrust
+machine, kettlebell, power rack, resistance bands, smith machine. Kept anyway,
+because the equipment list is the user's "my gym has this" vocabulary, which is
+broader than 50 exercises. Pinned by a test so the set cannot grow unnoticed.
+
+### `video_provider` is 'none' on all fifty
+
+**Rejected:** the brief's "v1 = YouTube placeholders".
+
+**Why:** a made-up video ID renders as a broken player, which is strictly worse
+than the text-only state the offline path already handles well. Every exercise
+carries at least two coaching cues and three instruction steps, enforced by a
+CHECK constraint, so the detail view is genuinely useful with no video at all.
+Real IDs go in when someone has actually watched each video and confirmed it
+teaches the lift — which is a different kind of work from writing a schema.
+
+### On `recruitment_weight`
+
+The values are informed estimates, not EMG measurements. They exist to order
+the muscle panel sensibly (§6) and nothing else depends on their exact
+magnitude — the heat map counts whole sets by role (§9), deliberately. They are
+therefore cheap to tune later, and should be tuned by someone who trains rather
+than by someone reading a table.
