@@ -1,0 +1,74 @@
+# PowerSync sync rules for g7m.
+#
+# GENERATED FILE - do not edit by hand.
+# Run `pnpm sync-rules` after changing packages/db/src/schema/app-schema.ts.
+#
+# Paste the contents of this file into the PowerSync dashboard:
+#   Manage instances -> (your instance) -> Sync rules -> Deploy.
+# See docs/powersync-setup.md.
+#
+# Two buckets, and the difference matters:
+#
+#   catalogue  no parameters, so every signed-in user receives all of it. This
+#              is the exercise and anatomy reference data. Read-only on the
+#              device; Postgres has no write policy on these tables at all.
+#
+#   user_data  parameterised by the user id in the Supabase JWT, so a device
+#              receives only rows it owns. PowerSync replicates through a
+#              logical replication slot, which bypasses row level security
+#              entirely — so this parameter is not an optimisation, it is the
+#              access control. A mistake here publishes one user's training
+#              history to another.
+
+bucket_definitions:
+  catalogue:
+    data:
+      - >-
+        SELECT id, slug, name, display_order FROM muscle_groups
+      - >-
+        SELECT id, slug, common_name, latin_name, muscle_group_id, mesh_node_names, region,
+        is_selectable, display_order FROM muscles
+      - >-
+        SELECT id, slug, name, category FROM equipment
+      - >-
+        SELECT id, slug, name, aliases, mechanic, force, joint_count, difficulty, is_unilateral,
+        instructions, cues, common_mistakes, default_rep_low, default_rep_high, is_time_based,
+        default_rest_seconds, video_provider, video_ref, thumbnail_url, popularity_rank,
+        is_active FROM exercises
+      - >-
+        SELECT id, exercise_id, equipment_id, is_primary FROM exercise_equipment
+      - >-
+        SELECT id, exercise_id, muscle_id, role, recruitment_weight FROM exercise_muscles
+
+  user_data:
+    parameters: SELECT request.user_id() AS user_id
+    data:
+      - >-
+        SELECT id, user_id, display_name, unit_system, experience_level, birth_year,
+        bodyweight_kg, rest_seconds_default, week_starts_on, onboarded_at, created_at,
+        updated_at FROM profiles WHERE user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, equipment_id, created_at, updated_at FROM user_equipment WHERE
+        user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, name, notes, last_performed_at, created_at, updated_at FROM routines
+        WHERE user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, routine_id, exercise_id, order_key, target_sets, target_rep_low,
+        target_rep_high, created_at, updated_at FROM routine_exercises WHERE user_id =
+        bucket.user_id
+      - >-
+        SELECT id, user_id, name, started_at, ended_at, notes, source, routine_id,
+        generation_metadata, bodyweight_kg, created_at, updated_at FROM workout_sessions WHERE
+        user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, session_id, exercise_id, order_key, notes, created_at, updated_at
+        FROM session_exercises WHERE user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, session_exercise_id, order_key, set_type, load_type, weight_kg,
+        reps, rpe, is_completed, completed_at, created_at, updated_at FROM session_sets WHERE
+        user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, exercise_id, record_type, value, formula, achieved_at,
+        session_set_id, created_at, updated_at FROM personal_records WHERE user_id =
+        bucket.user_id

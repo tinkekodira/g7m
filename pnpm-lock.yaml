@@ -121,6 +121,10 @@ importers:
   packages/core: {}
 
   packages/db:
+    dependencies:
+      '@powersync/web':
+        specifier: 2.3.0
+        version: 2.3.0(@powersync/common@2.2.0)(@powersync/shared-internals@1.2.0(@powersync/common@2.2.0))
     devDependencies:
       '@electric-sql/pglite':
         specifier: ^0.5.8
@@ -513,6 +517,9 @@ packages:
     resolution: {integrity: sha512-+Sg6GCR/wy1oSmQDFq4LQDAhm3ETKnorxN+y5nbLULOR3P0c14f2Wurzj3/xqPXtasLFfHd5iRFQ7AJt4KH2cw==}
     engines: {node: '>=8'}
 
+  '@journeyapps/wa-sqlite@2.0.3':
+    resolution: {integrity: sha512-LEnzLL/+6z9AAOJQ1nZD5/lo5xE6ZWpkH/M6S3RAGiM047jDqKvGjx8SkGkG1bRcFbbGApf3RWlHGfrmButXcg==}
+
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
 
@@ -550,6 +557,21 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
+
+  '@powersync/common@2.2.0':
+    resolution: {integrity: sha512-TLQE0De9TAniQIyvfkPiim5MHi/nDely7ZT7iSBHY+xtDt5pwelqwmq0IcWSqZnkTagimGXp7p1z5htWwt0Wbw==}
+
+  '@powersync/shared-internals@1.2.0':
+    resolution: {integrity: sha512-wkSgKKcIo9It6axdDBfAJNxzQcfc6hVMlcycxoPSAuMIo/GnXuyi2bl3DpMaZWMutrXlkemPKG3y4nuqxLYpVA==}
+    peerDependencies:
+      '@powersync/common': ^2.2.0
+
+  '@powersync/web@2.3.0':
+    resolution: {integrity: sha512-6NjVRB+RmxlL+insiWOZrpolrAChsfL1MpULv2Impk242y5ZSAdk+lUPn5XBYltsHorhKov8PplbDbL1sAYmIQ==}
+    hasBin: true
+    peerDependencies:
+      '@powersync/common': ^2.2.0
+      '@powersync/shared-internals': ^1.2.0
 
   '@rolldown/pluginutils@1.0.0-rc.3':
     resolution: {integrity: sha512-eybk3TjzzzV97Dlj5c+XrBFW57eTNhzod66y9HrBlzJ6NsCrWCp/2kaPS3K9wJmurBC0Tdw4yPjXKZqlznim3Q==}
@@ -1181,6 +1203,9 @@ packages:
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  comlink@4.4.2:
+    resolution: {integrity: sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==}
 
   commander@12.1.0:
     resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
@@ -2538,6 +2563,8 @@ snapshots:
 
   '@istanbuljs/schema@0.1.6': {}
 
+  '@journeyapps/wa-sqlite@2.0.3': {}
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -2570,6 +2597,20 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@powersync/common@2.2.0': {}
+
+  '@powersync/shared-internals@1.2.0(@powersync/common@2.2.0)':
+    dependencies:
+      '@powersync/common': 2.2.0
+
+  '@powersync/web@2.3.0(@powersync/common@2.2.0)(@powersync/shared-internals@1.2.0(@powersync/common@2.2.0))':
+    dependencies:
+      '@journeyapps/wa-sqlite': 2.0.3
+      '@powersync/common': 2.2.0
+      '@powersync/shared-internals': 1.2.0(@powersync/common@2.2.0)
+      comlink: 4.4.2
+      commander: 12.1.0
 
   '@rolldown/pluginutils@1.0.0-rc.3': {}
 
@@ -3137,6 +3178,8 @@ snapshots:
       color-name: 1.1.4
 
   color-name@1.1.4: {}
+
+  comlink@4.4.2: {}
 
   commander@12.1.0: {}
 
