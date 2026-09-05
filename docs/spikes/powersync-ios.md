@@ -164,11 +164,42 @@ Two things worth carrying to the device run:
   returning after a two-week holiday could find an empty local database, which
   is a Phase 2 design problem regardless of which VFS wins.
 
-### WebView2 (Windows, Tauri)
+### WebView2 (Windows, Tauri) — real native shell
 
-> **Not run.** Rust is not installed on the development machine, so the Tauri
-> shell cannot be built. Lower priority than iOS: WebView2 is evergreen Chromium
-> and behaves like the run above.
+**Run 2026-09-05 on a real installed build. All four backends pass. 12/12. ✅**
+
+Built by CI on the `spike/powersync-ios` branch (`workflow_dispatch` on
+`release.yml`), installed from the NSIS installer, and run twice with the
+application **fully closed and relaunched** between runs — so check 3 is a
+genuine survival-of-process-death result, not a page reload.
+
+| VFS | Opens | Writes 1,000 | Persists across relaunch | Open | Write |
+| --- | --- | --- | --- | --- | --- |
+| `OPFSCoopSyncVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 113–142 ms | 31–39 ms |
+| `AccessHandlePoolVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | **74–113 ms** | 34–39 ms |
+| `OPFSWriteAheadVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 146–147 ms | **27–30 ms** |
+| `IDBBatchAtomicVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 99–139 ms | 64–68 ms |
+
+Environment: `Chrome/152 … Edg/152`, OPFS present, Web Workers **and** Shared
+Workers available, **no** `SharedArrayBuffer`, **not** `crossOriginIsolated`,
+quota **10,243 MB**.
+
+Three things carry forward:
+
+- **No COOP/COEP headers were needed.** Confirmed on a second engine. Setting
+  cross-origin isolation headers inside a native shell is awkward, and it turns
+  out we never have to.
+- **`navigator.storage.persisted()` is `false` here too** — the database is
+  evictable even on desktop, with a 10 GB quota. Two engines now agree. Phase 2
+  must call `navigator.storage.persist()` and design for it being refused.
+- **IndexedDB is roughly twice as slow to write** (64–68 ms vs 27–39 ms for the
+  OPFS backends) but entirely functional. That is the price of the fallback, and
+  it is affordable.
+
+### Android WebView
+
+> **Not run, and not runnable.** The owner has no Android device. Noted here so
+> nobody goes looking for a result that was never possible to obtain.
 
 ### WKWebView, physical iPhone
 
