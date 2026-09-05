@@ -63,17 +63,28 @@ describe('contrast — Brief §10 requires this to be verified, not assumed', ()
     }
   });
 
+  it('--text-muted clears AA body text on every surface', () => {
+    for (const surface of surfaces) {
+      const ratio = contrastRatio(colorTokens['text-muted'], colorTokens[surface]);
+      expect(ratio, `text-muted on ${surface} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(
+        WCAG.AA_BODY,
+      );
+    }
+  });
+
   /**
-   * --text-muted lands at 4.27:1 on --bg-surface: fine for large text, short of
-   * AA for body copy. Locked in as "large text only" until the token is
-   * retuned — see DECISIONS.md ADR-0008. This test documents the real number so
-   * a future change cannot quietly make it worse.
+   * The three text tokens have to stay visibly distinct or the hierarchy
+   * collapses into one grey. Raising --text-muted for contrast is only safe
+   * while it stays clearly dimmer than --text-secondary.
    */
-  it('--text-muted clears AA large text but is knowingly below AA body', () => {
-    const ratio = contrastRatio(colorTokens['text-muted'], colorTokens['bg-surface']);
-    expect(ratio).toBeGreaterThanOrEqual(WCAG.AA_LARGE);
-    expect(ratio).toBeLessThan(WCAG.AA_BODY);
-    expect(ratio).toBeCloseTo(4.27, 1);
+  it('keeps the three text tiers distinct', () => {
+    const surface = colorTokens['bg-surface'];
+    const primary = contrastRatio(colorTokens['text-primary'], surface);
+    const secondary = contrastRatio(colorTokens['text-secondary'], surface);
+    const muted = contrastRatio(colorTokens['text-muted'], surface);
+    expect(primary).toBeGreaterThan(secondary);
+    expect(secondary).toBeGreaterThan(muted);
+    expect(secondary - muted).toBeGreaterThan(2);
   });
 
   it('--accent carries enough contrast on the base background for an active control', () => {
@@ -99,18 +110,25 @@ describe('contrast — Brief §10 requires this to be verified, not assumed', ()
     );
   });
 
+  it('--text-primary clears AA body on a filled danger button', () => {
+    expect(contrastRatio(colorTokens['text-primary'], colorTokens.danger)).toBeGreaterThanOrEqual(
+      WCAG.AA_BODY,
+    );
+  });
+
   /**
-   * Known gap: neither foreground reaches AA body on --danger (light 3.86:1,
-   * dark 4.09:1). We use the dark ink because it is the better of the two, and
-   * --danger is destructive-actions-only so the surface is rare and always
-   * paired with a text label. Raised for a palette decision — ADR-0008.
+   * The two filled variants take opposite foregrounds, which reads as an
+   * inconsistency until you check the numbers: --accent is a light orange and
+   * --danger is a dark red, so each needs the ink the other cannot use. Pinned
+   * so nobody "fixes" it into consistency later.
    */
-  it('--danger fill is knowingly short of AA body with either foreground', () => {
-    const dark = contrastRatio(colorTokens['text-on-accent'], colorTokens.danger);
-    const light = contrastRatio(colorTokens['text-primary'], colorTokens.danger);
-    expect(dark).toBeGreaterThan(light);
-    expect(dark).toBeGreaterThanOrEqual(WCAG.AA_LARGE);
-    expect(dark).toBeLessThan(WCAG.AA_BODY);
+  it('confirms the two filled variants genuinely need opposite foregrounds', () => {
+    expect(contrastRatio(colorTokens['text-on-accent'], colorTokens.accent)).toBeGreaterThan(
+      contrastRatio(colorTokens['text-primary'], colorTokens.accent),
+    );
+    expect(contrastRatio(colorTokens['text-primary'], colorTokens.danger)).toBeGreaterThan(
+      contrastRatio(colorTokens['text-on-accent'], colorTokens.danger),
+    );
   });
 });
 

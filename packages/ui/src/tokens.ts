@@ -20,7 +20,7 @@ export const colorTokens = {
 
   'text-primary': '#faf9f5',
   'text-secondary': '#c2c0b6',
-  'text-muted': '#8a8880',
+  'text-muted': '#99978f',
   'text-on-accent': '#1f1e1d',
 
   accent: '#d97757',
@@ -30,7 +30,7 @@ export const colorTokens = {
 
   success: '#6fa86f',
   warning: '#d9a441',
-  danger: '#c4614c',
+  danger: '#a34734',
 
   'muscle-idle': '#4a4844',
   'muscle-hover': '#d97757',

@@ -25,12 +25,13 @@
 
   /* --- Text --- */
   --text-primary: #faf9f5;
-  --text-secondary: #c2c0b6; /* 8.30:1 on --bg-surface — clears WCAG AAA */
-  --text-muted: #8a8880; /* 4.27:1 on --bg-surface — large text only, see ADR-0008 */
-  /* Foreground for text sitting ON a filled accent or danger surface.
-     --text-primary on --accent is only 2.96:1 and fails even AA large; this
-     dark ink reaches 5.33:1. Same hex as --bg-base, named for its job so the
-     Button never has to reach for a background token. See ADR-0008. */
+  --text-secondary: #c2c0b6; /* 8.31:1 on --bg-surface — clears WCAG AAA */
+  --text-muted: #99978f; /* 4.52:1 worst case (on --bg-elevated) — AA body everywhere */
+  /* Foreground for text sitting ON a filled accent surface. --text-primary on
+     --accent is only 2.96:1 and fails even AA large; this dark ink reaches
+     5.33:1. Same hex as --bg-base, named for its job so the Button never has to
+     reach for a background token. Filled --danger goes the other way and uses
+     --text-primary. See ADR-0008. */
   --text-on-accent: #1f1e1d;
 
   /* --- Accent --- */
@@ -42,7 +43,7 @@
   /* --- Status --- */
   --success: #6fa86f; /* set completed, PR hit */
   --warning: #d9a441;
-  --danger: #c4614c; /* destructive actions only */
+  --danger: #a34734; /* destructive actions only. 5.68:1 with --text-primary */
 
   /* --- Anatomy model --- */
   --muscle-idle: #4a4844;

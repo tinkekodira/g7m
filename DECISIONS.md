@@ -87,6 +87,9 @@ skipped.
 
 ## ADR-0005 — No LICENSE file
 
+> **Superseded by [ADR-0019](#adr-0019--the-repository-is-public-with-a-source-available-licence).**
+> The premise below — that the repository stays private — no longer holds.
+
 **Chosen:** No `LICENSE` file. The repository is private.
 
 **Rejected:** MIT; an explicit proprietary licence file.
@@ -160,28 +163,38 @@ measured ratios:
 | --- | --- | --- |
 | `--text-primary` on `--bg-surface` | 14.39:1 | AAA |
 | `--text-secondary` on `--bg-surface` | 8.31:1 | AAA — clears the brief's requirement comfortably |
-| `--text-primary` on `--accent` | **2.96:1** | **Fails AA large** |
+| `--text-primary` on `--accent` | **2.96:1** | **Fails AA large.** The reason `--text-on-accent` exists |
 | `--text-on-accent` on `--accent` | 5.33:1 | AA body |
-| `--text-muted` on `--bg-surface` | **4.27:1** | AA large only |
-| `--text-on-accent` on `--danger` | **4.09:1** | AA large only |
+| `--text-muted` on `--bg-elevated` | 4.52:1 | AA body — worst of the four surfaces |
+| `--text-primary` on `--danger` | 5.68:1 | AA body |
 
 Light text on the accent orange fails badly enough that the primary button — the
 most-pressed control in the app — would have been unreadable for a meaningful
 number of users. Dark ink on the same orange reaches 5.33:1. This changes which
 token the Button reaches for, not the palette itself.
 
-**Two gaps remain open, both pinned by tests so they cannot silently worsen:**
+**Two tokens were retuned, with the owner's approval, so every text pairing in
+the app now clears AA body:**
 
-1. `--text-muted` at 4.27:1 is restricted to large text and non-essential labels
-   until the token is retuned. `#949289` would reach 4.86:1 if we want it usable
-   for body copy.
-2. `--danger` fills reach only 4.09:1 with the best available foreground
-   (light text on the same fill is worse, at 3.86:1). Darkening `--danger` to
-   `#a34734` reaches 5.68:1 with `--text-primary` and would restore the
-   conventional white-on-red destructive button. Left alone for now because
-   destructive fills are rare and always carry a text label.
+1. **`--text-muted`: `#8a8880` → `#99978f`.** The original was 4.27:1 on
+   `--bg-surface` — fine for large text, short of AA for body copy. `#949289`
+   was the obvious bump and reaches 4.86:1 there, but it still fails on
+   `--bg-elevated` at 4.24:1 — and `--bg-elevated` is what sheets and modals are
+   made of, which is exactly where secondary labels live. `#99978f` is the
+   smallest step that clears AA body on **all four** surfaces (worst case 4.52:1
+   on `--bg-elevated`) while staying visibly dimmer than `--text-secondary`, so
+   the three text tiers do not collapse into one grey. A test asserts both
+   properties.
+2. **`--danger`: `#c4614c` → `#a34734`.** The original reached only 4.09:1 with
+   its best available foreground. The darker red is 5.68:1 with
+   `--text-primary`, which also restores the conventional white-on-red
+   destructive button instead of the dark ink it briefly used.
 
-Both need a palette decision from the owner.
+**Why the two filled variants take opposite foregrounds.** `Button` uses
+`--text-on-accent` (dark) on `accent` and `--text-primary` (light) on `danger`.
+That reads as an inconsistency until you check the numbers: `--accent` is a
+light orange and `--danger` is a dark red, so each needs the ink the other
+cannot use. A test pins that relationship so nobody "fixes" it later.
 
 ---
 
@@ -192,6 +205,12 @@ pulled at build time from private storage by a fetch script, and loaded through
 the `AnatomyModelSource` adapter (§6) so the viewer never names a specific file.
 
 **Rejected:** committing the model and relying on the repository staying private.
+
+> **Amended by [ADR-0019](#adr-0019--the-repository-is-public-with-a-source-available-licence).**
+> The repository is public, so this is no longer a precaution against a
+> hypothetical future — it is the only thing standing between us and a
+> licence violation. The fetch script is a hard Phase 5 requirement, and a
+> pre-commit guard now refuses the directory even under `git add -f`.
 
 **Why:** Git history is permanent and permission is not. "The repository is
 private" is a policy, not a mechanism — a single day of it being public, or one
@@ -374,3 +393,194 @@ OPFS in Chromium was never in doubt. Full numbers in
   to an empty local database. Whatever the VFS answer is, Phase 2 has to call
   `navigator.storage.persist()` and design for the case where it is refused.
   That is a real requirement the brief does not mention.
+
+---
+
+## ADR-0017 — Answers to the brief's §12 open questions
+
+Decided with the owner at the Phase 0 → Phase 1 boundary, while migrations are
+still cheap. Recorded before implementation so Phase 1 has a spec rather than a
+memory.
+
+### §12.1 — Offline conflict resolution
+
+**Chosen:** Row-level last-write-wins for `profiles`, `routines`,
+`routine_exercises`, `workout_sessions` and `session_exercises`.
+**`session_sets` are treated as append-mostly and effectively conflict-free.**
+
+**Rejected:** field-level merge everywhere (needs per-column timestamps on every
+user table and real merge logic in `packages/db` — more Phase 2 surface than the
+problem justifies); plain last-write-wins on everything including sets.
+
+**Why the exception for sets:** a completed set is a *fact that happened*, not a
+field to be overwritten. Under whole-row LWW, two devices logging different sets
+in the same session can have the stale write erase a set the lifter actually
+did. Losing a logged set is the single worst thing this app can do — it is the
+entire reason the advanced user opens it. Rows are keyed so concurrent inserts
+coexist; editing an existing set stays LWW on that row alone.
+
+### §12.2 — Shareable routines
+
+**Chosen:** out of scope for v1, matching the brief's own instinct. No sharing
+tables, no public routine IDs, and no abstraction added "for when we add
+sharing".
+
+### §12.3 — Rest timer defaults
+
+**Chosen:** derived from `mechanic`, overridable per exercise, with one global
+fallback in settings. Roughly 180s for compounds, 90s for isolation.
+
+**Rejected:** a single global default (90s after a heavy squat is wrong, 180s
+after a lateral raise is dead time); per-exercise only (means setting a
+considered number on all 50 seeded exercises and every one added after).
+
+**Consequence for Phase 1:** `exercises` gets a nullable
+`default_rest_seconds int`, where null means "derive from mechanic". The
+derivation constants live in `packages/core` as a single exported map, next to
+the heat-map thresholds, so they are tunable without hunting through the logger.
+
+### §12.4 — Onboarding depth
+
+**Chosen:** lazy. Infer equipment, and prompt only when a generated workout
+would otherwise be blocked. No first-run equipment audit.
+
+**Why:** an equipment audit is a wall of checkboxes in front of a user who has
+not yet seen the app do anything, and the beginner it is aimed at does not
+reliably know what half the items are. Asking at the moment of need is both a
+smaller question and a better-motivated one.
+
+### §12.5 — Schema problems, all five accepted
+
+The brief invited these while migrations are cheap. All five are adopted for
+Phase 1:
+
+1. **`exercise_equipment` join table** replaces `equipment_id` +
+   `secondary_equipment_id`. Two slots cannot express a barbell hip thrust
+   (barbell + bench + pad), "which slot is which" is unenforced, and §8's
+   "avoid two consecutive exercises on the same station" rule needs to know
+   which item *is* the station. The table carries `is_primary boolean`.
+2. **Bodyweight load gets a representation.** `weight_kg` alone cannot say
+   whether a pull-up was bodyweight, weighted or assisted, so §9's volume maths
+   attributes zero volume to every pull-up ever logged. Adding
+   `session_sets.load_type ('external' | 'bodyweight' | 'bodyweight_plus' |
+   'assisted')`, with `weight_kg` meaning *added or assisted* load, plus the
+   user's bodyweight snapshotted on `workout_sessions` so historical volume
+   stays correct as they gain or lose weight.
+3. **`personal_records.formula`**, because §5 already says to store the formula
+   name alongside the value and the table as specified has nowhere to put it.
+   Without it, `estimated_1rm` rows become mystery numbers the day the formula
+   changes. See [ADR-0015](#adr-0015--a-single-rep-set-is-its-own-one-rep-max).
+4. **Fractional ordering keys instead of integer `order_index`.** Two devices
+   reordering the same routine offline produce duplicate indices that row-level
+   LWW cannot repair. A fractional or lexicographic key makes an insert between
+   two items a single-row write with no renumbering — which is also what makes
+   reordering cheap online.
+5. **`muscles.mesh_node_names text[]`, not a single `mesh_node_name`.** §6
+   specifies `_l` / `_r` meshes per muscle while §5 makes muscle rows
+   side-agnostic, so one row maps to one *or two* GLB nodes. A single column
+   cannot hold both, and the Phase 5 startup validation has to check every node
+   it expects to exist — otherwise it passes while a muscle is silently
+   unclickable, which is exactly the failure the brief warns about.
+
+---
+
+## ADR-0018 — Secret-scan exceptions go in `.gitleaksignore`, by fingerprint
+
+**Chosen:** A `.gitleaksignore` file at the repository root listing individual
+finding *fingerprints*, each with a comment explaining why it is safe.
+
+**Rejected:** allowlisting `.env.example` by path in a `.gitleaks.toml`;
+rewriting history to remove the offending commit; dropping the full-history
+scan in favour of scanning only the pull request diff.
+
+**Why this came up.** The first CI run after merging Phase 0 failed. `.env.example`
+used `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy.dummy` as its dummy Supabase
+anon key. That string is a base64 JWT *header* decoding to
+`{"alg":"HS256","typ":"JWT"}`, with the literal word `dummy` as both payload and
+signature — it grants nothing and never did. But at 4.59 bits of entropy it
+trips gitleaks' `generic-api-key` rule, and the rule is right to be suspicious:
+it cannot tell a decorative JWT from a real one.
+
+Worth noting that the local pre-commit hook did *not* flag it, and was correct
+not to: its JWT pattern requires all three segments to be long, so `.dummy.dummy`
+falls outside it. The two scanners disagreeing is the system working — the cheap
+local check stays quiet on obvious non-secrets, and the thorough CI check
+catches everything and gets an explicit, reviewed exception.
+
+**Why by fingerprint rather than by path.** `.env.example` is precisely the file
+where someone will one day paste a real key by mistake — it sits next to
+`.env.local` and it is the one env file that *is* committed. Allowlisting the
+path would switch off scanning at exactly the point of highest risk. A
+fingerprint exception covers one known finding in one known commit and nothing
+else, and the file becomes a short, auditable list of every exception ever
+granted.
+
+**Why not rewrite history.** The finding lives in commit `c6a31f8`, which is
+already on `main` and already tagged `v0.1.0-phase-0`. Rewriting it would
+invalidate the tag and every existing clone, to remove a string that is not a
+secret. Not worth it.
+
+**Also fixed forward:** the placeholder is now
+`paste-the-anon-key-from-your-supabase-dashboard`, which no scanner will ever
+flag, so no future commit needs an exception.
+
+---
+
+## ADR-0019 — The repository is public, with a source-available licence
+
+**Supersedes [ADR-0005](#adr-0005--no-license-file).**
+
+**Chosen:** the repository stays **public**, and carries a `LICENSE` file that
+grants no rights: source-available, all rights reserved, explicitly not open
+source.
+
+**Rejected:** making it private (ADR-0005's assumption); MIT or any other
+permissive licence.
+
+**Why:** the owner wants the work to be readable — a portfolio piece and
+something to discuss. That is a legitimate goal and it is worth more than the
+mild secrecy of a private repo, given there is no proprietary algorithm here,
+just careful engineering. What it is *not* worth is ambiguity about who may use
+it. A public repository with no licence is the worst of both worlds: GitHub's
+Terms of Service let anyone view and fork it, while copyright law grants no
+permission to use it, so nobody can tell what they are allowed to do. The
+`LICENSE` file removes that ambiguity in the direction we want — read it, learn
+from it, ask before using it.
+
+MIT was rejected for the reason ADR-0005 already gave and which public
+visibility makes sharper: it cannot be taken back. Every commit made under MIT
+stays MIT forever, and this may become commercial.
+
+**What changes as a consequence.** Three things that were precautions are now
+load-bearing:
+
+1. **Row Level Security is the only thing protecting user data.** It always was
+   in principle — the Supabase anon key is public by design and ships in the
+   client bundle — but with a public repo, an attacker also has the schema, the
+   policies and the query shapes. Every user-owned table gets RLS in Phase 1 and
+   there is no "we'll add the policy later" for any of them.
+2. **The anatomy asset can never be committed.** See the amendment on
+   [ADR-0009](#adr-0009--the-anatomy-asset-is-fetched-never-committed). A
+   commercially licensed GLB in a public repo is a licence violation and git
+   history is permanent. `.gitignore` covers the directory, and the pre-commit
+   hook now refuses it even under `git add -f`, because `.gitignore` alone is a
+   suggestion.
+3. **Binary assets must actually reach Git LFS.** A collaborator who clones
+   without running `git lfs install` gets no clean filter and commits raw bytes,
+   putting an 8 MB model in every future clone forever. The pre-commit hook now
+   checks that staged `.glb` / `.gltf` / `.ktx2` / `.hdr` / `.bin` / video files
+   are LFS pointers and refuses them if not.
+
+**One incidental benefit:** GitHub Actions minutes are free on public
+repositories, so the tag-triggered native builds in `release.yml` cost nothing.
+
+**Still true, and worth restating:** the service role key and the Anthropic API
+key must never appear in this repository or in the client bundle. That was
+already the rule; a public repo means a mistake is public immediately and
+permanently, rather than merely recorded. Two independent scanners enforce it —
+see [ADR-0004](#adr-0004--git-hooks-without-husky-or-lint-staged) and
+[ADR-0018](#adr-0018--secret-scan-exceptions-go-in-gitleaksignore-by-fingerprint).
+
+**Open, for the owner:** the copyright line reads `tinkekodira`. Replace it with
+your legal name if you ever want to enforce it — a GitHub handle is weaker
+evidence of ownership than a name.
