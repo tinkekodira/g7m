@@ -31,7 +31,7 @@ const variantClasses: Record<ButtonVariant, string> = {
     'active:bg-surface disabled:text-muted',
   ghost: 'bg-transparent text-secondary hover:bg-elevated active:bg-surface disabled:text-muted',
   danger:
-    'bg-danger text-on-accent hover:brightness-110 active:brightness-95 disabled:bg-strong disabled:text-muted',
+    'bg-danger text-primary hover:brightness-110 active:brightness-95 disabled:bg-strong disabled:text-muted',
 };
 
 export function Button({

@@ -1,0 +1,20 @@
+# Fingerprints deliberately ignored by gitleaks.
+#
+# Format: <commit>:<path>:<rule>:<line>
+#
+# Add an entry ONLY for a verified false positive, and only with a comment
+# saying why it is safe. This file is the single place an exception can be
+# granted, so it is also the place to audit. Never allowlist a whole path —
+# .env.example in particular is exactly where someone will one day paste a real
+# key by accident, and it must stay scanned.
+
+# .env.example originally used a real-looking JWT as its dummy anon key:
+# "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy.dummy". That is a base64 JWT
+# *header* decoding to {"alg":"HS256","typ":"JWT"}, with the literal word
+# "dummy" as both payload and signature. It grants nothing and never did, but
+# its entropy (4.59) trips the generic-api-key rule.
+#
+# The placeholder has since been replaced with an obviously-fake string, so no
+# future commit trips. This entry covers the one historical commit, which a
+# full-history scan still reaches and which we are not rewriting history over.
+c6a31f86fc6e704af77dffb15ed5e23385cbb7ba:.env.example:generic-api-key:23

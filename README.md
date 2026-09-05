@@ -185,7 +185,9 @@ Squash merge, one commit per feature. That is what makes a bad feature
 (`v0.1.0-phase-1`) as a known-good point to return to.
 
 **Secrets.** The Supabase anon key is public by design and safe to ship — Row
-Level Security is what protects the data. The **service role key and the
+Level Security is what protects the data. Because this repository is public, an
+attacker has the schema and the policies too, so RLS is not a formality: every
+user-owned table gets a policy in the same migration that creates it. The **service role key and the
 Anthropic API key are not**, and must never reach the client bundle or Git. They
 live in Supabase Edge Function secrets. A pre-commit hook and a CI job both scan
 for them; see [ADR-0004](./DECISIONS.md#adr-0004--git-hooks-without-husky-or-lint-staged).
@@ -231,5 +233,14 @@ Work proceeds one phase at a time, stopping at each boundary.
 
 ## Licence
 
-None. All rights reserved. This repository is private and must stay that way —
-see [ADR-0005](./DECISIONS.md#adr-0005--no-license-file).
+**Source-available, not open source.** This repository is public so the work can
+be read and discussed. All rights are reserved — no permission is granted to
+use, copy, modify or distribute it. See [`LICENSE`](./LICENSE), and
+[ADR-0019](./DECISIONS.md#adr-0019--the-repository-is-public-with-a-source-available-licence)
+for the reasoning.
+
+If you want to use any of it, ask. The answer may well be yes.
+
+The 3D anatomy model is licensed separately and commercially. It is **not** in
+this repository and is fetched at build time; its licence does not extend to
+you.

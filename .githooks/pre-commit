@@ -26,6 +26,7 @@ STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
 [ -z "$STAGED" ] && exit 0
 
 FOUND=0
+SECRET_FOUND=0
 
 # --- 1. Never commit real env files ----------------------------------------
 for f in $STAGED; do
@@ -33,18 +34,52 @@ for f in $STAGED; do
     .env|.env.local|*.env.local|.env.*.local|*/.env)
       fail "refusing to commit '$f' — env files with real values must stay untracked."
       FOUND=1
+      SECRET_FOUND=1
       ;;
   esac
 done
 
-# --- 2. Delegate to gitleaks when available --------------------------------
+# --- 2. Licensed assets must never enter history ----------------------------
+# The repository is PUBLIC (see DECISIONS.md ADR-0019). A commercially licensed
+# asset committed here is a licence violation, and git history is permanent —
+# deleting the file later does not undo it. `.gitignore` already covers this
+# directory; this check exists because `git add -f` walks straight past it.
+for f in $STAGED; do
+  case "$f" in
+    *packages/anatomy/assets/licensed/*)
+      fail "refusing to commit '$f' — licensed assets must never enter a public repo."
+      printf "  This directory is fetched at build time, not committed. See ADR-0009.\n" >&2
+      FOUND=1
+      ;;
+  esac
+done
+
+# --- 3. Large binaries must go through Git LFS ------------------------------
+# If someone clones without running `git lfs install`, the clean filter never
+# runs and an 8 MB model gets committed as raw bytes — in every clone, forever.
+# An LFS-managed file is stored as a short pointer beginning "version https://".
+for f in $STAGED; do
+  case "$f" in
+    *.glb|*.gltf|*.ktx2|*.hdr|*.bin|*.mp4|*.webm|*.mov)
+      if ! git show ":$f" 2>/dev/null | head -c 45 | grep -q '^version https://git-lfs'; then
+        fail "'$f' is staged as raw bytes, not a Git LFS pointer."
+        printf "  Run 'git lfs install' then re-stage it. Committing it as-is puts the\n" >&2
+        printf "  full binary in history permanently, even if you delete it later.\n" >&2
+        FOUND=1
+      fi
+      ;;
+  esac
+done
+
+# --- 4. Delegate to gitleaks when available --------------------------------
 if command -v gitleaks >/dev/null 2>&1; then
   if ! gitleaks protect --staged --redact --no-banner; then
     fail "gitleaks found a secret in the staged changes."
     FOUND=1
+    SECRET_FOUND=1
   fi
 else
-  # --- 3. Fallback pattern set ---------------------------------------------
+  # --- 5. Fallback pattern set ---------------------------------------------
   # Each entry: <label>|<extended regex>
   PATTERNS='
 Anthropic API key|sk-ant-[A-Za-z0-9_-]{20,}
@@ -78,18 +113,27 @@ Generic assigned secret|(api[_-]?key|secret[_-]?key|access[_-]?token|client[_-]?
         exit 7
       fi
     done
-    [ $? -eq 7 ] && FOUND=1
+    if [ $? -eq 7 ]; then
+      FOUND=1
+      SECRET_FOUND=1
+    fi
   done
 fi
 
 if [ "$FOUND" -ne 0 ]; then
-  printf "${YEL}
-  Nothing was committed. Options:
+  if [ "$SECRET_FOUND" -ne 0 ]; then
+    printf "${YEL}
+  Nothing was committed. For the secret above:
     · Remove the value and read it from the environment instead.
     · Server-only? It belongs in Supabase Edge Function secrets:
         supabase secrets set MY_KEY=...
     · Genuinely a dummy? Add 'pragma: allowlist secret' to that line.
 ${RST}" >&2
+  else
+    printf "${YEL}
+  Nothing was committed. Fix the files listed above and stage them again.
+${RST}" >&2
+  fi
   exit 1
 fi
 
