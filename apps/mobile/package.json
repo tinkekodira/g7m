@@ -1,0 +1,25 @@
+{
+  "name": "@g7m/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Capacitor shell for iOS and Android. Thin: native config, icons, splash, plugins.",
+  "scripts": {
+    "build:web": "pnpm --filter @g7m/web build",
+    "sync": "pnpm build:web && cap sync",
+    "copy": "pnpm build:web && cap copy",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "run:ios": "pnpm sync && cap run ios",
+    "run:android": "pnpm sync && cap run android",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}

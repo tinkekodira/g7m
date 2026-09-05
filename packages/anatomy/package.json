@@ -1,0 +1,13 @@
+{
+  "name": "@g7m/anatomy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The 3D anatomy viewer, as a self-contained package.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

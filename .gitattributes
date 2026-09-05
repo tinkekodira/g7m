@@ -1,0 +1,23 @@
+# Normalise line endings so Windows/macOS/Linux clones agree.
+* text=auto eol=lf
+
+# Windows-native scripts keep CRLF.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# --- Git LFS ---
+# Set up BEFORE the first binary lands. Retrofitting LFS rewrites history.
+# An 8 MB anatomy GLB committed normally lives in the repo forever, in every
+# clone, even after deletion.
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+*.ktx2  filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
+*.bin   filter=lfs diff=lfs merge=lfs -text
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+*.webm  filter=lfs diff=lfs merge=lfs -text
+*.mov   filter=lfs diff=lfs merge=lfs -text
+
+# Lockfile: generated, don't blow up diffs in review.
+pnpm-lock.yaml -diff linguist-generated=true

@@ -1,0 +1,96 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# g7m pre-commit: secret scanning (Brief §4.2)
+#
+# Zero-dependency by design — no husky, no lint-staged, no node_modules needed.
+# Wired up by `git config core.hooksPath .githooks`, which the root package.json
+# `prepare` script runs automatically on `pnpm install`.
+#
+# If the `gitleaks` binary is on PATH we defer to it (far better ruleset).
+# Otherwise we fall back to the pattern set below. CI runs gitleaks
+# unconditionally, so this is defence in depth, not the only line.
+#
+# To intentionally commit something that trips a pattern (a test fixture, a
+# documented dummy), put `pragma: allowlist secret` on the same line.
+#
+# Emergency bypass: git commit --no-verify   (and then explain yourself)
+# ---------------------------------------------------------------------------
+set -u
+
+RED=''; YEL=''; RST=''
+if [ -t 1 ]; then RED='\033[31m'; YEL='\033[33m'; RST='\033[0m'; fi
+
+fail() { printf "${RED}✖ pre-commit: %s${RST}\n" "$1" >&2; }
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED" ] && exit 0
+
+FOUND=0
+
+# --- 1. Never commit real env files ----------------------------------------
+for f in $STAGED; do
+  case "$f" in
+    .env|.env.local|*.env.local|.env.*.local|*/.env)
+      fail "refusing to commit '$f' — env files with real values must stay untracked."
+      FOUND=1
+      ;;
+  esac
+done
+
+# --- 2. Delegate to gitleaks when available --------------------------------
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks protect --staged --redact --no-banner; then
+    fail "gitleaks found a secret in the staged changes."
+    FOUND=1
+  fi
+else
+  # --- 3. Fallback pattern set ---------------------------------------------
+  # Each entry: <label>|<extended regex>
+  PATTERNS='
+Anthropic API key|sk-ant-[A-Za-z0-9_-]{20,}
+OpenAI-style API key|sk-(proj-)?[A-Za-z0-9]{32,}
+Supabase secret key|sb_secret_[A-Za-z0-9_-]{20,}
+Signed JWT (Supabase service_role / anon)|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}
+Private key block|-----BEGIN( [A-Z]+)? PRIVATE KEY-----
+AWS access key id|AKIA[0-9A-Z]{16}
+GitHub token|(ghp|gho|ghs|ghr)_[A-Za-z0-9]{36}
+GitHub fine-grained PAT|github_pat_[A-Za-z0-9_]{50,}
+Slack token|xox[abprs]-[A-Za-z0-9-]{10,}
+Generic assigned secret|(api[_-]?key|secret[_-]?key|access[_-]?token|client[_-]?secret|password)["\x27]?[[:space:]]*[:=][[:space:]]*["\x27][A-Za-z0-9/+=_-]{24,}["\x27]
+'
+  for f in $STAGED; do
+    [ -f "$f" ] || continue
+    # Skip binaries and the hook itself (it necessarily contains the patterns).
+    case "$f" in .githooks/*) continue ;; esac
+    git diff --cached --numstat -- "$f" | grep -q '^-' && continue
+
+    ADDED=$(git diff --cached -U0 -- "$f" | sed -n 's/^+\([^+].*\)/\1/p; s/^+$//p')
+    [ -z "$ADDED" ] && continue
+    # Honour the allowlist marker.
+    ADDED=$(printf '%s\n' "$ADDED" | grep -v 'pragma: allowlist secret')
+    [ -z "$ADDED" ] && continue
+
+    printf '%s\n' "$PATTERNS" | while IFS='|' read -r label regex; do
+      [ -z "$label" ] && continue
+      if printf '%s\n' "$ADDED" | grep -Eiq -- "$regex"; then
+        printf "${RED}✖ pre-commit: possible %s in %s${RST}\n" "$label" "$f" >&2
+        printf '%s\n' "$ADDED" | grep -Ein -- "$regex" | sed 's/\(.\{72\}\).*/\1…/' >&2
+        exit 7
+      fi
+    done
+    [ $? -eq 7 ] && FOUND=1
+  done
+fi
+
+if [ "$FOUND" -ne 0 ]; then
+  printf "${YEL}
+  Nothing was committed. Options:
+    · Remove the value and read it from the environment instead.
+    · Server-only? It belongs in Supabase Edge Function secrets:
+        supabase secrets set MY_KEY=...
+    · Genuinely a dummy? Add 'pragma: allowlist secret' to that line.
+${RST}" >&2
+  exit 1
+fi
+
+exit 0
