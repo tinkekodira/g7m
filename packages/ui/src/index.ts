@@ -7,6 +7,8 @@
 
 export { Button } from './Button.js';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button.js';
+export { TextField } from './TextField.js';
+export type { TextFieldProps } from './TextField.js';
 export { cx } from './cx.js';
 export {
   MIN_TAP_TARGET_PX,
