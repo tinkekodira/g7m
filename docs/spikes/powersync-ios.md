@@ -1,6 +1,6 @@
 # Spike — PowerSync SQLite persistence inside Capacitor iOS
 
-**Status:** ⚠️ Harness built and verified. The iOS half is **not** done and **blocks Phase 2**.
+**Status:** ✅ **Resolved 2026-09-05. Outcome 1 — PowerSync stays.** Phase 2 is unblocked.
 **Branch:** `spike/powersync-ios` (disposable — delete it whichever way this goes)
 **Decision record:** [ADR-0014](../../DECISIONS.md#adr-0014--the-powersync-ios-spike-is-split-and-half-of-it-is-deferred)
 
@@ -78,7 +78,7 @@ Xcode; there is no way around that. So the spike was split
 | --- | --- | --- |
 | Harness correctness, OPFS in a Chromium engine | Windows | Run — see [Results](#results) |
 | WebView2 (Tauri, Windows) | Windows, needs Rust installed | Not run |
-| **WKWebView on a physical iPhone** | **macOS + iPhone** | **Not run — this is the gate** |
+| **WebKit on iOS 18.7** | iPhone, Home Screen web app | ✅ Run — 3 of 4 backends pass |
 
 Phases 0 and 1 do not depend on the answer: the Postgres schema, the RLS
 policies and the seed data are identical whether sync goes through PowerSync or
@@ -164,30 +164,140 @@ Two things worth carrying to the device run:
   returning after a two-week holiday could find an empty local database, which
   is a Phase 2 design problem regardless of which VFS wins.
 
-### WebView2 (Windows, Tauri)
+### WebView2 (Windows, Tauri) — real native shell
 
-> **Not run.** Rust is not installed on the development machine, so the Tauri
-> shell cannot be built. Lower priority than iOS: WebView2 is evergreen Chromium
-> and behaves like the run above.
+**Run 2026-09-05 on a real installed build. All four backends pass. 12/12. ✅**
 
-### WKWebView, physical iPhone
+Built by CI on the `spike/powersync-ios` branch (`workflow_dispatch` on
+`release.yml`), installed from the NSIS installer, and run twice with the
+application **fully closed and relaunched** between runs — so check 3 is a
+genuine survival-of-process-death result, not a page reload.
 
-### WKWebView, physical iPhone
+| VFS | Opens | Writes 1,000 | Persists across relaunch | Open | Write |
+| --- | --- | --- | --- | --- | --- |
+| `OPFSCoopSyncVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 113–142 ms | 31–39 ms |
+| `AccessHandlePoolVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | **74–113 ms** | 34–39 ms |
+| `OPFSWriteAheadVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 146–147 ms | **27–30 ms** |
+| `IDBBatchAtomicVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 99–139 ms | 64–68 ms |
 
-> **Not run.** Blocks Phase 2.
+Environment: `Chrome/152 … Edg/152`, OPFS present, Web Workers **and** Shared
+Workers available, **no** `SharedArrayBuffer`, **not** `crossOriginIsolated`,
+quota **10,243 MB**.
 
-Fill in one row per backend. The harness prints all four.
+Three things carry forward:
 
-| VFS | Opens | Writes 1,000 | Survives force-quit | Survives 10 min backgrounded |
-| --- | --- | --- | --- | --- |
-| `OPFSCoopSyncVFS` | — | — | — | — |
-| `AccessHandlePoolVFS` | — | — | — | — |
-| `OPFSWriteAheadVFS` | — | — | — | — |
-| `IDBBatchAtomicVFS` | — | — | — | — |
+- **No COOP/COEP headers were needed.** Confirmed on a second engine. Setting
+  cross-origin isolation headers inside a native shell is awkward, and it turns
+  out we never have to.
+- **`navigator.storage.persisted()` is `false` here too** — the database is
+  evictable even on desktop, with a 10 GB quota. Two engines now agree. Phase 2
+  must call `navigator.storage.persist()` and design for it being refused.
+- **IndexedDB is roughly twice as slow to write** (64–68 ms vs 27–39 ms for the
+  OPFS backends) but entirely functional. That is the price of the fallback, and
+  it is affordable.
 
-**Device:**
-**iOS version:**
-**PowerSync SDK version:** `@powersync/web` 2.3.0, `@journeyapps/wa-sqlite` 2.0.4
-**`navigator.storage.persist()` granted:**
-**Errors, verbatim:**
-**Verdict (outcome 1, 2 or 3 above):**
+### Android WebView
+
+> **Not run, and not runnable.** The owner has no Android device. Noted here so
+> nobody goes looking for a result that was never possible to obtain.
+
+### iOS 18.7 — Home Screen web app
+
+**Run 2026-09-05. Three of four backends pass, including PowerSync's default.
+Outcome 1. ✅**
+
+Not a Capacitor build — the owner has no Mac, so the harness was served over
+HTTPS from GitHub Pages and **added to the iPhone Home Screen**, then run,
+force-quit from the app switcher, and run again. A Home Screen web app runs in
+WebKit with its own storage partition, which is the closest obtainable proxy to
+WKWebView without Xcode. See the caveat below.
+
+| VFS | Opens | Writes 1,000 | Survives force-quit | Open (cold → warm) | Write |
+| --- | --- | --- | --- | --- | --- |
+| `OPFSCoopSyncVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 1057 → **77 ms** | 38–39 ms |
+| `AccessHandlePoolVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 193 → **49 ms** | 41–43 ms |
+| `OPFSWriteAheadVFS` | ❌ | ❌ | ❌ | — | — |
+| `IDBBatchAtomicVFS` | ✅ | ✅ | ✅ 1,000 → 2,000 | 947 → **71 ms** | 91 ms |
+
+**Device:** iPhone, iOS 18.7, WebKit `Version/26.6.1 … Safari/604.1`
+**SDK:** `@powersync/web` 2.3.0, `@journeyapps/wa-sqlite` 2.0.4
+**Environment:** OPFS present, Web Workers **and** Shared Workers available, no
+`SharedArrayBuffer`, not `crossOriginIsolated`, quota **39,322 MB**.
+
+#### `OPFSWriteAheadVFS` fails on iOS
+
+It throws inside its worker before the database opens:
+
+```
+w@…/assets/worker-Cl8flkDo.js:1:21448
+ @…/assets/worker-Cl8flkDo.js:1:16876
+```
+
+Reproducible across both runs, and the only backend to fail on any engine we
+tested. It is the newest of the four, and the harness note already called it
+"least battle-tested on iOS" — which turns out to be exactly right. **Do not
+select it on WebKit.**
+
+#### Cold-open times are not what they look like
+
+The 1057 ms and 947 ms first-run figures are inflated: whichever backend is
+probed first pays the one-time WebAssembly instantiation for the whole page.
+The warm run-2 numbers are the fair comparison, and there `AccessHandlePoolVFS`
+opens fastest on **both** iOS (49 ms vs 77 ms) and WebView2 (74–113 ms vs
+113–142 ms) — consistently around a third quicker than PowerSync's default.
+
+IndexedDB writes roughly twice as slowly as the OPFS backends (91 ms vs
+38–43 ms). Affordable for a fallback, not something to choose deliberately.
+
+#### Storage is *unrequested*, not refused
+
+`navigator.storage.persisted()` returned `false` on all three engines — but the
+harness only ever **queried** it and never **called** `persist()`. So this
+records "we never asked", not "iOS said no". The distinction matters: WebKit
+grants persistence to Home Screen web apps far more readily than to plain Safari
+tabs, and unrequested storage on iOS is cleared after roughly seven days of
+disuse. **Phase 2 must call `navigator.storage.persist()` at startup, record
+whether it was granted, and design for refusal.**
+
+#### Caveat: Home Screen is not WKWebView
+
+A Home Screen web app and a Capacitor WKWebView both run WebKit, but they are
+not the same storage context — Capacitor serves from `capacitor://localhost`
+with its own partition and lifecycle. This result is strong evidence that
+WebKit's OPFS implementation is sound on iOS 18, which was the actual risk. It
+is **not** proof that the Capacitor shell behaves identically. Re-run this
+harness inside a real Capacitor build the first time a Mac is available.
+
+Given the PWA delivery decision (DECISIONS.md ADR-0026), Home Screen *is* the
+shipping target for iOS in v1 — so for now this is a test of the real thing
+rather than a proxy.
+
+---
+
+## Verdict
+
+**Outcome 1: an OPFS backend works on iOS. PowerSync stays**, and the
+`@capacitor-community/sqlite` fallback the brief prepared for is not needed.
+
+Three engines tested — Chromium, WebView2, and WebKit on iOS 18.7 — and
+`OPFSCoopSyncVFS`, `AccessHandlePoolVFS` and `IDBBatchAtomicVFS` open, write
+1,000 rows and survive process death on all three. `OPFSWriteAheadVFS` works on
+the Chromium engines and fails on WebKit; it is excluded everywhere rather than
+selected conditionally, because a backend that works on three platforms and
+breaks on the fourth is a bug waiting for whichever platform you test least.
+
+What Phase 2 takes from this:
+
+1. **Default to `OPFSCoopSyncVFS`** — PowerSync's own default, works on every
+   engine tested, and multi-tab safe.
+2. **Never select `OPFSWriteAheadVFS`.**
+3. **Keep `IDBBatchAtomicVFS` as a runtime fallback**, chosen when OPFS is
+   unavailable rather than as a build-time decision.
+4. **Call `navigator.storage.persist()` at startup** and surface the answer. The
+   local database is evictable until asked for, and iOS clears unused storage
+   after about a week.
+5. **`AccessHandlePoolVFS` is measurably faster to open** on both WebKit and
+   WebView2. Not the default, but worth revisiting if cold start turns out to
+   matter in the logger.
+
+This spike is complete. The branch can be deleted.
