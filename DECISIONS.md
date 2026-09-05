@@ -958,3 +958,54 @@ iOS 18, which was the risk the brief identified. It is not proof about the
 Capacitor shell. Since Home Screen *is* the shipping target for v1, that gap
 does not block anything — but re-run the harness in a real Capacitor build the
 first time a Mac is available.
+
+---
+
+## ADR-0027 — The PWA build: relative base, generated icons, storage asked for
+
+Implementation notes for [ADR-0026](#adr-0026--ios-ships-as-a-home-screen-web-app-and-the-spike-resolves-to-keep-powersync).
+
+### `base: './'`, not `--base` per deployment
+
+**Chosen:** a relative base in `vite.config.ts`, so one build artefact works at
+the root in development, under `/g7m/` on GitHub Pages, and at the custom
+origins Capacitor and Tauri serve from.
+
+**Rejected:** passing `--base=/g7m/` in the Pages workflow.
+
+**Why:** a build that differs per target is a class of bug diagnosed from a
+blank white screen and a console full of 404s. One artefact, deployable
+anywhere, removes the question. It also survived an accident that made the point
+nicely — Git Bash silently rewrote `--base=/g7m/` into a Windows path during
+local verification, producing `href="/Program Files/Git/g7m/…"`. On a Linux
+runner it would have worked, so the flag was doing nothing except creating a
+difference between my machine and CI.
+
+**Consequence for Phase 3:** relative asset URLs resolve against the current
+path, so a nested route would break them. `HashRouter` avoids this entirely and
+is already the recommendation in
+[ADR-0013](#adr-0013--react-router-and-zustand-deferred) for WebView reasons.
+Two independent arguments for the same choice.
+
+### Icons are generated, not committed as binaries
+
+`scripts/generate-icons.mjs` draws the mark from `--bg-base` and `--accent` and
+encodes the PNGs directly — PNG is a container around zlib-compressed
+scanlines, and a flat-colour glyph is about sixty lines of arithmetic. No image
+dependency, the palette stays the single source of truth, and anyone can read
+what the mark is without opening an editor.
+
+Every part of the dumbbell sits inside the central circle of radius 0.4, the
+`maskable` safe zone, so Android can crop to a circle or a squircle without
+clipping it.
+
+### Storage persistence is requested, not merely observed
+
+`ensurePersistentStorage()` runs once at startup and the result is shown on the
+home screen. The spike measured `persisted() === false` on all three engines,
+which recorded "nobody asked" — the app now asks, and carries the answer.
+
+A refusal is a real state the app must handle rather than treat as failure: it
+means the local database is evictable, so the synced copy is the durable one.
+The user-facing wording says exactly that, because "your data may be deleted" is
+alarming and wrong when a server copy exists.

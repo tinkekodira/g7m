@@ -128,9 +128,21 @@ export default tseslint.config(
     },
   },
 
+  /* Plain Node scripts. Type-aware rules have no types to work with here, so
+     they are switched off — merged into the preset rather than spread over it,
+     because assigning `rules` after the spread silently discards every rule the
+     preset disables. */
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      ...tseslint.configs.disableTypeChecked.languageOptions,
+      globals: globals.node,
+    },
+    rules: {
+      ...tseslint.configs.disableTypeChecked.rules,
+      'no-console': 'off',
+    },
   },
 
   prettierConfig,

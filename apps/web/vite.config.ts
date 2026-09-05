@@ -5,6 +5,15 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
+  /**
+   * Relative asset URLs, so one build artefact works wherever it is served
+   * from: the root in development, a `/g7m/` subpath on GitHub Pages, and the
+   * custom origins Capacitor and Tauri serve from. The alternative — passing
+   * `--base` per deployment — means the build differs by target, which is a
+   * class of bug nobody enjoys diagnosing from a blank white screen.
+   */
+  base: './',
+
   server: {
     port: 5173,
     strictPort: true,
