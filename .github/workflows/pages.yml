@@ -1,0 +1,58 @@
+# Publishes the web app to GitHub Pages.
+#
+# This is not just a preview: on iOS it is how the app ships. A Capacitor build
+# needs a Mac, so the Home Screen web app is the delivery mechanism for v1.
+# See DECISIONS.md ADR-0026.
+#
+# The two VITE_ values below are public by design — they are compiled into the
+# bundle and shipped to every device regardless. Row Level Security is what
+# protects the data, which is why they are repository *variables* and not
+# secrets: pretending otherwise would suggest a protection that does not exist.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: apps/web
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_POWERSYNC_URL: ${{ vars.VITE_POWERSYNC_URL }}
+        # No --base needed: vite.config.ts uses a relative base, so the same
+        # artefact works at the root, at /g7m/, or inside a native shell.
+        run: pnpm exec vite build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

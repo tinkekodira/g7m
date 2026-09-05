@@ -14,6 +14,21 @@
       name="description"
       content="Strength training: 3D anatomy explorer and offline workout logger."
     />
+
+    <!-- Installable to the Home Screen. On iOS this is how the app ships at
+         all: a Capacitor build needs a Mac. See DECISIONS.md ADR-0026. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+
+    <!-- iOS ignores the manifest for these. `black-translucent` lets the app
+         draw under the status bar, which is what viewport-fit=cover and the
+         safe-area padding in styles.css are already set up for. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="g7m" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
     <title>g7m</title>
   </head>
   <body>

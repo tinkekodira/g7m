@@ -3,6 +3,12 @@ import { Button } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
+import {
+  describePersistence,
+  formatBytes,
+  requestPersistenceOnce,
+  type PersistenceReport,
+} from '../lib/storage.js';
 
 /**
  * Phase 1c landing screen.
@@ -35,6 +41,7 @@ export function HomeScreen() {
   const busy = useAuthStore((s) => s.busy);
 
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [persistence, setPersistence] = useState<PersistenceReport | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const platform = detectPlatform();
 
@@ -74,6 +81,11 @@ export function HomeScreen() {
     }
 
     void load();
+    // Phase 2 moves this ahead of the PowerSync bootstrap; for now the point
+    // is to see the real answer on a real device.
+    void requestPersistenceOnce().then((report) => {
+      if (!cancelled) setPersistence(report);
+    });
     return () => {
       cancelled = true;
     };
@@ -103,6 +115,33 @@ export function HomeScreen() {
             <Row label="Units" value={snapshot.unitSystem === 'metric' ? 'Kilograms' : 'Pounds'} />
             <Row label="Exercises available" value={snapshot.exerciseCount} />
             <Row label="Muscles on the model" value={snapshot.muscleCount} />
+          </>
+        )}
+      </section>
+
+      <section className="rounded-card bg-surface p-4">
+        <h2 className="mb-3 text-lg font-semibold text-primary">Offline storage</h2>
+        {persistence === null ? (
+          <p className="text-sm text-muted">Checking…</p>
+        ) : (
+          <>
+            <Row
+              label="Persistent"
+              value={
+                persistence.state === 'granted'
+                  ? 'Granted'
+                  : persistence.state === 'denied'
+                    ? 'Refused'
+                    : persistence.state === 'unsupported'
+                      ? 'Unsupported'
+                      : 'Unknown'
+              }
+            />
+            <Row label="Space available" value={formatBytes(persistence.quotaBytes)} />
+            <Row label="Used" value={formatBytes(persistence.usageBytes)} />
+            <p className="mt-3 max-w-prose text-sm text-secondary">
+              {describePersistence(persistence.state)}
+            </p>
           </>
         )}
       </section>
