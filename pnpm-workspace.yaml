@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Packages allowed to run install scripts. pnpm 10 blocks them by default;
+# every entry here is a deliberate exception, not a convenience.
+onlyBuiltDependencies:
+  - esbuild

@@ -1,0 +1,80 @@
+name: Release builds
+
+# Brief §4.5: native builds are slow and burn runner minutes, so they run on
+# tag pushes only — never on a pull request.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: Tauri (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @g7m/desktop build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/**/*
+          retention-days: 14
+
+  android:
+    name: Android (unsigned debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @g7m/mobile sync
+
+      - name: Assemble debug APK
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+  # iOS is deliberately absent. It needs an Apple Developer account, a signing
+  # certificate and a provisioning profile in repository secrets, none of which
+  # exist yet. Add the job at the same time as those — a half-configured signing
+  # job that fails on every tag is worse than no job.

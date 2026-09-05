@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to the same PR cancels the previous run. Brief §4.5: CI that takes
+# twenty minutes is CI that gets bypassed — so don't queue work nobody wants.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        # Version comes from the `packageManager` field in package.json, so it
+        # can never drift from what developers run locally.
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Coverage thresholds for packages/core live in vitest.config.ts and this
+      # step fails when they are not met. Brief §4.5: the generator and the
+      # 1RM / unit-conversion math have no excuse for being untested.
+      - name: Unit tests with coverage gate
+        run: pnpm test:coverage
+
+      - name: Build web app
+        run: pnpm build
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks scans history, not just the tip.
+          fetch-depth: 0
+
+      # The binary is fetched from a pinned release rather than using the
+      # gitleaks GitHub Action, which asks for a licence key on organisation
+      # accounts. Same scanner, no licence surface, ~2 seconds.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.28.0
+        run: |
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan repository
+        run: gitleaks detect --source . --redact --verbose --no-banner

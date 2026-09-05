@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+@import '@g7m/ui/tokens.css';
+
+/* Tailwind v4 only scans this app's own sources by default. @g7m/ui lives
+   outside that tree, so its class names must be registered explicitly or the
+   Button's utilities get tree-shaken out of the build. */
+@source '../../../packages/ui/src';
+@source '../../../packages/anatomy/src';
+
+/* Safe areas: the app fills the WebView edge to edge (viewport-fit=cover), so
+   chrome has to inset itself past the notch and the home indicator. */
+@theme {
+  --spacing-safe-top: env(safe-area-inset-top, 0px);
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* No text selection or long-press callout in the shell chrome — it makes a
+   WebView feel like a web page instead of an app. Inputs opt back in. */
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}

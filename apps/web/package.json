@@ -1,0 +1,27 @@
+{
+  "name": "@g7m/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The application. Runs standalone in a browser; wrapped by Capacitor and Tauri.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@g7m/core": "workspace:*",
+    "@g7m/ui": "workspace:*",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "tailwindcss": "^4.1.13",
+    "vite": "^7.1.4"
+  }
+}

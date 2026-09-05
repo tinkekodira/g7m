@@ -1,0 +1,56 @@
+# --- Dependencies & build output ---
+node_modules/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# --- Environment ---
+.env
+.env.local
+.env.*.local
+
+# --- Test & coverage artefacts ---
+coverage/
+playwright-report/
+test-results/
+.vitest-cache/
+
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- Capacitor ---
+# The ios/ and android/ project directories ARE committed: they hold real
+# configuration (signing, permissions, plugin registration). What Capacitor
+# *copies* into them from the web build is generated output and must not be.
+apps/mobile/ios/App/Pods/
+apps/mobile/ios/App/App/public/
+apps/mobile/ios/App/Podfile.lock
+apps/mobile/android/app/src/main/assets/public/
+# Regenerated verbatim by every `cap sync` — committing them is pure diff noise.
+apps/mobile/android/app/src/main/assets/capacitor.config.json
+apps/mobile/android/app/src/main/assets/capacitor.plugins.json
+apps/mobile/ios/App/App/capacitor.config.json
+apps/mobile/android/.gradle/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/local.properties
+apps/mobile/android/.idea/
+apps/mobile/android/captures/
+
+# --- Tauri ---
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/schemas/
+
+# --- Supabase local dev ---
+supabase/.branches/
+supabase/.temp/
+
+# --- Licensed assets: never commit (see DECISIONS.md ADR-0009) ---
+packages/anatomy/assets/licensed/

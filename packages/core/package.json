@@ -1,0 +1,15 @@
+{
+  "name": "@g7m/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure domain logic. Zero UI, zero platform imports, runnable in bare Node.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./units": "./src/units.ts",
+    "./one-rep-max": "./src/one-rep-max.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

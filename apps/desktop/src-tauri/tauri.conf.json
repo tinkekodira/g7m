@@ -1,0 +1,46 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "g7m",
+  "version": "0.1.0",
+  "identifier": "app.g7m.trainer",
+  "build": {
+    "frontendDist": "../../web/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm --filter @g7m/web dev",
+    "beforeBuildCommand": "pnpm --filter @g7m/web build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "g7m",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "backgroundColor": "#1F1E1D",
+        "theme": "Dark",
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob: https:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost https://*.supabase.co wss://*.supabase.co https://*.journeyapps.com wss://*.journeyapps.com; frame-src https://www.youtube-nocookie.com;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}
