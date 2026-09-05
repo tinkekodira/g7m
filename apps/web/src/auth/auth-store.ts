@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.js';
+import { appBaseUrl } from '../lib/app-url.js';
 import {
   INITIAL_AUTH_STATE,
   friendlyAuthError,
@@ -74,9 +75,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        // Where Google sends the browser back to. Must be in the Supabase
-        // redirect allow-list (supabase/config.toml, additional_redirect_urls).
-        redirectTo: globalThis.location.origin,
+        /**
+         * Where Google sends the browser back to. NOT `location.origin` —
+         * that drops the `/g7m/` subpath the app is served from on Pages.
+         *
+         * This must also appear in the Supabase redirect allow-list
+         * (supabase/config.toml, `additional_redirect_urls`). Supabase does not
+         * error on an unlisted value; it silently substitutes `site_url`, which
+         * once sent an iPhone to a dev server it could never reach.
+         */
+        redirectTo: appBaseUrl(),
         queryParams: {
           // Ask for a refresh token every time rather than only on first
           // consent, so re-authenticating after a revoke actually works.
