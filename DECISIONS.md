@@ -667,9 +667,12 @@ table, and `auth.uid()` implemented the way Supabase implements it — reading t
 `sub` claim from the `request.jwt.claims` setting. That is faithful enough to
 exercise RLS as a genuinely signed-in user, which is the part worth testing.
 
-It also runs Postgres 18 where Supabase runs 15, so it can accept syntax the
-real project rejects. `supabase db push` remains the final word; this catches
-the mistakes long before that.
+It also runs a different Postgres major than the hosted project — PGlite 0.5 is
+Postgres 18, the linked Supabase project is 17.6 — so it can in principle accept
+syntax the real one rejects. `supabase db push` remains the final word; this
+catches the mistakes long before that. In practice the migrations applied to the
+real project unchanged on the first attempt, which is the outcome this harness
+exists to produce.
 
 **One trap worth recording**, because it made the RLS tests silently vacuous
 before it was caught: PGlite runs each `exec()` in its own implicit transaction,

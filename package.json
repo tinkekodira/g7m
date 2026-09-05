@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Cross-platform strength training app — 3D anatomy explorer and offline-first workout logger.",
+  "description": "Cross-platform strength training app \u2014 3D anatomy explorer and offline-first workout logger.",
   "packageManager": "pnpm@10.15.0",
   "engines": {
     "node": ">=22.12.0",
@@ -25,7 +25,10 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "mobile:sync": "pnpm --filter @g7m/mobile sync",
     "desktop:dev": "pnpm --filter @g7m/desktop dev",
-    "desktop:build": "pnpm --filter @g7m/desktop build"
+    "desktop:build": "pnpm --filter @g7m/desktop build",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff --linked",
+    "db:status": "supabase migration list --linked"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
@@ -37,6 +40,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "prettier": "^3.6.2",
+    "supabase": "2.116.0",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.42.0",
     "vitest": "^3.2.4"
