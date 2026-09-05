@@ -330,3 +330,47 @@ screen.
 The formula name is stored alongside every estimate (§5), so if the formula
 changes later, historical values stay interpretable instead of becoming mystery
 numbers.
+
+---
+
+## ADR-0016 — The PowerSync fallback is not what the brief assumed
+
+**Supersedes the fallback described in
+[ADR-0014](#adr-0014--the-powersync-ios-spike-is-split-and-half-of-it-is-deferred).**
+
+**Finding:** `@powersync/web` does not hard-depend on OPFS. It ships four
+virtual filesystems, and one of them — `IDBBatchAtomicVFS` — is backed by
+IndexedDB and touches OPFS not at all.
+
+**Why this matters:** the brief treats §3's risk as binary. Either OPFS works
+inside a WKWebView, or we abandon PowerSync for `@capacitor-community/sqlite`
+plus a hand-rolled sync queue. That is not the shape of the problem. The real
+decision tree has three outcomes:
+
+1. An OPFS backend works on iOS → ship it.
+2. Every OPFS backend fails but `IDBBatchAtomicVFS` works → **still PowerSync**,
+   with one different config line on iOS. Slower, but sync rules, conflict
+   handling and the whole client stay. This is a far better worst case than the
+   brief anticipated.
+3. Nothing works → only then the hand-rolled queue.
+
+The spike harness on `spike/powersync-ios` therefore probes all four backends
+independently, each in its own database file so a corrupt database from one
+cannot mask another passing.
+
+**Verified in Chromium** (Playwright, headless): all four backends open, write
+1,000 rows and persist across a reload. This validates the harness, not iOS —
+OPFS in Chromium was never in doubt. Full numbers in
+[`docs/spikes/powersync-ios.md`](./docs/spikes/powersync-ios.md).
+
+**Two things that will matter in Phase 2 regardless of which backend wins:**
+
+- No `SharedArrayBuffer` and no cross-origin isolation was needed. Good news:
+  setting COOP/COEP headers inside a Capacitor WebView is awkward, and it turns
+  out we do not have to.
+- `navigator.storage.persisted()` returns `false` — the local database is
+  **evictable**. On iOS, Safari clears unused origin storage after roughly seven
+  days of no use. A user coming back from a two-week holiday could open the app
+  to an empty local database. Whatever the VFS answer is, Phase 2 has to call
+  `navigator.storage.persist()` and design for the case where it is refused.
+  That is a real requirement the brief does not mention.

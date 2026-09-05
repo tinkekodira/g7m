@@ -218,7 +218,7 @@ Work proceeds one phase at a time, stopping at each boundary.
 | --- | --- | --- |
 | 0 | Foundation and de-risking | **In review** |
 | 1 | Data — schema, RLS, seed, auth | Not started |
-| 2 | Offline — PowerSync, local SQLite, repositories | Blocked on the [iOS spike](./docs/spikes/powersync-ios.md) |
+| 2 | Offline — PowerSync, local SQLite, repositories | Blocked on the [iOS spike](./docs/spikes/powersync-ios.md) — harness built, needs a Mac |
 | 3 | Exercise library — search, filters, detail, video | Not started |
 | 4 | Logging — the hot path | Not started |
 | 5 | 3D anatomy — viewer, raycasting, exercise panel | Not started |

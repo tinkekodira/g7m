@@ -1,6 +1,6 @@
 # Spike — PowerSync SQLite persistence inside Capacitor iOS
 
-**Status:** ⚠️ Partially run. The iOS half is **not** done and **blocks Phase 2**.
+**Status:** ⚠️ Harness built and verified. The iOS half is **not** done and **blocks Phase 2**.
 **Branch:** `spike/powersync-ios` (disposable — delete it whichever way this goes)
 **Decision record:** [ADR-0014](../../DECISIONS.md#adr-0014--the-powersync-ios-spike-is-split-and-half-of-it-is-deferred)
 
@@ -19,14 +19,36 @@ then the entire offline architecture — which is a hard requirement, not a
 nice-to-have — rests on something that does not work. Better to find out now
 than after Phase 4.
 
-**The fallback**, if this fails: `@capacitor-community/sqlite` on native, with a
-hand-rolled sync queue. That is significantly more code that we own and maintain
-forever, so it is not the default choice — but it is a known, working path.
+**The fallback, revised.** The brief assumed a binary outcome: PowerSync works,
+or we drop to `@capacitor-community/sqlite` with a hand-rolled sync queue.
+Building the harness showed that is not the shape of the problem. PowerSync's
+web SDK does not hard-depend on OPFS — it ships **four** virtual filesystems,
+one of which is backed by IndexedDB:
+
+| VFS | Storage | Notes |
+| --- | --- | --- |
+| `OPFSCoopSyncVFS` | OPFS | PowerSync's default for Safari-family engines |
+| `AccessHandlePoolVFS` | OPFS | Pre-opens sync access handles |
+| `OPFSWriteAheadVFS` | OPFS | Concurrent readers; newest, least tested on iOS |
+| `IDBBatchAtomicVFS` | **IndexedDB** | No OPFS involved at all |
+
+So the decision tree has three outcomes, not two:
+
+1. **Any OPFS backend passes** → ship it, done.
+2. **Only `IDBBatchAtomicVFS` passes** → still PowerSync, one config line
+   different on iOS. Slower, but we keep sync rules, conflict handling and the
+   whole client. This is a *much* better outcome than the brief anticipated.
+3. **Nothing passes** → then, and only then, `@capacitor-community/sqlite` with
+   a hand-rolled sync queue.
+
+The harness probes all four independently, in separate database files, so one
+failing backend cannot mask another passing.
 
 ## What counts as a pass
 
-All four, on a **physical iPhone** (iOS 17+), in a **release-configuration
-build**, not the simulator and not `cap run` with live reload:
+**At least one of the four VFS backends** must clear all of the following on a
+**physical iPhone** (iOS 17+), in a **release-configuration build** — not the
+simulator, and not `cap run` with live reload:
 
 1. **Open** — a PowerSync SQLite database opens without error.
 2. **Write** — at least 1,000 rows insert in a transaction, and read back
@@ -36,7 +58,9 @@ build**, not the simulator and not `cap run` with live reload:
 4. **Persist under pressure** — background the app for 10+ minutes with other
    apps running, return, and the rows are still there.
 
-Anything less than all four is a fail, and a fail means we take the fallback.
+If no backend clears all four, we take outcome 3 above. Record *every*
+backend's result, not just the first one that passes — knowing that, say, OPFS
+fails but IndexedDB works is the finding that matters.
 
 Test on the simulator **as well**, but never *instead* — the simulator uses the
 host filesystem and does not reproduce iOS storage eviction behaviour, which is
@@ -106,24 +130,64 @@ useful finding.
 
 ### Chromium engine (Windows) — harness verification only
 
-Run to confirm the harness itself is correct, not as evidence about iOS. OPFS in
-Chromium has never been in doubt; a pass here means the test is measuring what
-it claims to measure and will produce a trustworthy answer on the device.
+**Run 2026-09-05. All four backends pass. ✅**
 
-> _Filled in on the spike branch._
+This is *not* evidence about iOS — OPFS in Chromium has never been in doubt.
+What it establishes is that the harness is correct and will produce a
+trustworthy answer when someone runs it on a device.
+
+Driven headlessly through Playwright: load, run the probe, reload the page, run
+it again. The persistence check correctly reads `pending` on the first run and
+`pass` on the second, which is the behaviour that makes the force-quit test on
+iOS meaningful.
+
+| VFS | Opens | Writes 1,000 | Persists across reload | Open | Write |
+| --- | --- | --- | --- | --- | --- |
+| `OPFSCoopSyncVFS` | ✅ | ✅ | ✅ | 71–99 ms | 57–70 ms |
+| `AccessHandlePoolVFS` | ✅ | ✅ | ✅ | 55–77 ms | 58–71 ms |
+| `OPFSWriteAheadVFS` | ✅ | ✅ | ✅ | 119–161 ms | 69–79 ms |
+| `IDBBatchAtomicVFS` | ✅ | ✅ | ✅ | 80–135 ms | 63–77 ms |
+
+Environment: OPFS API present, Web Workers yes, Shared Workers yes,
+SharedArrayBuffer **no**, `crossOriginIsolated` **no**, quota 4096 MB.
+
+Two things worth carrying to the device run:
+
+- **No `SharedArrayBuffer` and no cross-origin isolation was needed.** Worth
+  knowing, because the usual reason wa-sqlite needs COOP/COEP headers is
+  `SharedArrayBuffer`, and setting those headers inside a Capacitor WebView is
+  awkward. These backends did not need them.
+- **`navigator.storage.persisted()` returned `false` — the data is evictable.**
+  On iOS this matters much more than on desktop: Safari evicts unused origin
+  storage after roughly seven days of no use. Call `navigator.storage.persist()`
+  during the device run and record whether iOS grants it. If it does not, a user
+  returning after a two-week holiday could find an empty local database, which
+  is a Phase 2 design problem regardless of which VFS wins.
+
+### WebView2 (Windows, Tauri)
+
+> **Not run.** Rust is not installed on the development machine, so the Tauri
+> shell cannot be built. Lower priority than iOS: WebView2 is evergreen Chromium
+> and behaves like the run above.
+
+### WKWebView, physical iPhone
 
 ### WKWebView, physical iPhone
 
 > **Not run.** Blocks Phase 2.
 
-| Check | Result | Notes |
-| --- | --- | --- |
-| 1. Database opens | — | |
-| 2. 1,000-row write and read-back | — | |
-| 3. Survives force-quit | — | |
-| 4. Survives 10 min backgrounded | — | |
+Fill in one row per backend. The harness prints all four.
+
+| VFS | Opens | Writes 1,000 | Survives force-quit | Survives 10 min backgrounded |
+| --- | --- | --- | --- | --- |
+| `OPFSCoopSyncVFS` | — | — | — | — |
+| `AccessHandlePoolVFS` | — | — | — | — |
+| `OPFSWriteAheadVFS` | — | — | — | — |
+| `IDBBatchAtomicVFS` | — | — | — | — |
 
 **Device:**
 **iOS version:**
-**PowerSync SDK version:**
-**Verdict:**
+**PowerSync SDK version:** `@powersync/web` 2.3.0, `@journeyapps/wa-sqlite` 2.0.4
+**`navigator.storage.persist()` granted:**
+**Errors, verbatim:**
+**Verdict (outcome 1, 2 or 3 above):**
