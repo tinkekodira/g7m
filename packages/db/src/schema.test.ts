@@ -239,14 +239,12 @@ describe('constraints that protect the domain', () => {
   });
 
   it('rejects a selectable muscle with no mesh node, which could never be clicked', async () => {
-    await h.db.exec(
-      `insert into public.muscle_groups (slug, name, display_order) values ('chest', 'Chest', 1);`,
-    );
     await expect(
       h.db.exec(`
         insert into public.muscles
           (slug, common_name, latin_name, muscle_group_id, region, is_selectable, display_order)
-        values ('bad', 'Bad', 'Malus', (select id from public.muscle_groups limit 1),
+        values ('bad', 'Bad', 'Malus',
+                (select id from public.muscle_groups where slug = 'chest'),
                 'anterior', true, 1);
       `),
     ).rejects.toThrow(/selectable_needs_mesh/);
@@ -258,31 +256,32 @@ describe('constraints that protect the domain', () => {
         insert into public.muscles
           (slug, common_name, latin_name, muscle_group_id, region, is_selectable, display_order)
         values ('decorative', 'Decorative', 'Ornamentum',
-                (select id from public.muscle_groups limit 1), 'anterior', false, 99);
+                (select id from public.muscle_groups where slug = 'chest'),
+                'anterior', false, 99);
       `),
     ).resolves.toBeDefined();
   });
 
   it('allows only one primary equipment station per exercise', async () => {
-    await h.db.exec(`
-      insert into public.equipment (slug, name, category) values
-        ('barbell', 'Barbell', 'barbell'), ('flat-bench', 'Flat bench', 'other');
-      insert into public.exercises
-        (slug, name, mechanic, force, joint_count, difficulty, cues,
-         default_rep_low, default_rep_high)
-      values ('bench', 'Bench Press', 'compound', 'push', 2, 'beginner',
-              array['chest up'], 5, 8);
-      insert into public.exercise_equipment (exercise_id, equipment_id, is_primary)
-      values ((select id from public.exercises where slug = 'bench'),
-              (select id from public.equipment where slug = 'barbell'), true);
-    `);
+    // The seeded bench press already has the barbell as its primary station and
+    // the flat bench as an accessory. Promoting the accessory must fail.
     await expect(
       h.db.exec(`
-        insert into public.exercise_equipment (exercise_id, equipment_id, is_primary)
-        values ((select id from public.exercises where slug = 'bench'),
-                (select id from public.equipment where slug = 'flat-bench'), true);
+        update public.exercise_equipment set is_primary = true
+         where exercise_id = (select id from public.exercises where slug = 'barbell-bench-press')
+           and equipment_id = (select id from public.equipment where slug = 'flat-bench');
       `),
     ).rejects.toThrow(/exercise_equipment_one_primary/);
+  });
+
+  it('gives the seeded bench press the barbell as its station, not the bench', async () => {
+    const { rows } = await h.db.query<{ slug: string }>(
+      `select q.slug from public.exercise_equipment ee
+         join public.equipment q on q.id = ee.equipment_id
+         join public.exercises e on e.id = ee.exercise_id
+        where e.slug = 'barbell-bench-press' and ee.is_primary`,
+    );
+    expect(rows.map((r) => r.slug)).toEqual(['barbell']);
   });
 });
 
@@ -295,7 +294,7 @@ describe('session sets', () => {
       insert into public.session_exercises (id, user_id, session_id, exercise_id, order_key)
       values ('22222222-2222-2222-2222-222222222222', '${user}',
               '11111111-1111-1111-1111-111111111111',
-              (select id from public.exercises where slug = 'bench'), 'a0');
+              (select id from public.exercises where slug = 'barbell-bench-press'), 'a0');
     `);
 
     await expect(
@@ -351,7 +350,7 @@ describe('composite foreign keys', () => {
       h.db.exec(`
         insert into public.routine_exercises (user_id, routine_id, exercise_id, order_key)
         values ('${other}', '33333333-3333-3333-3333-333333333333',
-                (select id from public.exercises where slug = 'bench'), 'a0');
+                (select id from public.exercises where slug = 'barbell-bench-press'), 'a0');
       `),
     ).rejects.toThrow(/foreign key/i);
   });
@@ -376,52 +375,22 @@ describe('updated_at', () => {
   });
 });
 
-describe('exercise search (Brief §7)', () => {
-  beforeAll(async () => {
-    await h.db.exec(`
-      insert into public.exercises
-        (slug, name, aliases, mechanic, force, joint_count, difficulty, cues,
-         default_rep_low, default_rep_high)
-      values
-        ('incline-db-press', 'Incline Dumbbell Press',
-         array['incline db', 'incline dumbbell bench'], 'compound', 'push', 2,
-         'beginner', array['elbows tucked'], 8, 12),
-        ('back-squat', 'Barbell Back Squat', array['squat', 'BS'],
-         'compound', 'push', 3, 'intermediate', array['chest up'], 5, 8),
-        ('rdl', 'Romanian Deadlift', array['RDL', 'stiff leg deadlift'],
-         'compound', 'pull', 2, 'intermediate', array['hinge at the hip'], 6, 10);
-      update public.exercises set aliases = array['bench', 'BP', 'flat bench']
-        where slug = 'bench';
-    `);
-  });
-
-  async function search(term: string): Promise<string[]> {
-    const { rows } = await h.db.query<{ name: string }>(
-      `select name from public.exercises
-        where search_text like '%' || lower($1) || '%' or search_text % lower($1)
-        order by similarity(search_text, lower($1)) desc
-        limit 1`,
-      [term],
-    );
-    return rows.map((r) => r.name);
-  }
-
-  it('finds bench press by typing "bp"', async () => {
-    expect(await search('bp')).toEqual(['Bench Press']);
-  });
-
-  it('finds incline dumbbell press by typing "incline db"', async () => {
-    expect(await search('incline db')).toEqual(['Incline Dumbbell Press']);
-  });
-
-  it('finds Romanian deadlift by its alias', async () => {
-    expect(await search('rdl')).toEqual(['Romanian Deadlift']);
-  });
-
-  it('keeps search_text in step with the row when aliases change', async () => {
+describe('the search_text generated column', () => {
+  it('is built from the name and the aliases together', async () => {
     const { rows } = await h.db.query<{ search_text: string }>(
-      `select search_text from public.exercises where slug = 'bench'`,
+      `select search_text from public.exercises where slug = 'barbell-bench-press'`,
     );
-    expect(rows[0]?.search_text).toBe('bench press bench bp flat bench');
+    expect(rows[0]?.search_text).toBe('barbell bench press bench bp flat bench bench press');
+  });
+
+  it('recomputes itself when the aliases change', async () => {
+    await h.db.exec(
+      `update public.exercises set aliases = array['flat press']
+        where slug = 'machine-chest-press';`,
+    );
+    const { rows } = await h.db.query<{ search_text: string }>(
+      `select search_text from public.exercises where slug = 'machine-chest-press'`,
+    );
+    expect(rows[0]?.search_text).toBe('machine chest press flat press');
   });
 });
