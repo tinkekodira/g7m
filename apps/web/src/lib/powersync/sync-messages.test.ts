@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { DiscardedWrite } from '@g7m/db';
-import { describeDiscarded, describeSyncPhase, type SyncPhase } from './sync-messages.js';
+import {
+  describeDiscarded,
+  describeSyncError,
+  describeSyncPhase,
+  type SyncPhase,
+} from './sync-messages.js';
 
 const discarded = (over: Partial<DiscardedWrite> = {}): DiscardedWrite => ({
   write: { kind: 'upsert', table: 'session_sets', row: { id: 'x' } },
@@ -88,5 +93,69 @@ describe('describeDiscarded', () => {
   it('ignores the already-applied entries when counting a mixed batch', () => {
     const message = describeDiscarded([discarded({ alreadyApplied: true }), discarded()]);
     expect(message).toContain('1 change');
+  });
+});
+
+describe('describeSyncError', () => {
+  it('says nothing when there is no error', () => {
+    expect(describeSyncError(undefined)).toBeNull();
+  });
+
+  /**
+   * The one that actually happened, and cost an hour.
+   *
+   * A development token is signed by PowerSync itself, so a passing Sync
+   * Diagnostics run proves replication and sync rules work while saying nothing
+   * about whether a real Supabase JWT is trusted. When it is not, the only
+   * symptom was a bare "Offline" — identical to being in a basement.
+   */
+  it('names a rejected token, and points at the setting that fixes it', () => {
+    for (const message of [
+      'Request failed with status 401',
+      'Unauthorized',
+      'JWT verification failed',
+      'invalid signature',
+      'no matching kid in JWKS',
+    ]) {
+      const described = describeSyncError(new Error(message));
+      expect(described, message).not.toBeNull();
+      expect(described, message).toContain('JWKS');
+    }
+  });
+
+  it('reassures that nothing is lost when the token is rejected', () => {
+    expect(describeSyncError(new Error('401 Unauthorized'))).toContain('still saved');
+  });
+
+  /**
+   * Being offline is the normal state for this app, not an error worth a red
+   * alert — the phase message already explains it in reassuring terms, and
+   * duplicating it in danger red would make a basement look like a failure.
+   */
+  it('stays quiet about an ordinary network failure', () => {
+    expect(describeSyncError(new Error('Failed to fetch'))).toBeNull();
+    expect(describeSyncError(new Error('NetworkError'))).toBeNull();
+  });
+
+  it('recognises a wrong address', () => {
+    expect(describeSyncError(new Error('404 Not Found'))).toContain('could not be found');
+  });
+
+  it('recognises missing sync rules', () => {
+    expect(describeSyncError(new Error('No sync rules deployed'))).toContain('sync rules');
+  });
+
+  it('recognises a refused account', () => {
+    expect(describeSyncError(new Error('403 Forbidden'))).toContain('refused');
+  });
+
+  /**
+   * The default matters as much as the named cases. Hiding an unrecognised
+   * error is what produced the bare "Offline" in the first place; showing the
+   * raw text is worse to read and far better to act on.
+   */
+  it('shows an unrecognised error rather than swallowing it', () => {
+    const described = describeSyncError(new Error('something entirely new'));
+    expect(described).toContain('something entirely new');
   });
 });

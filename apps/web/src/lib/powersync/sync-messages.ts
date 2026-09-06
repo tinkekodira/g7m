@@ -78,3 +78,61 @@ export function describeDiscarded(discarded: readonly DiscardedWrite[]): string 
     `saved to the server. ${detail}`
   );
 }
+
+/**
+ * Why sync is not connecting, in terms that point at the fix.
+ *
+ * PowerSync reports the underlying error on its status object, and the first
+ * version of this panel threw it away — leaving a bare "Offline" that looks
+ * identical whether the phone is in a basement or the server is rejecting every
+ * token. Diagnosing one of those took an hour of dashboard archaeology that the
+ * screen could have answered instantly.
+ *
+ * The mapping leads with what to do, because "401 Unauthorized" tells a lifter
+ * nothing and tells whoever set the project up almost as little.
+ */
+export function describeSyncError(error: Error | undefined): string | null {
+  if (error === undefined) return null;
+  const message = error.message.toLowerCase();
+
+  // The one that actually happened: the sync service could not verify the
+  // Supabase token. Dev tokens are signed by PowerSync itself, so a passing
+  // Sync Diagnostics run does not exercise this path at all.
+  if (
+    message.includes('401') ||
+    message.includes('unauthorized') ||
+    message.includes('jwt') ||
+    message.includes('token') ||
+    message.includes('signature') ||
+    message.includes('kid')
+  ) {
+    return (
+      'The sync service rejected this device’s login. Its Client Auth needs the ' +
+      'Supabase JWKS URL so it can verify the token. Everything is still saved here.'
+    );
+  }
+
+  if (message.includes('403') || message.includes('forbidden')) {
+    return 'The sync service refused this account. Everything is still saved on this device.';
+  }
+
+  if (
+    message.includes('failed to fetch') ||
+    message.includes('networkerror') ||
+    message.includes('network')
+  ) {
+    return null; // An ordinary offline period. The phase message already says so.
+  }
+
+  if (message.includes('404') || message.includes('not found')) {
+    return 'The sync service could not be found at the configured address.';
+  }
+
+  if (message.includes('sync rules') || message.includes('bucket')) {
+    return 'The sync service has no usable sync rules deployed.';
+  }
+
+  // Unknown: show it rather than hide it. A raw message beats a bare "Offline",
+  // and the alternative is another hour of guessing.
+  return `Sync could not connect: ${error.message}`;
+}

@@ -21,7 +21,12 @@ import type { SyncPhase } from './sync-messages.js';
  * anything importing it needs a configured project — which the strings should
  * not. Re-exported here so call sites still have one import.
  */
-export { describeDiscarded, describeSyncPhase, type SyncPhase } from './sync-messages.js';
+export {
+  describeDiscarded,
+  describeSyncError,
+  describeSyncPhase,
+  type SyncPhase,
+} from './sync-messages.js';
 
 interface SyncStore {
   readonly phase: SyncPhase;
@@ -38,6 +43,14 @@ interface SyncStore {
   readonly discarded: readonly DiscardedWrite[];
   /** The most recent upload summary, in words. */
   readonly lastMessage: string | null;
+  /**
+   * Why sync is not connecting, when it is not.
+   *
+   * PowerSync reports this on its status object and the first version of this
+   * store discarded it — which left a bare "Offline" that looks the same
+   * whether the phone is underground or the server is rejecting every token.
+   */
+  readonly connectionError: Error | null;
 
   /** Open the database and start syncing. Returns an unsubscribe function. */
   start: () => Promise<() => void>;
@@ -51,6 +64,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
   lastSyncedAt: null,
   discarded: [],
   lastMessage: null,
+  connectionError: null,
 
   start: async () => {
     if (!isSyncConfigured()) {
@@ -71,6 +85,12 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
           phase: status.connected ? 'synced' : status.connecting ? 'connecting' : 'offline',
           busy: status.downloading || status.uploading,
           lastSyncedAt: status.lastSyncedAt ?? get().lastSyncedAt,
+          // Cleared by a successful connection: PowerSync reports the last
+          // error until the next good sync, so holding a stale one would keep
+          // accusing a server that has since started working.
+          connectionError: status.connected
+            ? null
+            : (status.downloadError ?? status.uploadError ?? null),
         });
       },
     });
@@ -89,7 +109,7 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
 
   stop: async () => {
     await disconnectSync();
-    set({ phase: 'offline', busy: false });
+    set({ phase: 'offline', busy: false, connectionError: null });
   },
 
   dismissDiscarded: () => {
