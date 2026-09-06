@@ -1394,3 +1394,104 @@ installed it. The browser fetches it outside this cache, with
 
 No offline page for content that was never loaded, no background sync, no push.
 PowerSync already owns durable data; this owns the code that reads it.
+
+---
+
+## ADR-0034 — `HashRouter`, mounted inside the auth gate, with filters in the URL
+
+**Resolves the deferral in [ADR-0013](#adr-0013--react-router-and-zustand-deferred).**
+
+### `HashRouter`, not `BrowserRouter`
+
+**Chosen:** `HashRouter` from `react-router`.
+
+**Why:** two independent arguments, already written down before the router
+existed, which happen to agree.
+
+ADR-0013 flagged that embedded WebViews serve from custom schemes —
+`capacitor://localhost`, `tauri://localhost` — and that `BrowserRouter`'s
+history handling is the classic thing that works in Chrome and then does not
+work in a WKWebView. ADR-0027 flagged that `base: './'` means asset URLs resolve
+against the current path, so a nested route like `/exercises/back-squat` would
+send the browser looking for `/exercises/assets/index-abc.js`.
+
+Either one on its own would be enough. A third would have been needed anyway:
+GitHub Pages has no rewrite rule, so a deep link to a real path is a 404 from
+the server before any JavaScript runs. The ugly `#/exercises` is the price, and
+there is no SEO to pay it out of.
+
+### The router is inside the gate, not around it
+
+**Chosen:** `HashRouter` wraps only the signed-in tree. The sign-in screen
+renders with no router at all.
+
+**Why:** a `HashRouter` owns `location.hash`, and the signed-out half of the app
+is precisely where a hash can arrive carrying something that is not a route.
+Auth is PKCE (ADR-0025), so the ordinary Google round trip comes back with
+`?code=` in the query string and there is no conflict today — but recovery and
+confirmation links have historically arrived as `#access_token=…`, and the
+catch-all route below would answer one of those by replacing the URL with `#/`
+before anything had read it.
+
+The cost is that the sign-in screen cannot use `<Link>`. It has one screen and
+no navigation, so it does not want one.
+
+There is a catch-all `*` route that redirects home with `replace`. A leftover
+fragment, a bookmark from a build that named things differently, or a typo
+should land on the home screen rather than a blank page, and `replace` keeps the
+bad URL out of the back button.
+
+### The library's filters live in the URL, not in component state
+
+**Chosen:** search text, muscle group and equipment are read from and written to
+the query string, with the round trip tested in `library-filters.ts`.
+
+**Why:** three reasons that all come from this being a phone app. The back
+button undoes a filter instead of leaving the screen. The state survives the
+page reload the update banner asks for (ADR-0033). And a filtered list becomes
+something you can send to somebody.
+
+Two details are load-bearing:
+
+**Defaults are omitted, and updates `replace` rather than push.** Writing
+`?q=&muscle=` for the unfiltered library gives it a URL distinct from the one
+you arrived at, and pushing a history entry per keystroke means the back button
+spends eleven presses spelling "deadlift" backwards before it leaves the screen.
+
+**An empty selection means "no constraint" on screen and "needs nothing at all"
+in the repository, and the translation between them is explicit.**
+`ExerciseFilter`'s `equipmentIds: []` is the hotel-room question. No chips lit
+plainly means "I have not narrowed by equipment". Conflating the two would empty
+the list the moment somebody cleared a filter, so `toExerciseFilter` omits the
+field instead, and a test pins it.
+
+Unknown slugs are dropped rather than passed through. An id that matches nothing
+would filter the whole library away with no explanation, and links from a newer
+build or bookmarks from before a rename produce exactly that.
+
+### Reading the catalogue from a component
+
+`getRepositories()` in `apps/web/src/lib/db` is the only place the app turns a
+PowerSync connection into repository objects, and `useCatalogue` is the only way
+a screen runs one. Brief §0.5 in practice: a component that wants a row has one
+door.
+
+`useCatalogue` returns loading, error and data — always all three. A hook that
+returns only the data forces every screen to invent the other two, and they get
+invented differently each time.
+
+Its dependency is an explicit **string key** rather than a dependency array. The
+callback is a new closure on every render, so depending on it would re-run the
+query forever; passing what the query depends on as one readable string makes
+the re-run condition something you can see rather than infer.
+
+Queries re-run when sync completes. On a first launch the catalogue arrives a
+second or two after the screen does, and a library that renders "No exercises"
+and stays that way until the user navigates twice is the most obvious possible
+bug in an app that advertises working offline.
+
+### `react-router` was already installed
+
+It arrived in the auth work (#6) and was never used. ADR-0013's statement that
+neither dependency was installed stopped being true then. Nothing new is added
+here; §0.3's question was answered by accident and is recorded now.
