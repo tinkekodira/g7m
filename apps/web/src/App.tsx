@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
+import { useSyncStore } from './lib/powersync/sync-store.js';
 
 /**
  * The auth gate.
@@ -13,10 +14,53 @@ import { HomeScreen } from './screens/HomeScreen.js';
 export function App() {
   const status = useAuthStore((s) => s.status);
   const initialize = useAuthStore((s) => s.initialize);
+  const startSync = useSyncStore((s) => s.start);
+  const stopSync = useSyncStore((s) => s.stop);
 
   // Returning the unsubscribe matters: StrictMode runs this twice in
   // development, and a leaked listener means every auth event handled twice.
   useEffect(() => initialize(), [initialize]);
+
+  /**
+   * Sync follows the session, not the screen.
+   *
+   * Started here rather than in HomeScreen because it must survive navigation
+   * once Phase 3 adds routes — a sync connection that restarts on every screen
+   * change would re-download buckets for no reason and lose queued uploads to
+   * the churn.
+   *
+   * Sign-out disconnects but deliberately does not clear: the queue can still
+   * hold writes belonging to the user who is leaving.
+   */
+  useEffect(() => {
+    if (status !== 'signed-in') return;
+
+    let stopped = false;
+    let unsubscribe: (() => void) | null = null;
+
+    void startSync().then(
+      (listener) => {
+        // The effect may have been torn down while connecting.
+        if (stopped) {
+          listener();
+          void stopSync();
+          return;
+        }
+        unsubscribe = listener;
+      },
+      (error: unknown) => {
+        // Sync failing must never stop the app rendering. Everything below
+        // works from the local database, which is the entire point.
+        console.error('Could not start sync', error);
+      },
+    );
+
+    return () => {
+      stopped = true;
+      unsubscribe?.();
+      void stopSync();
+    };
+  }, [status, startSync, stopSync]);
 
   if (status === 'loading') {
     return (

@@ -49,3 +49,12 @@ export {
   type UploadError,
   type UploadOutcome,
 } from './sync/upload-outcome.js';
+export {
+  describeUploadReport,
+  RetryableUploadError,
+  uploadBatch,
+  type DiscardedWrite,
+  type UploadBatchOptions,
+  type UploadReport,
+  type WriteExecutor,
+} from './sync/upload-batch.js';

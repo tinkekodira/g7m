@@ -14,6 +14,20 @@ export default defineConfig({
    */
   base: './',
 
+  /**
+   * PowerSync runs SQLite in web workers, and those workers import each other
+   * — wa-sqlite's VFS modules are pulled in as separate chunks. Vite's default
+   * worker format is `iife`, which cannot code-split, so the build fails with
+   * "UMD and IIFE output formats are not supported for code-splitting builds".
+   *
+   * ES module workers are supported everywhere this app runs: Safari 15+,
+   * Chrome 80+, and both native WebViews. That is the same floor as the `es2022`
+   * target below, so this narrows nothing that was not already narrowed.
+   */
+  worker: {
+    format: 'es',
+  },
+
   server: {
     port: 5173,
     strictPort: true,
