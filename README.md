@@ -4,20 +4,26 @@ A strength training app for iOS, Android, Windows and macOS. One account, one
 set of data, synced across every device — and fully usable with no internet
 connection, because gyms are concrete basements.
 
-Two things it does:
+Three things it does:
 
 - **Learn.** An interactive 3D anatomy model. Spin it, tap a muscle, and see
   every exercise that trains it, split into compound and isolation work.
 - **Train.** Log a session set by set — fast, one-handed, offline — or pick a
   few muscle groups and have a complete workout generated for you.
+- **Coach.** Give it your height, weight, age and how active your week is, pick
+  a goal — lose fat, build muscle, both, get stronger — and it writes the plan.
+  Prefer to program your own? Do that; it will still tell you how the plan is
+  actually going after a few sessions. See
+  [ADR-0032](./DECISIONS.md#adr-0032--body-metrics-goals-and-the-coaching-loop-are-v1-scope).
 
 The full specification is [`CLAUDE_CODE_BRIEF.md`](./CLAUDE_CODE_BRIEF.md).
 This README is the on-ramp; the brief is the spec. Non-obvious technical calls
 are recorded in [`DECISIONS.md`](./DECISIONS.md).
 
-> **Status: Phase 0.** Foundation, tooling and design tokens are in place, with
-> a smoke screen that renders on every target. There is no database, no logger
-> and no 3D model yet. See [Build phases](#build-phases).
+> **Status: Phase 3.** Auth, the Postgres schema and its seed data, PowerSync,
+> the on-device SQLite copy and the repository layer are all in place and
+> running on a real phone with the network off. There is no exercise library
+> screen, no logger and no 3D model yet. See [Build phases](#build-phases).
 
 ---
 
@@ -218,14 +224,14 @@ Work proceeds one phase at a time, stopping at each boundary.
 
 | # | Phase | State |
 | --- | --- | --- |
-| 0 | Foundation and de-risking | **In review** |
+| 0 | Foundation and de-risking | **Complete** |
 | 1 | Data — schema, RLS, seed, auth | **Complete** |
-| 2 | Offline — PowerSync, local SQLite, repositories | **Unblocked** — [spike resolved](./docs/spikes/powersync-ios.md), PowerSync stays |
-| 3 | Exercise library — search, filters, detail, video | Not started |
+| 2 | Offline — PowerSync, local SQLite, repositories | **Complete** — [spike resolved](./docs/spikes/powersync-ios.md), PowerSync stays |
+| 3 | Exercise library — search, filters, detail, video | **In progress** |
 | 4 | Logging — the hot path | Not started |
 | 5 | 3D anatomy — viewer, raycasting, exercise panel | Not started |
-| 6 | Generator — rules engine, then the Claude layer | Not started |
-| 7 | Progress — history, 1RM trends, volume heat map | Not started |
+| 6 | Generator — body metrics, goals, rules engine, then the Claude layer | Not started |
+| 7 | Progress — history, 1RM trends, volume heat map, how your own plan is going | Not started |
 | 8 | Desktop polish | Not started |
 | 9 | Hardening — errors, GDPR, accessibility, performance | Not started |
 
