@@ -266,6 +266,22 @@ export class SessionRepository {
     );
   }
 
+  /**
+   * Record what the lifter weighs, for this workout.
+   *
+   * Needed mid-session as well as at the start: the app only asks once a
+   * bodyweight exercise is actually logged, so the snapshot is often written
+   * after the workout has begun. Every set in it is then measurable, including
+   * the ones already done.
+   */
+  async setBodyweight(sessionId: string, bodyweightKg: number | null): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(
+      'UPDATE workout_sessions SET bodyweight_kg = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+      [positiveOrNull(bodyweightKg), toTimestamp(now()), sessionId, userId],
+    );
+  }
+
   /** Abandon a workout and everything in it. */
   async discard(sessionId: string): Promise<void> {
     const { userId } = resolveContext(this.context);

@@ -27,7 +27,7 @@
  */
 import { DatabaseSync } from 'node:sqlite';
 import { AppSchema } from '../../schema/app-schema.js';
-import type { SqlValue, WritableDatabase } from '../database.js';
+import type { SqlValue, TransactionalDatabase, WritableDatabase } from '../database.js';
 
 /**
  * `CREATE TABLE` for one PowerSync table.
@@ -112,7 +112,7 @@ export function startSqliteHarness(): SqliteHarness {
      * session and its exercises in one call has to leave nothing behind when
      * the second write fails, and only an actual rollback tests that.
      */
-    writeTransaction: async <T>(fn: (tx: WritableDatabase) => Promise<T>): Promise<T> => {
+    writeTransaction: async <T>(fn: (tx: TransactionalDatabase) => Promise<T>): Promise<T> => {
       db.exec('BEGIN');
       try {
         const result = await fn(api);

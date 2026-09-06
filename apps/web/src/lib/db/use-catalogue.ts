@@ -1,16 +1,18 @@
 /**
- * Reading the catalogue from a component.
+ * Reading and writing the local database from a component.
  *
- * Three states, always: loading, failed, or here. A hook that returns only the
- * data forces every screen to invent the other two, and they get invented
- * differently each time.
+ * Three states on every read, always: loading, failed, or here. A hook that
+ * returns only the data forces every screen to invent the other two, and they
+ * get invented differently each time.
  *
- * Queries re-run when sync finishes. On a first launch the catalogue arrives a
- * second or two after the screen does, and a library that renders "No
- * exercises" and stays that way until the user navigates twice is the most
- * obvious possible bug in an offline-first app.
+ * Reads re-run on three triggers: the query's own key changing, sync
+ * delivering new rows, and a local write. The last one is why `useWrite`
+ * exists at all — a logger where the set you just saved does not appear until
+ * you navigate away and back is not a logger.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { create } from 'zustand';
+import { useAuthStore } from '../../auth/auth-store.js';
 import { useSyncStore } from '../powersync/sync-store.js';
 import { getRepositories, type Repositories } from './repositories.js';
 
@@ -20,6 +22,27 @@ export interface QueryState<T> {
   readonly error: string | null;
   readonly loading: boolean;
 }
+
+/**
+ * A counter bumped after every local write, so reads know to run again.
+ *
+ * PowerSync can watch a SQL statement and push changes, but the repositories
+ * exist to keep SQL out of the components — so the app cannot hand it a query
+ * to watch without unpicking that. A counter is cruder and costs one re-read
+ * per write of a fifty-row table, which is nothing next to the alternative of
+ * leaking SQL into every screen.
+ */
+interface RevisionState {
+  readonly revision: number;
+  readonly bump: () => void;
+}
+
+const useRevisionStore = create<RevisionState>((set) => ({
+  revision: 0,
+  bump: () => {
+    set((state) => ({ revision: state.revision + 1 }));
+  },
+}));
 
 /**
  * Run a query against the local database.
@@ -37,6 +60,8 @@ export function useCatalogue<T>(
 ): QueryState<T> {
   const [state, setState] = useState<QueryState<T>>({ data: null, error: null, loading: true });
   const lastSyncedAt = useSyncStore((s) => s.lastSyncedAt);
+  const revision = useRevisionStore((s) => s.revision);
+  const userId = useAuthStore((s) => s.session?.user.id ?? '');
 
   // Held in a ref so the effect can call the latest version without treating
   // it as a reason to run again.
@@ -47,9 +72,12 @@ export function useCatalogue<T>(
 
   useEffect(() => {
     let cancelled = false;
-    setState((previous) => ({ ...previous, loading: true }));
+    // Only "loading" when there is nothing to show. A re-read triggered by a
+    // local write already has the data on screen, and flashing a spinner over
+    // it every time a set is ticked would be worse than useless.
+    setState((previous) => ({ ...previous, loading: previous.data === null }));
 
-    getRepositories()
+    getRepositories(userId)
       .then((repositories) => runRef.current(repositories))
       .then(
         (data) => {
@@ -57,12 +85,12 @@ export function useCatalogue<T>(
         },
         (error: unknown) => {
           if (cancelled) return;
-          console.error('Could not read the local catalogue', error);
-          // The database, not the network. A user who is offline is not the
-          // explanation here and should not be told they are.
+          console.error('Could not read the local database', error);
+          // The database on this device, not the network. Somebody offline is
+          // not the explanation here and should not be told they are.
           setState({
             data: null,
-            error: 'Could not read the exercise catalogue on this device.',
+            error: 'Could not read this device’s copy of your data.',
             loading: false,
           });
         },
@@ -71,7 +99,53 @@ export function useCatalogue<T>(
     return () => {
       cancelled = true;
     };
-  }, [key, syncedAt]);
+  }, [key, syncedAt, revision, userId]);
 
   return state;
+}
+
+export interface WriteState {
+  /** Run a write, then make every open query re-read. */
+  readonly write: <T>(run: (repositories: Repositories) => Promise<T>) => Promise<T | null>;
+  /** True while a write is in flight, for disabling the button that started it. */
+  readonly busy: boolean;
+  readonly error: string | null;
+}
+
+/**
+ * Write to the local database.
+ *
+ * The write itself is local and effectively instant — it is a SQLite
+ * statement, not a request — so there is no optimistic-update machinery here.
+ * The queue takes care of the server, whenever the server becomes reachable.
+ */
+export function useWrite(): WriteState {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const bump = useRevisionStore((s) => s.bump);
+  const userId = useAuthStore((s) => s.session?.user.id ?? '');
+
+  const write = useCallback(
+    async <T>(run: (repositories: Repositories) => Promise<T>): Promise<T | null> => {
+      setBusy(true);
+      setError(null);
+      try {
+        const repositories = await getRepositories(userId);
+        const result = await run(repositories);
+        bump();
+        return result;
+      } catch (cause: unknown) {
+        console.error('Could not save to this device', cause);
+        // Worth saying plainly. A failed local write means the set is gone,
+        // which is the one thing this app promises will not happen.
+        setError('That did not save. Try again — nothing has been sent anywhere yet.');
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [bump, userId],
+  );
+
+  return { write, busy, error };
 }

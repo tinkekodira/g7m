@@ -157,8 +157,17 @@ export function HomeScreen() {
         <p className="mt-1 text-sm text-secondary">Signed in as {email}</p>
       </header>
 
-      {/* The first thing on the screen that is the actual app rather than a
-          readout of whether the plumbing works. */}
+      {/* The two things on this screen that are the actual app rather than a
+          readout of whether the plumbing works. Train first: it is what
+          somebody standing in a gym opened the app to do. */}
+      <Link
+        to="/workout"
+        className="flex min-h-tap items-center justify-between rounded-card bg-accent px-4 py-3 text-on-accent active:brightness-95"
+      >
+        <span className="text-base font-semibold">Train</span>
+        <span aria-hidden>→</span>
+      </Link>
+
       <Link
         to="/exercises"
         className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
