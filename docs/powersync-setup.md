@@ -177,9 +177,9 @@ Submitting the form provisions a deployment, which takes a minute or two.
 **Client Auth** in the sidebar. PowerSync has to verify that the JWT a device
 presents really came from your Supabase project, and pull the user id out of it.
 
-1. Tick **Use Supabase Auth**. This tells PowerSync to expect Supabase-shaped
-   tokens — the issuer, the `authenticated` audience. It does not itself supply
-   a key.
+1. Tick **Use Supabase Auth**. It does not supply a key, and — despite what the
+   name suggests — it does **not** make the Supabase audience acceptable on its
+   own. Step 3 below is still required. This was established the hard way.
 2. Supply the key, in **one** of two ways:
 
    - **JWKS URI** — the modern method, and the one to prefer. Paste:
@@ -194,11 +194,28 @@ presents really came from your Supabase project, and pull the user id out of it.
 
    Check Supabase → **Project Settings → API → JWT Keys** to see which you have.
 
-3. Leave **Development tokens**, **JWT Audience** and **HS256 authentication
-   tokens** alone. The first is a testing convenience; the other two are for
-   auth setups this project does not use.
+3. **Add `authenticated` to JWT Audience.** Click **+ Add** and type it exactly.
 
-4. **Save and Deploy.**
+   This one is not optional, and skipping it produces the least helpful failure
+   in the whole setup: sync connects to nothing, every count stays at zero, and
+   the only symptom is the word "Offline". The reason is a claim mismatch —
+   Supabase issues tokens with `aud: "authenticated"`, and PowerSync accepts
+   only its own instance URL until told otherwise:
+
+   ```
+   [PSYNC_S2105] Unexpected "aud" claim value: "authenticated"
+   configurationDetails: Current configuration allows these audience values:
+     ["https://<instance>.powersync.journeyapps.com"]
+   ```
+
+   The signature verifies fine. It is purely the audience check, and it costs an
+   hour to find if you do not know to look for it.
+
+4. Leave **HS256 authentication tokens** alone — that is for a different auth
+   setup — and leave **Development tokens** unticked for now. Step 6 turns them
+   on briefly, and turns them off again.
+
+5. **Save and Deploy.**
 
 ---
 
@@ -279,7 +296,8 @@ and says nothing.
    editor, **with a password you generate**.
 3. Create a PowerSync project at powersync.com, connected on **port 5432** as
    `powersync_replication`.
-4. Client Auth → tick **Use Supabase Auth**, paste the JWKS URI, Save and Deploy.
+4. Client Auth → tick **Use Supabase Auth**, paste the JWKS URI, **add
+   `authenticated` to JWT Audience**, Save and Deploy.
 5. Sync Streams → paste `powersync/sync-rules.yaml` → **Validate** → **Deploy**.
 6. Health should be all clear. Hand over the instance URL.
 
@@ -300,6 +318,8 @@ it rather than hoping.
 | Connects, replicates nothing | The publication is missing. Re-run the check query in step 1. |
 | Sync rules rejected | Older dialect — see the `token_parameters` note in step 5. |
 | Devices sync reference data but no user data | Auth is misconfigured: PowerSync is not extracting a user id from the JWT, so the `user_data` bucket matches nothing. Check step 4. |
+| The app says **Offline** and every count stays at zero, while Health is all clear | `authenticated` is missing from **JWT Audience**. The Logs page shows `PSYNC_S2105 Unexpected "aud" claim value` and a 401 on every `/sync/stream`. Step 4.3. |
+| Sync Diagnostics passes but the real app will not connect | Diagnostics uses a **development token**, signed by PowerSync itself. It exercises replication, the publication and the sync rules — and none of the Supabase JWT path. A passing diagnostic says nothing about whether real logins are trusted. |
 
 The last two rows are the ones worth remembering, because both look like data
 problems and neither is.
