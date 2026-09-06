@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DiscardedWrite } from '@g7m/db';
-import { describeDiscarded, describeSyncPhase, type SyncPhase } from './sync-store.js';
+import { describeDiscarded, describeSyncPhase, type SyncPhase } from './sync-messages.js';
 
 const discarded = (over: Partial<DiscardedWrite> = {}): DiscardedWrite => ({
   write: { kind: 'upsert', table: 'session_sets', row: { id: 'x' } },
