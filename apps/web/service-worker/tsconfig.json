@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    /**
+     * A service worker is not a page. `WebWorker` brings in the globals it
+     * actually has — `ServiceWorkerGlobalScope`, `FetchEvent`, `caches` — and
+     * leaves out `window` and `document`, which is the point: code that
+     * reaches for them here fails to compile instead of failing on a phone.
+     *
+     * `plugin.ts` and `precache.ts` are the build step, not the worker, so
+     * they are checked by `../tsconfig.node.json` against Node's globals.
+     */
+    "lib": ["ES2023", "WebWorker"],
+    "types": []
+  },
+  "include": ["sw.ts", "policy.ts", "policy.test.ts"]
+}
