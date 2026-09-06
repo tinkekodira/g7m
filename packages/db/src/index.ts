@@ -12,6 +12,7 @@
  *   `schema/sync-rules.ts`   renders powersync/sync-rules.yaml from that schema
  *   `sync/`                  what a queued local change means as a write, and
  *                            whether a failed upload is worth retrying
+ *   `repositories/`          the only code that reads or writes rows
  *   `testing/`               the PGlite harness that runs the real migrations
  *
  * Still to come in Phase 2: the repository implementations, and the connector
@@ -58,3 +59,44 @@ export {
   type UploadReport,
   type WriteExecutor,
 } from './sync/upload-batch.js';
+export {
+  newId,
+  resolveContext,
+  toTimestamp,
+  type QueryableDatabase,
+  type RepositoryContext,
+  type ResolvedContext,
+  type SqlValue,
+  type WritableDatabase,
+} from './repositories/database.js';
+export {
+  DIFFICULTIES,
+  ExerciseRepository,
+  FORCES,
+  MECHANICS,
+  MUSCLE_ROLES,
+  VIDEO_PROVIDERS,
+  type Difficulty,
+  type Exercise,
+  type ExerciseEquipment,
+  type Force,
+  type Mechanic,
+  type MuscleInvolvement,
+  type MuscleRole,
+  type VideoProvider,
+} from './repositories/exercises.js';
+export {
+  readBoolean,
+  readDate,
+  readEnum,
+  readJson,
+  readNumber,
+  readOptionalNumber,
+  readOptionalString,
+  readRequiredDate,
+  readString,
+  readStringArray,
+  writeBoolean,
+  writeStringArray,
+  type RawRow,
+} from './repositories/rows.js';

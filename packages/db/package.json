@@ -14,6 +14,7 @@
     "@electric-sql/pglite": "^0.5.8"
   },
   "dependencies": {
+    "@g7m/core": "workspace:*",
     "@powersync/web": "2.3.0"
   }
 }

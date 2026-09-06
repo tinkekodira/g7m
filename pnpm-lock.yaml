@@ -131,6 +131,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@g7m/core':
+        specifier: workspace:*
+        version: link:../core
       '@powersync/web':
         specifier: 2.3.0
         version: 2.3.0(@powersync/common@2.2.0)(@powersync/shared-internals@1.2.0(@powersync/common@2.2.0))
