@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import type { Exercise, MuscleRole } from '@g7m/db';
+import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 
 /**
@@ -39,12 +40,7 @@ export function ExerciseDetailScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="pt-6 pb-2">
-        <Link
-          to="/exercises"
-          className="inline-flex min-h-tap items-center text-sm text-secondary underline-offset-4 hover:underline"
-        >
-          ← All exercises
-        </Link>
+        <HeaderLink to="/exercises">← All exercises</HeaderLink>
       </header>
 
       {detail.error !== null ? (

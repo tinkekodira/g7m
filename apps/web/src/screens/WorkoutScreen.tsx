@@ -18,6 +18,7 @@ import {
 } from '@g7m/core';
 import type { Exercise, Profile, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { HeaderLink } from '../components/HeaderLink.js';
 import { formatElapsed, isRestOver, looksAbandoned, restRemaining } from './workout-timer.js';
 
 /**
@@ -171,9 +172,7 @@ export function WorkoutScreen() {
             {volume.countedSets > 0 && ` · ${String(Math.round(volume.volumeKg))} kg lifted`}
           </p>
         </div>
-        <Link to="/" className="text-sm text-secondary underline-offset-4 hover:underline">
-          Home
-        </Link>
+        <HeaderLink to="/">Home</HeaderLink>
       </header>
 
       {writeError !== null && (
@@ -314,9 +313,7 @@ function StartWorkout({ busy, onStart }: { readonly busy: boolean; readonly onSt
     <>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <h1 className="text-2xl font-semibold text-primary">Train</h1>
-        <Link to="/" className="text-sm text-secondary underline-offset-4 hover:underline">
-          Home
-        </Link>
+        <HeaderLink to="/">Home</HeaderLink>
       </header>
       <section className="rounded-card bg-surface p-4">
         <p className="mb-4 max-w-prose text-sm text-secondary">
@@ -499,7 +496,7 @@ function SetRow({
 
   return (
     <div className={set.isCompleted ? 'opacity-60' : undefined}>
-      <div className="mb-1 flex items-baseline justify-between gap-3">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
         <span className="text-xs font-medium text-muted">
           {set.setType === 'warmup' ? 'Warm-up' : `Set ${String(index + 1)}`}
         </span>
@@ -512,22 +509,45 @@ function SetRow({
         </span>
       </div>
 
-      <div className="flex items-end gap-2">
-        {weightLabel !== null && (
-          <div className="flex-1">
+      {/*
+        Two steppers and a tick, and on a phone they do not fit in a row.
+
+        Each stepper is two 48px buttons plus a field it has to be possible to
+        read a three-digit weight in; side by side with the tick that is about
+        330px of content in 326px of screen, and the reps stepper went off the
+        right-hand edge entirely. So they stack until there is room, and the
+        tick becomes a full-height column beside them — which is a better
+        target anyway, being the one thing pressed with a bar in the other hand.
+
+        `min-w-0` on every flex child is what stops a stepper refusing to
+        shrink: a flex item defaults to `min-width: auto`, so without it the
+        row grows past its container instead of the contents narrowing.
+      */}
+      <div className="flex items-stretch gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+          {weightLabel !== null && (
+            <div className="min-w-0 flex-1">
+              <Stepper
+                label={weightLabel}
+                suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
+                value={weight}
+                step={stepDisplay}
+                decimals={1}
+                disabled={busy}
+                onChange={setWeight}
+              />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
             <Stepper
-              label={weightLabel}
-              suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
-              value={weight}
-              step={stepDisplay}
-              decimals={1}
+              label="Reps"
+              value={reps}
+              step={1}
+              min={0}
               disabled={busy}
-              onChange={setWeight}
+              onChange={setReps}
             />
           </div>
-        )}
-        <div className="flex-1">
-          <Stepper label="Reps" value={reps} step={1} min={0} disabled={busy} onChange={setReps} />
         </div>
 
         <button
@@ -545,11 +565,9 @@ function SetRow({
             onComplete(changes);
           }}
           className={
-            // The largest target on the screen, deliberately. It is the one
-            // thing pressed with a bar in the other hand.
             set.isCompleted
-              ? 'flex size-tap shrink-0 items-center justify-center rounded-control bg-accent text-xl text-on-accent'
-              : 'flex size-tap shrink-0 items-center justify-center rounded-control border border-strong text-xl text-secondary active:bg-elevated'
+              ? 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control bg-accent text-2xl text-on-accent'
+              : 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated'
           }
         >
           ✓

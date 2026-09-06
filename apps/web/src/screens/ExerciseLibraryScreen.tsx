@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Chip, TextField } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
+import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
   hasFilters,
@@ -105,12 +106,7 @@ export function ExerciseLibraryScreen() {
         <h1 className="text-2xl font-semibold text-primary">
           {adding ? 'Add an exercise' : 'Exercises'}
         </h1>
-        <Link
-          to={adding ? '/workout' : '/'}
-          className="text-sm text-secondary underline-offset-4 hover:underline"
-        >
-          {adding ? 'Back' : 'Home'}
-        </Link>
+        <HeaderLink to={adding ? '/workout' : '/'}>{adding ? 'Back' : 'Home'}</HeaderLink>
       </header>
 
       <TextField
