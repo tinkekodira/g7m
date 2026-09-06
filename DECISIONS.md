@@ -1222,3 +1222,67 @@ A placeholder that is *valid input* is a trap in a document meant to be
 copy-pasted. The guide now puts the rotation command next to the creation
 command rather than in a note underneath, and gives a one-line generator so
 there is something to paste that is not the placeholder.
+
+---
+
+## ADR-0032 — Body metrics, goals and the coaching loop are v1 scope
+
+**Chosen:** the app collects height, weight, age and weekly activity level,
+turns those plus a stated goal into a training plan, and keeps commenting on how
+the plan is going — including when the user wrote the plan themselves.
+
+**Recorded before it is built**, on request, because it is not in
+`CLAUDE_CODE_BRIEF.md` and it changes decisions in phases that come first.
+
+### What the app has to do
+
+1. Ask for **height, weight, age and how active the week is**.
+2. Offer a **goal** on the back of those numbers: lose fat, build muscle, both
+   at once, get stronger.
+3. **Write the plan** from metrics plus goal.
+4. Let an experienced lifter — or one with a coach in real life — **build their
+   own workouts instead**, and after a handful of sessions tell them, unasked,
+   how it is actually going by our own measures.
+5. **Ask for a new weight at least weekly.** Every number above decays without
+   it, and a plan built on a figure from March is worse than no plan.
+
+### The three things this forces on work that lands sooner
+
+**Body metrics are an append-only history, not columns on `profiles`.** Point 5
+is the whole reason: the app asks for weight weekly *so that it has a series*.
+Overwriting `profiles.weight_kg` each Sunday throws away the only signal that
+says whether "lose fat" is working, and it cannot be reconstructed afterwards.
+So this is a `body_metrics` table — one row per measurement, `recorded_at`,
+never updated in place — and it needs to exist before the first screen asks for
+a weight, not after.
+
+Height and age are near-constant and could live on `profiles`; they will go in
+the same table anyway, because a single shape is cheaper than two, and because
+"age" is really date of birth, which is a fact with an as-of date like the rest.
+
+**Phase 6's generator is not what the brief's phase name suggests.** "Rules
+engine, then the Claude layer" reads as *pick exercises for these muscle
+groups*. Point 3 makes it *pick exercises for this person and this goal*, which
+takes different inputs, produces a multi-week plan rather than one session, and
+has to survive the user ignoring it. Building the muscle-group generator first
+and generalising later would mean writing it twice.
+
+**Advice is a read over logged sessions, not a mode the user opts into.**
+Point 4 says the feedback exists for self-built plans too, so it cannot be a
+branch inside the generator. It is an analysis that runs on session history and
+says the same kind of thing whoever wrote the plan — which puts it next to
+Phase 7's trends rather than inside Phase 6.
+
+### What is deliberately not decided here
+
+The actual coaching logic: which formula estimates maintenance calories, what
+weekly volume a goal implies, how many sessions before the app has standing to
+comment, and where the line sits between a rules engine and the Claude layer.
+Those need the logged data from Phase 4 to be worth arguing about.
+
+### Not medical advice
+
+The footer disclaimer already on the home screen becomes load-bearing here. An
+app that reads a bodyweight trend and recommends an intake is closer to health
+advice than one that counts sets, and §14's obligations — export, deletion,
+plain statements about what is stored — apply to the metrics history in full.
