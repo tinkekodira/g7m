@@ -169,6 +169,16 @@ export function HomeScreen() {
       </Link>
 
       <Link
+        to="/learn"
+        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      >
+        <span className="text-base font-medium text-primary">Learn — the 3D model</span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
+      </Link>
+
+      <Link
         to="/exercises"
         className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
       >
