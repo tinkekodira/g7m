@@ -1,9 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { serviceWorker } from './service-worker/plugin.js';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  /**
+   * The service worker is built last, from the files the other two produced:
+   * it needs the fingerprinted asset names, which do not exist until the
+   * bundle is written. See `service-worker/plugin.ts`.
+   */
+  plugins: [react(), tailwindcss(), serviceWorker()],
 
   /**
    * Relative asset URLs, so one build artefact works wherever it is served

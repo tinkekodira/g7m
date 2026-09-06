@@ -1286,3 +1286,111 @@ The footer disclaimer already on the home screen becomes load-bearing here. An
 app that reads a bodyweight trend and recommends an intake is closer to health
 advice than one that counts sets, and §14's obligations — export, deletion,
 plain statements about what is stored — apply to the metrics history in full.
+
+---
+
+## ADR-0033 — A hand-written service worker, because a deploy was not arriving
+
+**Chosen:** a service worker built by a small Vite plugin, plus a Reload prompt
+the user can ignore.
+
+**Rejected:** Workbox (`vite-plugin-pwa`); doing nothing and force-quitting the
+app after each deploy.
+
+### The bug it fixes
+
+A new build could sit on GitHub Pages for hours while the phone showed the old
+one. Two causes stacked:
+
+- Pages serves everything with `Cache-Control: max-age=600`, so the shell is ten
+  minutes stale by default.
+- An iOS Home Screen web app **resumes from memory**. It does not reload when
+  reopened, so the ten minutes never even start counting until something forces
+  a navigation.
+
+The workaround was to force-quit the app from the switcher after every deploy.
+That is fine for one developer and unacceptable for anyone else, and it means
+a fix for a bug someone reported cannot be delivered to them.
+
+The second half of the same problem is the reverse: without a worker, a cold
+start with no signal is a **blank screen**. The device holds a full SQLite
+database of the user's sets and there is no code to open it with. Calling that
+offline-first would be a lie.
+
+### How it works
+
+`sw.ts` is about a hundred lines and does three things:
+
+1. **Precaches every file in `dist`** at install, so a cold start with no
+   network has the whole app — including the wa-sqlite WebAssembly, without
+   which the page loads and the database does not open.
+2. **Serves the document network-first, with the HTTP cache bypassed**
+   (`fetch(url, { cache: 'no-store' })`). This is the line that fixes the ten
+   minutes.
+3. **Serves everything else under its scope cache-first**, which is always
+   correct because Vite fingerprints those names.
+
+Everything outside the scope is passed through untouched — no `respondWith`
+call at all. Supabase auth, PostgREST and the PowerSync sync stream must never
+meet a cache: a cached token response is a user who cannot sign out, and a
+cached sync checkpoint is a sync bug that takes weeks to attribute.
+
+### `skipWaiting` is not called, and the reload is a prompt
+
+A worker that activates the moment it downloads swaps the JavaScript under a
+running page. In a workout logger that can mean the chunk which was about to
+save a set is gone. So the new build waits, a bar appears saying a new version
+is ready, and the user picks the moment — during rest, not mid-set.
+
+The check runs on `visibilitychange`, throttled to a minute, not on a timer. An
+iOS Home Screen app spends most of its life suspended, so an interval fires
+when nobody is looking and not when they come back; visibility fires exactly on
+the return, which is the moment this whole feature exists for.
+
+### An update carries the old cache forward
+
+Four wa-sqlite binaries account for about eight of this app's nine megabytes.
+Refetching them on every deploy would mean an eight megabyte download over
+cellular to ship a corrected label, so install copies anything under `assets/`
+out of the previous cache instead of fetching it. That is sound rather than
+merely fast: Vite fingerprints those names with a content hash, so a matching
+path is matching bytes. `index.html`, `manifest.webmanifest` and the icons keep
+their names across builds and are always refetched.
+
+**The cost accepted:** a first install still fetches all four wa-sqlite variants
+even though the device will use one, because which one depends on a runtime VFS
+choice. About five megabytes, once, on first install only. Trimming the list by
+guessing at the VFS would trade that for a blank screen in a basement, which is
+the wrong trade.
+
+### Why not Workbox
+
+`vite-plugin-pwa` would have done this in a dozen lines of config, and it pulls
+in Workbox to generate a worker that would be the least inspectable code in the
+repository — on the one code path where a mistake **persists on the user's
+device after the fix has shipped**. A worker that caches the wrong thing keeps
+serving it, on a phone that is not in the room. The whole of what was wanted
+here is a precache manifest and two strategies. §0.3 says to ask before adding a
+dependency; the answer to "is a hundred lines worth a dependency" was no.
+
+The build step is a Vite plugin rather than a checked-in worker because the
+precache list is fingerprinted filenames, which do not exist until the bundle is
+written. It compiles `sw.ts` in `closeBundle` with the manifest and a build id
+substituted in.
+
+### Two things worth knowing about the build id
+
+It is a hash of the precached files **and their contents**, not a timestamp or
+the commit sha. A rebuild producing byte-identical output produces the same id,
+so nobody is prompted to reload for a README change. Contents rather than names,
+because most of `dist` is fingerprinted but the manifest and the icons are not.
+
+`sw.js` is excluded from its own precache list. A cached worker is a worker that
+cannot be replaced, which would make a bad deploy permanent on every device that
+installed it. The browser fetches it outside this cache, with
+`updateViaCache: 'none'` set at registration so no HTTP cache can answer either.
+
+### What this does not do
+
+No offline page for content that was never loaded, no background sync, no push.
+PowerSync already owns durable data; this owns the code that reads it.

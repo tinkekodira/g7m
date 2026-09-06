@@ -3,13 +3,14 @@ import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
+import { UpdateBanner } from './components/UpdateBanner.js';
 
 /**
  * The auth gate.
  *
  * There is deliberately no router yet. One gate and one screen do not need
- * route matching, and React Router lands in Phase 3 alongside the first real
- * navigation — with the WebView caveat from DECISIONS.md ADR-0013 to check.
+ * route matching, and React Router lands with the exercise library alongside
+ * the first real navigation — with the WebView caveat from ADR-0013 to check.
  */
 export function App() {
   const status = useAuthStore((s) => s.status);
@@ -72,5 +73,12 @@ export function App() {
     );
   }
 
-  return status === 'signed-in' ? <HomeScreen /> : <SignInScreen />;
+  return (
+    <>
+      {status === 'signed-in' ? <HomeScreen /> : <SignInScreen />}
+      {/* Outside the auth branch on purpose: a build can go stale on the sign-in
+          screen too, and that is the screen someone is stuck on when it does. */}
+      <UpdateBanner />
+    </>
+  );
 }

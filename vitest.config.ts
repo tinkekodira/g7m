@@ -9,7 +9,14 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
-    include: ['packages/*/src/**/*.test.ts', 'apps/*/src/**/*.test.ts'],
+    include: [
+      'packages/*/src/**/*.test.ts',
+      'apps/*/src/**/*.test.ts',
+      // The service worker and its build step live outside `src`, because they
+      // compile against a different lib (`WebWorker`) and a different runtime.
+      // Their pure parts are still the ones most worth testing.
+      'apps/*/service-worker/**/*.test.ts',
+    ],
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
     reporters: process.env.CI ? ['default', 'github-actions'] : ['default'],
     coverage: {
