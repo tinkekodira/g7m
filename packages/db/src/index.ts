@@ -88,6 +88,13 @@ export {
   type ProfileChanges,
 } from './repositories/profiles.js';
 export {
+  ACTIVITY_LEVELS,
+  BodyMetricsRepository,
+  type ActivityLevel,
+  type BodyMetric,
+  type MetricInput,
+} from './repositories/body-metrics.js';
+export {
   HistoryRepository,
   type HistoryWindow,
   type SessionSummary,

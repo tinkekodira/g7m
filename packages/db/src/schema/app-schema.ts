@@ -289,6 +289,31 @@ const sessionSets = new Table(
   },
 );
 
+/**
+ * An append-only record of what the user is, over time (ADR-0032).
+ *
+ * Distinct from `profiles.bodyweight_kg`, which is the *current* value read at
+ * the start of a workout. This is the series behind it, and it exists because
+ * "is losing fat working" is a question about a trend that cannot be
+ * reconstructed from a number overwritten every Sunday.
+ */
+const bodyMetrics = new Table(
+  {
+    user_id: column.text,
+    /** When it was measured, not when the row was written. */
+    recorded_at: column.text,
+    weight_kg: column.real,
+    height_cm: column.real,
+    activity_level: column.text,
+    body_fat_percent: column.real,
+    note: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  /** Both questions asked of this table are "the latest" or "the last N". */
+  { indexes: { by_recorded: ['recorded_at'] } },
+);
+
 const personalRecords = new Table(
   {
     user_id: column.text,
@@ -320,6 +345,7 @@ export const AppSchema = new Schema({
   session_exercises: sessionExercises,
   session_sets: sessionSets,
   personal_records: personalRecords,
+  body_metrics: bodyMetrics,
 });
 
 /**
