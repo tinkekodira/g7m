@@ -15,8 +15,13 @@
  *   `repositories/`          the only code that reads or writes rows
  *   `testing/`               the PGlite harness that runs the real migrations
  *
- * Still to come in Phase 2: the repository implementations, and the connector
- * in apps/web that hands `sync/` an actual Supabase client to write through.
+ * The repositories here are the catalogue: exercises, muscles and equipment.
+ * They are read-only, and not by omission — Postgres has no write policy on
+ * any of those tables, so a local write would sync up and be refused for good.
+ *
+ * Still to come: profile, session, set and routine repositories. They land in
+ * Phase 4 beside the logger, next to their first real call sites, because
+ * writing them now would be guessing at an interface.
  *
  * The Phase 1 note here said this package would hold a Drizzle schema. It does
  * not, and ADR-0028 records why — briefly, PowerSync needs its own schema
@@ -70,6 +75,19 @@ export {
   type WritableDatabase,
 } from './repositories/database.js';
 export {
+  EQUIPMENT_CATEGORIES,
+  EquipmentRepository,
+  type Equipment,
+  type EquipmentCategory,
+} from './repositories/equipment.js';
+export {
+  MUSCLE_REGIONS,
+  MuscleRepository,
+  type Muscle,
+  type MuscleGroup,
+  type MuscleRegion,
+} from './repositories/muscles.js';
+export {
   DIFFICULTIES,
   ExerciseRepository,
   FORCES,
@@ -79,6 +97,7 @@ export {
   type Difficulty,
   type Exercise,
   type ExerciseEquipment,
+  type ExerciseFilter,
   type Force,
   type Mechanic,
   type MuscleInvolvement,

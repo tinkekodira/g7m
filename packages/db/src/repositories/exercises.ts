@@ -11,7 +11,7 @@
  * working exactly where it is needed.
  */
 import { searchExercises, type SearchableExercise, type SearchMatch } from '@g7m/core';
-import type { QueryableDatabase } from './database.js';
+import type { QueryableDatabase, SqlValue } from './database.js';
 import {
   readBoolean,
   readEnum,
@@ -118,6 +118,42 @@ function toExercise(row: RawRow): Exercise {
  * queries — so a list would reshuffle under the user's thumb for no reason.
  */
 const LIST_ORDER = 'ORDER BY popularity_rank ASC, name ASC';
+/** The same order for a query that aliases the table, which most joins do. */
+const LIST_ORDER_ALIASED = 'ORDER BY e.popularity_rank ASC, e.name ASC';
+
+/**
+ * What the library screen narrows the catalogue by.
+ *
+ * Every field is optional, and an omitted field is not a constraint. An empty
+ * array is: `equipmentIds: []` means "with no equipment at all", which is a
+ * different question from "regardless of equipment" and, given the catalogue
+ * models bodyweight work as the `bodyweight-only` item, usually answers none.
+ */
+export interface ExerciseFilter {
+  /** Trains at least one muscle belonging to at least one of these groups. */
+  readonly muscleGroupIds?: readonly string[];
+  /** Trains at least one of these muscles. */
+  readonly muscleIds?: readonly string[];
+  /** Needs nothing outside this set. */
+  readonly equipmentIds?: readonly string[];
+  readonly mechanic?: Mechanic;
+  readonly difficulty?: Difficulty;
+}
+
+/**
+ * A muscle filter ignores the stabiliser role.
+ *
+ * "Show me chest exercises" should not return every row where the chest holds
+ * an isometric position — that is most of the upper body, and a filter that
+ * returns nearly everything has not filtered. Primary and secondary are what a
+ * person means by "trains".
+ */
+const TRAINED_ROLES = "('primary', 'secondary')";
+
+/** `?, ?, ?` for a list, so ids are always bound rather than interpolated. */
+function placeholders(count: number): string {
+  return new Array(count).fill('?').join(', ');
+}
 
 export class ExerciseRepository {
   constructor(private readonly db: QueryableDatabase) {}
@@ -128,6 +164,98 @@ export class ExerciseRepository {
       `SELECT * FROM exercises WHERE is_active = 1 ${LIST_ORDER}`,
     );
     return rows.map(toExercise);
+  }
+
+  /**
+   * The catalogue, narrowed. The query behind the library screen's filters.
+   *
+   * Built as one SQL statement rather than by loading everything and filtering
+   * in memory, unlike `search`. The difference is that these are set
+   * operations over three join tables — "trains any of these muscles" and
+   * "needs nothing outside this equipment" — which SQL expresses exactly and
+   * which array manipulation gets subtly wrong. Search is in memory because
+   * its ranking has to match the server's, which is a different argument.
+   */
+  async filter(criteria: ExerciseFilter): Promise<Exercise[]> {
+    const conditions = ['e.is_active = 1'];
+    const parameters: SqlValue[] = [];
+
+    if (criteria.muscleGroupIds !== undefined) {
+      conditions.push(
+        `EXISTS (SELECT 1 FROM exercise_muscles em
+                   JOIN muscles m ON m.id = em.muscle_id
+                  WHERE em.exercise_id = e.id
+                    AND em.role IN ${TRAINED_ROLES}
+                    AND m.muscle_group_id IN (${placeholders(criteria.muscleGroupIds.length)}))`,
+      );
+      parameters.push(...criteria.muscleGroupIds);
+    }
+
+    if (criteria.muscleIds !== undefined) {
+      conditions.push(
+        `EXISTS (SELECT 1 FROM exercise_muscles em
+                  WHERE em.exercise_id = e.id
+                    AND em.role IN ${TRAINED_ROLES}
+                    AND em.muscle_id IN (${placeholders(criteria.muscleIds.length)}))`,
+      );
+      parameters.push(...criteria.muscleIds);
+    }
+
+    if (criteria.equipmentIds !== undefined) {
+      // `NOT EXISTS ... NOT IN` is "every requirement is met", the same shape
+      // as availableWithUserEquipment and inverted just as easily. An empty
+      // set has no `NOT IN ()` to write, and means the exercise must need
+      // nothing at all.
+      conditions.push(
+        criteria.equipmentIds.length === 0
+          ? `NOT EXISTS (SELECT 1 FROM exercise_equipment ee WHERE ee.exercise_id = e.id)`
+          : `NOT EXISTS (SELECT 1 FROM exercise_equipment ee
+                          WHERE ee.exercise_id = e.id
+                            AND ee.equipment_id NOT IN (${placeholders(criteria.equipmentIds.length)}))`,
+      );
+      parameters.push(...criteria.equipmentIds);
+    }
+
+    if (criteria.mechanic !== undefined) {
+      conditions.push('e.mechanic = ?');
+      parameters.push(criteria.mechanic);
+    }
+
+    if (criteria.difficulty !== undefined) {
+      conditions.push('e.difficulty = ?');
+      parameters.push(criteria.difficulty);
+    }
+
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT e.* FROM exercises e WHERE ${conditions.join(' AND ')} ${LIST_ORDER_ALIASED}`,
+      parameters,
+    );
+    return rows.map(toExercise);
+  }
+
+  /**
+   * The muscle each exercise trains hardest, by exercise id.
+   *
+   * One query for the whole list, because the library shows a muscle under
+   * every name and fifty round trips to render one screen is how an offline
+   * app ends up feeling slower than an online one.
+   */
+  async primaryMuscleNames(): Promise<ReadonlyMap<string, string>> {
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT em.exercise_id, m.common_name, em.recruitment_weight
+         FROM exercise_muscles em
+         JOIN muscles m ON m.id = em.muscle_id
+        WHERE em.role = 'primary'
+        ORDER BY em.exercise_id ASC, em.recruitment_weight DESC, m.common_name ASC`,
+    );
+    const names = new Map<string, string>();
+    for (const row of rows) {
+      const id = readString(row, 'exercise_id', '');
+      // The ordering above puts the heaviest involvement first, so the first
+      // row seen for an exercise is the one to keep.
+      if (id !== '' && !names.has(id)) names.set(id, readString(row, 'common_name', ''));
+    }
+    return names;
   }
 
   async byId(id: string): Promise<Exercise | null> {
@@ -223,7 +351,7 @@ export class ExerciseRepository {
              WHERE ee.exercise_id = e.id
                AND ee.equipment_id NOT IN (SELECT equipment_id FROM user_equipment)
           )
-        ${LIST_ORDER.replace('popularity_rank', 'e.popularity_rank').replace('name', 'e.name')}`,
+        ${LIST_ORDER_ALIASED}`,
     );
     return rows.map(toExercise);
   }

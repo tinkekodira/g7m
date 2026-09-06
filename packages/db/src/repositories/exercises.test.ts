@@ -356,3 +356,240 @@ describe('availableWithUserEquipment', () => {
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
   });
 });
+
+describe('filter', () => {
+  /**
+   * A small catalogue with the shapes that break a filter: an exercise that
+   * needs two things, one that needs nothing, and a muscle involved only as a
+   * stabiliser.
+   */
+  beforeEach(async () => {
+    await db.seed('muscle_groups', { id: 'g-chest', slug: 'chest', name: 'Chest' });
+    await db.seed('muscle_groups', { id: 'g-legs', slug: 'legs', name: 'Legs' });
+    await db.seed('muscles', { id: 'm-pec', slug: 'pec', muscle_group_id: 'g-chest' });
+    await db.seed('muscles', { id: 'm-quad', slug: 'quad', muscle_group_id: 'g-legs' });
+    await db.seed('muscles', { id: 'm-core', slug: 'core', muscle_group_id: 'g-legs' });
+    await db.seed('equipment', { id: 'eq-bar', slug: 'barbell', name: 'Barbell' });
+    await db.seed('equipment', { id: 'eq-bench', slug: 'flat-bench', name: 'Flat bench' });
+
+    await seedExercise({
+      id: 'bench',
+      slug: 'bench-press',
+      name: 'Bench Press',
+      popularity_rank: 2,
+    });
+    await seedExercise({
+      id: 'squat',
+      slug: 'back-squat',
+      name: 'Back Squat',
+      popularity_rank: 1,
+      mechanic: 'compound',
+      difficulty: 'intermediate',
+    });
+    await seedExercise({
+      id: 'pushup',
+      slug: 'push-up',
+      name: 'Push-up',
+      popularity_rank: 3,
+      mechanic: 'compound',
+      difficulty: 'beginner',
+    });
+    await seedExercise({
+      id: 'curl',
+      slug: 'curl',
+      name: 'Curl',
+      popularity_rank: 4,
+      mechanic: 'isolation',
+      difficulty: 'beginner',
+    });
+
+    await db.seed('exercise_muscles', {
+      id: 'xm-1',
+      exercise_id: 'bench',
+      muscle_id: 'm-pec',
+      role: 'primary',
+      recruitment_weight: 1,
+    });
+    await db.seed('exercise_muscles', {
+      id: 'xm-2',
+      exercise_id: 'pushup',
+      muscle_id: 'm-pec',
+      role: 'primary',
+      recruitment_weight: 0.9,
+    });
+    await db.seed('exercise_muscles', {
+      id: 'xm-3',
+      exercise_id: 'squat',
+      muscle_id: 'm-quad',
+      role: 'primary',
+      recruitment_weight: 1,
+    });
+    // The trap: the squat involves the core, but only to hold position.
+    await db.seed('exercise_muscles', {
+      id: 'xm-4',
+      exercise_id: 'squat',
+      muscle_id: 'm-core',
+      role: 'stabilizer',
+      recruitment_weight: 0.3,
+    });
+
+    await db.seed('exercise_equipment', {
+      id: 'xe-1',
+      exercise_id: 'bench',
+      equipment_id: 'eq-bar',
+      is_primary: 1,
+    });
+    await db.seed('exercise_equipment', {
+      id: 'xe-2',
+      exercise_id: 'bench',
+      equipment_id: 'eq-bench',
+      is_primary: 0,
+    });
+    await db.seed('exercise_equipment', {
+      id: 'xe-3',
+      exercise_id: 'squat',
+      equipment_id: 'eq-bar',
+      is_primary: 1,
+    });
+  });
+
+  it('with no criteria is the whole active catalogue, in list order', async () => {
+    const all = await exercises.filter({});
+    expect(all.map((e) => e.id)).toEqual(['squat', 'bench', 'pushup', 'curl']);
+  });
+
+  it('still hides inactive exercises', async () => {
+    await seedExercise({ id: 'retired', slug: 'retired', is_active: 0 });
+    expect((await exercises.filter({})).map((e) => e.id)).not.toContain('retired');
+  });
+
+  it('narrows to a muscle group', async () => {
+    const chest = await exercises.filter({ muscleGroupIds: ['g-chest'] });
+    expect(chest.map((e) => e.id)).toEqual(['bench', 'pushup']);
+  });
+
+  it('treats several groups as any of them, not all of them', async () => {
+    // Someone ticking Chest and Legs is asking for a bigger list, not a
+    // smaller one. "All of them" would return nothing here and look broken.
+    const both = await exercises.filter({ muscleGroupIds: ['g-chest', 'g-legs'] });
+    expect(both.map((e) => e.id)).toEqual(['squat', 'bench', 'pushup']);
+  });
+
+  /**
+   * The squat holds the core isometrically. Counting that as "trains the core"
+   * would put most of the upper body under Legs, and a filter that returns
+   * nearly everything has not filtered.
+   */
+  it('ignores a muscle that is only a stabiliser', async () => {
+    const core = await exercises.filter({ muscleIds: ['m-core'] });
+    expect(core).toEqual([]);
+  });
+
+  it('narrows to individual muscles', async () => {
+    expect((await exercises.filter({ muscleIds: ['m-quad'] })).map((e) => e.id)).toEqual(['squat']);
+  });
+
+  it('requires every piece of equipment an exercise needs, not any', async () => {
+    // The same inversion as availableWithUserEquipment, and just as easy to
+    // write backwards: a bench press needs the bar *and* the bench.
+    const barOnly = (await exercises.filter({ equipmentIds: ['eq-bar'] })).map((e) => e.id);
+    expect(barOnly).toContain('squat');
+    expect(barOnly, 'bench press needs a bench too').not.toContain('bench');
+  });
+
+  it('includes what needs nothing, whatever equipment was chosen', async () => {
+    const barOnly = (await exercises.filter({ equipmentIds: ['eq-bar'] })).map((e) => e.id);
+    expect(barOnly).toContain('pushup');
+    expect(barOnly).toContain('curl');
+  });
+
+  it('reads an empty equipment list as needing nothing at all', async () => {
+    // Not the same as omitting the field. This is the answer to "what can I do
+    // in a hotel room", and it is why an empty array is not treated as absent.
+    expect((await exercises.filter({ equipmentIds: [] })).map((e) => e.id)).toEqual([
+      'pushup',
+      'curl',
+    ]);
+  });
+
+  it('combines criteria with AND', async () => {
+    const found = await exercises.filter({
+      muscleGroupIds: ['g-chest'],
+      equipmentIds: [],
+      difficulty: 'beginner',
+    });
+    expect(found.map((e) => e.id)).toEqual(['pushup']);
+  });
+
+  it('narrows by mechanic and difficulty', async () => {
+    expect((await exercises.filter({ mechanic: 'isolation' })).map((e) => e.id)).toEqual(['curl']);
+    expect((await exercises.filter({ difficulty: 'beginner' })).map((e) => e.id)).toEqual([
+      'pushup',
+      'curl',
+    ]);
+  });
+
+  it('returns nothing rather than everything when nothing matches', async () => {
+    expect(await exercises.filter({ muscleGroupIds: ['g-nonexistent'] })).toEqual([]);
+    expect(await exercises.filter({ muscleIds: [] })).toEqual([]);
+  });
+
+  it('binds ids rather than interpolating them', async () => {
+    // A value arriving from a URL must not be able to end the statement.
+    const injected = await exercises.filter({ muscleGroupIds: ["g-chest') OR 1=1 --"] });
+    expect(injected).toEqual([]);
+  });
+
+  it('keeps popularity order through a filter', async () => {
+    const ranks = (await exercises.filter({ muscleGroupIds: ['g-chest', 'g-legs'] })).map(
+      (e) => e.popularityRank,
+    );
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+});
+
+describe('primaryMuscleNames', () => {
+  beforeEach(async () => {
+    await db.seed('muscles', { id: 'm-pec', slug: 'pec', common_name: 'Chest' });
+    await db.seed('muscles', { id: 'm-tri', slug: 'tri', common_name: 'Triceps' });
+    await seedExercise({ id: 'bench', slug: 'bench-press' });
+    await seedExercise({ id: 'curl', slug: 'curl' });
+  });
+
+  it('gives the heaviest primary involvement per exercise', async () => {
+    await db.seed('exercise_muscles', {
+      id: 'xm-1',
+      exercise_id: 'bench',
+      muscle_id: 'm-tri',
+      role: 'primary',
+      recruitment_weight: 0.6,
+    });
+    await db.seed('exercise_muscles', {
+      id: 'xm-2',
+      exercise_id: 'bench',
+      muscle_id: 'm-pec',
+      role: 'primary',
+      recruitment_weight: 1,
+    });
+
+    expect((await exercises.primaryMuscleNames()).get('bench')).toBe('Chest');
+  });
+
+  it('ignores secondary and stabiliser involvement', async () => {
+    await db.seed('exercise_muscles', {
+      id: 'xm-1',
+      exercise_id: 'curl',
+      muscle_id: 'm-pec',
+      role: 'secondary',
+      recruitment_weight: 1,
+    });
+
+    expect((await exercises.primaryMuscleNames()).has('curl')).toBe(false);
+  });
+
+  it('omits an exercise with no primary muscle rather than inventing one', async () => {
+    const names = await exercises.primaryMuscleNames();
+    expect(names.get('bench')).toBeUndefined();
+    expect(names.size).toBe(0);
+  });
+});
