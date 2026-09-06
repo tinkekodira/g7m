@@ -75,6 +75,28 @@ export {
   type WritableDatabase,
 } from './repositories/database.js';
 export {
+  EXPERIENCE_LEVELS,
+  MAX_BIRTH_YEAR,
+  MAX_REST_DEFAULT_SECONDS,
+  MIN_BIRTH_YEAR,
+  MIN_REST_DEFAULT_SECONDS,
+  ProfileRepository,
+  UNIT_SYSTEMS,
+  type ExperienceLevel,
+  type Profile,
+  type ProfileChanges,
+} from './repositories/profiles.js';
+export {
+  SESSION_SOURCES,
+  SessionRepository,
+  type SessionExercise,
+  type SessionSet,
+  type SessionSource,
+  type SetChanges,
+  type StartSessionInput,
+  type WorkoutSession,
+} from './repositories/sessions.js';
+export {
   EQUIPMENT_CATEGORIES,
   EquipmentRepository,
   type Equipment,
