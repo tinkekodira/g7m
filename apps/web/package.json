@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "@g7m/core": "workspace:*",
+    "@g7m/db": "workspace:*",
     "@g7m/ui": "workspace:*",
+    "@journeyapps/wa-sqlite": "2.0.4",
+    "@powersync/web": "2.3.0",
     "@supabase/supabase-js": "^2.115.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -10,6 +10,8 @@ import {
   requestPersistenceOnce,
   type PersistenceReport,
 } from '../lib/storage.js';
+import { describeDiscarded, describeSyncPhase, useSyncStore } from '../lib/powersync/sync-store.js';
+import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 
 /**
  * Phase 1c landing screen.
@@ -54,7 +56,14 @@ export function HomeScreen() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [persistence, setPersistence] = useState<PersistenceReport | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [local, setLocal] = useState<LocalCounts | null>(null);
   const platform = detectPlatform();
+
+  const syncPhase = useSyncStore((s) => s.phase);
+  const syncBusy = useSyncStore((s) => s.busy);
+  const lastSyncedAt = useSyncStore((s) => s.lastSyncedAt);
+  const discarded = useSyncStore((s) => s.discarded);
+  const lostMessage = describeDiscarded(discarded);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +116,28 @@ export function HomeScreen() {
     };
   }, []);
 
+  /**
+   * Poll the local counts rather than watching them.
+   *
+   * `db.watch()` would push updates, but it also holds a subscription open for
+   * a panel that exists to be glanced at. Two seconds is fast enough to watch
+   * the catalogue arrive on a first sync and cheap enough not to matter.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const read = () => {
+      void readLocalCounts().then((counts) => {
+        if (!cancelled) setLocal(counts);
+      });
+    };
+    read();
+    const timer = setInterval(read, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [syncPhase, syncBusy]);
+
   const email = session?.user.email ?? 'unknown';
 
   return (
@@ -133,6 +164,42 @@ export function HomeScreen() {
             <Row label="Muscles on the model" value={snapshot.muscleCount} />
           </>
         )}
+      </section>
+
+      <section className="rounded-card bg-surface p-4">
+        <h2 className="mb-3 text-lg font-semibold text-primary">
+          Sync{syncBusy ? ' · working…' : ''}
+        </h2>
+        {/* The one message that is genuinely bad news: rows that exist here and
+            never will on the server. Shown above the counts, not below. */}
+        {lostMessage !== null && (
+          <p role="alert" className="mb-3 text-sm text-danger">
+            {lostMessage}
+          </p>
+        )}
+        <Row
+          label="Status"
+          value={
+            syncPhase === 'synced'
+              ? 'Connected'
+              : syncPhase === 'connecting'
+                ? 'Connecting'
+                : syncPhase === 'unconfigured'
+                  ? 'Not set up'
+                  : 'Offline'
+          }
+        />
+        {/* These come from SQLite on this device, not from the network. Turning
+            the network off and watching them stay is the whole demonstration. */}
+        <Row label="Exercises on device" value={local?.exercises ?? '—'} />
+        <Row label="Muscles on device" value={local?.muscles ?? '—'} />
+        <Row label="Equipment on device" value={local?.equipment ?? '—'} />
+        <Row label="Your profile rows" value={local?.profiles ?? '—'} />
+        <Row label="Workouts logged" value={local?.sessions ?? '—'} />
+        <Row label="Sets logged" value={local?.sets ?? '—'} />
+        <p className="mt-3 max-w-prose text-sm text-secondary">
+          {describeSyncPhase(syncPhase, lastSyncedAt)}
+        </p>
       </section>
 
       <section className="rounded-card bg-surface p-4">

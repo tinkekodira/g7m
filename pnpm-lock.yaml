@@ -75,9 +75,18 @@ importers:
       '@g7m/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@g7m/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@g7m/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@journeyapps/wa-sqlite':
+        specifier: 2.0.4
+        version: 2.0.4
+      '@powersync/web':
+        specifier: 2.3.0
+        version: 2.3.0(@powersync/common@2.2.0)(@powersync/shared-internals@1.2.0(@powersync/common@2.2.0))
       '@supabase/supabase-js':
         specifier: ^2.115.0
         version: 2.115.0
@@ -519,6 +528,9 @@ packages:
 
   '@journeyapps/wa-sqlite@2.0.3':
     resolution: {integrity: sha512-LEnzLL/+6z9AAOJQ1nZD5/lo5xE6ZWpkH/M6S3RAGiM047jDqKvGjx8SkGkG1bRcFbbGApf3RWlHGfrmButXcg==}
+
+  '@journeyapps/wa-sqlite@2.0.4':
+    resolution: {integrity: sha512-c5WE1UPOgDVy8+v63NRRhWsQqvWgkhS1TZKBxEYW/MS7bJE4ndbOfofz9covF7N2KElQVVRZ0qd+XjiS4zt63g==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2564,6 +2576,8 @@ snapshots:
   '@istanbuljs/schema@0.1.6': {}
 
   '@journeyapps/wa-sqlite@2.0.3': {}
+
+  '@journeyapps/wa-sqlite@2.0.4': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
