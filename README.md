@@ -36,7 +36,7 @@ are recorded in [`DECISIONS.md`](./DECISIONS.md).
 | Styling | Tailwind CSS v4, CSS-first token layer in `packages/ui` |
 | 3D | three.js via `@react-three/fiber` + `@react-three/drei` *(Phase 5)* |
 | Client state | Zustand — UI state only |
-| Routing | React Router *(Phase 3)* |
+| Routing | React Router, [`HashRouter`](./DECISIONS.md#adr-0034--hashrouter-mounted-inside-the-auth-gate-with-filters-in-the-url) |
 | Mobile shell | Capacitor 7 — iOS, Android |
 | Desktop shell | Tauri 2 — Windows, macOS |
 | Backend | Supabase (Postgres, Auth, Storage, Edge Functions), Frankfurt |

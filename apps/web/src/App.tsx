@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
+import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
+import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen.js';
+import { ExerciseDetailScreen } from './screens/ExerciseDetailScreen.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
 
 /**
  * The auth gate.
  *
- * There is deliberately no router yet. One gate and one screen do not need
- * route matching, and React Router lands with the exercise library alongside
- * the first real navigation — with the WebView caveat from ADR-0013 to check.
+ * The router is mounted inside the gate, not around it. See ADR-0034: a
+ * HashRouter owns `location.hash`, and the signed-out half of the app is
+ * exactly where an auth callback can arrive carrying one.
  */
 export function App() {
   const status = useAuthStore((s) => s.status);
@@ -25,10 +28,9 @@ export function App() {
   /**
    * Sync follows the session, not the screen.
    *
-   * Started here rather than in HomeScreen because it must survive navigation
-   * once Phase 3 adds routes — a sync connection that restarts on every screen
-   * change would re-download buckets for no reason and lose queued uploads to
-   * the churn.
+   * Started here rather than in a screen because it has to survive navigation:
+   * a sync connection that restarted on every route change would re-download
+   * buckets for no reason and lose queued uploads to the churn.
    *
    * Sign-out disconnects but deliberately does not clear: the queue can still
    * hold writes belonging to the user who is leaving.
@@ -75,10 +77,35 @@ export function App() {
 
   return (
     <>
-      {status === 'signed-in' ? <HomeScreen /> : <SignInScreen />}
-      {/* Outside the auth branch on purpose: a build can go stale on the sign-in
-          screen too, and that is the screen someone is stuck on when it does. */}
+      {status === 'signed-in' ? <SignedIn /> : <SignInScreen />}
+      {/* Outside both the auth branch and the router, on purpose. A build can
+          go stale on the sign-in screen too — and that is the screen someone is
+          stuck on when it does — and an update prompt that depended on a route
+          matching would vanish on exactly the URL that needed fixing. */}
       <UpdateBanner />
     </>
+  );
+}
+
+/**
+ * Every route in the app, all of them behind the auth gate.
+ *
+ * `HashRouter` rather than `BrowserRouter`, for two independent reasons that
+ * happen to agree — the WebView custom schemes from ADR-0013 and the relative
+ * asset base from ADR-0027. ADR-0034 has the argument.
+ */
+function SignedIn() {
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/exercises" element={<ExerciseLibraryScreen />} />
+        <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
+        {/* A leftover auth fragment, a bookmark from a build that named routes
+            differently, a typo. Home is a better answer than a blank page, and
+            `replace` keeps the bad URL out of the back button. */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </HashRouter>
   );
 }

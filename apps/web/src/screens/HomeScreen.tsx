@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { Button } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
@@ -155,6 +156,18 @@ export function HomeScreen() {
         </h1>
         <p className="mt-1 text-sm text-secondary">Signed in as {email}</p>
       </header>
+
+      {/* The first thing on the screen that is the actual app rather than a
+          readout of whether the plumbing works. */}
+      <Link
+        to="/exercises"
+        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      >
+        <span className="text-base font-medium text-primary">Browse exercises</span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
+      </Link>
 
       <section className="rounded-card bg-surface p-4">
         <h2 className="mb-3 text-lg font-semibold text-primary">Your account</h2>

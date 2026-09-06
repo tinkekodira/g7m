@@ -283,6 +283,21 @@ export class ExerciseRepository {
   }
 
   /**
+   * The library screen's one query: narrow, then rank.
+   *
+   * Composed here rather than in the component so that "what the library
+   * shows" is one tested thing. The order matters — filtering first means the
+   * ranking only ever sees exercises the user could actually do, so a search
+   * for "press" while Legs is selected does not put the bench press on screen
+   * and then have to explain itself.
+   */
+  async browse(criteria: ExerciseFilter, query = ''): Promise<Exercise[]> {
+    const found = await this.filter(criteria);
+    if (query.trim() === '') return found;
+    return searchExercises(found, query).map((match) => match.item);
+  }
+
+  /**
    * The exercises that train a muscle, strongest involvement first.
    *
    * This is the query behind tapping a muscle on the 3D model, so it runs on
