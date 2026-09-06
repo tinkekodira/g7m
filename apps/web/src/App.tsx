@@ -7,6 +7,7 @@ import { HomeScreen } from './screens/HomeScreen.js';
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen.js';
 import { ExerciseDetailScreen } from './screens/ExerciseDetailScreen.js';
 import { WorkoutScreen } from './screens/WorkoutScreen.js';
+import { LearnScreen } from './screens/LearnScreen.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
 
@@ -113,6 +114,7 @@ function SignedIn() {
         <Route path="/exercises" element={<ExerciseLibraryScreen />} />
         <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
         <Route path="/workout" element={<WorkoutScreen />} />
+        <Route path="/learn" element={<LearnScreen />} />
         {/* A leftover auth fragment, a bookmark from a build that named routes
             differently, a typo. Home is a better answer than a blank page, and
             `replace` keeps the bad URL out of the back button. */}
