@@ -13,6 +13,7 @@
 import {
   EquipmentRepository,
   ExerciseRepository,
+  HistoryRepository,
   MuscleRepository,
   ProfileRepository,
   SessionRepository,
@@ -34,6 +35,8 @@ export interface Repositories {
    */
   readonly profile: ProfileRepository;
   readonly sessions: SessionRepository;
+  /** Reads over finished training. Scoped to the user like the writes are. */
+  readonly history: HistoryRepository;
 }
 
 let opening: Promise<AbstractPowerSyncDatabase> | null = null;
@@ -62,5 +65,6 @@ export async function getRepositories(userId: string): Promise<Repositories> {
     equipment: new EquipmentRepository(db),
     profile: new ProfileRepository(db, context),
     sessions: new SessionRepository(db, context),
+    history: new HistoryRepository(db, context),
   };
 }
