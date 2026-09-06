@@ -67,7 +67,7 @@ describe('nextAuthState', () => {
 describe('friendlyAuthError', () => {
   it('turns the credentials error into something actionable', () => {
     expect(friendlyAuthError('Invalid login credentials')).toBe(
-      'That email and password do not match. Check both and try again.',
+      'That email and password do not match. Check both — or create an account if you have not made one yet.',
     );
   });
 
@@ -101,5 +101,99 @@ describe('friendlyAuthError', () => {
 
   it('is case insensitive, because the wording varies by endpoint', () => {
     expect(friendlyAuthError('INVALID LOGIN CREDENTIALS')).toContain('do not match');
+  });
+});
+
+describe('password recovery', () => {
+  const recovering: AuthState = { status: 'recovering', session: session };
+
+  /**
+   * A recovery link produces a real session. Treating it as an ordinary
+   * sign-in drops the user into the app with the password they could not
+   * remember still on the account — and no way back, because the only route
+   * to this state is another email.
+   */
+  it('is its own state, not a sign-in', () => {
+    expect(nextAuthState(SIGNED_OUT, 'PASSWORD_RECOVERY', session)).toEqual({
+      status: 'recovering',
+      session: session,
+    });
+  });
+
+  it('is a sign-out when the link produced no session', () => {
+    // What an expired link, or one opened in the wrong browser, looks like.
+    expect(nextAuthState(SIGNED_OUT, 'PASSWORD_RECOVERY', null)).toEqual({
+      status: 'signed-out',
+      session: null,
+    });
+  });
+
+  /**
+   * Supabase follows a recovery with SIGNED_IN in some flows, and fires
+   * TOKEN_REFRESHED on a timer regardless. Either would otherwise sweep the
+   * user into the app mid-reset.
+   */
+  it('is not ended by a SIGNED_IN or a token refresh', () => {
+    expect(nextAuthState(recovering, 'SIGNED_IN', session).status).toBe('recovering');
+    expect(nextAuthState(recovering, 'TOKEN_REFRESHED', session).status).toBe('recovering');
+    expect(nextAuthState(recovering, 'INITIAL_SESSION', session).status).toBe('recovering');
+  });
+
+  it('keeps the newest session while it holds', () => {
+    const refreshed = { ...session, access_token: 'newer' };
+    expect(nextAuthState(recovering, 'TOKEN_REFRESHED', refreshed).session).toEqual(refreshed);
+  });
+
+  it('ends when the password is set', () => {
+    // USER_UPDATED is what `updateUser({ password })` produces.
+    expect(nextAuthState(recovering, 'USER_UPDATED', session)).toEqual({
+      status: 'signed-in',
+      session: session,
+    });
+  });
+
+  it('ends on sign-out', () => {
+    expect(nextAuthState(recovering, 'SIGNED_OUT', null)).toEqual({
+      status: 'signed-out',
+      session: null,
+    });
+  });
+
+  it('does not fall out of recovery on a null session', () => {
+    // A transient refresh failure mid-reset must not become a sign-out; the
+    // same argument as TOKEN_REFRESHED for an ordinary session.
+    expect(nextAuthState(recovering, 'TOKEN_REFRESHED', null)).toEqual(recovering);
+  });
+});
+
+describe('friendlyAuthError, on getting back in', () => {
+  it('names creating an account as a possibility, without confirming one exists', () => {
+    const message = friendlyAuthError('Invalid login credentials');
+    expect(message).toContain('create an account');
+    // Supabase gives the same answer for a wrong password and an unknown
+    // email on purpose, so this form cannot become a way to find out who has
+    // an account. The wording must not undo that.
+    expect(message).not.toMatch(/no account|not registered|does not exist/i);
+  });
+
+  /**
+   * The trap that makes a reset link look broken: the PKCE verifier lives in
+   * the browser that asked for the reset, so opening the email in a mail app's
+   * built-in browser cannot complete the exchange.
+   */
+  it('explains a PKCE exchange that cannot complete', () => {
+    for (const raw of [
+      'invalid request: both auth code and code verifier should be non-empty',
+      'Invalid flow state, no valid flow state found',
+      'Auth session missing!',
+    ]) {
+      expect(friendlyAuthError(raw), raw).toContain('same browser');
+    }
+  });
+
+  it('says when the new password is the old one', () => {
+    expect(friendlyAuthError('New password should be different from the old password.')).toContain(
+      'different',
+    );
   });
 });

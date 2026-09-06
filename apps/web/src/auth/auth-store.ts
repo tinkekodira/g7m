@@ -10,7 +10,7 @@ import {
 } from './auth-state.js';
 
 /**
- * Session state, and the four things a user can do about it.
+ * Session state, and the things a user can do about it.
  *
  * Zustand holds UI state only (Brief §3). The session is the one piece of
  * server state that genuinely belongs here rather than in the database layer,
@@ -22,7 +22,15 @@ interface AuthStore {
   readonly session: Session | null;
   /** Non-null only after a failed attempt. Cleared when the user tries again. */
   readonly error: string | null;
-  /** True while a sign-in, sign-up or sign-out request is in flight. */
+  /**
+   * Something that went right and needs saying.
+   *
+   * Sign-up with email confirmation on, and a reset email being sent, both
+   * succeed while leaving the screen looking exactly as it did — which reads
+   * as nothing having happened, and gets the button pressed again.
+   */
+  readonly notice: string | null;
+  /** True while a request is in flight. */
   readonly busy: boolean;
 
   initialize: () => () => void;
@@ -30,12 +38,19 @@ interface AuthStore {
   signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Send a reset email. Says nothing about whether the address has an account. */
+  requestPasswordReset: (email: string) => Promise<void>;
+  /** Set a new password for the session a recovery link opened. */
+  setPassword: (password: string) => Promise<void>;
+  /** Leave recovery without changing anything. */
+  dismissRecovery: () => void;
   clearError: () => void;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   ...INITIAL_AUTH_STATE,
   error: null,
+  notice: null,
   busy: false,
 
   /**
@@ -58,16 +73,32 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   signIn: async (email, password) => {
-    set({ busy: true, error: null });
+    set({ busy: true, error: null, notice: null });
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     // On success the listener sets the session; setting it here too would race.
     set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
   },
 
   signUp: async (email, password) => {
-    set({ busy: true, error: null });
-    const { error } = await supabase.auth.signUp({ email, password });
-    set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
+    set({ busy: true, error: null, notice: null });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error !== null) {
+      set({ busy: false, error: friendlyAuthError(error.message) });
+      return;
+    }
+    /**
+     * With email confirmation switched on, a successful sign-up returns a user
+     * and no session — nothing changes on screen, and the natural reading is
+     * that the button did not work. Say so instead.
+     */
+    const needsConfirmation = data.session === null && data.user !== null;
+    set({
+      busy: false,
+      error: null,
+      notice: needsConfirmation
+        ? 'Account created. Check your email for a confirmation link, then sign in.'
+        : null,
+    });
   },
 
   signInWithGoogle: async () => {
@@ -103,7 +134,54 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
   },
 
+  /**
+   * Ask for a reset email.
+   *
+   * `redirectTo` is the app's own URL for the same reason the OAuth redirect
+   * is (see above): `location.origin` drops the `/g7m/` subpath, and Supabase
+   * silently substitutes `site_url` for anything not on the allow-list rather
+   * than erroring.
+   */
+  requestPasswordReset: async (email) => {
+    set({ busy: true, error: null, notice: null });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: appBaseUrl(),
+    });
+    if (error !== null) {
+      set({ busy: false, error: friendlyAuthError(error.message) });
+      return;
+    }
+    /**
+     * The same message whether or not that address has an account.
+     *
+     * Supabase does not say, on purpose — otherwise this form is a way for a
+     * stranger to find out who has one. The wording has to hold that line
+     * without sounding evasive.
+     */
+    set({
+      busy: false,
+      notice: 'If that email has an account, a reset link is on its way. It expires in an hour.',
+    });
+  },
+
+  setPassword: async (password) => {
+    set({ busy: true, error: null, notice: null });
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error !== null) {
+      set({ busy: false, error: friendlyAuthError(error.message) });
+      return;
+    }
+    // USER_UPDATED follows and ends the recovery; the listener handles it.
+    set({ busy: false, error: null, notice: null });
+  },
+
+  dismissRecovery: () => {
+    const { session } = get();
+    if (session === null) return;
+    set({ status: 'signed-in', error: null, notice: null });
+  },
+
   clearError: () => {
-    if (get().error !== null) set({ error: null });
+    if (get().error !== null || get().notice !== null) set({ error: null, notice: null });
   },
 }));
