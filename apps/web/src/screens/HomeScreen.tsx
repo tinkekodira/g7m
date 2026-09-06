@@ -10,7 +10,12 @@ import {
   requestPersistenceOnce,
   type PersistenceReport,
 } from '../lib/storage.js';
-import { describeDiscarded, describeSyncPhase, useSyncStore } from '../lib/powersync/sync-store.js';
+import {
+  describeDiscarded,
+  describeSyncError,
+  describeSyncPhase,
+  useSyncStore,
+} from '../lib/powersync/sync-store.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 
 /**
@@ -63,7 +68,9 @@ export function HomeScreen() {
   const syncBusy = useSyncStore((s) => s.busy);
   const lastSyncedAt = useSyncStore((s) => s.lastSyncedAt);
   const discarded = useSyncStore((s) => s.discarded);
+  const connectionError = useSyncStore((s) => s.connectionError);
   const lostMessage = describeDiscarded(discarded);
+  const syncErrorMessage = describeSyncError(connectionError ?? undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +182,14 @@ export function HomeScreen() {
         {lostMessage !== null && (
           <p role="alert" className="mb-3 text-sm text-danger">
             {lostMessage}
+          </p>
+        )}
+        {/* Why it is not connecting, when there is a reason beyond "no signal".
+            Without this the screen cannot tell a basement from a rejected
+            token, and neither can anyone reading it over your shoulder. */}
+        {syncErrorMessage !== null && (
+          <p role="alert" className="mb-3 text-sm text-danger">
+            {syncErrorMessage}
           </p>
         )}
         <Row
