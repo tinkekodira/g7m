@@ -1,6 +1,8 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { checkModelContract, placeholderBodyParts } from '@g7m/anatomy';
+import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
+import { Chip } from '@g7m/ui';
+import { DEFAULT_WEEK_START, recentWeeks, relativeVolume, volumeByMuscle } from '@g7m/core';
 import type { Exercise, Muscle } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -23,8 +25,13 @@ interface MuscleDetail {
   readonly isolation: readonly Exercise[];
 }
 
+/** Four weeks. Long enough to include a full training split, short enough to be current. */
+const HEATMAP_WEEKS = 4;
+
 export function LearnScreen() {
   const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<AnatomyMode>('explore');
+  const now = useMemo(() => new Date(), []);
 
   const parts = useMemo(() => placeholderBodyParts(), []);
 
@@ -76,6 +83,35 @@ export function LearnScreen() {
     [taxonomy.data],
   );
 
+  /**
+   * Volume per muscle over the last four weeks, keyed by slug for the viewer.
+   *
+   * Only fetched in heat-map mode. It reads a month of training and joins the
+   * whole `exercise_muscles` table, which is not work to do for somebody who
+   * opened this screen to look at where their lats are.
+   */
+  const heat = useCatalogue(`heat:${mode}`, async (repositories) => {
+    if (mode !== 'heatmap') return null;
+
+    const weeks = recentWeeks(now, HEATMAP_WEEKS, DEFAULT_WEEK_START);
+    const [sets, shares, muscles] = await Promise.all([
+      repositories.history.completedSets({ from: weeks[0] ?? now }),
+      repositories.history.muscleShares(),
+      repositories.muscles.list(),
+    ]);
+
+    // The viewer knows muscles by slug; everything below it uses ids.
+    const slugById = new Map(muscles.map((muscle) => [muscle.id, muscle.slug]));
+    const byId = relativeVolume(volumeByMuscle(sets, shares));
+
+    const bySlug = new Map<string, number>();
+    for (const [muscleId, value] of byId) {
+      const slug = slugById.get(muscleId);
+      if (slug !== undefined) bySlug.set(slug, value);
+    }
+    return { intensity: bySlug, trained: sets.length > 0 };
+  });
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
@@ -100,6 +136,28 @@ export function LearnScreen() {
         </p>
       )}
 
+      {/* Two modes, one model. The heat map is the same body with different
+          colours on it — a second viewer for it would drift until one
+          highlighted a muscle the other could not select. */}
+      <div className="flex gap-2">
+        <Chip
+          selected={mode === 'explore'}
+          onClick={() => {
+            setMode('explore');
+          }}
+        >
+          Explore
+        </Chip>
+        <Chip
+          selected={mode === 'heatmap'}
+          onClick={() => {
+            setMode('heatmap');
+          }}
+        >
+          What I have trained
+        </Chip>
+      </div>
+
       <div className="overflow-hidden rounded-card bg-elevated">
         <Suspense
           fallback={
@@ -114,13 +172,25 @@ export function LearnScreen() {
             selectableSlugs={selectableSlugs}
             selectedSlug={selected}
             onSelect={setSelected}
+            mode={mode}
+            {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
           />
         </Suspense>
       </div>
 
-      <p className="text-sm text-secondary">
-        Drag to turn the figure. Tap a muscle to see what trains it.
-      </p>
+      {mode === 'heatmap' ? (
+        <p className="text-sm text-secondary">
+          {heat.loading
+            ? 'Working out what you have trained…'
+            : heat.data?.trained === true
+              ? `Colour is volume over the last ${String(HEATMAP_WEEKS)} weeks, relative to your hardest-worked muscle. It answers what you trained most, not whether you trained enough.`
+              : 'Nothing logged in the last four weeks yet. Finish a workout and it will show up here.'}
+        </p>
+      ) : (
+        <p className="text-sm text-secondary">
+          Drag to turn the figure. Tap a muscle to see what trains it.
+        </p>
+      )}
 
       {/* A stand-in, and said out loud rather than left to be worked out. */}
       <p className="text-xs text-muted">
