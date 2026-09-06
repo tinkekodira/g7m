@@ -17,3 +17,5 @@ export * from './exercise-search.js';
 export * from './load.js';
 export * from './rest.js';
 export * from './prefill.js';
+export * from './week.js';
+export * from './progress.js';
