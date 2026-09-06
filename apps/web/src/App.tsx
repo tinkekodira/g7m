@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
+import { ResetPasswordScreen } from './auth/ResetPasswordScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen.js';
 import { ExerciseDetailScreen } from './screens/ExerciseDetailScreen.js';
@@ -78,7 +79,16 @@ export function App() {
 
   return (
     <>
-      {status === 'signed-in' ? <SignedIn /> : <SignInScreen />}
+      {/* Recovery sits between the two, not inside either. It is a live
+          session that must not reach the app, and not a signed-out state that
+          could show the form the user has just proved they cannot get past. */}
+      {status === 'signed-in' ? (
+        <SignedIn />
+      ) : status === 'recovering' ? (
+        <ResetPasswordScreen />
+      ) : (
+        <SignInScreen />
+      )}
       {/* Outside both the auth branch and the router, on purpose. A build can
           go stale on the sign-in screen too — and that is the screen someone is
           stuck on when it does — and an update prompt that depended on a route
