@@ -11,6 +11,7 @@
  * the tests.
  */
 import {
+  BodyMetricsRepository,
   EquipmentRepository,
   ExerciseRepository,
   HistoryRepository,
@@ -37,6 +38,8 @@ export interface Repositories {
   readonly sessions: SessionRepository;
   /** Reads over finished training. Scoped to the user like the writes are. */
   readonly history: HistoryRepository;
+  /** Append-only body measurements. See ADR-0032. */
+  readonly bodyMetrics: BodyMetricsRepository;
 }
 
 let opening: Promise<AbstractPowerSyncDatabase> | null = null;
@@ -66,5 +69,6 @@ export async function getRepositories(userId: string): Promise<Repositories> {
     profile: new ProfileRepository(db, context),
     sessions: new SessionRepository(db, context),
     history: new HistoryRepository(db, context),
+    bodyMetrics: new BodyMetricsRepository(db, context),
   };
 }

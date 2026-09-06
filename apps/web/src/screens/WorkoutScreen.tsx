@@ -194,9 +194,16 @@ export function WorkoutScreen() {
           busy={busy}
           onSave={(kg) => {
             void (async () => {
-              // Written to both: the profile is the standing value for the
-              // next workout, the session is the snapshot that makes the sets
-              // already logged in this one measurable.
+              /**
+               * Three writes, and each one is a different question.
+               *
+               * `body_metrics` is the append-only series the coaching loop
+               * reads — "is losing fat working" is a question about a trend
+               * (ADR-0032). `profiles` is the current value, read at the start
+               * of the next workout. The session is the snapshot that makes
+               * the sets already logged in *this* one measurable.
+               */
+              await write((r) => r.bodyMetrics.record({ weightKg: kg }));
               await write((r) => r.profile.update({ bodyweightKg: kg }));
               await write((r) => r.sessions.setBodyweight(session.id, kg));
             })();

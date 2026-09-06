@@ -78,3 +78,6 @@ bucket_definitions:
         SELECT id, user_id, exercise_id, record_type, value, formula, achieved_at,
         session_set_id, created_at, updated_at FROM personal_records WHERE user_id =
         bucket.user_id
+      - >-
+        SELECT id, user_id, recorded_at, weight_kg, height_cm, activity_level, body_fat_percent,
+        note, created_at, updated_at FROM body_metrics WHERE user_id = bucket.user_id
