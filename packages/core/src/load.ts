@@ -141,6 +141,24 @@ export function totalVolumeKg(
 }
 
 /**
+ * The load type an exercise should default to, from the equipment it needs.
+ *
+ * Driven by equipment **category**, not by a list of slugs. A pull-up needs a
+ * `pull-up-bar` and a dip needs a `dip-station`; neither mentions bodyweight,
+ * but both are in the `bodyweight` category, and a rule written against slugs
+ * would have to be extended every time a piece of kit is added — silently
+ * logging the next one as an external 0 kg lift until somebody noticed.
+ *
+ * An exercise needing nothing at all is bodyweight by definition.
+ */
+export function naturalLoadType(equipmentCategories: readonly string[]): LoadType {
+  if (equipmentCategories.length === 0) return 'bodyweight';
+  return equipmentCategories.every((category) => category === 'bodyweight')
+    ? 'bodyweight'
+    : 'external';
+}
+
+/**
  * Whether a set carries enough load for a one-rep-max estimate to mean
  * anything, and what weight that estimate should be based on.
  *

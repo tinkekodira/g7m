@@ -78,6 +78,12 @@ export interface ExerciseEquipment {
   readonly equipmentId: string;
   readonly slug: string;
   readonly name: string;
+  /**
+   * How the thing provides resistance. Carried because it decides the set's
+   * load type: everything in the `bodyweight` category means the lifter is
+   * the load. See `naturalLoadType` in @g7m/core.
+   */
+  readonly category: string;
   /** The station you queue for. Drives the generator's scheduling. */
   readonly isPrimary: boolean;
 }
@@ -334,7 +340,7 @@ export class ExerciseRepository {
   /** What an exercise needs, with the primary station first. */
   async equipmentFor(exerciseId: string): Promise<ExerciseEquipment[]> {
     const rows = await this.db.getAll<RawRow>(
-      `SELECT q.id AS equipment_id, q.slug, q.name, ee.is_primary
+      `SELECT q.id AS equipment_id, q.slug, q.name, q.category, ee.is_primary
          FROM exercise_equipment ee
          JOIN equipment q ON q.id = ee.equipment_id
         WHERE ee.exercise_id = ?
@@ -345,6 +351,7 @@ export class ExerciseRepository {
       equipmentId: readString(row, 'equipment_id', ''),
       slug: readString(row, 'slug', ''),
       name: readString(row, 'name', ''),
+      category: readString(row, 'category', 'other'),
       isPrimary: readBoolean(row, 'is_primary'),
     }));
   }

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Chip, TextField } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
-import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
   hasFilters,
   readFilters,
@@ -21,8 +21,19 @@ import {
  */
 export function ExerciseLibraryScreen() {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { write, busy } = useWrite();
   const filters = readFilters(params);
   const [equipmentOpen, setEquipmentOpen] = useState(filters.equipment.length > 0);
+
+  /**
+   * Reached from "Add an exercise" inside a workout.
+   *
+   * The same screen rather than a second picker: search and filters are the
+   * whole reason this list is usable, and maintaining two of them would mean
+   * fixing every bug twice.
+   */
+  const adding = params.get('add') === '1';
 
   /**
    * Replace rather than push.
@@ -32,7 +43,21 @@ export function ExerciseLibraryScreen() {
    * "deadlift" backwards before it left the screen.
    */
   const update = (next: LibraryFilters): void => {
-    setParams(writeFilters(next), { replace: true });
+    const written = writeFilters(next);
+    // Carried across every filter change. Without this, typing one character
+    // into the search box drops you out of add mode and back into browsing,
+    // which is a maddening thing to have happen mid-workout.
+    if (adding) written.set('add', '1');
+    setParams(written, { replace: true });
+  };
+
+  const addToWorkout = (exercise: Exercise): void => {
+    void (async () => {
+      const session = await write((r) => r.sessions.active());
+      if (session == null) return;
+      await write((r) => r.sessions.addExercise(session.id, exercise.id));
+      await navigate('/workout');
+    })();
   };
 
   const taxonomy = useCatalogue('taxonomy', async (repositories) => {
@@ -77,9 +102,14 @@ export function ExerciseLibraryScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Exercises</h1>
-        <Link to="/" className="text-sm text-secondary underline-offset-4 hover:underline">
-          Home
+        <h1 className="text-2xl font-semibold text-primary">
+          {adding ? 'Add an exercise' : 'Exercises'}
+        </h1>
+        <Link
+          to={adding ? '/workout' : '/'}
+          className="text-sm text-secondary underline-offset-4 hover:underline"
+        >
+          {adding ? 'Back' : 'Home'}
         </Link>
       </header>
 
@@ -193,6 +223,14 @@ export function ExerciseLibraryScreen() {
                   <ExerciseRow
                     exercise={exercise}
                     muscle={results.data?.muscles.get(exercise.id) ?? null}
+                    onAdd={
+                      adding
+                        ? () => {
+                            addToWorkout(exercise);
+                          }
+                        : null
+                    }
+                    busy={busy}
                   />
                 </li>
               ))}
@@ -207,21 +245,48 @@ export function ExerciseLibraryScreen() {
 function ExerciseRow({
   exercise,
   muscle,
+  onAdd,
+  busy,
 }: {
   readonly exercise: Exercise;
   readonly muscle: string | null;
+  /** Non-null while picking an exercise for a workout in progress. */
+  readonly onAdd: (() => void) | null;
+  readonly busy: boolean;
 }) {
   const detail = [muscle, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
     .filter((part): part is string => part !== null)
     .join(' · ');
+
+  const body = (
+    <>
+      <span className="text-base font-medium text-primary">{exercise.name}</span>
+      <span className="text-sm text-secondary">{detail}</span>
+    </>
+  );
+
+  // A button, not a link, when the tap adds rather than navigates. The
+  // difference matters to a screen reader and to anyone who long-presses
+  // expecting "open in new tab" to mean something.
+  if (onAdd !== null) {
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onAdd}
+        className="flex min-h-tap w-full flex-col justify-center rounded-card bg-surface px-4 py-3 text-left active:bg-elevated disabled:opacity-60"
+      >
+        {body}
+      </button>
+    );
+  }
 
   return (
     <Link
       to={`/exercises/${exercise.slug}`}
       className="flex min-h-tap flex-col justify-center rounded-card bg-surface px-4 py-3 active:bg-elevated"
     >
-      <span className="text-base font-medium text-primary">{exercise.name}</span>
-      <span className="text-sm text-secondary">{detail}</span>
+      {body}
     </Link>
   );
 }

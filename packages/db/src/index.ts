@@ -70,6 +70,7 @@ export {
   toTimestamp,
   type QueryableDatabase,
   type RepositoryContext,
+  type TransactionalDatabase,
   type ResolvedContext,
   type SqlValue,
   type WritableDatabase,

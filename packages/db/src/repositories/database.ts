@@ -24,8 +24,20 @@ export interface QueryableDatabase {
   get: <T>(sql: string, parameters?: SqlValue[]) => Promise<T>;
 }
 
-export interface WritableDatabase extends QueryableDatabase {
+/**
+ * Reads and writes, but no transaction of its own.
+ *
+ * This is what a transaction callback is handed. Deliberately narrower than
+ * `WritableDatabase`: SQLite has no nested transactions, so a type that
+ * offered one would be describing something the database cannot do — and it
+ * is also the shape PowerSync's own `Transaction` has, which is why its
+ * database satisfies the interface below structurally, with no adapter.
+ */
+export interface TransactionalDatabase extends QueryableDatabase {
   execute: (sql: string, parameters?: SqlValue[]) => Promise<unknown>;
+}
+
+export interface WritableDatabase extends TransactionalDatabase {
   /**
    * Run several statements as one unit.
    *
@@ -35,7 +47,7 @@ export interface WritableDatabase extends QueryableDatabase {
    * they travel together in the upload queue rather than arriving split across
    * two batches with a network failure in between.
    */
-  writeTransaction: <T>(fn: (tx: WritableDatabase) => Promise<T>) => Promise<T>;
+  writeTransaction: <T>(fn: (tx: TransactionalDatabase) => Promise<T>) => Promise<T>;
 }
 
 /**

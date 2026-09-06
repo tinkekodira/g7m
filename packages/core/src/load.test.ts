@@ -4,6 +4,7 @@ import {
   countsTowardVolume,
   effectiveLoadKg,
   loadForOneRepMax,
+  naturalLoadType,
   setVolumeKg,
   totalVolumeKg,
   type LoadType,
@@ -218,5 +219,32 @@ describe('loadForOneRepMax', () => {
   it('is null for a warm-up or an unfinished set', () => {
     expect(loadForOneRepMax(set({ setType: 'warmup' }), 80)).toBeNull();
     expect(loadForOneRepMax(set({ isCompleted: false }), 80)).toBeNull();
+  });
+});
+
+describe('naturalLoadType', () => {
+  it('is bodyweight when everything needed is bodyweight kit', () => {
+    // A pull-up needs a `pull-up-bar` and a dip needs a `dip-station`. Neither
+    // slug mentions bodyweight; both are in the bodyweight category, which is
+    // why the rule is written against categories.
+    expect(naturalLoadType(['bodyweight'])).toBe('bodyweight');
+    expect(naturalLoadType(['bodyweight', 'bodyweight'])).toBe('bodyweight');
+  });
+
+  it('is bodyweight when nothing at all is needed', () => {
+    expect(naturalLoadType([])).toBe('bodyweight');
+  });
+
+  it('is external as soon as anything loadable is involved', () => {
+    expect(naturalLoadType(['barbell', 'other'])).toBe('external');
+    expect(naturalLoadType(['machine'])).toBe('external');
+  });
+
+  /**
+   * A weight belt turns a pull-up into a loaded lift. One non-bodyweight item
+   * is enough, and treating this as bodyweight would throw away the plate.
+   */
+  it('is external for bodyweight kit plus something loaded', () => {
+    expect(naturalLoadType(['bodyweight', 'other'])).toBe('external');
   });
 });
