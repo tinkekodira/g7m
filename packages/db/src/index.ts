@@ -88,6 +88,11 @@ export {
   type ProfileChanges,
 } from './repositories/profiles.js';
 export {
+  HistoryRepository,
+  type HistoryWindow,
+  type SessionSummary,
+} from './repositories/history.js';
+export {
   SESSION_SOURCES,
   SessionRepository,
   type SessionExercise,
