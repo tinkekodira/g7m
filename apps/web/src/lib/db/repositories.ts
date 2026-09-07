@@ -17,6 +17,7 @@ import {
   GoalRepository,
   HistoryRepository,
   MuscleRepository,
+  PlannerRepository,
   ProfileRepository,
   SessionRepository,
 } from '@g7m/db';
@@ -43,6 +44,8 @@ export interface Repositories {
   readonly bodyMetrics: BodyMetricsRepository;
   /** Append-only goal decisions, newest wins. See ADR-0032. */
   readonly goals: GoalRepository;
+  /** The reads the session generator runs on. See ADR-0037. */
+  readonly planner: PlannerRepository;
 }
 
 let opening: Promise<AbstractPowerSyncDatabase> | null = null;
@@ -74,5 +77,6 @@ export async function getRepositories(userId: string): Promise<Repositories> {
     history: new HistoryRepository(db, context),
     bodyMetrics: new BodyMetricsRepository(db, context),
     goals: new GoalRepository(db, context),
+    planner: new PlannerRepository(db, context),
   };
 }
