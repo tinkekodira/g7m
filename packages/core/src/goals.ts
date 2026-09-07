@@ -102,6 +102,53 @@ export function goalExpectation(goal: TrainingGoal, sex: Sex | null): string {
   return EXPECTATIONS[goal];
 }
 
+/**
+ * The weekly change on the scale a goal is aiming for, in kilograms.
+ *
+ * The same numbers `goalExpectation` states in prose, so the sentence somebody
+ * reads before they start and the verdict they get six weeks later cannot
+ * drift apart. Stating one figure and then judging against another is how an
+ * app loses somebody's trust in a way it never gets back.
+ *
+ * Fat loss is a share of bodyweight rather than a flat rate: half a percent a
+ * week is the same instruction to everybody, while 0.75 kg is a very different
+ * week at 60 kg than at 100 kg. Hence the bodyweight argument.
+ *
+ * Null when the goal makes no promise about the scale. Getting stronger is the
+ * clear case — bodyweight can go either way and neither is a problem — and
+ * judging it by weight would be judging the wrong thing entirely.
+ */
+export interface PaceTarget {
+  /** Kilograms per week. Negative is loss, and `low` is always the smaller. */
+  readonly low: number;
+  readonly high: number;
+}
+
+export function paceTarget(
+  goal: TrainingGoal,
+  sex: Sex | null,
+  bodyweightKg: number | null,
+): PaceTarget | null {
+  switch (goal) {
+    case 'lose_fat': {
+      // 0.5-1% of bodyweight a week. Faster and strength goes with it.
+      if (bodyweightKg === null || bodyweightKg <= 0) return null;
+      return { low: -0.01 * bodyweightKg, high: -0.005 * bodyweightKg };
+    }
+    case 'build_muscle':
+      if (sex === 'female') return { low: 0.05, high: 0.15 };
+      if (sex === 'male') return { low: 0.1, high: 0.3 };
+      // Unknown: the band spans both, so nobody is told they are failing at a
+      // rate that is correct for them.
+      return { low: 0.05, high: 0.3 };
+    case 'recomp':
+      // The scale barely moving is the whole point, so the band straddles zero.
+      return { low: -0.1, high: 0.1 };
+    case 'get_stronger':
+      return null;
+  }
+}
+
 export const MIN_DAYS_PER_WEEK = 1;
 export const MAX_DAYS_PER_WEEK = 7;
 /** What most people can actually hold down, rather than what they first pick. */

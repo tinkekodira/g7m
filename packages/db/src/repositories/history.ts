@@ -117,6 +117,37 @@ export class HistoryRepository {
   }
 
   /**
+   * The primary muscle groups of every exercise, for the training review.
+   *
+   * Groups rather than muscles, and *primary* rather than every role — the
+   * same attribution the generator prescribes against, so the review and the
+   * plan are measuring the same thing. `muscleShares` above answers the other
+   * question, splitting a set across everything that helped, which is right
+   * for a heat map and wrong for "has your back had enough work".
+   */
+  async groupsByExercise(): Promise<Map<string, string[]>> {
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT em.exercise_id, mg.slug
+         FROM exercise_muscles em
+         JOIN muscles m ON m.id = em.muscle_id
+         JOIN muscle_groups mg ON mg.id = m.muscle_group_id
+        WHERE em.role = 'primary'`,
+    );
+
+    const groups = new Map<string, string[]>();
+    for (const row of rows) {
+      const exerciseId = readString(row, 'exercise_id', '');
+      const slug = readString(row, 'slug', '');
+      if (exerciseId === '' || slug === '') continue;
+      const own = groups.get(exerciseId) ?? [];
+      // An exercise with two primary muscles in one group counts once.
+      if (!own.includes(slug)) own.push(slug);
+      groups.set(exerciseId, own);
+    }
+    return groups;
+  }
+
+  /**
    * Which muscles each exercise works, and how much, for volume attribution.
    *
    * The whole table in one query rather than per exercise. It is a few hundred

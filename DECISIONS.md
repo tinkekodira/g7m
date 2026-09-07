@@ -1914,3 +1914,104 @@ than one that cheats by four millimetres.
 this is anatomically *shaped*, not anatomically correct. It is a good deal
 closer than boxes, and the naming contract it satisfies is unchanged — swapping
 in a licensed GLB is still a change of geometry source and nothing else.
+
+---
+
+## ADR-0040 — The review is a read over the log, and it is ranked
+
+**Status:** accepted · **Date:** 2026-09-07 · **Phase:** 6g
+
+### Context
+
+The last piece of ADR-0032, and the one the brief put in the plainest terms:
+*if the user thinks he knows what he's doing, let him build his own workouts,
+but give him a heads-up after a couple of sessions on how he's doing based on
+our logic.*
+
+Until now the app did the first half. Somebody who ignored the generated plan
+got a logger and silence, so the coaching pillar only paid off for people who
+took the plan — which is exactly backwards, because the lifter who programs
+their own is the one with an opinion worth answering.
+
+### Decision
+
+**It is a read over the log, not a mode.** `reviewTraining` does not know or
+care whether a session came from the generator or was typed in by somebody
+following a coach's spreadsheet. It reads what was done and measures it against
+the goal that was chosen. That is the whole design: there is no "self-coached
+mode" to build, maintain, or forget to update.
+
+**It is ranked, not exhaustive.** Eight true observations is a report nobody
+reads. `observations` comes back ordered, the screen shows three, and the
+ordering carries the judgement about what matters: going the opposite way to
+your own stated goal outranks everything, then showing up at all, then what got
+trained, then what is stalling.
+
+**It always finds room for good news.** A deliberate thumb on the scale, and
+the one place the ranking is not purely by severity. A review that is three
+warnings every time is one somebody stops opening after a fortnight — and they
+stop opening it precisely when the training is hard, which is when it had
+something worth saying. If there is any good news at all it is promoted into
+the top three rather than ranked off the end. It is never invented; a test
+asserts that too.
+
+### What it may now say, and what it still may not
+
+ADR-0036 deferred any judgement on the direction of a weight trend *until a
+goal existed to judge it against*. One exists, so that unlocks: "you are losing
+0.9 kg a week and you asked to lose fat" is a comparison against something the
+user chose, not an opinion about them.
+
+ADR-0035 does not unlock, ever. Nothing here reads a height, computes a BMI, or
+comments on how much somebody weighs. A test asserts that two people at 120 kg
+and 55 kg, both losing the same *share* of bodyweight, get the same verdict.
+
+`paceTarget` was added to `goals.ts` rather than to the review, so the sentence
+somebody reads before they start and the verdict they get six weeks later come
+from the same numbers. Stating one figure and judging against another is how an
+app loses trust in a way it does not get back.
+
+### Thresholds, and why each is where it is
+
+**Four sessions and twelve days** before it says anything. "A couple of
+workouts" read generously: two sessions is one good day and one bad one, and an
+app that draws conclusions from that tells somebody their squat has stalled
+because they trained tired once. Four sessions in three days is a holiday, not
+a fortnight of training, hence the second condition.
+
+**A group is behind below 55% of its weekly target**, and only the single worst
+one is reported. Six true observations about six muscle groups is a
+spreadsheet.
+
+**A lift has stalled after three sessions and twenty days** with no increase.
+Three sessions inside one week is a week, not a plateau, and calling it one
+sends somebody into a deload they do not need.
+
+**Consistency has a margin of 0.75 sessions.** Somebody on four days a week who
+manages three and a half is doing fine and does not need telling otherwise.
+
+### `too_soon` is an observation, not an empty list
+
+"Nothing to report" and "I have not looked yet" are different things and a
+screen has to be able to say which. The nudge on the home screen suppresses it
+— there is no point pointing somebody at a screen that will tell them to come
+back later — but the progress screen shows it, because that is the screen where
+the absence is the answer.
+
+### It appears in two places
+
+The **progress screen** shows three observations in full: that is the screen
+that exists to answer "how am I doing".
+
+The **home screen** shows the headline and a way through. The brief asked for a
+*heads-up* — something that finds the user rather than waiting to be opened —
+and the lifter running their own program may never tap Progress. Both read one
+shared hook, so the cost is one set of queries rather than two.
+
+### Attribution matches the generator, not the heat map
+
+A set counts once per **primary** muscle group of its exercise, which is what
+`planSession` prescribes against. `muscleShares` splits a set across everything
+that helped, weighted by recruitment — right for a heat map, wrong here.
+Crediting a bench press against a triceps target would let somebody go a month
+without ever being told their triceps are untrained.
