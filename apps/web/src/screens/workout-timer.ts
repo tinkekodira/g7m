@@ -61,3 +61,61 @@ export function looksAbandoned(startedAt: Date, now: Date): boolean {
   const hours = (now.getTime() - startedAt.getTime()) / (1000 * 60 * 60);
   return hours >= STALE_SESSION_HOURS;
 }
+
+/** What Home knows about a workout that is still open. */
+export interface OpenSession {
+  readonly startedAt: Date;
+  readonly exerciseCount: number;
+  readonly completedSets: number;
+}
+
+export interface OpenSessionSummary {
+  readonly headline: string;
+  /** One line under it. Never empty. */
+  readonly detail: string;
+  /** Open long enough that finishing it is the likelier intent. */
+  readonly stale: boolean;
+}
+
+/**
+ * The line Home shows when a workout is already running.
+ *
+ * Home used to offer "Start an empty workout" whether or not one was open,
+ * which is the app forgetting the thing the lifter is in the middle of. Coming
+ * back to it after a phone call meant tapping through to the logger to find out
+ * whether anything was still there.
+ *
+ * Split out of the screen because the wording has edges: a session five seconds
+ * old should not say "0 min in", one left open overnight should not read as an
+ * invitation to carry on, and a workout with nothing in it yet should not
+ * announce "0 exercises".
+ */
+export function openSessionSummary(session: OpenSession, now: Date): OpenSessionSummary {
+  const stale = looksAbandoned(session.startedAt, now);
+  const minutes = Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
+
+  const parts = [elapsedPhrase(minutes, stale)];
+  if (session.exerciseCount > 0) parts.push(plural(session.exerciseCount, 'exercise'));
+  if (session.completedSets > 0) parts.push(`${plural(session.completedSets, 'set')} done`);
+
+  return {
+    // Not an invitation to carry on when it has been open since yesterday —
+    // by then the useful action is closing it, and the elapsed time stored
+    // with it is already wrong.
+    headline: stale ? 'You left a workout open' : 'Continue your workout',
+    detail: parts.join(' · '),
+    stale,
+  };
+}
+
+function elapsedPhrase(minutes: number, stale: boolean): string {
+  // "0 min in" is worse than saying nothing about the clock at all.
+  if (minutes < 1) return 'just started';
+  if (stale) return `open for ${plural(Math.floor(minutes / 60), 'hour')}`;
+  if (minutes < 60) return `${String(minutes)} min in`;
+  return `${String(Math.floor(minutes / 60))} h ${String(minutes % 60)} min in`;
+}
+
+function plural(count: number, noun: string): string {
+  return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
+}

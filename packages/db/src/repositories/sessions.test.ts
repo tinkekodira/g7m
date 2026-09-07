@@ -186,6 +186,43 @@ describe('exercises in a workout', () => {
     expect(await sessions.setsFor(exercise.id)).toEqual([]);
   });
 
+  it('restores an undone exercise with all of its sets, in order', async () => {
+    const session = await sessions.start();
+    const exercise = await sessions.addExercise(session.id, 'squat');
+    await sessions.addSet(exercise.id, template({ weightKg: 60 }));
+    await sessions.addSet(exercise.id, template({ weightKg: 80 }));
+    const before = await sessions.setsFor(exercise.id);
+
+    const removed = await sessions.removeExercise(exercise.id);
+    if (removed === null) throw new Error('nothing to restore');
+    expect(removed.sets).toHaveLength(2);
+
+    await sessions.restoreExercise(removed);
+    expect((await sessions.exercisesFor(session.id)).map((e) => e.id)).toEqual([exercise.id]);
+    expect(await sessions.setsFor(exercise.id)).toEqual(before);
+  });
+
+  it('puts an undone exercise back in its place in the list', async () => {
+    const session = await sessions.start();
+    await sessions.addExercise(session.id, 'squat');
+    const middle = await sessions.addExercise(session.id, 'bench');
+    await sessions.addExercise(session.id, 'row');
+
+    const removed = await sessions.removeExercise(middle.id);
+    if (removed === null) throw new Error('nothing to restore');
+    await sessions.restoreExercise(removed);
+
+    expect((await sessions.exercisesFor(session.id)).map((e) => e.exerciseId)).toEqual([
+      'squat',
+      'bench',
+      'row',
+    ]);
+  });
+
+  it('has nothing to hand back for an exercise that was already gone', async () => {
+    expect(await sessions.removeExercise('not-an-exercise')).toBeNull();
+  });
+
   /**
    * SQLite has `PRAGMA foreign_keys` off and PowerSync does not cascade, so
    * the children have to be deleted explicitly or they are orphaned locally
@@ -323,6 +360,65 @@ describe('logging sets', () => {
     const added = await sessions.addSet(exerciseId, template());
     await sessions.removeSet(added.id);
     expect(await sessions.setById(added.id)).toBeNull();
+  });
+
+  /**
+   * Undo. Removing is a hard delete rather than a tombstone — a soft-delete
+   * column would have to be filtered out of volume, records, the prefill, the
+   * review and the generator, and one missed filter counts a set twice
+   * forever — so the row itself is what comes back, and the caller holds it
+   * for as long as the undo is on screen.
+   */
+  it('hands back what it deleted, and puts it back exactly', async () => {
+    const added = await sessions.addSet(exerciseId, template({ weightKg: 82.5, reps: 6 }));
+    await sessions.completeSet(added.id, { weightKg: 82.5, reps: 6 });
+    const before = await sessions.setById(added.id);
+
+    const removed = await sessions.removeSet(added.id);
+    expect(removed).not.toBeNull();
+    expect(await sessions.setById(added.id)).toBeNull();
+
+    if (removed === null) throw new Error('nothing to restore');
+    await sessions.restoreSet(removed);
+    expect(await sessions.setById(added.id)).toEqual(before);
+  });
+
+  it('puts an undone set back where it was, not at the end', async () => {
+    const first = await sessions.addSet(exerciseId, template({ weightKg: 60 }));
+    const middle = await sessions.addSet(exerciseId, template({ weightKg: 80 }));
+    await sessions.addSet(exerciseId, template({ weightKg: 100 }));
+
+    const removed = await sessions.removeSet(middle.id);
+    if (removed === null) throw new Error('nothing to restore');
+    await sessions.restoreSet(removed);
+
+    // A new order key appended to the end would read 60, 100, 80.
+    expect((await sessions.setsFor(exerciseId)).map((set) => set.weightKg)).toEqual([60, 80, 100]);
+    expect(first.orderKey.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * `is_completed = (completed_at is not null)` is a CHECK, and the two are
+   * written from the row they were read from precisely so a restore cannot
+   * split them. A row that breaks it is accepted here and refused on upload,
+   * permanently.
+   */
+  it('restores a finished set with both halves of the completion pair', async () => {
+    const added = await sessions.addSet(exerciseId, template());
+    await sessions.completeSet(added.id, { weightKg: 100, reps: 5 });
+
+    const removed = await sessions.removeSet(added.id);
+    if (removed === null) throw new Error('nothing to restore');
+    await sessions.restoreSet(removed);
+
+    const raw = await rawSet(added.id);
+    expect(raw.is_completed).toBe(1);
+    expect(raw.completed_at).not.toBeNull();
+    expect(raw.user_id).toBe(USER);
+  });
+
+  it('has nothing to hand back for a set that was already gone', async () => {
+    expect(await sessions.removeSet('not-a-set')).toBeNull();
   });
 
   it('stamps the owner on every row it writes', async () => {

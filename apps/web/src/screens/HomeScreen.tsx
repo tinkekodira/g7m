@@ -20,7 +20,9 @@ import {
 } from '../lib/powersync/sync-store.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
+import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { ReviewNudge } from '../components/ReviewCard.js';
+import { openSessionSummary, type OpenSession } from './workout-timer.js';
 
 /**
  * Phase 1c landing screen.
@@ -72,6 +74,7 @@ export function HomeScreen() {
   const [local, setLocal] = useState<LocalCounts | null>(null);
   const platform = detectPlatform();
   const review = useTrainingReview(useMemo(() => new Date(), []));
+  const open = useOpenSession();
 
   const syncPhase = useSyncStore((s) => s.phase);
   const syncBusy = useSyncStore((s) => s.busy);
@@ -189,29 +192,59 @@ export function HomeScreen() {
         />
       )}
 
+      {/*
+        A workout already running takes the top slot and the accent.
+
+        This screen used to offer "Start an empty workout" whether or not one
+        was open, which is the app forgetting the thing the lifter is in the
+        middle of: coming back after a phone call meant tapping through to the
+        logger to find out whether anything was still there.
+      */}
+      {open !== null && (
+        <Link
+          to="/workout"
+          className="flex min-h-tap items-center justify-between gap-4 rounded-card bg-accent px-4 py-3 text-on-accent active:brightness-95"
+        >
+          <span className="min-w-0">
+            <span className="block text-base font-semibold">{open.headline}</span>
+            <span className="numeric mt-0.5 block text-sm opacity-80">{open.detail}</span>
+          </span>
+          <span aria-hidden>→</span>
+        </Link>
+      )}
+
       {/* The two things on this screen that are the actual app rather than a
           readout of whether the plumbing works. Train first: it is what
           somebody standing in a gym opened the app to do. */}
       <Link
         to="/plan"
-        className="flex min-h-tap items-center justify-between rounded-card bg-accent px-4 py-3 text-on-accent active:brightness-95"
+        className={`flex min-h-tap items-center justify-between rounded-card px-4 py-3 ${
+          open === null
+            ? 'bg-accent text-on-accent active:brightness-95'
+            : 'bg-surface text-primary active:bg-elevated'
+        }`}
       >
         <span className="text-base font-semibold">Train — today’s session</span>
-        <span aria-hidden>→</span>
+        <span aria-hidden className={open === null ? undefined : 'text-muted'}>
+          →
+        </span>
       </Link>
 
       {/* Still here, and deliberately. Brief §0: somebody who knows what they
           are doing builds their own workout, and the generated plan is an
-          offer rather than a gate. */}
-      <Link
-        to="/workout"
-        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-      >
-        <span className="text-base font-medium text-primary">Start an empty workout</span>
-        <span aria-hidden className="text-muted">
-          →
-        </span>
-      </Link>
+          offer rather than a gate. Hidden while one is running, because the
+          card above already goes to the same place and means something else. */}
+      {open === null && (
+        <Link
+          to="/workout"
+          className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+        >
+          <span className="text-base font-medium text-primary">Start an empty workout</span>
+          <span aria-hidden className="text-muted">
+            →
+          </span>
+        </Link>
+      )}
 
       <Link
         to="/progress"
@@ -371,4 +404,50 @@ export function HomeScreen() {
       </footer>
     </main>
   );
+}
+
+/**
+ * The workout that is still open, if there is one, described in a line.
+ *
+ * A clock rather than a single read, because "23 min in" is wrong a minute
+ * later — and a lifter who left the app open on Home while resting would
+ * otherwise watch a stale number. Thirty seconds is under the resolution of
+ * anything it says, so nothing is ever visibly out of date.
+ *
+ * Null covers three cases that should all look the same here: no session, a
+ * database that has not opened yet, and a read that failed. None of them is
+ * worth an error on a landing screen — the logger itself says so properly.
+ */
+function useOpenSession(): ReturnType<typeof openSessionSummary> | null {
+  const [now, setNow] = useState(() => new Date());
+
+  const state = useCatalogue<OpenSession | null>('home-open-session', async (repositories) => {
+    const session = await repositories.sessions.active();
+    if (session === null) return null;
+
+    const entries = await repositories.sessions.exercisesFor(session.id);
+    const sets = await Promise.all(entries.map((entry) => repositories.sessions.setsFor(entry.id)));
+
+    return {
+      startedAt: session.startedAt,
+      exerciseCount: entries.length,
+      // Only what was actually done. A planned set nobody has performed yet is
+      // not progress, and counting it would make an untouched plan look busy.
+      completedSets: sets.flat().filter((set) => set.isCompleted).length,
+    };
+  });
+
+  const session = state.data;
+  const open = session !== null;
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30_000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [open]);
+
+  return session === null ? null : openSessionSummary(session, now);
 }

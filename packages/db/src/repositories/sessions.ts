@@ -33,6 +33,7 @@ import {
   resolveContext,
   toTimestamp,
   type RepositoryContext,
+  type SqlValue,
   type WritableDatabase,
 } from './database.js';
 import {
@@ -95,6 +96,30 @@ export interface StartSessionInput {
   readonly routineId?: string | null;
   /** From the profile, at the moment the workout begins. */
   readonly bodyweightKg?: number | null;
+}
+
+/**
+ * A deleted set, and everything needed to put it back.
+ *
+ * Undo without a soft-delete column. A tombstone would have to be filtered out
+ * of every query that touches `session_sets` — volume, records, the prefill,
+ * the review, the generator — and one missed filter is a set that silently
+ * counts twice forever. Holding the row in memory for the few seconds an undo
+ * is on screen costs nothing and cannot leak into a query.
+ *
+ * `createdAt` is carried separately because `SessionSet` does not expose it and
+ * should not: nothing reads it except the ordering this restores.
+ */
+export interface RemovedSet {
+  readonly set: SessionSet;
+  readonly createdAt: Date;
+}
+
+/** A deleted exercise and every set that went with it. */
+export interface RemovedExercise {
+  readonly exercise: SessionExercise;
+  readonly createdAt: Date;
+  readonly sets: readonly RemovedSet[];
 }
 
 /** What a caller may change about a logged set. Omitted means unchanged. */
@@ -337,9 +362,30 @@ export class SessionRepository {
     return { id, sessionId, exerciseId, orderKey, notes: null };
   }
 
-  /** Remove an exercise and every set logged under it. */
-  async removeExercise(sessionExerciseId: string): Promise<void> {
+  /**
+   * Remove an exercise and every set logged under it.
+   *
+   * Returns what was deleted, so the caller can offer an undo. Null means
+   * there was nothing there — a second tap on a button that had already
+   * fired, which should not then restore a phantom.
+   */
+  async removeExercise(sessionExerciseId: string): Promise<RemovedExercise | null> {
     const { userId } = resolveContext(this.context);
+
+    const [exerciseRow, setRows] = await Promise.all([
+      this.db.getOptional<RawRow>('SELECT * FROM session_exercises WHERE id = ? AND user_id = ?', [
+        sessionExerciseId,
+        userId,
+      ]),
+      this.db.getAll<RawRow>(
+        `SELECT * FROM session_sets
+          WHERE session_exercise_id = ? AND user_id = ?
+          ORDER BY order_key ASC, id ASC`,
+        [sessionExerciseId, userId],
+      ),
+    ]);
+    if (exerciseRow === null) return null;
+
     await this.db.writeTransaction(async (tx) => {
       await tx.execute('DELETE FROM session_sets WHERE session_exercise_id = ? AND user_id = ?', [
         sessionExerciseId,
@@ -349,6 +395,46 @@ export class SessionRepository {
         sessionExerciseId,
         userId,
       ]);
+    });
+
+    return {
+      exercise: toSessionExercise(exerciseRow),
+      createdAt: readRequiredDate(exerciseRow, 'created_at', new Date(0)),
+      sets: setRows.map(toRemovedSet),
+    };
+  }
+
+  /**
+   * Put back an exercise and its sets, exactly as they were.
+   *
+   * Same ids and same order keys, so the exercise reappears where it was in
+   * the list rather than at the end — which is the difference between an undo
+   * and a re-add. One transaction, because a restored exercise with none of
+   * its sets is a worse state than the deletion was.
+   */
+  async restoreExercise(removed: RemovedExercise): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    const at = toTimestamp(now());
+
+    await this.db.writeTransaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO session_exercises
+           (id, user_id, session_id, exercise_id, order_key, notes, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          removed.exercise.id,
+          userId,
+          removed.exercise.sessionId,
+          removed.exercise.exerciseId,
+          removed.exercise.orderKey,
+          removed.exercise.notes,
+          toTimestamp(removed.createdAt),
+          at,
+        ],
+      );
+      for (const set of removed.sets) {
+        await tx.execute(INSERT_SET, setValues(set, userId, at));
+      }
     });
   }
 
@@ -378,41 +464,22 @@ export class SessionRepository {
     const orderKey =
       last === undefined ? (initialOrderKeys(1)[0] ?? 'a0') : orderKeyBetween(last.orderKey, null);
 
-    const id = newId();
     const at = toTimestamp(now());
-    const weightKg = weightFor(template.loadType, template.weightKg);
-
-    await this.db.execute(
-      `INSERT INTO session_sets
-         (id, user_id, session_exercise_id, order_key, set_type, load_type,
-          weight_kg, reps, rpe, is_completed, completed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, ?, ?)`,
-      [
-        id,
-        userId,
-        sessionExerciseId,
-        orderKey,
-        template.setType,
-        template.loadType,
-        weightKg,
-        Math.max(0, Math.trunc(template.reps)),
-        at,
-        at,
-      ],
-    );
-
-    return {
-      id,
+    const set: SessionSet = {
+      id: newId(),
       sessionExerciseId,
       orderKey,
       setType: template.setType,
       loadType: template.loadType,
-      weightKg,
+      weightKg: weightFor(template.loadType, template.weightKg),
       reps: Math.max(0, Math.trunc(template.reps)),
       rpe: null,
       isCompleted: false,
       completedAt: null,
     };
+
+    await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
+    return set;
   }
 
   /**
@@ -480,9 +547,30 @@ export class SessionRepository {
     );
   }
 
-  async removeSet(setId: string): Promise<void> {
+  /** Delete a set, and hand back what it takes to put it back. */
+  async removeSet(setId: string): Promise<RemovedSet | null> {
     const { userId } = resolveContext(this.context);
+    const row = await this.db.getOptional<RawRow>(
+      'SELECT * FROM session_sets WHERE id = ? AND user_id = ?',
+      [setId, userId],
+    );
+    if (row === null) return null;
+
     await this.db.execute('DELETE FROM session_sets WHERE id = ? AND user_id = ?', [setId, userId]);
+    return toRemovedSet(row);
+  }
+
+  /**
+   * Put a set back where it was.
+   *
+   * The original order key is reused rather than a new one appended, so an
+   * undone middle set returns to the middle. `is_completed` and `completed_at`
+   * are written from the same row they were read from, which is the only way
+   * to be sure the paired CHECK still holds.
+   */
+  async restoreSet(removed: RemovedSet): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(INSERT_SET, setValues(removed, userId, toTimestamp(now())));
   }
 
   async setById(setId: string): Promise<SessionSet | null> {
@@ -540,6 +628,44 @@ export class SessionRepository {
         setType: set.setType,
       }));
   }
+}
+
+function toRemovedSet(row: RawRow): RemovedSet {
+  return {
+    set: toSessionSet(row),
+    createdAt: readRequiredDate(row, 'created_at', new Date(0)),
+  };
+}
+
+/**
+ * The one INSERT for `session_sets`, shared by `addSet` and the restores.
+ *
+ * Two copies of a thirteen-column insert is how one of them ends up missing
+ * `load_type` and writing a bodyweight set as an external lift.
+ */
+const INSERT_SET = `INSERT INTO session_sets
+     (id, user_id, session_exercise_id, order_key, set_type, load_type,
+      weight_kg, reps, rpe, is_completed, completed_at, created_at, updated_at)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+function setValues(removed: RemovedSet, userId: string, updatedAt: string): SqlValue[] {
+  const { set } = removed;
+  return [
+    set.id,
+    userId,
+    set.sessionExerciseId,
+    set.orderKey,
+    set.setType,
+    set.loadType,
+    weightFor(set.loadType, set.weightKg),
+    Math.max(0, Math.trunc(set.reps)),
+    clampRpe(set.rpe),
+    writeBoolean(set.isCompleted),
+    // Written from the row it was read from, so the pair cannot drift apart.
+    set.completedAt === null ? null : toTimestamp(set.completedAt),
+    toTimestamp(removed.createdAt),
+    updatedAt,
+  ];
 }
 
 /** A pure bodyweight set carries no external load, by definition and by CHECK. */

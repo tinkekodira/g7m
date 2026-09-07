@@ -38,4 +38,14 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        The rest timer, told to a phone in a pocket. `navigator.vibrate` exists in
+        the WebView either way and silently does nothing without this, which is the
+        worst kind of missing permission: no error, no prompt, no buzz.
+
+        Not a runtime permission — granted at install, never prompted for, and the
+        user's system haptics setting still overrides it.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

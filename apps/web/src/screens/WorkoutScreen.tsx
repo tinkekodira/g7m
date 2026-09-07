@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button, Stepper, TextField } from '@g7m/ui';
 import {
@@ -17,9 +17,12 @@ import {
   type SetTemplate,
   type UnitSystem,
 } from '@g7m/core';
-import type { Exercise, Profile, SessionSet, WorkoutSession } from '@g7m/db';
+import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { useWakeLock } from '../lib/use-wake-lock.js';
+import { buzz } from '../lib/haptics.js';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { UndoToast } from '../components/UndoToast.js';
 import { formatElapsed, isRestOver, looksAbandoned, restRemaining } from './workout-timer.js';
 
 /**
@@ -32,7 +35,8 @@ import { formatElapsed, isRestOver, looksAbandoned, restRemaining } from './work
  */
 
 interface ExerciseBlock {
-  readonly sessionExerciseId: string;
+  /** The whole row, not just its id: restoring one needs its order key. */
+  readonly entry: SessionExercise;
   readonly exercise: Exercise | null;
   readonly sets: readonly SessionSet[];
   readonly previous: readonly SetTemplate[];
@@ -52,6 +56,13 @@ export function WorkoutScreen() {
 
   const [now, setNow] = useState(() => new Date());
   const [rest, setRest] = useState<{ startedAt: Date; seconds: number } | null>(null);
+  const [undo, setUndo] = useState<Undoable | null>(null);
+  // Only ever increments, so removing the same thing twice still restarts the
+  // toast's clock rather than reading as one event.
+  const undoToken = useRef(0);
+  const forgetUndo = useCallback(() => {
+    setUndo(null);
+  }, []);
 
   const state = useCatalogue<Workout | null>('workout', async (repositories) => {
     const session = await repositories.sessions.active();
@@ -72,7 +83,7 @@ export function WorkoutScreen() {
         ]);
 
         return {
-          sessionExerciseId: entry.id,
+          entry,
           exercise,
           sets,
           previous,
@@ -109,7 +120,28 @@ export function WorkoutScreen() {
     };
   }, [ticking]);
 
+  /**
+   * The screen stays on for as long as a workout is open.
+   *
+   * A phone put down on a bench locks in thirty seconds, and the next set is
+   * logged with a passcode and chalky hands. It also keeps the clock above
+   * honest: a suspended tab stops firing intervals, so a sleeping phone is
+   * also a phone that has not noticed rest is over.
+   */
+  useWakeLock(ticking);
+
   const remaining = restRemaining(rest?.startedAt ?? null, rest?.seconds ?? 0, now);
+
+  /**
+   * Rest is over, said to a phone that is face-down on a bench.
+   *
+   * The bar has always shown it, and showing it was no use: the moment the
+   * timer matters is the one where nobody is looking at the screen.
+   */
+  const restOver = remaining !== null && isRestOver(remaining);
+  useEffect(() => {
+    if (restOver) buzz('alert');
+  }, [restOver]);
 
   if (state.error !== null) {
     return (
@@ -221,14 +253,14 @@ export function WorkoutScreen() {
 
       {blocks.map((block) => (
         <ExerciseCard
-          key={block.sessionExerciseId}
+          key={block.entry.id}
           block={block}
           unitSystem={unitSystem}
           busy={busy}
           onAddSet={() => {
             void write((r) =>
               r.sessions.addSet(
-                block.sessionExerciseId,
+                block.entry.id,
                 nextSetTemplate({
                   current: block.sets,
                   previous: block.previous,
@@ -240,6 +272,9 @@ export function WorkoutScreen() {
           }}
           onComplete={(setId, changes) => {
             void write((r) => r.sessions.completeSet(setId, changes));
+            // Answers the finger already on the glass, so the tick does not
+            // have to be watched to be believed.
+            buzz('tick');
             setRest({ startedAt: new Date(), seconds: block.restSeconds });
           }}
           onUncomplete={(setId) => {
@@ -249,13 +284,35 @@ export function WorkoutScreen() {
             void write((r) => r.sessions.updateSet(setId, changes));
           }}
           onRemoveSet={(setId) => {
-            void write((r) => r.sessions.removeSet(setId));
+            void (async () => {
+              const removed = await write((r) => r.sessions.removeSet(setId));
+              if (removed === null) return;
+              setUndo({
+                token: ++undoToken.current,
+                message: 'Set removed.',
+                restore: () => {
+                  void write((r) => r.sessions.restoreSet(removed));
+                },
+              });
+            })();
           }}
           onRateEffort={(setId, repsInReserve) => {
             void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
           }}
           onRemove={() => {
-            void write((r) => r.sessions.removeExercise(block.sessionExerciseId));
+            void (async () => {
+              const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
+              if (removed === null) return;
+              setUndo({
+                token: ++undoToken.current,
+                // The count is the part worth a second look: an exercise takes
+                // every set logged under it with it.
+                message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
+                restore: () => {
+                  void write((r) => r.sessions.restoreExercise(removed));
+                },
+              });
+            })();
           }}
         />
       ))}
@@ -271,6 +328,7 @@ export function WorkoutScreen() {
         <Button
           disabled={busy}
           onClick={() => {
+            buzz('success');
             void write((r) => r.sessions.finish(session.id)).then(() => {
               void navigate('/');
             });
@@ -294,21 +352,54 @@ export function WorkoutScreen() {
         </Button>
       </div>
 
-      {remaining !== null && (
-        <RestBar
-          remaining={remaining}
-          onSkip={() => {
-            setRest(null);
-          }}
-          onAdd={() => {
-            setRest((current) =>
-              current === null ? null : { ...current, seconds: current.seconds + 30 },
-            );
-          }}
-        />
+      {/*
+        One stack, pinned above the home indicator, because both of these are
+        out of the flow and either can be on screen while the other is. Two
+        independently fixed bars sit on top of each other, and the one that
+        loses is the undo.
+      */}
+      {(undo !== null || remaining !== null) && (
+        <div className="pb-safe-bottom fixed inset-x-0 bottom-0 z-40 flex flex-col">
+          {undo !== null && (
+            <UndoToast
+              token={undo.token}
+              message={undo.message}
+              onUndo={() => {
+                undo.restore();
+                setUndo(null);
+              }}
+              onExpire={forgetUndo}
+            />
+          )}
+          {remaining !== null && (
+            <RestBar
+              remaining={remaining}
+              onSkip={() => {
+                setRest(null);
+              }}
+              onAdd={() => {
+                setRest((current) =>
+                  current === null ? null : { ...current, seconds: current.seconds + 30 },
+                );
+              }}
+            />
+          )}
+        </div>
       )}
     </Shell>
   );
+}
+
+/** A deletion that has already happened, and the way back from it. */
+interface Undoable {
+  readonly token: number;
+  readonly message: string;
+  readonly restore: () => void;
+}
+
+function removedMessage(name: string, sets: number): string {
+  if (sets === 0) return `${name} removed.`;
+  return `${name} removed, with ${String(sets)} ${sets === 1 ? 'set' : 'sets'}.`;
 }
 
 function Shell({ children }: { readonly children: React.ReactNode }) {
@@ -715,11 +806,12 @@ function SetRow({
 }
 
 /**
- * The rest timer, pinned above the home indicator.
+ * The rest timer.
  *
- * Fixed rather than in the flow because it has to be readable while the list
- * is scrolled to wherever the next exercise is, and because looking for it is
- * the opposite of what a rest timer is for.
+ * Out of the flow because it has to be readable while the list is scrolled to
+ * wherever the next exercise is, and because looking for it is the opposite of
+ * what a rest timer is for. The pinning belongs to the stack above, so that the
+ * undo toast can share the same corner of the screen.
  */
 function RestBar({
   remaining,
@@ -732,7 +824,7 @@ function RestBar({
 }) {
   const done = isRestOver(remaining);
   return (
-    <div className="pb-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-subtle bg-elevated">
+    <div className="border-t border-subtle bg-elevated">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
         <div>
           <p className="text-xs text-muted">{done ? 'Rest over' : 'Resting'}</p>
