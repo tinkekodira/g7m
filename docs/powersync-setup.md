@@ -97,8 +97,23 @@ In the Supabase **SQL Editor**, run this — with your own password substituted:
 create role powersync_replication with replication login password 'PUT-A-LONG-RANDOM-PASSWORD-HERE';
 grant usage on schema public to powersync_replication;
 grant select on all tables in schema public to powersync_replication;
+alter default privileges in schema public grant select on tables to powersync_replication;
 alter role powersync_replication bypassrls;
 ```
+
+The fourth line is the one that is easy to leave out, and leaving it out breaks
+the *next* table rather than this one. `ON ALL TABLES` is a snapshot, not a
+standing rule: it grants on what exists at that instant, so a table added by a
+later migration is one the replication role cannot read. Deploying sync rules
+that mention it then fails with `permission denied for table <name>`, plus a
+`Table public.<name> not found` warning that is a consequence of the same
+thing — PowerSync introspects as this role, and a table it cannot read is a
+table it cannot see.
+
+`ALTER DEFAULT PRIVILEGES` is the standing rule. Migration
+`20260907140000_replication_grants.sql` applies both statements to an existing
+project, so if you set the role up before that migration existed you do not
+need to run anything here by hand — `supabase db push` has already done it.
 
 **Substitute the password before running it.** The placeholder above is
 committed to a public repository, so running this verbatim creates a role whose
