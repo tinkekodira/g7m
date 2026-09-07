@@ -195,7 +195,7 @@ export function HomeScreen() {
         to="/you"
         className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
       >
-        <span className="text-base font-medium text-primary">You — weight, height, activity</span>
+        <span className="text-base font-medium text-primary">You — weight, goal, activity</span>
         <span aria-hidden className="text-muted">
           →
         </span>

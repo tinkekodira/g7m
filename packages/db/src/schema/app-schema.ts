@@ -314,6 +314,29 @@ const bodyMetrics = new Table(
   { indexes: { by_recorded: ['recorded_at'] } },
 );
 
+/**
+ * What the lifter is training for, and since when.
+ *
+ * One row per decision, newest wins. The history is not decoration: "how has
+ * this been going" is only answerable against a start date, and a mutable
+ * column would let a change of mind silently rewrite the window the feedback
+ * loop reads.
+ */
+const trainingGoals = new Table(
+  {
+    user_id: column.text,
+    goal: column.text,
+    days_per_week: column.integer,
+    /** When the goal was chosen, which may be backdated to when it began. */
+    started_at: column.text,
+    note: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  /** Always read as "the current one" or "the last few". */
+  { indexes: { by_started: ['started_at'] } },
+);
+
 const personalRecords = new Table(
   {
     user_id: column.text,
@@ -346,6 +369,7 @@ export const AppSchema = new Schema({
   session_sets: sessionSets,
   personal_records: personalRecords,
   body_metrics: bodyMetrics,
+  training_goals: trainingGoals,
 });
 
 /**

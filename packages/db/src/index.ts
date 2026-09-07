@@ -88,6 +88,13 @@ export {
   type ProfileChanges,
 } from './repositories/profiles.js';
 export {
+  GoalRepository,
+  TRAINING_GOALS,
+  type Goal,
+  type GoalInput,
+  type TrainingGoal,
+} from './repositories/goals.js';
+export {
   ACTIVITY_LEVELS,
   BodyMetricsRepository,
   type ActivityLevel,

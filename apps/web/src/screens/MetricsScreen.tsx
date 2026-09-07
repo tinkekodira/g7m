@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import {
   ACTIVITY_DESCRIPTIONS,
   ACTIVITY_LABELS,
@@ -101,6 +102,19 @@ export function MetricsScreen() {
         age={age}
         activityLevel={current.data?.activityLevel ?? null}
       />
+
+      {/* The other half of what the generator needs. Placed after the numbers
+          rather than before them: the suggestion on that screen is drawn from
+          the weight trend, so it has more to say once there is one. */}
+      <Link
+        to="/goal"
+        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      >
+        <span className="text-base font-medium text-primary">Your goal</span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
+      </Link>
 
       <Readings entries={readings} unitSystem={unitSystem} now={now} />
 
