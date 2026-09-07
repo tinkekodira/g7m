@@ -38,6 +38,7 @@ const USER_TABLES = [
   'session_sets',
   'personal_records',
   'body_metrics',
+  'training_goals',
 ];
 
 describe('migrations', () => {

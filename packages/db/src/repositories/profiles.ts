@@ -12,7 +12,7 @@
  * append-only history when the coaching loop lands; until then it is a single
  * mutable number and this is the only place that writes it.
  */
-import type { UnitSystem } from '@g7m/core';
+import { EXPERIENCE_LEVELS, type ExperienceLevel, type UnitSystem } from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -31,8 +31,17 @@ import {
 } from './rows.js';
 
 export const UNIT_SYSTEMS = ['metric', 'imperial'] as const;
-export const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
-export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
+
+/**
+ * Re-exported from `@g7m/core`, where the plan generator can reach it.
+ *
+ * How long somebody has trained changes what a plan should contain — a
+ * beginner progresses on the same weight a fortnight running and an advanced
+ * lifter does not — so it is domain logic before it is a column. Callers of
+ * `@g7m/db` see no difference.
+ */
+export { EXPERIENCE_LEVELS };
+export type { ExperienceLevel };
 
 /** Postgres CHECKs. Enforced here too — see `clampProfile` for why. */
 export const MIN_REST_DEFAULT_SECONDS = 15;

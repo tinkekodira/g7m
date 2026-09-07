@@ -20,3 +20,4 @@ export * from './prefill.js';
 export * from './week.js';
 export * from './progress.js';
 export * from './body.js';
+export * from './goals.js';

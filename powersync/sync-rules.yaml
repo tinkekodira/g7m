@@ -81,3 +81,6 @@ bucket_definitions:
       - >-
         SELECT id, user_id, recorded_at, weight_kg, height_cm, activity_level, body_fat_percent,
         note, created_at, updated_at FROM body_metrics WHERE user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, goal, days_per_week, started_at, note, created_at, updated_at FROM
+        training_goals WHERE user_id = bucket.user_id

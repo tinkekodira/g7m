@@ -1556,3 +1556,82 @@ right for volume — a week with no training really is nothing, and fitting the
 axis would redraw ordinary variation as a cliff. Bodyweight needs the other
 one: on an axis running from zero, four kilograms lost over three months is a
 flat line, which is exactly the information the chart was drawn to show.
+
+---
+
+## ADR-0036 — A goal is a decision with a date on it, not a column
+
+**Status:** accepted · **Date:** 2026-09-07 · **Phase:** 6c
+
+### Context
+
+ADR-0032 said the generator takes a person and a goal. `body_metrics` is the
+person. This is the goal, and the obvious cheap version — a `goal` column on
+`profiles` — loses something the feedback loop needs.
+
+### Decision
+
+**`training_goals` is append-only, one row per decision, newest wins.**
+
+The feedback loop has to answer "how has this been going", and that question is
+only answerable against a start date: eight weeks into a cut is a different
+conversation from eight days into one. A mutable column plus `goal_set_at`
+would carry that much, but switching from "lose fat" to "build muscle" would
+silently rewrite history — so the app could never say *your cut ran eleven
+weeks and then you changed your mind*, which is one of the more useful things
+it could say to anybody.
+
+**`days_per_week` lives with the goal.** It is not in the brief's list and no
+plan can be written without it: a four-day upper/lower split and a three-day
+full body are different programs for the same goal, and picking the wrong one
+wastes somebody's month.
+
+**Changing the frequency corrects the row; changing the goal appends.** The
+consistent-looking thing would be to append both, and it would be wrong.
+`started_at` means "when this goal began", and moving from four days to five is
+a change of schedule, not a new goal. Appending would reset the clock, and an
+eleven-week cut would report as new.
+
+### The suggestion is drawn from behaviour, never from the body
+
+The brief asks the app to offer a goal from the user's metrics. There is an
+obvious way to do that and it is the wrong one: read a height and a weight,
+decide the person is carrying too much, propose losing fat. That is a verdict
+on somebody's body from an app that was asked for a training plan, and
+ADR-0035 already refused the arithmetic it would rest on.
+
+So `suggestGoal` reads two things only:
+
+- **What the weight has already been doing.** *"Your weight has been coming
+  down about 0.5 kg a week. If that is on purpose, this is the goal that
+  matches it."* A description of their own behaviour, which they are the
+  authority on, rather than an opinion about their body.
+- **How long they have been lifting.** A beginner genuinely does gain muscle
+  and lose fat at once, and it stops being true within a year — the one place
+  recomp is the honest recommendation rather than a compromise.
+
+`goals.test.ts` asserts the line directly: two users with identical trends and
+wildly different bodyweights get identical suggestions, word for word.
+
+**Null is a real answer**, and the common one early on. A suggestion invented
+from nothing looks like the app knows something, and the first thing it says
+about somebody should not be a guess.
+
+The suggestion is also shown **only before a goal exists**. Once somebody has
+decided, an unprompted suggestion is the app second-guessing them; the honest
+version of that conversation is the feedback loop, reading their actual
+training rather than their weight.
+
+### Expectations are stated before they start
+
+Each goal ships with a realistic pace — 0.25–0.75 kg a week for a cut,
+0.1–0.3 for a gain, "the scale will barely move" for recomp. Slower than the
+internet's numbers, on purpose. Somebody told the real figure up front does not
+quit in week three for gaining 0.2.
+
+### Two unions moved to `@g7m/core`
+
+`ACTIVITY_LEVELS` (6b) and `EXPERIENCE_LEVELS` (6c) were defined beside their
+columns and are now defined in core, re-exported by `@g7m/db`. Both change what
+a plan should contain before they are storage concerns, and the generator
+cannot import from the database layer. Callers see no difference.
