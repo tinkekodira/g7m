@@ -141,6 +141,8 @@ export {
   type Difficulty,
   type Exercise,
   type ExerciseEquipment,
+  EQUIPMENT_KITS,
+  type EquipmentKit,
   type ExerciseFilter,
   type Force,
   type Mechanic,

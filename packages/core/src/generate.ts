@@ -276,21 +276,87 @@ function rank(
   used: ReadonlySet<string>,
   wantCompound: boolean,
 ): PlannableExercise[] {
+  return rankFor(group, input.catalogue, seen, used, wantCompound, input.now);
+}
+
+function rankFor(
+  group: string,
+  catalogue: readonly PlannableExercise[],
+  seen: ReadonlyMap<string, ExerciseHistory>,
+  used: ReadonlySet<string>,
+  wantCompound: boolean,
+  now: Date,
+): PlannableExercise[] {
   const usable: { candidate: PlannableExercise; score: number }[] = [];
 
-  for (const candidate of input.catalogue) {
+  for (const candidate of catalogue) {
     if (used.has(candidate.id)) continue;
     if (!candidate.groupSlugs.includes(group)) continue;
 
     const last = seen.get(candidate.id)?.sessions[0];
-    if (last !== undefined && daysBetween(last.at, input.now) < MIN_DAYS_BETWEEN_REPEATS) {
-      continue;
-    }
+    if (last !== undefined && daysBetween(last.at, now) < MIN_DAYS_BETWEEN_REPEATS) continue;
 
-    usable.push({ candidate, score: scoreOf(candidate, last, wantCompound, input.now) });
+    usable.push({ candidate, score: scoreOf(candidate, last, wantCompound, now) });
   }
 
   return usable.sort((a, b) => b.score - a.score).map((entry) => entry.candidate);
+}
+
+/** One thing to add, and the group it would fill in. */
+export interface Suggestion {
+  readonly group: string;
+  readonly exerciseId: string;
+  readonly name: string;
+  /** Sets short of the weekly target. Bigger is more overdue. */
+  readonly setsBehind: number;
+}
+
+/**
+ * What to do about the muscles the heat map shows cold.
+ *
+ * A heat map answers "what have I trained" and stops there, which leaves the
+ * most useful half of the question — *so what do I do about it* — as an
+ * exercise for the reader. This is that half: the groups furthest behind their
+ * weekly target, each with the one exercise this person is most likely to
+ * actually do.
+ *
+ * Scored by the same function the generator uses, so the suggestion under the
+ * model and the exercise in tomorrow's session agree. Two different answers to
+ * the same question would be worse than only having one.
+ */
+export function suggestForNeglected(input: {
+  readonly catalogue: readonly PlannableExercise[];
+  readonly history: readonly ExerciseHistory[];
+  readonly setsThisWeekByGroup: ReadonlyMap<string, number>;
+  readonly weeklyTarget: number;
+  readonly now: Date;
+  readonly limit?: number;
+}): Suggestion[] {
+  const seen = new Map(input.history.map((entry) => [entry.exerciseId, entry]));
+  const groups = new Set(Object.values(FOCUS_GROUPS).flatMap((entry) => [...entry]));
+
+  const behind = [...groups]
+    .map((group) => ({
+      group,
+      setsBehind: input.weeklyTarget - (input.setsThisWeekByGroup.get(group) ?? 0),
+    }))
+    .filter((entry) => entry.setsBehind >= DEFICIT_FLOOR)
+    .sort((a, b) => b.setsBehind - a.setsBehind);
+
+  const used = new Set<string>();
+  const suggestions: Suggestion[] = [];
+
+  for (const { group, setsBehind } of behind) {
+    if (suggestions.length >= (input.limit ?? 4)) break;
+    // Compounds: the most muscle for the time, and the honest answer to "what
+    // should I add" when somebody has one gap and half an hour.
+    const choice = rankFor(group, input.catalogue, seen, used, true, input.now)[0];
+    if (choice === undefined) continue;
+    used.add(choice.id);
+    suggestions.push({ group, exerciseId: choice.id, name: choice.name, setsBehind });
+  }
+
+  return suggestions;
 }
 
 /**

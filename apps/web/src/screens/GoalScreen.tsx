@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_DAYS_PER_WEEK,
   GOAL_DESCRIPTIONS,
+  GOAL_SUMMARIES,
   goalExpectation,
   GOAL_LABELS,
   MAX_DAYS_PER_WEEK,
@@ -116,7 +117,10 @@ export function GoalScreen() {
       {current !== null && <CurrentGoal goal={current} now={now} />}
 
       {suggestion !== null && (
-        <section className="rounded-card border border-accent/40 bg-surface p-4">
+        <section
+          className="rise rounded-card border border-accent/40 bg-surface p-4"
+          style={{ animationDelay: '30ms' }}
+        >
           <h2 className="text-sm font-semibold text-accent">Based on what you have been doing</h2>
           <p className="mt-1 text-base text-primary">{GOAL_LABELS[suggestion.goal]}</p>
           <p className="mt-1 text-sm text-secondary">{suggestion.because}</p>
@@ -146,10 +150,11 @@ export function GoalScreen() {
         <h2 className="text-lg font-semibold text-primary">
           {current === null ? 'Pick one' : 'Change it'}
         </h2>
-        {TRAINING_GOALS.map((option) => (
+        {TRAINING_GOALS.map((option, index) => (
           <GoalCard
             key={option}
             goal={option}
+            index={index}
             selected={current?.goal === option}
             suggested={suggestion?.goal === option}
             busy={busy}
@@ -172,7 +177,7 @@ export function GoalScreen() {
 
 function CurrentGoal({ goal, now }: { readonly goal: Goal; readonly now: Date }) {
   return (
-    <section className="rounded-card bg-accent px-4 py-3 text-on-accent">
+    <section className="rise rounded-card bg-accent px-4 py-3 text-on-accent">
       <p className="text-xs uppercase opacity-80">Training for</p>
       <p className="text-xl font-semibold">{GOAL_LABELS[goal.goal]}</p>
       <p className="mt-1 text-sm opacity-90">
@@ -183,8 +188,17 @@ function CurrentGoal({ goal, now }: { readonly goal: Goal; readonly now: Date })
   );
 }
 
+/**
+ * One goal, as a headline until it is the one being considered.
+ *
+ * Four cards each carrying a paragraph and a pace range was a wall of text —
+ * everything on it true, none of it read. So the card is a line, and the
+ * detail arrives on the card that is chosen or suggested, which is the only
+ * one anybody wants it from.
+ */
 function GoalCard({
   goal,
+  index,
   selected,
   suggested,
   busy,
@@ -192,6 +206,8 @@ function GoalCard({
   onChoose,
 }: {
   readonly goal: TrainingGoal;
+  /** Position in the list, for the stagger. */
+  readonly index: number;
   readonly selected: boolean;
   readonly suggested: boolean;
   readonly busy: boolean;
@@ -199,20 +215,35 @@ function GoalCard({
   readonly sex: Sex | null;
   readonly onChoose: () => void;
 }) {
+  // Detail on the two cards it is worth reading on: the one already chosen,
+  // and the one being put forward.
+  const expanded = selected || suggested;
+
   return (
     <article
-      className={`rounded-card p-4 ${
+      className={`rise rounded-card p-4 ${
         selected ? 'border border-accent bg-elevated' : 'border border-subtle bg-surface'
       }`}
+      // Dealt out rather than dumped. Flattened to nothing by the
+      // reduced-motion block in tokens.css.
+      style={{ animationDelay: `${String(60 + index * 45)}ms` }}
     >
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-base font-semibold text-primary">{GOAL_LABELS[goal]}</h3>
-        {suggested && !selected && <span className="text-xs text-accent">Suggested</span>}
+        {suggested && !selected && <span className="shrink-0 text-xs text-accent">Suggested</span>}
       </div>
 
-      <p className="mt-1 text-sm text-secondary">{GOAL_DESCRIPTIONS[goal]}</p>
-      {/* The honest pace, before they start, so a slow week is not a failure. */}
-      <p className="mt-2 text-sm text-muted">{goalExpectation(goal, sex)}</p>
+      <p className="mt-1 text-sm text-secondary">{GOAL_SUMMARIES[goal]}</p>
+
+      {expanded && (
+        <>
+          <p className="mt-2 text-sm text-secondary">{GOAL_DESCRIPTIONS[goal]}</p>
+          {/* The honest pace, before they start, so a slow week is not a
+              failure. Shown here rather than on all four, where it was four
+              paces nobody had asked for yet. */}
+          <p className="mt-2 text-sm text-muted">{goalExpectation(goal, sex)}</p>
+        </>
+      )}
 
       <div className="mt-3">
         <Button

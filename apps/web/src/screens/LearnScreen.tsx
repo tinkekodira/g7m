@@ -2,7 +2,15 @@ import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { Chip } from '@g7m/ui';
-import { DEFAULT_WEEK_START, recentWeeks, relativeVolume, volumeByMuscle } from '@g7m/core';
+import {
+  DEFAULT_WEEK_START,
+  prescriptionFor,
+  recentWeeks,
+  relativeVolume,
+  startOfDay,
+  suggestForNeglected,
+  volumeByMuscle,
+} from '@g7m/core';
 import type { Exercise, Muscle } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -27,6 +35,14 @@ interface MuscleDetail {
 
 /** Four weeks. Long enough to include a full training split, short enough to be current. */
 const HEATMAP_WEEKS = 4;
+
+/**
+ * Sessions before the app offers an opinion about what is missing.
+ *
+ * A cold shoulder after two workouts is not a gap in somebody's training, it
+ * is a Tuesday.
+ */
+const SESSIONS_BEFORE_ADVICE = 5;
 
 export function LearnScreen() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -112,6 +128,50 @@ export function LearnScreen() {
     return { intensity: bySlug, trained: sets.length > 0 };
   });
 
+  /**
+   * What to do about the muscles the heat map shows cold.
+   *
+   * The map answers "what have I trained" and stops there, which leaves the
+   * more useful half of the question — so what do I add — as an exercise for
+   * the reader. Scored by the same function that picks tomorrow's session, so
+   * the suggestion here and the exercise there agree.
+   *
+   * Silent below five sessions. A cold shoulder after two workouts is not a
+   * gap in somebody's training, it is a Tuesday.
+   */
+  const todo = useCatalogue(`todo:${mode}`, async (repositories) => {
+    if (mode !== 'heatmap') return null;
+
+    const [profile, goal, sessions] = await Promise.all([
+      repositories.profile.current(),
+      repositories.goals.current(),
+      repositories.history.sessionSummaries(SESSIONS_BEFORE_ADVICE + 1),
+    ]);
+    if (sessions.length < SESSIONS_BEFORE_ADVICE) return null;
+
+    const since = startOfDay(now);
+    since.setDate(since.getDate() - 7);
+
+    const [catalogue, history, setsThisWeekByGroup] = await Promise.all([
+      repositories.planner.candidates(),
+      repositories.planner.lastPerformances(since),
+      repositories.planner.setsByGroupSince(since),
+    ]);
+
+    const prescription = prescriptionFor(
+      goal?.goal ?? 'build_muscle',
+      profile?.experienceLevel ?? null,
+    );
+
+    return suggestForNeglected({
+      catalogue,
+      history,
+      setsThisWeekByGroup,
+      weeklyTarget: prescription.weeklySetsPerGroup,
+      now,
+    });
+  });
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
@@ -190,6 +250,29 @@ export function LearnScreen() {
         <p className="text-sm text-secondary">
           Drag to turn the figure. Tap a muscle to see what trains it.
         </p>
+      )}
+
+      {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
+        <section className="rounded-card bg-surface p-4">
+          <h2 className="text-lg font-semibold text-primary">Worth adding</h2>
+          <p className="mt-1 mb-3 text-sm text-muted">
+            The groups furthest behind their weekly target, and one thing that trains each.
+          </p>
+          <ul className="flex flex-col">
+            {todo.data.map((suggestion, index) => (
+              <li
+                key={suggestion.exerciseId}
+                className="rise flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
+                style={{ animationDelay: `${String(index * 45)}ms` }}
+              >
+                <span className="min-w-0 text-sm text-primary">{suggestion.name}</span>
+                <span className="numeric shrink-0 text-xs text-muted">
+                  {suggestion.group} · {suggestion.setsBehind} sets behind
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* A stand-in, and said out loud rather than left to be worked out. */}

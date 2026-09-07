@@ -2015,3 +2015,83 @@ A set counts once per **primary** muscle group of its exercise, which is what
 that helped, weighted by recruitment — right for a heat map, wrong here.
 Crediting a bench press against a triceps target would let somebody go a month
 without ever being told their triceps are untrained.
+
+---
+
+## ADR-0041 — Four corrections from using the app
+
+**Status:** accepted · **Date:** 2026-09-07
+
+Small changes, but three of them carry a decision worth writing down.
+
+### Search tolerates typos, with Damerau rather than Levenshtein
+
+Typing "dumbells" returned an empty screen. Postgres never had this problem —
+its trigram index is forgiving by construction — so the offline path was
+quietly the weaker of the two, and an empty result set for a real word is a
+failure people blame the catalogue for rather than their spelling.
+
+A `fuzzy` tier now sits below `substring`, so a spelt-correctly match can never
+be displaced by a guess.
+
+**Damerau, not plain Levenshtein.** Plain Levenshtein charges *two* edits for a
+transposition, so "brabell" is two mistakes from "barbell" and falls outside a
+one-edit budget — and swapping two adjacent letters is the single most common
+way anybody mistypes a word. Counting it once is the difference between
+tolerating real typos and tolerating only the tidy ones.
+
+**Nothing under four characters is fuzzy-matched.** At three, a budget of one
+turns "row" into a match for "rows", "raw", "bow" and "how" — every short word
+in the catalogue at once, which is worse than no result.
+
+The distance is computed only far enough to answer "is it under budget": a row
+whose best cell already exceeds it cannot recover, so the work collapses to a
+band around the diagonal.
+
+### "Do I need a gym" is a separate filter from "which equipment"
+
+`ExerciseFilter.kit` is coarser than `equipmentIds` and answers a different
+question. Somebody training in a park does not want to tick eight pieces of
+equipment off a list to say *nothing*; they want one control meaning **me and a
+bar to hang off**.
+
+It filters on `equipment.category`, so a **pull-up counts as bodyweight even
+though it needs a bar** — the distinction the taxonomy already draws, and the
+one a street-workout lifter means.
+
+The control is a real `<input type="range">` with three stops rather than divs
+with pointer handlers. That is the whole accessibility story for free:
+announced as a slider, arrow keys work, platform touch behaviour inherited,
+draggable on a phone without a line of gesture code. The labels double as
+buttons, because hitting an exact stop with a thumb is fiddly and the label is
+already sitting there naming the thing.
+
+### The goal picker is a headline until it is being considered
+
+Four cards each carrying a paragraph and a pace range was a wall — everything
+on it true, none of it read. Each card is now one line, and the description and
+the expected pace arrive on the card that is **chosen or suggested**, which is
+the only one anybody wants them from.
+
+The cards are staggered in by 45 ms each. A screenful arriving at once reads as
+a page that dumped itself on you; dealt out, it reads as one being handed over.
+240 ms and eight pixels — long enough to feel, too short to wait for — and the
+existing `prefers-reduced-motion` block flattens it to nothing, which leaves
+the content exactly where it was going anyway.
+
+The link in also carries React Router's `viewTransition`, which cross-fades the
+two screens where the browser has the API and does nothing where it does not.
+
+### The heat map now says what to do about it
+
+A heat map answers "what have I trained" and stops, leaving the more useful
+half of the question as an exercise for the reader. `suggestForNeglected` is
+that half: the groups furthest behind their weekly target, each with one
+exercise that trains it.
+
+Scored by the same function that picks tomorrow's session, so the suggestion
+under the model and the exercise in the plan agree. Two different answers to
+one question would be worse than only having one.
+
+**Silent below five sessions.** A cold shoulder after two workouts is not a gap
+in somebody's training, it is a Tuesday.

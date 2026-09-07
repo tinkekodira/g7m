@@ -112,6 +112,10 @@ export function MetricsScreen() {
           the weight trend, so it has more to say once there is one. */}
       <Link
         to="/goal"
+        // Where the browser has the View Transitions API this cross-fades the
+        // two screens; where it does not, nothing happens and the goal
+        // screen's own stagger carries it. Progressive either way.
+        viewTransition
         className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
       >
         <span className="text-base font-medium text-primary">Your goal</span>

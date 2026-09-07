@@ -8,6 +8,7 @@
 export { Button } from './Button.js';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button.js';
 export { Chip } from './Chip.js';
+export { KitSlider, type KitPosition, type KitSliderProps } from './KitSlider.js';
 export type { ChipProps } from './Chip.js';
 export { Stepper } from './Stepper.js';
 export type { StepperProps } from './Stepper.js';
