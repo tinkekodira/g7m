@@ -1,142 +1,99 @@
 /**
- * A stylised body built from boxes, standing in for the licensed model.
+ * The body, built from the atlas.
  *
- * ADR-0009: the anatomy asset is fetched, never committed, and the repository
- * is public — so there is no model in the tree and there may not be one for a
- * while. Rather than block the whole Learn pillar on that, this provides
- * geometry that satisfies **the same naming contract** a real GLB has to
- * satisfy (`node-names.ts`), so everything built on top of it — raycasting,
- * selection, the exercise panel, the volume heat map in Phase 9 — is real code
- * exercised against real geometry.
+ * ADR-0009: the licensed anatomy asset is fetched, never committed, and the
+ * repository is public — so there is no GLB in the tree and there may not be
+ * one for a while. This is geometry generated at runtime that satisfies the
+ * same naming contract a real model has to satisfy (`node-names.ts`), so
+ * everything built on top of it — raycasting, selection, the exercise panel,
+ * the volume heat map — is real code exercised against real geometry.
  *
- * Swapping in a licensed model is then a change of `AnatomyModelSource` and
- * nothing else. If it were the other way round — viewer written against a
- * specific GLB — the swap would touch every file here.
+ * Swapping in a licensed model is then a change of geometry source and nothing
+ * else. If it were the other way round, with the viewer written against a
+ * specific GLB, the swap would touch every file here.
  *
- * It is not anatomy. It is a mannequin with the right parts in roughly the
- * right places, which is enough to tap.
+ * ## How a muscle becomes a mesh
+ *
+ * `atlas.ts` gives origin, via and insertion as *lines*. A bundle of N
+ * fascicles takes the same fraction along each line, sweeps a fusiform tube
+ * along the resulting path — thin tendon, swelling belly, thin tendon — and
+ * the N tubes are merged into one geometry. So a wide origin converging on a
+ * narrow insertion produces a fan because that is what a fan is, and the
+ * striation is not a texture: the fibres are actually there.
+ *
+ * One mesh per muscle per side. Four hundred fascicles as four hundred meshes
+ * would be four hundred draw calls, and it is also the merge that makes a
+ * whole muscle one raycast target rather than a bundle of tappable threads.
  */
+import { FORMS, MUSCLES, type FormSpec, type MuscleSpec } from './atlas.js';
+import { buildTube, mergeMeshes, type MeshData, type TubeProfile } from './geometry/tube.js';
+import { distance, lerp, mirrorX, type Vec3 } from './geometry/vec3.js';
 import { meshNodeName, type Side } from './node-names.js';
 
-/** Metres. A 1.8 m figure standing with its feet at y = 0. */
 export interface BodyPart {
   readonly nodeName: string;
   readonly slug: string;
   readonly side: Side;
-  /** Centre of the box. */
-  readonly position: readonly [x: number, y: number, z: number];
-  readonly size: readonly [width: number, height: number, depth: number];
-  /** Radians about the z axis. Enough tilt to read as a limb rather than a post. */
-  readonly tilt: number;
+  readonly mesh: MeshData;
 }
 
-interface PartSpec {
-  readonly slug: string;
-  /** Null for a midline muscle. Otherwise the right-hand side's x offset. */
-  readonly x: number | null;
-  readonly y: number;
-  readonly z: number;
-  readonly size: readonly [number, number, number];
-  readonly tilt?: number;
+export interface BodyForm {
+  readonly tone: 'bone' | 'core';
+  readonly mesh: MeshData;
 }
 
 /**
- * Where each muscle sits on the mannequin.
+ * Rings along a fascicle.
  *
- * Positions are eyeballed, not measured, and z is the only part doing real
- * work: it puts each muscle on the front or the back so the figure reads
- * correctly when it is turned round, which is what the taxonomy's `region`
- * column is for. Everything paired is declared once, for the right-hand side,
- * and mirrored below — writing both halves by hand is how a body ends up with
- * two left biceps.
+ * Twelve, not thirty-two. A fascicle is a few centimetres of gentle curve and
+ * the silhouette is already smooth at twelve; the cost is real, because this
+ * multiplies by nine fascicles by two sides by thirty-seven muscles.
  */
-const SPECS: readonly PartSpec[] = [
-  // Chest and shoulders
-  { slug: 'pec-major-clavicular', x: 0.09, y: 1.42, z: 0.1, size: [0.16, 0.07, 0.08] },
-  { slug: 'pec-major-sternal', x: 0.09, y: 1.33, z: 0.1, size: [0.17, 0.11, 0.08] },
-  { slug: 'anterior-deltoid', x: 0.21, y: 1.44, z: 0.07, size: [0.1, 0.12, 0.09] },
-  { slug: 'lateral-deltoid', x: 0.24, y: 1.44, z: 0.0, size: [0.09, 0.13, 0.11] },
-  { slug: 'posterior-deltoid', x: 0.21, y: 1.44, z: -0.07, size: [0.1, 0.12, 0.09] },
-
-  // Arms
-  { slug: 'biceps-brachii', x: 0.26, y: 1.25, z: 0.05, size: [0.09, 0.22, 0.08], tilt: 0.07 },
-  { slug: 'brachialis', x: 0.27, y: 1.14, z: 0.04, size: [0.07, 0.1, 0.07], tilt: 0.07 },
-  { slug: 'triceps-long-head', x: 0.25, y: 1.26, z: -0.06, size: [0.08, 0.22, 0.07], tilt: 0.07 },
-  { slug: 'triceps-lateral-head', x: 0.3, y: 1.28, z: -0.04, size: [0.06, 0.18, 0.07], tilt: 0.07 },
-  { slug: 'triceps-medial-head', x: 0.22, y: 1.19, z: -0.06, size: [0.06, 0.14, 0.06], tilt: 0.07 },
-  { slug: 'brachioradialis', x: 0.3, y: 1.0, z: 0.04, size: [0.07, 0.18, 0.07], tilt: 0.05 },
-  { slug: 'wrist-flexors', x: 0.31, y: 0.94, z: 0.06, size: [0.06, 0.16, 0.05], tilt: 0.05 },
-  { slug: 'wrist-extensors', x: 0.33, y: 0.96, z: -0.03, size: [0.06, 0.16, 0.05], tilt: 0.05 },
-
-  // Trunk, front
-  { slug: 'rectus-abdominis', x: null, y: 1.15, z: 0.11, size: [0.19, 0.26, 0.06] },
-  { slug: 'external-obliques', x: 0.14, y: 1.14, z: 0.07, size: [0.07, 0.24, 0.11] },
-  { slug: 'serratus-anterior', x: 0.15, y: 1.26, z: 0.05, size: [0.06, 0.12, 0.12] },
-
-  // Trunk, back
-  { slug: 'upper-trapezius', x: 0.08, y: 1.52, z: -0.05, size: [0.14, 0.1, 0.09] },
-  { slug: 'middle-trapezius', x: 0.08, y: 1.4, z: -0.11, size: [0.14, 0.12, 0.05] },
-  { slug: 'lower-trapezius', x: 0.07, y: 1.28, z: -0.11, size: [0.12, 0.14, 0.05] },
-  { slug: 'rhomboids', x: 0.09, y: 1.36, z: -0.09, size: [0.09, 0.12, 0.04] },
-  { slug: 'latissimus-dorsi', x: 0.14, y: 1.24, z: -0.09, size: [0.14, 0.26, 0.07] },
-  { slug: 'teres-major', x: 0.17, y: 1.36, z: -0.08, size: [0.08, 0.08, 0.06] },
-  { slug: 'infraspinatus', x: 0.14, y: 1.4, z: -0.1, size: [0.1, 0.1, 0.05] },
-  { slug: 'erector-spinae', x: null, y: 1.16, z: -0.11, size: [0.14, 0.32, 0.06] },
-
-  // Hips and legs
-  { slug: 'gluteus-maximus', x: 0.11, y: 0.95, z: -0.1, size: [0.18, 0.18, 0.11] },
-  { slug: 'gluteus-medius', x: 0.16, y: 1.02, z: -0.04, size: [0.09, 0.11, 0.11] },
-  { slug: 'rectus-femoris', x: 0.1, y: 0.72, z: 0.07, size: [0.11, 0.32, 0.08] },
-  { slug: 'vastus-lateralis', x: 0.16, y: 0.74, z: 0.03, size: [0.07, 0.28, 0.11] },
-  { slug: 'vastus-medialis', x: 0.06, y: 0.62, z: 0.06, size: [0.07, 0.18, 0.09] },
-  { slug: 'hip-adductors', x: 0.05, y: 0.78, z: 0.02, size: [0.07, 0.28, 0.1] },
-  { slug: 'biceps-femoris', x: 0.13, y: 0.72, z: -0.08, size: [0.09, 0.3, 0.08] },
-  { slug: 'semitendinosus', x: 0.07, y: 0.72, z: -0.08, size: [0.07, 0.3, 0.07] },
-  { slug: 'semimembranosus', x: 0.1, y: 0.68, z: -0.1, size: [0.07, 0.24, 0.05] },
-  { slug: 'gastrocnemius', x: 0.1, y: 0.32, z: -0.06, size: [0.1, 0.22, 0.09] },
-  { slug: 'soleus', x: 0.1, y: 0.22, z: -0.05, size: [0.09, 0.16, 0.08] },
-  { slug: 'tibialis-anterior', x: 0.09, y: 0.3, z: 0.05, size: [0.06, 0.22, 0.06] },
-
-  // Neck
-  { slug: 'sternocleidomastoid', x: 0.04, y: 1.6, z: 0.05, size: [0.05, 0.1, 0.05] },
-];
+const SEGMENTS = 12;
 
 /**
- * The mannequin's non-muscle bulk: head, hands, feet.
+ * Points around a fascicle.
  *
- * Deliberately not named like muscles, so `parseMuscleNode` rejects them and a
- * tap on the head selects nothing. They exist because a figure made only of
- * the muscles a lifter trains is a floating collection of slabs that nobody
- * can orient themselves on.
+ * Eight reads as round at a centimetre across, and the flat shading of the
+ * ellipse normals carries the rest. Twelve was tried and is invisible.
  */
-export const BODY_FILLER: readonly Omit<BodyPart, 'slug' | 'side' | 'nodeName'>[] = [
-  { position: [0, 1.72, 0], size: [0.17, 0.22, 0.2], tilt: 0 },
-  { position: [0, 1.6, 0], size: [0.09, 0.09, 0.09], tilt: 0 },
-  { position: [0.32, 0.83, 0.02], size: [0.08, 0.16, 0.05], tilt: 0 },
-  { position: [-0.32, 0.83, 0.02], size: [0.08, 0.16, 0.05], tilt: 0 },
-  { position: [0.1, 0.05, 0.04], size: [0.1, 0.08, 0.24], tilt: 0 },
-  { position: [-0.1, 0.05, 0.04], size: [0.1, 0.08, 0.24], tilt: 0 },
-];
+const RADIAL = 8;
+
+/**
+ * How far a tendon narrows relative to its belly, when a muscle does not say.
+ *
+ * High, because most muscles are sheets that barely narrow, and a sheet given
+ * a waist opens gaps between its fascicles where it should be continuous. The
+ * few with long tendons — gastrocnemius into an Achilles, biceps into the
+ * radius — name their own.
+ */
+const TENDON_THICKNESS = 0.82;
+
+/** Default tendon fractions when a muscle does not name its own. */
+const DEFAULT_TENDON: readonly [number, number] = [0.06, 0.14];
+
+/** Overlap between neighbouring fascicles when the girth is derived. */
+const FASCICLE_OVERLAP = 1.75;
+
+/** Gap between the bands of a segmented muscle, as a fraction of its length. */
+const BAND_GAP = 0.055;
 
 /**
  * Every part of the body, both sides.
  *
- * Paired muscles are declared once and mirrored, which is the only way a body
- * does not end up with two left biceps. The tilt mirrors with the position,
- * or the arms lean the same way as each other.
+ * Paired muscles are declared once in the atlas and mirrored here, which is
+ * the only way a body does not end up with two left biceps.
  */
 export function placeholderBodyParts(): BodyPart[] {
   const parts: BodyPart[] = [];
 
-  for (const spec of SPECS) {
-    if (spec.x === null) {
+  for (const spec of MUSCLES) {
+    if (spec.midline === true) {
       parts.push({
         nodeName: meshNodeName(spec.slug, 'midline'),
         slug: spec.slug,
         side: 'midline',
-        position: [0, spec.y, spec.z],
-        size: spec.size,
-        tilt: spec.tilt ?? 0,
+        mesh: buildMuscle(spec, false),
       });
       continue;
     }
@@ -148,24 +105,157 @@ export function placeholderBodyParts(): BodyPart[] {
       nodeName: meshNodeName(spec.slug, 'right'),
       slug: spec.slug,
       side: 'right',
-      position: [spec.x, spec.y, spec.z],
-      size: spec.size,
-      tilt: spec.tilt ?? 0,
+      mesh: buildMuscle(spec, false),
     });
     parts.push({
       nodeName: meshNodeName(spec.slug, 'left'),
       slug: spec.slug,
       side: 'left',
-      position: [-spec.x, spec.y, spec.z],
-      size: spec.size,
-      tilt: -(spec.tilt ?? 0),
+      mesh: buildMuscle(spec, true),
     });
   }
 
   return parts;
 }
 
+/** The head, hands, feet and the bulk the muscles are laid over. */
+export function bodyForms(): BodyForm[] {
+  const forms: BodyForm[] = [];
+
+  for (const spec of FORMS) {
+    forms.push({ tone: spec.tone, mesh: buildForm(spec, false) });
+    if (spec.midline !== true) forms.push({ tone: spec.tone, mesh: buildForm(spec, true) });
+  }
+
+  return forms;
+}
+
 /** The slugs this body provides geometry for. */
 export function placeholderSlugs(): string[] {
-  return SPECS.map((spec) => spec.slug);
+  return MUSCLES.map((spec) => spec.slug);
+}
+
+/**
+ * One muscle: N fascicles swept and merged.
+ *
+ * The girth is derived from the spacing between neighbouring fascicles unless
+ * the atlas overrides it, so widening a muscle is a matter of moving its
+ * origin line rather than of tuning two numbers that have to agree. A little
+ * overlap, or the sheet is a comb.
+ */
+function buildMuscle(spec: MuscleSpec, mirrored: boolean): MeshData {
+  const count = Math.max(1, spec.fascicles);
+  const girth = spec.girth ?? derivedGirth(spec, count);
+  const bands = Math.max(1, spec.bands ?? 1);
+
+  const meshes: MeshData[] = [];
+  for (let i = 0; i < count; i++) {
+    const u = count === 1 ? 0.5 : i / (count - 1);
+    const path = spec.lines.map((line) => {
+      const point = lerp(line[0], line[1], u);
+      return mirrored ? mirrorX(point) : point;
+    });
+
+    // Edge fascicles are thinner, so a sheet has a rounded edge rather than a
+    // square one — the tell that a muscle was drawn as a row of tubes.
+    const edge = count === 1 ? 1 : 1 - 0.12 * Math.abs(u - 0.5) * 2;
+    const profile: TubeProfile = {
+      width: girth * edge,
+      depth: girth * edge * (spec.flatten ?? 1),
+      bellyAt: spec.bellyAt ?? 0.45,
+      tendon: spec.tendon ?? DEFAULT_TENDON,
+      tendonThickness: spec.tendonThickness ?? TENDON_THICKNESS,
+    };
+
+    for (const band of bandRanges(bands)) {
+      meshes.push(
+        buildTube({
+          path: band === null ? path : slicePath(path, band[0], band[1]),
+          // A band is a whole small belly, not a slice of a long one: the
+          // tendinous intersections between them are the point.
+          profile: band === null ? profile : { ...profile, bellyAt: 0.5, tendon: [0.16, 0.16] },
+          segments: band === null ? SEGMENTS : Math.max(6, Math.round(SEGMENTS / bands)),
+          radial: RADIAL,
+        }),
+      );
+    }
+  }
+
+  return mergeMeshes(meshes);
+}
+
+function buildForm(spec: FormSpec, mirrored: boolean): MeshData {
+  const path = spec.lines.map((line) => (mirrored ? mirrorX(line[0]) : line[0]));
+
+  return buildTube({
+    path,
+    profile: {
+      width: spec.girth,
+      depth: spec.girth * (spec.flatten ?? 1),
+      bellyAt: 0.5,
+      tendon: [0.1, 0.1],
+      tendonThickness: 0.5,
+      ...(spec.silhouette === undefined ? {} : { silhouette: spec.silhouette }),
+    },
+    segments: SEGMENTS + 6,
+    radial: RADIAL + 4,
+  });
+}
+
+/**
+ * Fascicle half-thickness from how far apart the fascicles sit.
+ *
+ * Measured on the widest line in the muscle, because that is the end that has
+ * to be covered — a fan spaced to suit its narrow insertion leaves gaps at the
+ * origin, which is where it is most visible.
+ */
+function derivedGirth(spec: MuscleSpec, count: number): number {
+  if (count < 2) return 0.014;
+
+  let widest = 0;
+  for (const line of spec.lines) widest = Math.max(widest, distance(line[0], line[1]));
+  if (widest <= 0) return 0.014;
+
+  return (widest / (count - 1) / 2) * FASCICLE_OVERLAP;
+}
+
+/** `bands` ranges along the path, with a gap between each. Null for one band. */
+function bandRanges(bands: number): (readonly [number, number] | null)[] {
+  if (bands <= 1) return [null];
+
+  const span = (1 - BAND_GAP * (bands - 1)) / bands;
+  const ranges: [number, number][] = [];
+  for (let i = 0; i < bands; i++) {
+    const start = i * (span + BAND_GAP);
+    ranges.push([start, start + span]);
+  }
+  return ranges;
+}
+
+/**
+ * The part of a path between two fractions, as its own path.
+ *
+ * Sampled rather than sliced: the control points are not evenly spaced along
+ * the curve, so taking a fraction of the *list* would cut a band in the wrong
+ * place. Five samples is enough for a band a few centimetres long.
+ */
+function slicePath(path: readonly Vec3[], from: number, to: number): Vec3[] {
+  const samples = 5;
+  const points: Vec3[] = [];
+  for (let i = 0; i < samples; i++) {
+    points.push(pointAlong(path, from + ((to - from) * i) / (samples - 1)));
+  }
+  return points;
+}
+
+/** Linear interpolation along the control polygon. Close enough at this scale. */
+function pointAlong(path: readonly Vec3[], t: number): Vec3 {
+  const first = path[0];
+  if (first === undefined) return [0, 0, 0];
+  if (path.length === 1) return first;
+
+  const spans = path.length - 1;
+  const scaled = Math.min(Math.max(t, 0), 1) * spans;
+  const index = Math.min(Math.floor(scaled), spans - 1);
+  return lerp(path[index] ?? first, path[index + 1] ?? first, scaled - index);
 }
