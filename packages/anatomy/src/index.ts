@@ -15,11 +15,21 @@
  */
 export { AnatomyViewer, type AnatomyMode, type AnatomyViewerProps } from './AnatomyViewer.js';
 export {
-  BODY_FILLER,
+  bodyForms,
   placeholderBodyParts,
   placeholderSlugs,
+  type BodyForm,
   type BodyPart,
 } from './placeholder-body.js';
+export { FORMS, MUSCLES, type FormSpec, type Line, type MuscleSpec } from './atlas.js';
+export {
+  buildTube,
+  mergeMeshes,
+  profileAt,
+  type MeshData,
+  type TubeProfile,
+  type TubeSpec,
+} from './geometry/tube.js';
 export {
   NODE_PREFIX,
   checkModelContract,

@@ -1829,3 +1829,88 @@ compound, 23 isolation), and no assignment was wrong. Two notes rather than
 fixes: `erector-spinae` sits in `back`, so a deadlift competes with rows for a
 pull day's back slot; and `farmer-carry` is primary to `traps`, so it can be
 prescribed there. Both are defensible and neither was worth changing.
+
+---
+
+## ADR-0039 — The body is generated, not modelled
+
+**Status:** accepted · **Date:** 2026-09-07 · **Phase:** 5b
+
+### Context
+
+ADR-0009 keeps the licensed anatomy asset out of a public repository, so the
+Learn pillar has been standing on a mannequin made of eighty axis-aligned
+boxes. It satisfied the naming contract, which was the point, and it looked
+like eighty boxes, which was the cost.
+
+There is still no GLB and there may not be one for a while. The question is
+what to do in the meantime, and "boxes" was only ever the first answer.
+
+### Decision
+
+Generate the body procedurally from an anatomical atlas.
+
+**A muscle is a bundle of fascicles swept from origin to insertion.** Every
+entry in `atlas.ts` is a list of *lines* — origin, via points, insertion — and
+a bundle of N fibres takes the same fraction along each. A wide origin
+converging on a narrow insertion produces a fan because that is what a fan is,
+so the pectoralis, the latissimus and the biceps all come out of the same code
+with different numbers. The striation is not a texture: the fibres are there.
+
+**Everything is one primitive.** A muscle belly, a forearm, a skull and a foot
+are the same shape problem — a closed surface swept along a path whose
+thickness varies. `geometry/tube.ts` does that once, and the body becomes a
+list of paths and profiles rather than a pile of special cases. The consistent
+form language that follows is most of what makes it read as one object.
+
+**Not `THREE.TubeGeometry`.** Constant radius makes a sausage, and real muscle
+is fusiform — tendon, swelling belly, tendon — which is where the silhouette
+comes from. Three's tube also uses Frenet frames, which roll violently through
+an inflection point: a muscle curving round the ribcage would wring itself
+through ninety degrees mid-belly. The frames here are parallel-transported, so
+they never roll unless the path does.
+
+**Tendon is a vertex attribute, not a texture.** Every vertex carries how much
+of it is tendon, and the material blends toward bone-white on it. That costs
+one float per vertex instead of a texture, a UV unwrap and a second material,
+and it is what stops a muscle looking like a painted worm. It also keeps a
+selected muscle legible: only the belly lifts, so the shape survives.
+
+**One mesh per muscle per side.** Nine fascicles times two sides times
+thirty-seven muscles is six hundred draw calls unmerged. Merged it is
+seventy-four, and a merged muscle is also one raycast target rather than a
+bundle of separately tappable threads.
+
+91,000 triangles for the whole figure, and a test holds that budget.
+
+### It was built by looking at it
+
+Four rounds of this were wrong in ways no assertion would have caught, so a
+throwaway software rasteriser went in the scratchpad — orthographic, z-buffered,
+PNG out — and the model was rendered front, back and side after every change.
+It found, in order: fascicles tapering to spikes rather than bellies; sheet
+muscles combed into stripes because flattened cross-sections do not reliably
+overlap; a trapezius half-buried in the torso core, which is what the stripes
+across the upper back actually were; and a skull shaped like a bullet because
+the end caps bulged too far.
+
+The fifth finding was about the tool. The renderer was flat-shading, which
+invents a seam at every triangle edge — on a bundle of tubes that is
+indistinguishable from a gap, and three of those four rounds were partly
+chasing seams that would never have appeared on a GPU. Interpolating the normal
+per pixel changed the picture more than any geometry edit had.
+
+Worth remembering next time: **calibrate the instrument before trusting what it
+measures.**
+
+### Two deliberate departures from anatomy
+
+**Deep muscles are floated to the surface.** The rhomboids are genuinely under
+the trapezius and the brachialis genuinely under the biceps; rendered honestly,
+neither could ever be tapped. An anatomy app nobody can select half of is worse
+than one that cheats by four millimetres.
+
+**Landmarks come from proportion tables and reference imagery, not a scan.** So
+this is anatomically *shaped*, not anatomically correct. It is a good deal
+closer than boxes, and the naming contract it satisfies is unchanged — swapping
+in a licensed GLB is still a change of geometry source and nothing else.
