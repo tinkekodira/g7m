@@ -1,21 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
-  DEFAULT_WEEK_START,
   FOCUS_LABELS,
   GOAL_LABELS,
   formatRest,
-  nextFocus,
+  chooseFocus,
   planSession,
   prescriptionFor,
   splitFor,
-  startOfWeek,
+  startOfDay,
   toDisplayWeight,
   type LoadReason,
   type PlannedExercise,
   type PlannedSession,
   type UnitSystem,
-  type WeekStart,
 } from '@g7m/core';
 import { Button } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
@@ -35,6 +33,21 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
  * one. Nothing is locked: the logger can change every number, and does not
  * know or care that a generator wrote them.
  */
+/**
+ * The window the weekly targets are measured over.
+ *
+ * A trailing seven days, not the calendar week. A calendar week resets to zero
+ * on a Monday morning regardless of what happened on Sunday, so somebody
+ * training Saturday and Sunday would be offered a third chest session on the
+ * Monday — the counter having forgotten two days of training that their chest
+ * has not. A muscle does not know what day it is; it knows it was trained
+ * thirty-six hours ago.
+ */
+const TRAILING_DAYS = 7;
+
+/** Far past the layoff and plateau windows the generator can ask about. */
+const HISTORY_DAYS = 120;
+
 export function PlanScreen() {
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
@@ -42,36 +55,40 @@ export function PlanScreen() {
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const goal = useCatalogue('goal-current', (r) => r.goals.current());
 
-  const weekStartsOn = (profile.data?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart;
-  const weekStart = useMemo(() => startOfWeek(now, weekStartsOn), [now, weekStartsOn]);
-  const weekKey = weekStart.toISOString();
+  // Anchored to the start of today so the keys are stable for the day rather
+  // than changing every render and re-querying forever.
+  const today = useMemo(() => startOfDay(now), [now]);
+  const trailingWeek = useMemo(() => daysBefore(today, TRAILING_DAYS), [today]);
+  const historyFrom = useMemo(() => daysBefore(today, HISTORY_DAYS), [today]);
+  const dayKey = today.toISOString();
 
   const catalogue = useCatalogue('plan-candidates', (r) => r.planner.candidates());
-  const performances = useCatalogue('plan-performances', (r) => r.planner.lastPerformances());
-  const weekSets = useCatalogue(`plan-week-${weekKey}`, (r) =>
-    r.planner.setsByGroupSince(weekStart),
+  const performances = useCatalogue(`plan-history-${dayKey}`, (r) =>
+    r.planner.lastPerformances(historyFrom),
   );
-  const sessionsThisWeek = useCatalogue(`plan-sessions-${weekKey}`, (r) =>
-    r.planner.sessionCountSince(weekStart),
+  const weekSets = useCatalogue(`plan-trailing-${dayKey}`, (r) =>
+    r.planner.setsByGroupSince(trailingWeek),
   );
 
   const { write, busy } = useWrite();
+
+  // Which alternative is showing for each slot. Empty means the generator's
+  // own choice, which is the case for every slot until somebody taps.
+  const [swaps, setSwaps] = useState<ReadonlyMap<string, number>>(new Map());
 
   const unitSystem: UnitSystem = profile.data?.unitSystem ?? 'metric';
   const ready =
     goal.data !== null &&
     catalogue.data !== null &&
     performances.data !== null &&
-    weekSets.data !== null &&
-    sessionsThisWeek.data !== null;
+    weekSets.data !== null;
 
   const plan = useMemo<PlannedSession | null>(() => {
     if (
       goal.data === null ||
       catalogue.data === null ||
       performances.data === null ||
-      weekSets.data === null ||
-      sessionsThisWeek.data === null
+      weekSets.data === null
     ) {
       return null;
     }
@@ -81,25 +98,32 @@ export function PlanScreen() {
     const split = splitFor(goal.data.daysPerWeek, experience);
 
     return planSession({
-      focus: nextFocus(split, sessionsThisWeek.data),
+      // Which day of the split has the most catching up to do, rather than
+      // the next one along. A workout opened and abandoned logs no sets and
+      // therefore moves nothing, which a session counter could not manage.
+      focus: chooseFocus(split, weekSets.data, prescription.weeklySetsPerGroup),
       prescription,
       catalogue: catalogue.data,
       history: performances.data,
       setsThisWeekByGroup: weekSets.data,
       now,
     });
-  }, [
-    goal.data,
-    catalogue.data,
-    performances.data,
-    weekSets.data,
-    sessionsThisWeek.data,
-    profile.data,
-    now,
-  ]);
+  }, [goal.data, catalogue.data, performances.data, weekSets.data, profile.data, now]);
+
+  /**
+   * What is actually being prescribed, after any swaps.
+   *
+   * The generator's plan is never mutated — a swap is a view over it, so
+   * tapping back and forth costs nothing and re-planning does not fight with
+   * a choice somebody has already made.
+   */
+  const chosen = useMemo(
+    () => (plan?.exercises ?? []).map((slot) => showing(slot, swaps.get(slot.exerciseId) ?? 0)),
+    [plan, swaps],
+  );
 
   async function start(): Promise<void> {
-    if (plan === null || plan.exercises.length === 0) return;
+    if (plan === null || chosen.length === 0) return;
 
     const started = await write(async (r) => {
       const session = await r.sessions.start({
@@ -108,7 +132,7 @@ export function PlanScreen() {
         bodyweightKg: profile.data?.bodyweightKg ?? null,
       });
 
-      for (const exercise of plan.exercises) {
+      for (const exercise of chosen) {
         const slot = await r.sessions.addExercise(session.id, exercise.exerciseId);
         // The sets go in unticked. The logger opens on a full workout, every
         // number of which it is free to change — it does not know a generator
@@ -153,31 +177,40 @@ export function PlanScreen() {
         <NoGoal />
       ) : !ready || plan === null ? (
         <p className="rounded-card bg-surface p-4 text-sm text-muted">Working out your session…</p>
-      ) : plan.exercises.length === 0 ? (
+      ) : chosen.length === 0 ? (
         <WeekDone rested={plan.restedGroups} />
       ) : (
         <>
           <section className="rounded-card bg-accent px-4 py-3 text-on-accent">
             <p className="text-xs uppercase opacity-80">{FOCUS_LABELS[plan.focus]}</p>
             <p className="text-xl font-semibold">
-              {plan.exercises.length} exercises · {plan.totalSets} working sets
+              {chosen.length} exercises · {totalSets(chosen)} working sets
             </p>
             {plan.restedGroups.length > 0 && (
               // The adaptation, said out loud. Somebody who does not know why
               // their chest is missing today assumes the app forgot.
               <p className="mt-1 text-sm opacity-90">
-                Resting {listOf(plan.restedGroups)} — already done for the week.
+                Suggest resting {listOf(plan.restedGroups)} — already covered in the last 7 days.
               </p>
             )}
           </section>
 
           <ol className="flex flex-col gap-3">
-            {plan.exercises.map((exercise, index) => (
+            {plan.exercises.map((slot, index) => (
               <PlannedRow
-                key={exercise.exerciseId}
+                key={slot.exerciseId}
                 index={index}
-                exercise={exercise}
+                slot={slot}
+                choice={swaps.get(slot.exerciseId) ?? 0}
                 unitSystem={unitSystem}
+                onSwap={() => {
+                  setSwaps((previous) => {
+                    const next = new Map(previous);
+                    const options = 1 + slot.alternatives.length;
+                    next.set(slot.exerciseId, ((previous.get(slot.exerciseId) ?? 0) + 1) % options);
+                    return next;
+                  });
+                }}
               />
             ))}
           </ol>
@@ -207,7 +240,66 @@ export function PlanScreen() {
   );
 }
 
+/**
+ * One slot in the session: the chosen exercise, and the next one behind it.
+ *
+ * The alternative sits underneath, faded and smaller, and tapping it brings it
+ * forward while the current one falls back. It exists because the generator
+ * will sometimes be wrong — a lift somebody's shoulder does not like, a machine
+ * their gym does not have — and the difference between an app you can correct
+ * and one you cannot is whether that costs a tap or a fight.
+ *
+ * Both cards are always rendered and only their transform and opacity change,
+ * so the browser animates between them instead of tearing one out and putting
+ * another in. `prefers-reduced-motion` turns the movement off and leaves the
+ * swap instant, which is still a swap.
+ */
 function PlannedRow({
+  index,
+  slot,
+  choice,
+  unitSystem,
+  onSwap,
+}: {
+  readonly index: number;
+  readonly slot: PlannedExercise;
+  /** 0 is the generator's own pick; 1 and 2 are the alternatives. */
+  readonly choice: number;
+  readonly unitSystem: UnitSystem;
+  readonly onSwap: () => void;
+}) {
+  const options = [slot, ...slot.alternatives];
+  const current = showing(slot, choice);
+  const next = options[(choice + 1) % options.length];
+  const swappable = options.length > 1 && next !== undefined;
+
+  return (
+    <li className="rounded-card border border-subtle bg-surface p-4">
+      <Prescribed index={index} exercise={current} unitSystem={unitSystem} />
+
+      {swappable && (
+        <button
+          type="button"
+          onClick={onSwap}
+          aria-label={`Swap to ${next.name}`}
+          className="mt-3 flex min-h-tap w-full items-center justify-between gap-3 rounded-control border border-subtle px-3 text-left opacity-55 transition-[opacity,transform] duration-200 ease-out select-none active:scale-[0.98] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+        >
+          <span className="min-w-0 truncate text-sm text-primary">{next.name}</span>
+          <span className="numeric shrink-0 text-xs text-muted">
+            {next.suggestedKg === null
+              ? 'swap'
+              : `${String(toDisplayWeight(next.suggestedKg, unitSystem).value)} ${
+                  toDisplayWeight(next.suggestedKg, unitSystem).unit
+                }`}
+          </span>
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** The exercise as it will be logged, at full weight. */
+function Prescribed({
   index,
   exercise,
   unitSystem,
@@ -220,7 +312,7 @@ function PlannedRow({
     exercise.suggestedKg === null ? null : toDisplayWeight(exercise.suggestedKg, unitSystem);
 
   return (
-    <li className="rounded-card border border-subtle bg-surface p-4">
+    <div className="transition-transform duration-200 ease-out motion-reduce:transition-none">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="min-w-0 text-base font-semibold text-primary">
           <span className="text-muted">{index + 1}. </span>
@@ -239,8 +331,18 @@ function PlannedRow({
       <p className="mt-2 text-xs text-muted">
         {exercise.groupSlug} · {formatRest(exercise.restSeconds)} rest
       </p>
-    </li>
+    </div>
   );
+}
+
+/** The option currently in front for a slot. Index 0 is the generator's pick. */
+function showing(slot: PlannedExercise, choice: number): PlannedExercise {
+  if (choice === 0) return slot;
+  return slot.alternatives[choice - 1] ?? slot;
+}
+
+function totalSets(exercises: readonly PlannedExercise[]): number {
+  return exercises.reduce((total, entry) => total + entry.sets, 0);
 }
 
 /**
@@ -259,6 +361,11 @@ function describeReason(reason: LoadReason, unitSystem: UnitSystem): string {
   switch (reason.kind) {
     case 'progress':
       return `You finished the range at ${show(reason.fromKg)} last time — go up.`;
+    case 'jump':
+      // The one thing counting reps cannot tell you, so it is worth naming.
+      return `You finished the range at ${show(reason.fromKg)} with ${String(reason.repsInReserve)} reps left. That is a bigger step than usual.`;
+    case 'deload':
+      return `${String(reason.misses)} sessions short of the range at ${show(reason.fromKg)}. Back off, then run at it again.`;
     case 'repeat':
       return `You did ${String(reason.reps)} at ${show(reason.kg)} last time. Same weight, more reps.`;
     case 'returning':
@@ -308,4 +415,11 @@ function WeekDone({ rested }: { readonly rested: readonly string[] }) {
 function listOf(items: readonly string[]): string {
   if (items.length <= 1) return items[0] ?? '';
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1] ?? ''}`;
+}
+
+/** `days` before a date, kept out of the component so the memo stays readable. */
+function daysBefore(from: Date, days: number): Date {
+  const at = new Date(from);
+  at.setDate(at.getDate() - days);
+  return at;
 }

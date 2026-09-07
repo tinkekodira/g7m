@@ -4,20 +4,21 @@
  * The generator is adaptive rather than a fixed template per goal, and the
  * difference is entirely in the last of those three inputs. A template answers
  * "what does a push day look like". This answers "what does *your* push day
- * look like, given that your back is six sets short this week, you benched
- * 80 kg for 8 on Tuesday, and you have not touched a row in eleven days".
+ * look like, given that your back is six sets short, you benched 80 kg for 8
+ * on Tuesday, and you have missed reps on the squat three sessions running".
  *
  * That is also what makes it fallible, so every choice it makes carries a
- * `reason` the screen can print. A plan somebody cannot interrogate is a plan
- * they cannot correct, and this one will need correcting.
+ * `reason` the screen can print, and every exercise carries the alternatives
+ * it beat. A plan somebody cannot interrogate or override is a plan they
+ * cannot correct.
  *
  * Pure. Everything it knows arrives in `PlanInput`; nothing here reads a
  * database, a clock or a bodyweight.
  */
-import { daysBetween } from './week.js';
 import type { LoadType } from './load.js';
 import { FOCUS_GROUPS, type Prescription, type SessionFocus } from './programming.js';
 import { roundToIncrement } from './units.js';
+import { daysBetween } from './week.js';
 
 export interface PlannableExercise {
   readonly id: string;
@@ -28,9 +29,9 @@ export interface PlannableExercise {
   /**
    * How the exercise carries load, from its equipment.
    *
-   * Carried here because a pull-up prescribed at "0 kg" is worse than one
-   * prescribed at nothing: the logger would show a weight field reading zero,
-   * and the set would be logged as an unloaded rep.
+   * A pull-up prescribed at "0 kg" is worse than one prescribed at nothing:
+   * the logger would show a weight field reading zero and the set would be
+   * logged as an unloaded rep.
    */
   readonly loadType: LoadType;
   /** Muscle groups this exercise trains as a *primary* mover. */
@@ -42,13 +43,32 @@ export interface PlannableExercise {
   readonly defaultRestSeconds: number | null;
 }
 
-/** What happened last time this exercise was trained. */
+/**
+ * One session's worth of an exercise, as it was actually performed.
+ *
+ * `repsAtTopSet` is every working set done at the heaviest weight, not just
+ * the best one. That is the difference between "you hit 12" and "you hit 12,
+ * 12, then 7" — the second is a session that ran out, and prescribing more
+ * weight after it is how a generated plan buries somebody.
+ */
+export interface SessionPerformance {
+  readonly at: Date;
+  readonly topSetKg: number | null;
+  readonly repsAtTopSet: readonly number[];
+  /**
+   * Reps left in the tank on the last set, if they said.
+   *
+   * Optional by design: the prompt is skippable and everything below has an
+   * answer without it. What it adds is the one thing counting reps cannot
+   * tell you — whether twelve reps were comfortable or a fight.
+   */
+  readonly repsInReserve: number | null;
+}
+
+/** What has been done on one exercise lately, newest session first. */
 export interface ExerciseHistory {
   readonly exerciseId: string;
-  readonly lastPerformedAt: Date;
-  /** The heaviest completed working set, and the reps done at it. */
-  readonly topSetKg: number | null;
-  readonly topSetReps: number | null;
+  readonly sessions: readonly SessionPerformance[];
 }
 
 export interface PlanInput {
@@ -56,7 +76,7 @@ export interface PlanInput {
   readonly prescription: Prescription;
   readonly catalogue: readonly PlannableExercise[];
   readonly history: readonly ExerciseHistory[];
-  /** Working sets already done this week, by muscle group slug. */
+  /** Working sets done in the trailing week, by muscle group slug. */
   readonly setsThisWeekByGroup: ReadonlyMap<string, number>;
   readonly now: Date;
 }
@@ -69,7 +89,9 @@ export interface PlanInput {
  */
 export type LoadReason =
   | { readonly kind: 'progress'; readonly fromKg: number; readonly reps: number }
+  | { readonly kind: 'jump'; readonly fromKg: number; readonly repsInReserve: number }
   | { readonly kind: 'repeat'; readonly kg: number; readonly reps: number }
+  | { readonly kind: 'deload'; readonly fromKg: number; readonly misses: number }
   | { readonly kind: 'returning'; readonly daysAway: number; readonly fromKg: number }
   | { readonly kind: 'first_time' };
 
@@ -86,6 +108,15 @@ export interface PlannedExercise {
   /** The muscle group this exercise was chosen to cover. */
   readonly groupSlug: string;
   readonly reason: LoadReason;
+  /**
+   * The exercises this one beat, best first, each planned in full.
+   *
+   * Carried so the screen can offer a swap without asking the generator
+   * again — and so a swap lands on a real prescription rather than on a name
+   * with no weight against it. Nested entries carry none of their own: an
+   * alternative to an alternative is a menu, not a swap.
+   */
+  readonly alternatives: readonly PlannedExercise[];
 }
 
 export interface PlannedSession {
@@ -107,10 +138,35 @@ const MIN_DAYS_BETWEEN_REPEATS = 2;
  * fortnight; failing publicly takes people out of the gym for months.
  */
 const LAYOFF_DAYS = 21;
-const LAYOFF_BACKOFF = 0.9;
+
+/**
+ * Consecutive sessions falling short before the weight comes down.
+ *
+ * Three, not one. Anybody can have a bad Tuesday — slept badly, ate late, had
+ * a hard week — and an app that drops the weight over one of those is an app
+ * nobody ever gets stronger on. Three in a row is not a bad day, it is a
+ * plateau, and the answer to a plateau is to back off and run at it again.
+ */
+export const DELOAD_AFTER_MISSES = 3;
+
+/** What both a deload and a comeback drop to. */
+const BACKOFF = 0.9;
+
+/**
+ * Reps in reserve at which the usual increment is too small.
+ *
+ * Somebody who finishes twelve reps with three left in the tank is nowhere
+ * near their limit, and moving them 2.5 kg wastes a session. This is the one
+ * thing counting reps genuinely cannot tell you, and the only reason the
+ * logger asks.
+ */
+const EASY_REPS_IN_RESERVE = 3;
 
 /** Below this a group has had enough this week and is left alone. */
 const DEFICIT_FLOOR = 2;
+
+/** How many alternatives to carry per exercise. */
+const ALTERNATIVES = 2;
 
 /**
  * Build the next session.
@@ -147,11 +203,12 @@ export function planSession(input: PlanInput): PlannedSession {
       continue;
     }
 
-    const choice = pick(group, input, seen, used, true);
-    if (choice === null) continue;
+    const ranked = rank(group, input, seen, used, true);
+    const choice = ranked[0];
+    if (choice === undefined) continue;
 
     const sets = Math.min(setsPerExercise, deficit, setsLeft);
-    exercises.push(plan(choice, group, sets, input, seen));
+    exercises.push(plan(choice, group, sets, input, seen, ranked.slice(1, 1 + ALTERNATIVES)));
     used.add(choice.id);
     setsLeft -= sets;
   }
@@ -195,9 +252,10 @@ function addFiller(
     .sort((a, b) => b.deficit - a.deficit);
 
   for (const { group } of behind) {
-    const choice = pick(group, input, seen, used, false);
-    if (choice === null) continue;
-    exercises.push(plan(choice, group, sets, input, seen));
+    const ranked = rank(group, input, seen, used, false);
+    const choice = ranked[0];
+    if (choice === undefined) continue;
+    exercises.push(plan(choice, group, sets, input, seen, ranked.slice(1, 1 + ALTERNATIVES)));
     used.add(choice.id);
     return true;
   }
@@ -205,47 +263,53 @@ function addFiller(
 }
 
 /**
- * The best exercise for a group right now.
+ * Every usable exercise for a group, best first.
  *
  * Scored rather than filtered, so a thin catalogue still returns something
  * instead of a session with a hole in it. The one hard exclusion is an
  * exercise trained in the last two days.
  */
-function pick(
+function rank(
   group: string,
   input: PlanInput,
   seen: ReadonlyMap<string, ExerciseHistory>,
   used: ReadonlySet<string>,
   wantCompound: boolean,
-): PlannableExercise | null {
-  let best: PlannableExercise | null = null;
-  let bestScore = -Infinity;
+): PlannableExercise[] {
+  const usable: { candidate: PlannableExercise; score: number }[] = [];
 
   for (const candidate of input.catalogue) {
     if (used.has(candidate.id)) continue;
     if (!candidate.groupSlugs.includes(group)) continue;
 
-    const recent = seen.get(candidate.id);
-    if (
-      recent !== undefined &&
-      daysBetween(recent.lastPerformedAt, input.now) < MIN_DAYS_BETWEEN_REPEATS
-    ) {
+    const last = seen.get(candidate.id)?.sessions[0];
+    if (last !== undefined && daysBetween(last.at, input.now) < MIN_DAYS_BETWEEN_REPEATS) {
       continue;
     }
 
-    const score = scoreOf(candidate, recent, wantCompound, input.now);
-    if (score > bestScore) {
-      best = candidate;
-      bestScore = score;
-    }
+    usable.push({ candidate, score: scoreOf(candidate, last, wantCompound, input.now) });
   }
 
-  return best;
+  return usable.sort((a, b) => b.score - a.score).map((entry) => entry.candidate);
 }
 
+/**
+ * Anchor the compounds, rotate the accessories.
+ *
+ * The two slots want opposite things, and treating them the same is what makes
+ * a generator boring. The big lift of a session is the one somebody is trying
+ * to add weight to, so it should be the same lift week after week — nobody
+ * progresses on something they never repeat. The accessory afterwards has no
+ * such claim: doing cable flies for eleven months because they won a tie-break
+ * once is how a plan stops being interesting and starts being ignored.
+ *
+ * So familiarity is a large bonus for the compound slot and a penalty for the
+ * accessory one, and the penalty fades with time so an accessory comes back
+ * around rather than being retired.
+ */
 function scoreOf(
   candidate: PlannableExercise,
-  recent: ExerciseHistory | undefined,
+  last: SessionPerformance | undefined,
   wantCompound: boolean,
   now: Date,
 ): number {
@@ -256,13 +320,9 @@ function scoreOf(
   if (candidate.mechanic === 'compound') score += wantCompound ? 100 : -20;
   if (candidate.mechanic === 'isolation' && !wantCompound) score += 40;
 
-  if (recent !== undefined) {
-    // A lift with history is one the plan can prescribe a real number for
-    // instead of guessing, which is worth more than any other single factor.
-    score += 60;
-    // And among those, the one trained most recently — a program somebody can
-    // see themselves progressing on beats a fresh workout every session.
-    score += Math.max(0, 20 - daysBetween(recent.lastPerformedAt, now));
+  if (last !== undefined) {
+    const days = daysBetween(last.at, now);
+    score += wantCompound ? 60 + Math.max(0, 20 - days) : -Math.max(0, 30 - days);
   }
 
   // Popularity only breaks ties. A barbell bench outranks a Smith-machine
@@ -278,6 +338,7 @@ function plan(
   sets: number,
   input: PlanInput,
   seen: ReadonlyMap<string, ExerciseHistory>,
+  alternatives: readonly PlannableExercise[],
 ): PlannedExercise {
   const { suggestedKg, reason } = suggestLoad(candidate, seen.get(candidate.id), input);
 
@@ -294,60 +355,99 @@ function plan(
     suggestedKg,
     groupSlug: group,
     reason,
+    alternatives: alternatives.map((option) => plan(option, group, sets, input, seen, [])),
   };
 }
 
 /**
  * What to put on the bar.
  *
- * Three cases and each is a different conversation with the user: you hit the
- * top of the range, so go up; you did not, so do it again; you have been away,
- * so start under where you left off.
+ * Six answers, and each is a different conversation:
+ *
+ *   first_time  nothing to go on, so nothing is claimed
+ *   returning   away long enough that the old number is no longer theirs
+ *   deload      stuck three sessions running — back off and run at it again
+ *   jump        finished the range with reps to spare, so 2.5 kg is too small
+ *   progress    finished the range
+ *   repeat      did not finish it, which is not a failure
  */
 function suggestLoad(
   candidate: PlannableExercise,
-  recent: ExerciseHistory | undefined,
+  history: ExerciseHistory | undefined,
   input: PlanInput,
 ): { suggestedKg: number | null; reason: LoadReason } {
-  // Pulled out rather than reached for twice: `recent === undefined ||
-  // recent.topSetKg === null` reads as an optional chain and is not one, since
-  // the guard has to narrow `recent` for everything below it.
-  const lastKg = recent?.topSetKg ?? null;
+  const sessions = history?.sessions ?? [];
+  const last = sessions[0];
+  const lastKg = last?.topSetKg ?? null;
 
-  // Bodyweight work has no number to put on a bar, and a time-based hold has
-  // no rep range to progress out of. Both are real exercises with nothing to
-  // suggest, which is different from an exercise never done before — but the
-  // screen shows the same thing for all three, so they share a reason.
+  // Bodyweight work has no number to put on a bar and a time-based hold has no
+  // rep range to progress out of. Both are real exercises with nothing to
+  // suggest, which the screen presents the same way as a first attempt.
   if (candidate.isTimeBased || candidate.loadType === 'bodyweight') {
     return { suggestedKg: null, reason: { kind: 'first_time' } };
   }
-  if (recent === undefined || lastKg === null) {
+  if (last === undefined || lastKg === null) {
     return { suggestedKg: null, reason: { kind: 'first_time' } };
   }
 
-  const daysAway = daysBetween(recent.lastPerformedAt, input.now);
   const increment = input.prescription.progressionKg;
+  const daysAway = daysBetween(last.at, input.now);
 
   if (daysAway >= LAYOFF_DAYS) {
     return {
-      suggestedKg: roundToIncrement(lastKg * LAYOFF_BACKOFF, increment),
+      suggestedKg: roundToIncrement(lastKg * BACKOFF, increment),
       reason: { kind: 'returning', daysAway, fromKg: lastKg },
     };
   }
 
-  if (recent.topSetReps !== null && recent.topSetReps >= input.prescription.repHigh) {
+  const misses = consecutiveMisses(sessions, input.prescription.repLow);
+  if (misses >= DELOAD_AFTER_MISSES) {
     return {
-      suggestedKg: roundToIncrement(lastKg + increment, increment),
-      reason: { kind: 'progress', fromKg: lastKg, reps: recent.topSetReps },
+      suggestedKg: roundToIncrement(lastKg * BACKOFF, increment),
+      reason: { kind: 'deload', fromKg: lastKg, misses },
     };
   }
 
-  return {
-    suggestedKg: lastKg,
-    reason: {
-      kind: 'repeat',
-      kg: lastKg,
-      reps: recent.topSetReps ?? input.prescription.repLow,
-    },
-  };
+  if (finishedTheRange(last, input.prescription.repHigh)) {
+    // Reps to spare on top of a finished range means the increment is wrong,
+    // not that they are ready for one more kilo of the same.
+    if (last.repsInReserve !== null && last.repsInReserve >= EASY_REPS_IN_RESERVE) {
+      return {
+        suggestedKg: roundToIncrement(lastKg + increment * 2, increment),
+        reason: { kind: 'jump', fromKg: lastKg, repsInReserve: last.repsInReserve },
+      };
+    }
+    return {
+      suggestedKg: roundToIncrement(lastKg + increment, increment),
+      reason: { kind: 'progress', fromKg: lastKg, reps: bestReps(last) },
+    };
+  }
+
+  return { suggestedKg: lastKg, reason: { kind: 'repeat', kg: lastKg, reps: bestReps(last) } };
+}
+
+/** Every working set at the top weight reached the top of the range. */
+function finishedTheRange(session: SessionPerformance, repHigh: number): boolean {
+  return session.repsAtTopSet.length > 0 && session.repsAtTopSet.every((reps) => reps >= repHigh);
+}
+
+/**
+ * How many recent sessions in a row fell short of the bottom of the range.
+ *
+ * Counted from the most recent backwards and stopped at the first session that
+ * did not, so one good session resets it. That is what makes a deload
+ * self-clearing rather than something that fires again the following week.
+ */
+function consecutiveMisses(sessions: readonly SessionPerformance[], repLow: number): number {
+  let misses = 0;
+  for (const session of sessions) {
+    if (session.repsAtTopSet.length === 0) break;
+    if (session.repsAtTopSet.some((reps) => reps < repLow)) misses++;
+    else break;
+  }
+  return misses;
+}
+
+function bestReps(session: SessionPerformance): number {
+  return session.repsAtTopSet.length === 0 ? 0 : Math.max(...session.repsAtTopSet);
 }

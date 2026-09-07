@@ -191,18 +191,62 @@ export function splitFor(
 }
 
 /**
- * Which session is next.
+ * Which session to do today.
  *
- * Driven by how many sessions have already happened this week rather than by
- * the day of the week, because a plan tied to calendar days punishes somebody
- * for training on Tuesday instead of Monday — and the person most likely to
- * miss a day is the person who most needs the app not to make it a failure.
+ * Not "the next one in the list". Stepping through the split by a counter is
+ * the obvious implementation and it breaks on contact with real weeks: it
+ * counts attempts rather than training, so a workout opened and abandoned
+ * advances the rotation, two sessions in one day advance it twice, and a
+ * missed Thursday leaves somebody permanently out of phase with their own
+ * plan.
  *
- * Past the end of the split it wraps, so an extra session is the start of the
- * rotation again rather than a rest day the app refuses to let them skip.
+ * So the split is a menu rather than a queue: of the sessions it contains,
+ * do the one with the most catching up to do. That answers all of those cases
+ * at once, and it is also just the right answer — the session worth doing is
+ * the one training what has been trained least.
+ *
+ * The split still matters. Picking purely by which single group is furthest
+ * behind would hand somebody legs three days running; the split is what keeps
+ * the week's work grouped sensibly.
+ *
+ * Ties go to the earlier entry, which makes a fresh week start at the front.
  */
-export function nextFocus(split: readonly SessionFocus[], sessionsThisWeek: number): SessionFocus {
-  if (split.length === 0) return 'full_body';
-  const index = Math.max(0, Math.trunc(sessionsThisWeek)) % split.length;
-  return split[index] ?? 'full_body';
+export function chooseFocus(
+  split: readonly SessionFocus[],
+  setsByGroup: ReadonlyMap<string, number>,
+  weeklyTarget: number,
+): SessionFocus {
+  let best: SessionFocus = split[0] ?? 'full_body';
+  let bestDeficit = -1;
+
+  for (const focus of split) {
+    const deficit = FOCUS_GROUPS[focus].reduce(
+      (total, group) => total + Math.max(0, weeklyTarget - (setsByGroup.get(group) ?? 0)),
+      0,
+    );
+    if (deficit > bestDeficit) {
+      best = focus;
+      bestDeficit = deficit;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Reps in reserve, as the `session_sets.rpe` column stores it.
+ *
+ * RPE 10 is a set with nothing left; RPE 7 is three reps short of that. The
+ * logger asks the question the other way round — "how many more could you have
+ * done?" — because that is the question a person can answer honestly with a
+ * bar still in their hands, and RPE is the notation the rest of the world
+ * writes it in.
+ */
+export function rirToRpe(repsInReserve: number): number {
+  return Math.min(10, Math.max(0, 10 - repsInReserve));
+}
+
+export function rpeToRir(rpe: number | null): number | null {
+  if (rpe === null || !Number.isFinite(rpe)) return null;
+  return Math.min(10, Math.max(0, 10 - rpe));
 }
