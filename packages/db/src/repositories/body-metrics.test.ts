@@ -162,6 +162,58 @@ describe('between', () => {
   });
 });
 
+describe('current', () => {
+  it('is all nulls before anything is recorded', async () => {
+    expect(await metrics.current()).toEqual({
+      weightKg: null,
+      weightAt: null,
+      heightCm: null,
+      activityLevel: null,
+      bodyFatPercent: null,
+    });
+  });
+
+  /**
+   * The difference between this and `latest`. Height was measured once and has
+   * not changed; reading it off Sunday's weigh-in row would report a person
+   * whose height is unknown.
+   */
+  it('keeps a value that a later reading did not repeat', async () => {
+    await metrics.record({ heightCm: 183, activityLevel: 'moderate' });
+    clock = new Date('2026-09-14T10:00:00.000Z');
+    await metrics.record({ weightKg: 82 });
+
+    const now = await metrics.current();
+    expect(now.heightCm).toBe(183);
+    expect(now.activityLevel).toBe('moderate');
+    expect(now.weightKg).toBe(82);
+  });
+
+  it('takes the newest value of each field independently', async () => {
+    await metrics.record({ weightKg: 85, heightCm: 182 });
+    clock = new Date('2026-09-14T10:00:00.000Z');
+    await metrics.record({ weightKg: 83 });
+    clock = new Date('2026-09-21T10:00:00.000Z');
+    await metrics.record({ heightCm: 183 });
+
+    const now = await metrics.current();
+    expect(now.weightKg).toBe(83);
+    expect(now.heightCm).toBe(183);
+  });
+
+  it('carries the date of the weight, for the weekly prompt', async () => {
+    const measured = new Date('2026-09-06T07:00:00.000Z');
+    await metrics.record({ weightKg: 82, recordedAt: measured });
+    expect((await metrics.current()).weightAt).toEqual(measured);
+  });
+
+  it('does not read another user’s measurements', async () => {
+    await metrics.record({ weightKg: 82, heightCm: 183 });
+    const stranger = new BodyMetricsRepository(db, { userId: 'user-2' });
+    expect((await stranger.current()).heightCm).toBeNull();
+  });
+});
+
 describe('correct', () => {
   /**
    * The append-only rule is about not overwriting last week's reading with

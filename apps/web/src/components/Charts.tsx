@@ -1,4 +1,11 @@
-import { fractionOf, formatVolume, linePoints, niceMax, polylinePoints } from './chart-scale.js';
+import {
+  fractionOf,
+  formatVolume,
+  linePointsWithin,
+  niceMax,
+  niceRange,
+  polylinePoints,
+} from './chart-scale.js';
 
 /**
  * Two hand-drawn SVG charts.
@@ -83,22 +90,39 @@ export function BarChart({
  * stretch with it — a line scaled horizontally by three renders three times
  * thicker on the vertical strokes otherwise.
  */
+/**
+ * Where the bottom of the axis sits.
+ *
+ * `zero` for anything that can genuinely be none of something — a week with
+ * no training is zero volume, and fitting the axis to the data would redraw
+ * ordinary variation as a cliff.
+ *
+ * `fit` for a quantity with no meaningful zero. Bodyweight is the case: on an
+ * axis running from zero, four kilograms lost over three months is a flat
+ * line, which is exactly the information the chart was drawn to show.
+ */
+export type Baseline = 'zero' | 'fit';
+
 export function TrendChart({
   values,
   summary,
   format = formatVolume,
+  baseline = 'zero',
+  empty = 'Not enough sessions yet to draw a line.',
 }: {
   readonly values: readonly number[];
   readonly summary: string;
   readonly format?: (value: number) => string;
+  readonly baseline?: Baseline;
+  readonly empty?: string;
 }) {
-  const max = niceMax(values);
-  const points = linePoints(values, max, 100, 40);
+  const range = baseline === 'fit' ? niceRange(values) : { min: 0, max: niceMax(values) };
+  const points = linePointsWithin(values, range, 100, 40);
   const last = values.at(-1) ?? 0;
   const first = values[0] ?? 0;
 
   if (values.length === 0) {
-    return <p className="text-sm text-muted">Not enough sessions yet to draw a line.</p>;
+    return <p className="text-sm text-muted">{empty}</p>;
   }
 
   return (

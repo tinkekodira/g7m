@@ -19,3 +19,4 @@ export * from './rest.js';
 export * from './prefill.js';
 export * from './week.js';
 export * from './progress.js';
+export * from './body.js';

@@ -11,6 +11,7 @@
  * trend. It takes an id, so it cannot be reached for by accident when what was
  * meant was a new reading.
  */
+import { ACTIVITY_LEVELS, type ActivityLevel } from '@g7m/core';
 import type { HistoryWindow } from './history.js';
 import {
   resolveContext,
@@ -28,8 +29,15 @@ import {
   type RawRow,
 } from './rows.js';
 
-export const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
-export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number];
+/**
+ * Re-exported from `@g7m/core`, where the plan generator can reach them.
+ *
+ * The list is domain logic before it is a column constraint — "lose fat"
+ * implies a different week for a labourer than for somebody at a desk — so it
+ * is defined there and validated here. Callers of `@g7m/db` see no difference.
+ */
+export { ACTIVITY_LEVELS };
+export type { ActivityLevel };
 
 export interface BodyMetric {
   readonly id: string;
@@ -41,6 +49,24 @@ export interface BodyMetric {
   readonly bodyFatPercent: number | null;
   readonly note: string | null;
 }
+
+/**
+ * What the user is right now, assembled from however many rows it took.
+ *
+ * `weightAt` rides along because the weekly prompt needs to know how old the
+ * weight is, and the alternative is every caller running a second query for
+ * the row it just came from.
+ */
+export interface CurrentMetrics {
+  readonly weightKg: number | null;
+  readonly weightAt: Date | null;
+  readonly heightCm: number | null;
+  readonly activityLevel: ActivityLevel | null;
+  readonly bodyFatPercent: number | null;
+}
+
+/** The measurement columns, as a closed set. See `latestWith`. */
+type MetricColumn = 'weight_kg' | 'height_cm' | 'activity_level' | 'body_fat_percent';
 
 /** A new measurement. Every field optional, but not all of them at once. */
 export interface MetricInput {
@@ -223,6 +249,55 @@ export class BodyMetricsRepository {
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM body_metrics WHERE user_id = ?
         ORDER BY recorded_at DESC, id DESC LIMIT 1`,
+      [userId],
+    );
+    return row === null ? null : toMetric(row);
+  }
+
+  /**
+   * The most recent value of each field, which is not the most recent row.
+   *
+   * `latest()` answers "what was measured last"; this answers "what are they
+   * now", and the two differ the moment somebody records a weight without
+   * re-entering their height. Height was measured once in March and has not
+   * changed; reading it off Sunday's weigh-in row would report it as unknown.
+   *
+   * Each field is its own query rather than one pass over the table. The
+   * table grows by a row a week forever, and four indexed lookups stay four
+   * indexed lookups when it holds five years of Sundays.
+   */
+  async current(): Promise<CurrentMetrics> {
+    const [weight, height, activity, bodyFat] = await Promise.all([
+      this.latestWith('weight_kg'),
+      this.latestWith('height_cm'),
+      this.latestWith('activity_level'),
+      this.latestWith('body_fat_percent'),
+    ]);
+
+    return {
+      weightKg: weight?.weightKg ?? null,
+      weightAt: weight?.recordedAt ?? null,
+      heightCm: height?.heightCm ?? null,
+      activityLevel: activity?.activityLevel ?? null,
+      bodyFatPercent: bodyFat?.bodyFatPercent ?? null,
+    };
+  }
+
+  /**
+   * The newest row carrying a value in one column.
+   *
+   * The column is interpolated rather than bound because SQLite will not
+   * parameterise an identifier. `MetricColumn` is a closed union of four
+   * literals, so the only strings that can reach here are the four written
+   * above — nothing user-supplied has a path into this string.
+   */
+  private async latestWith(column: MetricColumn): Promise<BodyMetric | null> {
+    const { userId } = resolveContext(this.context);
+    const row = await this.db.getOptional<RawRow>(
+      `SELECT * FROM body_metrics
+        WHERE user_id = ? AND ${column} IS NOT NULL
+        ORDER BY recorded_at DESC, id DESC
+        LIMIT 1`,
       [userId],
     );
     return row === null ? null : toMetric(row);

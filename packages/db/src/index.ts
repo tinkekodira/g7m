@@ -92,6 +92,7 @@ export {
   BodyMetricsRepository,
   type ActivityLevel,
   type BodyMetric,
+  type CurrentMetrics,
   type MetricInput,
 } from './repositories/body-metrics.js';
 export {

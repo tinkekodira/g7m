@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatVolume, fractionOf, linePoints, niceMax, polylinePoints } from './chart-scale.js';
+import {
+  formatVolume,
+  fractionOf,
+  fractionWithin,
+  linePoints,
+  linePointsWithin,
+  niceMax,
+  niceRange,
+  polylinePoints,
+} from './chart-scale.js';
 
 describe('niceMax', () => {
   /**
@@ -54,6 +63,60 @@ describe('fractionOf', () => {
   it('is zero when there is no axis to be a fraction of', () => {
     expect(fractionOf(50, 0)).toBe(0);
     expect(fractionOf(Number.NaN, 100)).toBe(0);
+  });
+});
+
+describe('niceRange', () => {
+  it('brackets the data instead of starting at zero', () => {
+    const range = niceRange([80, 84]);
+    expect(range.min).toBeLessThan(80);
+    expect(range.max).toBeGreaterThan(84);
+  });
+
+  /**
+   * The reason this exists. Bodyweight on a zero-based axis puts four
+   * kilograms of change inside the top 5% of the plot, where it renders as a
+   * flat line — the chart showing nothing at exactly the moment it has
+   * something to show.
+   */
+  it('spreads a bodyweight series across the plot', () => {
+    const values = [84, 83.2, 82.5, 81.1, 80];
+    const range = niceRange(values);
+    const spread = fractionWithin(84, range) - fractionWithin(80, range);
+    expect(spread).toBeGreaterThan(0.5);
+  });
+
+  it('gives a flat series a band rather than a zero-height plot', () => {
+    // Every reading identical is a real thing that happens on maintenance,
+    // and dividing by a zero span would put every point at the bottom.
+    const range = niceRange([82, 82, 82]);
+    expect(range.max).toBeGreaterThan(range.min);
+    expect(fractionWithin(82, range)).toBeCloseTo(0.5);
+  });
+
+  it('has a usable answer for no data at all', () => {
+    expect(niceRange([])).toEqual({ min: 0, max: 1 });
+  });
+});
+
+describe('fractionWithin', () => {
+  it('places a value between the ends', () => {
+    expect(fractionWithin(5, { min: 0, max: 10 })).toBe(0.5);
+    expect(fractionWithin(85, { min: 80, max: 90 })).toBe(0.5);
+  });
+
+  it('clamps outside the range', () => {
+    expect(fractionWithin(200, { min: 80, max: 90 })).toBe(1);
+    expect(fractionWithin(0, { min: 80, max: 90 })).toBe(0);
+  });
+});
+
+describe('linePointsWithin', () => {
+  it('draws against a floor that is not zero', () => {
+    // The lowest reading sits on the bottom of the box, not near the top of it.
+    const points = linePointsWithin([80, 90], { min: 80, max: 90 }, 100, 40);
+    expect(points[0]?.y).toBe(40);
+    expect(points[1]?.y).toBe(0);
   });
 });
 

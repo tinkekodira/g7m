@@ -43,6 +43,35 @@ export function fractionOf(value: number, max: number): number {
   return Math.min(1, Math.max(0, value / max));
 }
 
+export interface Range {
+  readonly min: number;
+  readonly max: number;
+}
+
+/**
+ * An axis that fits the data instead of starting at zero.
+ *
+ * Zero is the honest baseline for a volume chart — a week with no training
+ * really is nothing, and a fitted axis would turn ordinary variation into a
+ * cliff. It is the wrong baseline for bodyweight, where nobody is near zero
+ * and the whole story lives inside a four-kilogram band: on a 0-to-90 axis a
+ * successful cut is a flat line, which is precisely the information the chart
+ * was drawn to show.
+ *
+ * A tenth of the spread is added at each end so the line does not run along
+ * the edges of its own box, and a flat series gets a band around it rather
+ * than a zero-height plot to divide by.
+ */
+export function niceRange(values: readonly number[], minimumSpread = 1): Range {
+  const usable = values.filter((value) => Number.isFinite(value));
+  if (usable.length === 0) return { min: 0, max: 1 };
+
+  const low = Math.min(...usable);
+  const high = Math.max(...usable);
+  const padding = Math.max((high - low) * 0.1, minimumSpread / 2);
+  return { min: low - padding, max: high + padding };
+}
+
 export interface Point {
   readonly x: number;
   readonly y: number;
@@ -64,16 +93,32 @@ export function linePoints(
   width: number,
   height: number,
 ): Point[] {
+  return linePointsWithin(values, { min: 0, max }, width, height);
+}
+
+/** `linePoints` against an axis that need not start at zero. See `niceRange`. */
+export function linePointsWithin(
+  values: readonly number[],
+  range: Range,
+  width: number,
+  height: number,
+): Point[] {
+  const place = (value: number): number => height - fractionWithin(value, range) * height;
+
   if (values.length === 0) return [];
   if (values.length === 1) {
-    return [{ x: width / 2, y: height - fractionOf(values[0] ?? 0, max) * height }];
+    return [{ x: width / 2, y: place(values[0] ?? 0) }];
   }
 
   const step = width / (values.length - 1);
-  return values.map((value, index) => ({
-    x: index * step,
-    y: height - fractionOf(value, max) * height,
-  }));
+  return values.map((value, index) => ({ x: index * step, y: place(value) }));
+}
+
+/** Where a value sits in a range, 0 at the bottom. Clamped, like `fractionOf`. */
+export function fractionWithin(value: number, range: Range): number {
+  const span = range.max - range.min;
+  if (!Number.isFinite(value) || span <= 0) return 0;
+  return Math.min(1, Math.max(0, (value - range.min) / span));
 }
 
 /** An SVG `points` attribute for a polyline. */

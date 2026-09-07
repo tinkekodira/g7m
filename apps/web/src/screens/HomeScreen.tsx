@@ -188,6 +188,19 @@ export function HomeScreen() {
         </span>
       </Link>
 
+      {/* Sits with the other pillars rather than in a settings menu. The
+          weekly weigh-in is a thing the app asks of the user, so the way to it
+          has to be somewhere they already look. */}
+      <Link
+        to="/you"
+        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      >
+        <span className="text-base font-medium text-primary">You — weight, height, activity</span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
+      </Link>
+
       <Link
         to="/exercises"
         className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
