@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
+  bestsFrom,
   formatRest,
   fromDisplayWeight,
   incrementKgFor,
@@ -10,10 +11,13 @@ import {
   nextSetTemplate,
   previousSetAt,
   restSecondsFor,
+  recordsInSession,
   rirToRpe,
   toDisplayWeight,
   totalVolumeKg,
+  type ExerciseBests,
   type LoadType,
+  type SetRecord,
   type SetTemplate,
   type UnitSystem,
 } from '@g7m/core';
@@ -23,6 +27,7 @@ import { useWakeLock } from '../lib/use-wake-lock.js';
 import { buzz } from '../lib/haptics.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { UndoToast } from '../components/UndoToast.js';
+import { describeRecord, type RecordLine } from './record-copy.js';
 import { formatElapsed, isRestOver, looksAbandoned, restRemaining } from './workout-timer.js';
 
 /**
@@ -42,6 +47,8 @@ interface ExerciseBlock {
   readonly previous: readonly SetTemplate[];
   readonly loadType: LoadType;
   readonly restSeconds: number;
+  /** From finished sessions only, so today cannot be its own baseline. */
+  readonly bests: ExerciseBests;
 }
 
 interface Workout {
@@ -75,11 +82,15 @@ export function WorkoutScreen() {
 
     const blocks = await Promise.all(
       entries.map(async (entry): Promise<ExerciseBlock> => {
-        const [exercise, sets, previous, equipment] = await Promise.all([
+        const [exercise, sets, previous, equipment, history] = await Promise.all([
           repositories.exercises.byId(entry.exerciseId),
           repositories.sessions.setsFor(entry.id),
           repositories.sessions.lastPerformance(entry.exerciseId, session.id),
           repositories.exercises.equipmentFor(entry.exerciseId),
+          // All time, not the twelve weeks the Progress screen charts. "Best in
+          // three months" and "best ever" are different claims, and only one of
+          // them is worth a badge.
+          repositories.history.completedSets({ exerciseId: entry.exerciseId }),
         ]);
 
         return {
@@ -87,6 +98,7 @@ export function WorkoutScreen() {
           exercise,
           sets,
           previous,
+          bests: bestsFrom(history),
           loadType: naturalLoadType(equipment.map((item) => item.category)),
           restSeconds: restSecondsFor({
             exerciseSeconds: exercise?.defaultRestSeconds ?? null,
@@ -142,6 +154,40 @@ export function WorkoutScreen() {
   useEffect(() => {
     if (restOver) buzz('alert');
   }, [restOver]);
+
+  /**
+   * Personal records, worked out rather than watched for.
+   *
+   * Nothing here listens for a record "happening". Given the history and what
+   * has been logged so far, `recordsInSession` says which of today's sets *are*
+   * records — the same answer on every render, unchanged by closing the app and
+   * coming back, and incapable of firing twice or missing one.
+   */
+  const marks = useMemo(() => markRecords(workout), [workout]);
+
+  /**
+   * The moment, which is a window rather than an event.
+   *
+   * `now` already ticks every second, so a record shows up and leaves on its
+   * own with no timer to cancel and nothing to reset. Reopening the app inside
+   * those few seconds shows it again, which is right: it only just happened.
+   */
+  const latest = marks.latest;
+  const fresh =
+    latest !== null && now.getTime() - latest.at.getTime() < CELEBRATION_SECONDS * 1000
+      ? latest
+      : null;
+
+  const celebrated = useRef(new Set<string>());
+  useEffect(() => {
+    if (fresh === null) return;
+    // The window reopens on every reload and the loader can blink through a
+    // null; without this the same lift would be congratulated twice.
+    const key = `${fresh.record.setId}:${fresh.record.kind}`;
+    if (celebrated.current.has(key)) return;
+    celebrated.current.add(key);
+    buzz('success');
+  }, [fresh]);
 
   if (state.error !== null) {
     return (
@@ -255,6 +301,7 @@ export function WorkoutScreen() {
         <ExerciseCard
           key={block.entry.id}
           block={block}
+          records={marks.bySet}
           unitSystem={unitSystem}
           busy={busy}
           onAddSet={() => {
@@ -358,8 +405,11 @@ export function WorkoutScreen() {
         independently fixed bars sit on top of each other, and the one that
         loses is the undo.
       */}
-      {(undo !== null || remaining !== null) && (
+      {(fresh !== null || undo !== null || remaining !== null) && (
         <div className="pb-safe-bottom fixed inset-x-0 bottom-0 z-40 flex flex-col">
+          {fresh !== null && (
+            <RecordBar line={describeRecord(fresh.record, fresh.exerciseName, unitSystem)} />
+          )}
           {undo !== null && (
             <UndoToast
               token={undo.token}
@@ -485,6 +535,7 @@ function BodyweightPrompt({
 
 function ExerciseCard({
   block,
+  records,
   unitSystem,
   busy,
   onAddSet,
@@ -496,6 +547,7 @@ function ExerciseCard({
   onRemove,
 }: {
   readonly block: ExerciseBlock;
+  readonly records: ReadonlyMap<string, SetRecord>;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
   readonly onAddSet: () => void;
@@ -544,6 +596,8 @@ function ExerciseCard({
                 key={set.id}
                 index={index}
                 set={set}
+                record={records.get(set.id) ?? null}
+                exerciseName={name}
                 previous={previousSetAt(block.previous, index)}
                 unitSystem={unitSystem}
                 busy={busy}
@@ -674,6 +728,8 @@ const EFFORT_ANSWERS = [
 function SetRow({
   index,
   set,
+  record,
+  exerciseName,
   previous,
   unitSystem,
   busy,
@@ -684,6 +740,8 @@ function SetRow({
 }: {
   readonly index: number;
   readonly set: SessionSet;
+  readonly record: SetRecord | null;
+  readonly exerciseName: string;
   readonly previous: SetTemplate | null;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
@@ -699,22 +757,42 @@ function SetRow({
   const stepDisplay = toDisplayWeight(incrementKgFor(unitSystem), unitSystem).value;
   const changes = { weightKg: fromDisplayWeight(weight, unitSystem), reps };
 
-  return (
-    <div className={set.isCompleted ? 'opacity-60' : undefined}>
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="text-xs font-medium text-muted">
-          {set.setType === 'warmup' ? 'Warm-up' : `Set ${String(index + 1)}`}
-        </span>
-        {/* What you did last time, beside the row it belongs to. The whole
-            reason the positional match in `previousSetAt` exists. */}
-        <span className="numeric text-xs text-muted">
-          {previous === null
-            ? 'First time'
-            : `Last: ${String(toDisplayWeight(previous.weightKg, unitSystem).value)} × ${String(previous.reps)}`}
-        </span>
-      </div>
+  const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
 
-      {/*
+  return (
+    <div>
+      {/* Outside the dimming below, deliberately: a completed row fades, and
+          the one thing on it that must not is the reason it was worth doing. */}
+      {line !== null && (
+        <p className="mb-1 flex items-center gap-2">
+          <span
+            aria-hidden
+            className="rounded-control bg-accent px-1.5 text-xs font-bold text-on-accent"
+          >
+            {line.badge}
+          </span>
+          <span className="text-xs font-semibold text-accent">{line.short}</span>
+          <span className="sr-only">
+            {line.headline}. {line.detail}
+          </span>
+        </p>
+      )}
+
+      <div className={set.isCompleted ? 'opacity-60' : undefined}>
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
+          <span className="text-xs font-medium text-muted">
+            {set.setType === 'warmup' ? 'Warm-up' : `Set ${String(index + 1)}`}
+          </span>
+          {/* What you did last time, beside the row it belongs to. The whole
+            reason the positional match in `previousSetAt` exists. */}
+          <span className="numeric text-xs text-muted">
+            {previous === null
+              ? 'First time'
+              : `Last: ${String(toDisplayWeight(previous.weightKg, unitSystem).value)} × ${String(previous.reps)}`}
+          </span>
+        </div>
+
+        {/*
         Two steppers and a tick, and on a phone they do not fit in a row.
 
         Each stepper is two 48px buttons plus a field it has to be possible to
@@ -728,78 +806,111 @@ function SetRow({
         shrink: a flex item defaults to `min-width: auto`, so without it the
         row grows past its container instead of the contents narrowing.
       */}
-      <div className="flex items-stretch gap-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-          {weightLabel !== null && (
+        <div className="flex items-stretch gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+            {weightLabel !== null && (
+              <div className="min-w-0 flex-1">
+                <Stepper
+                  label={weightLabel}
+                  suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
+                  value={weight}
+                  step={stepDisplay}
+                  decimals={1}
+                  disabled={busy}
+                  onChange={setWeight}
+                />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <Stepper
-                label={weightLabel}
-                suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
-                value={weight}
-                step={stepDisplay}
-                decimals={1}
+                label="Reps"
+                value={reps}
+                step={1}
+                min={0}
                 disabled={busy}
-                onChange={setWeight}
+                onChange={setReps}
               />
             </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <Stepper
-              label="Reps"
-              value={reps}
-              step={1}
-              min={0}
-              disabled={busy}
-              onChange={setReps}
-            />
           </div>
+
+          <button
+            type="button"
+            aria-label={
+              set.isCompleted
+                ? `Undo set ${String(index + 1)}`
+                : `Complete set ${String(index + 1)}`
+            }
+            aria-pressed={set.isCompleted}
+            disabled={busy}
+            onClick={() => {
+              if (set.isCompleted) {
+                onUncomplete();
+                return;
+              }
+              onComplete(changes);
+            }}
+            className={
+              set.isCompleted
+                ? 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control bg-accent text-2xl text-on-accent'
+                : 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated'
+            }
+          >
+            ✓
+          </button>
         </div>
 
-        <button
-          type="button"
-          aria-label={
-            set.isCompleted ? `Undo set ${String(index + 1)}` : `Complete set ${String(index + 1)}`
-          }
-          aria-pressed={set.isCompleted}
-          disabled={busy}
-          onClick={() => {
-            if (set.isCompleted) {
-              onUncomplete();
-              return;
-            }
-            onComplete(changes);
-          }}
-          className={
-            set.isCompleted
-              ? 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control bg-accent text-2xl text-on-accent'
-              : 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated'
-          }
-        >
-          ✓
-        </button>
-      </div>
-
-      <div className="mt-1 flex justify-end gap-4">
-        {!set.isCompleted && (
+        <div className="mt-1 flex justify-end gap-4">
+          {!set.isCompleted && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                onSave(changes);
+              }}
+              className="text-xs text-muted underline-offset-4 hover:underline"
+            >
+              Save without ticking
+            </button>
+          )}
           <button
             type="button"
             disabled={busy}
-            onClick={() => {
-              onSave(changes);
-            }}
+            onClick={onRemove}
             className="text-xs text-muted underline-offset-4 hover:underline"
           >
-            Save without ticking
+            Delete set
           </button>
-        )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onRemove}
-          className="text-xs text-muted underline-offset-4 hover:underline"
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The record bar.
+ *
+ * The other half of a personal record: the badge on the row is the fact, and
+ * this is the moment. It arrives in the same corner as the rest timer, which is
+ * where the eye already goes after a set, and leaves on its own a few seconds
+ * later — a PR that has to be dismissed is homework.
+ *
+ * Understated on purpose. Two numbers and no adjectives; a record that has to
+ * be described as huge is not one.
+ */
+function RecordBar({ line }: { readonly line: RecordLine }) {
+  return (
+    <div role="status" aria-live="polite" className="rise bg-accent text-on-accent">
+      <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+        <span
+          aria-hidden
+          className="shrink-0 rounded-control border border-current px-2 py-0.5 text-xs font-bold"
         >
-          Delete set
-        </button>
+          {line.badge}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-base font-semibold">{line.headline}</span>
+          <span className="numeric block text-sm opacity-80">{line.detail}</span>
+        </span>
       </div>
     </div>
   );
@@ -843,4 +954,50 @@ function RestBar({
       </div>
     </div>
   );
+}
+
+/** How long a record stays on screen after the set that set it. */
+const CELEBRATION_SECONDS = 12;
+
+interface LatestRecord {
+  readonly record: SetRecord;
+  readonly exerciseName: string;
+  readonly at: Date;
+}
+
+/**
+ * Every record in the session, and the most recent one.
+ *
+ * Walked per exercise, because a record is beaten against that exercise's own
+ * history and nothing else. The map is what hangs a badge on the right row; the
+ * latest is what decides whether anything is worth announcing.
+ */
+function markRecords(workout: Workout | null): {
+  bySet: ReadonlyMap<string, SetRecord>;
+  latest: LatestRecord | null;
+} {
+  const bySet = new Map<string, SetRecord>();
+  let latest: LatestRecord | null = null;
+  if (workout === null) return { bySet, latest };
+
+  for (const block of workout.blocks) {
+    const records = recordsInSession({
+      sets: block.sets,
+      // The session's snapshot, so a pull-up logged at 80 kg is still measured
+      // against 80 kg however the scale reads today.
+      bodyweightKg: workout.session.bodyweightKg,
+      bests: block.bests,
+    });
+
+    for (const record of records) {
+      bySet.set(record.setId, record);
+      const at = block.sets.find((set) => set.id === record.setId)?.completedAt ?? null;
+      if (at === null) continue;
+      if (latest === null || at.getTime() > latest.at.getTime()) {
+        latest = { record, exerciseName: block.exercise?.name ?? 'that lift', at };
+      }
+    }
+  }
+
+  return { bySet, latest };
 }
