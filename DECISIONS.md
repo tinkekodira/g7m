@@ -2095,3 +2095,125 @@ one question would be worse than only having one.
 
 **Silent below five sessions.** A cold shoulder after two workouts is not a gap
 in somebody's training, it is a Tuesday.
+
+---
+
+## ADR-0042 — Four things that only show up in a gym
+
+**Status:** accepted · **Date:** 2026-09-08
+
+Everything here was found by using the app standing up rather than reading it
+sitting down. None of it changes the schema; all of it changes whether the
+logger is usable with a phone on a bench and chalk on both hands.
+
+### The kit slider is drawn, not a styled range input
+
+Superseding the last paragraph of ADR-0041.
+
+The reasoning there was right and the outcome was not. `appearance: none` on an
+`<input type="range">` strips the track along with the thumb, so what shipped
+was a white lozenge floating over nothing. Styling the track back means
+`::-webkit-slider-runnable-track` and its three vendor cousins, none of which
+can hold the words — and the words are the control. A three-stop range input
+also has no continuous position, so it can only cut between still frames.
+
+The pill is now drawn and the drag is a pointer handler. **The range input
+stays in the tree, visually hidden**, which keeps everything ADR-0041 wanted
+from it: announced as a slider, `aria-valuetext` giving the word rather than
+"1 of 2", arrow keys and Home/End. Both paths drive the same `value`, so they
+cannot disagree.
+
+Two numbers have to agree — which stop is selected and where the pill is drawn
+— or the control lies: the pill sits over one word while another is
+highlighted, and letting go makes it jump somewhere the finger never was. They
+agree by construction, and `slider-track.test.ts` asserts it as a property
+rather than trusting the paragraph that explains it.
+
+The cells are `floor(fraction × stops)`, **not the nearest stop.** Nearest puts
+the boundaries at the quarter points, so a tap 30% along lands on the first
+word and selects the second.
+
+### A wake lock is a state machine, not a flag
+
+The Screen Wake Lock API is ten lines, and then those ten lines are wrong.
+
+The browser **takes the lock back whenever the page stops being visible** — tab
+switch, app backgrounded, screen off — and does not give it back on return. A
+naive implementation works until the first phone call and never again for the
+rest of the session, which is precisely the workout where it mattered.
+
+And `request()` is async. If the workout ends while the browser is still
+deciding, the lock arrives for a screen nobody is looking at and is never
+released: the display then stays lit until the battery is flat.
+
+Both are ordering bugs rather than API bugs, so the decision-making lives in a
+plain controller with no DOM in it and the hook is a thin adapter. The test
+drives every ordering, including the two that need a lock to arrive late.
+
+**It does nothing on iOS.** The API is absent from Safari before 16.4 and from
+every iOS WKWebView regardless of version, which includes the Capacitor build.
+That is detected and skipped rather than papered over, and closing it needs a
+native plugin.
+
+A second effect, unplanned: the tick that drives the rest timer is a
+`setInterval`, and a suspended tab does not fire one. A phone that sleeps is
+also a phone that has not noticed rest is over.
+
+### Haptics get no setting of their own
+
+Both platforms already have one. Android routes `navigator.vibrate` through the
+system haptics setting and iOS does the same for its native equivalent, so a
+phone with haptics off stays silent without the app knowing anything about it.
+A switch in Settings would mean a profile column, a migration, and a second
+source of truth that can disagree with the first.
+
+Three patterns, all short — a vibration long enough to be described as one
+reads as a phone call. `alert` is the only one with any length to it, because
+it has to carry through a pocket rather than through a fingertip already
+touching the glass.
+
+`android.permission.VIBRATE` is now in the manifest. Without it the WebView
+still exposes `navigator.vibrate` and it silently does nothing: no error, no
+prompt, no buzz.
+
+**Nothing on iOS again**, for the same reason and with the same seam
+(`fireHaptic`) for `@capacitor/haptics` to slot into later.
+
+### Undo is a real delete plus the row in memory
+
+Removing a set or an exercise was instant and permanent. Discarding a whole
+workout asks first; deleting one exercise out of it did not — and the Remove
+button was made *more* visible in ADR-0041, which makes a mis-tap likelier
+rather than rarer.
+
+**Not a confirm dialog.** It would ask on every removal including the
+deliberate ones, and put a modal between a lifter and a list they are tidying
+mid-set.
+
+**Not a soft-delete column.** A tombstone would have to be filtered out of
+every query that touches `session_sets` — volume, records, the prefill, the
+review, the generator — and one missed filter is a set that silently counts
+twice, forever, in a table that is meant to be the record of what happened.
+
+So the delete is real and `removeSet` / `removeExercise` hand back what they
+deleted. Restoring re-inserts it with **the same id and the same order key**,
+which is the difference between an undo and a re-add: the exercise comes back
+where it was rather than at the end. `is_completed` and `completed_at` are
+written from the row they were read from, because they are a paired CHECK and a
+restore that splits them is accepted locally and refused on upload permanently.
+
+One at a time, deliberately. Removing twice leaves the first deletion done —
+this is a grace period, not a history.
+
+### Home knows when a workout is open
+
+The landing screen offered "Start an empty workout" whether or not one was
+running, which is the app forgetting the thing the lifter is in the middle of.
+Coming back after a phone call meant tapping through to the logger to find out
+whether anything was still there.
+
+The open session now takes the top slot and the accent, and the wording has
+edges worth testing: a session five seconds old must not say "0 min in", one
+with nothing in it must not announce "0 exercises", and one left open overnight
+must stop reading as an invitation to carry on — by then the useful action is
+closing it, and the elapsed time being stored with it is already wrong.

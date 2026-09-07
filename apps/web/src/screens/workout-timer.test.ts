@@ -4,6 +4,7 @@ import {
   formatElapsed,
   isRestOver,
   looksAbandoned,
+  openSessionSummary,
   restRemaining,
 } from './workout-timer.js';
 
@@ -89,5 +90,60 @@ describe('looksAbandoned', () => {
 
   it('is false for a long but plausible workout', () => {
     expect(looksAbandoned(START, at(90 * 60))).toBe(false);
+  });
+});
+
+describe('openSessionSummary', () => {
+  const started = new Date('2026-09-08T18:00:00Z');
+
+  function at(minutes: number): Date {
+    return new Date(started.getTime() + minutes * 60_000);
+  }
+
+  function summarise(minutes: number, exerciseCount = 0, completedSets = 0) {
+    return openSessionSummary({ startedAt: started, exerciseCount, completedSets }, at(minutes));
+  }
+
+  it('says how far in, what is in it, and how much is done', () => {
+    const summary = summarise(23, 3, 7);
+    expect(summary.headline).toBe('Continue your workout');
+    expect(summary.detail).toBe('23 min in · 3 exercises · 7 sets done');
+    expect(summary.stale).toBe(false);
+  });
+
+  it('does not say "0 min in"', () => {
+    expect(summarise(0).detail).toBe('just started');
+    expect(summarise(0.5).detail).toBe('just started');
+  });
+
+  it('does not announce an empty workout as "0 exercises"', () => {
+    expect(summarise(5).detail).toBe('5 min in');
+    expect(summarise(5, 2).detail).toBe('5 min in · 2 exercises');
+  });
+
+  it('counts one of a thing as one', () => {
+    expect(summarise(1, 1, 1).detail).toBe('1 min in · 1 exercise · 1 set done');
+  });
+
+  it('switches to hours and minutes past the hour', () => {
+    expect(summarise(72).detail).toBe('1 h 12 min in');
+  });
+
+  /**
+   * A session left open overnight is the commonest way a six-hour workout gets
+   * into the history. By then the useful action is closing it, so the card
+   * stops reading as an invitation to carry on.
+   */
+  it('stops inviting you to carry on once it has been open for hours', () => {
+    const summary = summarise(STALE_SESSION_HOURS * 60 + 30, 4, 12);
+    expect(summary.stale).toBe(true);
+    expect(summary.headline).toBe('You left a workout open');
+    expect(summary.detail).toBe('open for 4 hours · 4 exercises · 12 sets done');
+  });
+
+  it('never comes back with an empty line', () => {
+    for (const minutes of [0, 1, 59, 60, 239, 240, 1440]) {
+      expect(summarise(minutes).detail, String(minutes)).not.toBe('');
+    }
   });
 });
