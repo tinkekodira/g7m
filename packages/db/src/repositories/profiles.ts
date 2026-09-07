@@ -12,7 +12,13 @@
  * append-only history when the coaching loop lands; until then it is a single
  * mutable number and this is the only place that writes it.
  */
-import { EXPERIENCE_LEVELS, type ExperienceLevel, type UnitSystem } from '@g7m/core';
+import {
+  EXPERIENCE_LEVELS,
+  SEXES,
+  type ExperienceLevel,
+  type Sex,
+  type UnitSystem,
+} from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -56,11 +62,25 @@ export interface Profile {
   readonly unitSystem: UnitSystem;
   readonly experienceLevel: ExperienceLevel;
   readonly birthYear: number | null;
+  /** For stating realistic rates. Never an input to how much is prescribed. */
+  readonly sex: Sex | null;
   readonly bodyweightKg: number | null;
   readonly restSecondsDefault: number;
   /** 1 = Monday, matching ISO 8601. */
   readonly weekStartsOn: number;
   readonly onboardedAt: Date | null;
+}
+
+/**
+ * Null and a value are both meaningful; an unrecognised string is neither.
+ *
+ * The same shape as `readOptionalActivity` in body-metrics, and for the same
+ * reason: defaulting a value the app does not recognise would put a confident
+ * wrong answer into a sentence about somebody's expected rate of progress.
+ */
+function readOptionalSex(row: RawRow): Sex | null {
+  const raw = readOptionalString(row, 'sex');
+  return raw !== null && (SEXES as readonly string[]).includes(raw) ? (raw as Sex) : null;
 }
 
 /** Every field a device may change. Omitted means "leave it alone". */
@@ -69,6 +89,7 @@ export interface ProfileChanges {
   readonly unitSystem?: UnitSystem;
   readonly experienceLevel?: ExperienceLevel;
   readonly birthYear?: number | null;
+  readonly sex?: Sex | null;
   readonly bodyweightKg?: number | null;
   readonly restSecondsDefault?: number;
   readonly weekStartsOn?: number;
@@ -83,6 +104,7 @@ function toProfile(row: RawRow): Profile {
     unitSystem: readEnum(row, 'unit_system', UNIT_SYSTEMS, 'metric'),
     experienceLevel: readEnum(row, 'experience_level', EXPERIENCE_LEVELS, 'beginner'),
     birthYear: readOptionalNumber(row, 'birth_year'),
+    sex: readOptionalSex(row),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
     restSecondsDefault: readNumber(row, 'rest_seconds_default', 120),
     weekStartsOn: readNumber(row, 'week_starts_on', 1),
@@ -139,6 +161,12 @@ export class ProfileRepository {
     if (changes.unitSystem !== undefined) set('unit_system', changes.unitSystem);
     if (changes.experienceLevel !== undefined) set('experience_level', changes.experienceLevel);
     if (changes.birthYear !== undefined) set('birth_year', clampBirthYear(changes.birthYear));
+    if (changes.sex !== undefined) {
+      // Mirrors the CHECK. Anything else is stored as null rather than as
+      // itself, because a row the server refuses is discarded and stranded.
+      const sex = changes.sex;
+      set('sex', sex !== null && (SEXES as readonly string[]).includes(sex) ? sex : null);
+    }
     if (changes.bodyweightKg !== undefined) {
       set('bodyweight_kg', clampBodyweight(changes.bodyweightKg));
     }

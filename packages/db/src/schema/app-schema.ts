@@ -169,6 +169,8 @@ const profiles = new Table({
   unit_system: column.text,
   experience_level: column.text,
   birth_year: column.integer,
+  /** For stating realistic rates. Never an input to what gets prescribed. */
+  sex: column.text,
   bodyweight_kg: column.real,
   rest_seconds_default: column.integer,
   week_starts_on: column.integer,

@@ -50,7 +50,7 @@ bucket_definitions:
     parameters: SELECT request.user_id() AS user_id
     data:
       - >-
-        SELECT id, user_id, display_name, unit_system, experience_level, birth_year,
+        SELECT id, user_id, display_name, unit_system, experience_level, birth_year, sex,
         bodyweight_kg, rest_seconds_default, week_starts_on, onboarded_at, created_at,
         updated_at FROM profiles WHERE user_id = bucket.user_id
       - >-

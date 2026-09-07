@@ -20,7 +20,7 @@
  * judgement, because it is a description of their own behaviour rather than an
  * opinion about their body.
  */
-import type { WeightTrend } from './body.js';
+import type { Sex, WeightTrend } from './body.js';
 
 export const TRAINING_GOALS = ['lose_fat', 'build_muscle', 'recomp', 'get_stronger'] as const;
 export type TrainingGoal = (typeof TRAINING_GOALS)[number];
@@ -59,17 +59,48 @@ export const GOAL_DESCRIPTIONS: Record<TrainingGoal, string> = {
  * What is realistic, said plainly before they start.
  *
  * The honest version of each of these is slower than the internet's, and
- * somebody who is told "0.1 to 0.3 kg a week" up front does not quit in week
- * three for gaining 0.2.
+ * somebody told "0.1 to 0.3 kg a week" up front does not quit in week three
+ * for gaining 0.2.
+ *
+ * Fat loss is quoted as a share of bodyweight rather than in kilograms, which
+ * is both better advice and the reason it needs no sex at all: half a percent
+ * a week is the same instruction to everybody, and "0.75 kg a week" is a very
+ * different week for a 60 kg lifter than for a 100 kg one.
+ *
+ * Muscle gain is the one that genuinely differs. Women gain at roughly half
+ * the absolute rate, so a single number is good advice for one person and a
+ * setup for disappointment for another. Saying so is the whole point of
+ * stating a rate — it is not a smaller goal, it is the real number.
  */
-export const GOAL_EXPECTATIONS: Record<TrainingGoal, string> = {
-  lose_fat: 'Expect 0.25–0.75 kg a week. Much faster than that and strength usually goes with it.',
-  build_muscle: 'Expect 0.1–0.3 kg a week. Faster than that is mostly fat.',
+const EXPECTATIONS: Record<TrainingGoal, string> = {
+  lose_fat:
+    'Expect 0.5–1% of your bodyweight a week. Much faster than that and strength usually goes with it.',
+  build_muscle:
+    'Expect 0.1–0.3 kg a week for men, around half that for women. Faster is mostly fat.',
   recomp:
     'Expect the scale to barely move. The progress shows up in the log weeks before it shows up on the scale.',
   get_stronger:
     'Expect the numbers on the bar to move first. Bodyweight can go either way and neither is a problem.',
 };
+
+/** The one goal where the honest number depends on who is asking. */
+const MUSCLE_GAIN_BY_SEX: Record<Sex, string> = {
+  male: 'Expect 0.1–0.3 kg a week. Faster than that is mostly fat.',
+  female:
+    'Expect 0.05–0.15 kg a week. Muscle is gained at about half the absolute rate, which is biology rather than effort.',
+};
+
+/**
+ * The pace to expect, narrowed by sex where sex actually changes the answer.
+ *
+ * A null sex gets the unqualified version with both figures in it, rather than
+ * a guess. Nothing else about the app changes: sex is not an input to how much
+ * training gets prescribed, and `programming.ts` does not import it.
+ */
+export function goalExpectation(goal: TrainingGoal, sex: Sex | null): string {
+  if (goal === 'build_muscle' && sex !== null) return MUSCLE_GAIN_BY_SEX[sex];
+  return EXPECTATIONS[goal];
+}
 
 export const MIN_DAYS_PER_WEEK = 1;
 export const MAX_DAYS_PER_WEEK = 7;

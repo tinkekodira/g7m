@@ -183,3 +183,41 @@ describe('when nobody is signed in', () => {
     await expect(anonymous.update({ unitSystem: 'metric' })).rejects.toThrow(/signed-in user/);
   });
 });
+
+describe('sex', () => {
+  // Not seeded by the file-level beforeEach; each block arranges its own row.
+  beforeEach(() => seedProfile());
+
+  it('is null until somebody answers', async () => {
+    expect((await profiles.current())?.sex).toBeNull();
+  });
+
+  it('stores either of the two values', async () => {
+    await profiles.update({ sex: 'female' });
+    expect((await profiles.current())?.sex).toBe('female');
+    await profiles.update({ sex: 'male' });
+    expect((await profiles.current())?.sex).toBe('male');
+  });
+
+  it('can be cleared again', async () => {
+    await profiles.update({ sex: 'male' });
+    await profiles.update({ sex: null });
+    expect((await profiles.current())?.sex).toBeNull();
+  });
+
+  /**
+   * The CHECK would refuse it, and a row refused on upload is discarded
+   * permanently and stranded on the device.
+   */
+  it('stores nothing rather than a value the column would reject', async () => {
+    await profiles.update({ sex: 'other' as unknown as 'male' });
+    expect((await profiles.current())?.sex).toBeNull();
+  });
+
+  it('reads an unrecognised stored value as unknown', async () => {
+    // A default here would put a confident wrong answer into a sentence about
+    // somebody's expected rate of progress.
+    await db.execute('UPDATE profiles SET sex = ? WHERE user_id = ?', ['unspecified', USER]);
+    expect((await profiles.current())?.sex).toBeNull();
+  });
+});
