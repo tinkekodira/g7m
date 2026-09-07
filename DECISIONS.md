@@ -2217,3 +2217,93 @@ edges worth testing: a session five seconds old must not say "0 min in", one
 with nothing in it must not announce "0 exercises", and one left open overnight
 must stop reading as an invitation to carry on — by then the useful action is
 closing it, and the elapsed time being stored with it is already wrong.
+
+---
+
+## ADR-0043 — A personal record is a moment, and it is computed rather than caught
+
+**Status:** accepted · **Date:** 2026-09-08
+
+`personalRecords` in `progress.ts` already answered *what are my bests*, over a
+window, for a screen somebody opens afterwards. That is the right shape for a
+list and the wrong shape for the half-second it describes: by the time the
+Progress screen is open, the set that mattered was three days ago. The app was
+quietly filing away the most motivating moment in lifting.
+
+### Computed, not caught
+
+Nothing detects a record *happening*. `recordsInSession` takes the history and
+the sets logged so far and says which of today's sets **are** records.
+
+That is the same answer on every render, unchanged by closing the app and
+coming back, and it cannot fire twice or miss one. A listener on the write path
+would get at least one of those wrong: the logger re-reads after every write,
+the loader can blink through a null, and a set can be un-ticked and re-ticked.
+
+The one piece of state left is a set of already-congratulated keys, and it
+exists only to stop the *haptic* repeating — not to decide what is true.
+
+The moment itself is a **window rather than a timer**: a record is announced
+while the set that set it completed under twelve seconds ago. The clock that
+drives the rest timer already ticks every second, so there is nothing to
+schedule and nothing to cancel. Reopening the app inside those seconds shows it
+again, which is correct — it only just happened.
+
+### Two kinds, not the three the table allows
+
+`max_weight` and `estimated_1rm` are announced. **`max_session_volume` stays on
+the Progress screen**, because it accrues: it gets beaten in the middle of an
+ordinary third set, and announcing it there makes the badge stop meaning *that
+lift was your best*.
+
+At most one badge per set, and `heaviest` wins when a set is both. Two badges
+on one row is two claims about the same lift, and the heavier one is what
+anybody means.
+
+### Four things that are not records
+
+**A first attempt.** Every exercise would fire one the first time it was
+logged, and a badge that appears for everybody on everything is a decoration.
+
+**A tie.** Repeating a best is not beating it. This is the same rule
+`personalRecords` applies when it keeps the earlier date on a tie, and without
+it the badge stops meaning anything inside a fortnight — most people's second
+set is their first set again.
+
+**A lift whose past cannot be measured.** Pull-ups logged on a session with no
+bodyweight snapshot have no number. "Heaviest yet" against an unknown past is a
+claim rather than a fact, so the exercise stays silent for the whole session
+rather than only for its first set.
+
+**A warm-up**, on either side of the comparison.
+
+### All time, not the window the chart draws
+
+The Progress screen computes records over the twelve weeks it charts and
+says so on screen, because "best in
+three months" and "best ever" are different claims. A badge cannot carry that
+qualification, so this one reads all of an exercise's history —
+`completedSets({ exerciseId })`, which is already restricted to **finished**
+sessions, so today cannot be its own baseline.
+
+Within the session the running best is carried forward, so the second set at
+the same weight is not a second record. It beat nothing; the first one did.
+
+### `personal_records` stays empty
+
+There is a table for this and it is still not written to. Records are derived
+from `session_sets`, which is the record of what actually happened, and a
+stored copy can only disagree with it — correct a mistyped 140 kg down to 40
+and the table still says you lifted 140. Deriving is also what makes this work
+offline, which Brief §5 requires: a personal record announced three days later
+when the phone found signal is not a personal record, it is a newsletter.
+
+The table is left in place because a future feature — records with a date on
+them, shown on a timeline — would want persisted rows with `achieved_at`. That
+is a different feature from this one.
+
+### The badge does not fade with the row
+
+A completed set dims to 60%, which is right for numbers already logged and
+wrong for the one thing on the row explaining why it was worth doing. The badge
+now sits outside the dimmed wrapper.
