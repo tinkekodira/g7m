@@ -151,6 +151,30 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   A screenful of cards arriving at once reads as a page that dumped itself on
+   you. Staggered by a few tens of milliseconds it reads as one that is being
+   dealt out — the same information, arriving calmly.
+
+   Short and small on purpose: 240ms and eight pixels. Long enough to be felt,
+   too short to be waited for. The reduced-motion block below flattens it to
+   nothing, which leaves the content exactly where it was going to be anyway.
+   -------------------------------------------------------------------------- */
+@keyframes g7m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility rise {
+  animation: g7m-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* --------------------------------------------------------------------------
    Motion answers user actions only. Respect the OS setting everywhere —
    including any idle rotation on the 3D model (Brief §10).
    -------------------------------------------------------------------------- */

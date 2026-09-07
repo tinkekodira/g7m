@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DELOAD_AFTER_MISSES,
   planSession,
+  suggestForNeglected,
   type ExerciseHistory,
   type PlanInput,
   type PlannableExercise,
@@ -532,3 +533,101 @@ function chestOnly(): Map<string, number> {
     ['triceps', 30],
   ]);
 }
+
+describe('suggestForNeglected', () => {
+  const target = 16;
+
+  /** Every group at its weekly target, so a test can put one group behind. */
+  const ALL_DONE = Object.fromEntries(
+    [
+      'chest',
+      'back',
+      'shoulders',
+      'triceps',
+      'biceps',
+      'quads',
+      'hamstrings',
+      'glutes',
+      'calves',
+      'core',
+      'traps',
+    ].map((group) => [group, target]),
+  );
+
+  function suggest(done: Record<string, number>, over: { limit?: number } = {}) {
+    return suggestForNeglected({
+      catalogue: catalogue(),
+      history: [],
+      setsThisWeekByGroup: new Map(Object.entries(done)),
+      weeklyTarget: target,
+      now: NOW,
+      ...over,
+    });
+  }
+
+  /**
+   * A heat map answers "what have I trained" and stops there, leaving the
+   * useful half of the question as an exercise for the reader.
+   */
+  it('names an exercise for the group furthest behind', () => {
+    const found = suggest({ ...ALL_DONE, quads: 0 });
+    expect(found[0]?.group).toBe('quads');
+    expect(found[0]?.name).toBe('Back Squat');
+  });
+
+  it('orders by how overdue each group is', () => {
+    // Everything else at target, or the groups this test does not mention are
+    // all sixteen sets behind and win — which is correct, and not the point.
+    const found = suggest({ ...ALL_DONE, back: 2, quads: 8 });
+    expect(found.map((entry) => entry.group)).toEqual(['back', 'quads']);
+  });
+
+  it('says nothing about a group that has had its week', () => {
+    expect(suggest(ALL_DONE)).toEqual([]);
+  });
+
+  it('does not suggest the same exercise for two groups', () => {
+    const found = suggest({});
+    const ids = found.map((entry) => entry.exerciseId);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('keeps the list short enough to read under a model', () => {
+    expect(suggest({}).length).toBeLessThanOrEqual(4);
+    expect(suggest({}, { limit: 2 })).toHaveLength(2);
+  });
+
+  it('prefers compounds, which is the most muscle for the time', () => {
+    const found = suggest({ ...ALL_DONE, chest: 0 });
+    expect(found[0]?.name).toBe('Barbell Bench Press');
+  });
+
+  /**
+   * The same scorer the generator uses, so the suggestion under the model and
+   * the exercise in tomorrow's session agree. Two answers to one question is
+   * worse than having only one.
+   */
+  it('will not suggest something trained yesterday', () => {
+    const found = suggestForNeglected({
+      catalogue: catalogue(),
+      history: [lastWeek('barbell-bench-press', { at: daysAgo(1) })],
+      setsThisWeekByGroup: new Map([['chest', 0]]),
+      weeklyTarget: target,
+      now: NOW,
+    });
+    const chest = found.find((entry) => entry.group === 'chest');
+    expect(chest?.exerciseId).not.toBe('barbell-bench-press');
+  });
+
+  it('has nothing to say with an empty catalogue', () => {
+    expect(
+      suggestForNeglected({
+        catalogue: [],
+        history: [],
+        setsThisWeekByGroup: new Map(),
+        weeklyTarget: target,
+        now: NOW,
+      }),
+    ).toEqual([]);
+  });
+});

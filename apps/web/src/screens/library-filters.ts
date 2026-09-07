@@ -10,7 +10,7 @@
  * a filter that writes a parameter it cannot read back is a screen that
  * forgets what you asked for every time you open an exercise and come back.
  */
-import type { ExerciseFilter } from '@g7m/db';
+import { EQUIPMENT_KITS, type EquipmentKit, type ExerciseFilter } from '@g7m/db';
 
 /**
  * Short keys, because this string ends up in a hash fragment that people see.
@@ -19,6 +19,7 @@ import type { ExerciseFilter } from '@g7m/db';
 export const PARAM_QUERY = 'q';
 export const PARAM_GROUP = 'muscle';
 export const PARAM_EQUIPMENT = 'gear';
+export const PARAM_KIT = 'kit';
 
 export interface LibraryFilters {
   /** Free text. Ranked by the same code the server search uses. */
@@ -27,9 +28,23 @@ export interface LibraryFilters {
   readonly muscleGroup: string | null;
   /** Equipment slugs. Empty means the user has not narrowed by equipment. */
   readonly equipment: readonly string[];
+  /**
+   * Whether a gym is needed at all. Null is the middle of the slider: both.
+   *
+   * Separate from `equipment` because it answers a coarser question. Ticking
+   * eight pieces of equipment off a list to say "nothing" is not what somebody
+   * training in a park wants; one control that means *me and a bar to hang
+   * off* is.
+   */
+  readonly kit: EquipmentKit | null;
 }
 
-export const NO_FILTERS: LibraryFilters = { query: '', muscleGroup: null, equipment: [] };
+export const NO_FILTERS: LibraryFilters = {
+  query: '',
+  muscleGroup: null,
+  equipment: [],
+  kit: null,
+};
 
 export function readFilters(params: URLSearchParams): LibraryFilters {
   const equipment = params.get(PARAM_EQUIPMENT);
@@ -40,7 +55,16 @@ export function readFilters(params: URLSearchParams): LibraryFilters {
     // human and keeps the URL short enough to read.
     equipment:
       equipment === null || equipment === '' ? [] : equipment.split(',').filter((s) => s !== ''),
+    // An unrecognised value reads as "no preference" rather than filtering
+    // everything away, the same way an unknown equipment slug is dropped.
+    kit: readKit(params.get(PARAM_KIT)),
   };
+}
+
+function readKit(value: string | null): EquipmentKit | null {
+  return value !== null && (EQUIPMENT_KITS as readonly string[]).includes(value)
+    ? (value as EquipmentKit)
+    : null;
 }
 
 /**
@@ -55,12 +79,16 @@ export function writeFilters(filters: LibraryFilters): URLSearchParams {
   if (filters.query.trim() !== '') params.set(PARAM_QUERY, filters.query);
   if (filters.muscleGroup !== null) params.set(PARAM_GROUP, filters.muscleGroup);
   if (filters.equipment.length > 0) params.set(PARAM_EQUIPMENT, filters.equipment.join(','));
+  if (filters.kit !== null) params.set(PARAM_KIT, filters.kit);
   return params;
 }
 
 export function hasFilters(filters: LibraryFilters): boolean {
   return (
-    filters.query.trim() !== '' || filters.muscleGroup !== null || filters.equipment.length > 0
+    filters.query.trim() !== '' ||
+    filters.muscleGroup !== null ||
+    filters.equipment.length > 0 ||
+    filters.kit !== null
   );
 }
 
@@ -94,6 +122,7 @@ export function toExerciseFilter(
   return {
     ...(groupId === undefined ? {} : { muscleGroupIds: [groupId] }),
     ...(equipmentIds.length === 0 ? {} : { equipmentIds }),
+    ...(filters.kit === null ? {} : { kit: filters.kit }),
   };
 }
 

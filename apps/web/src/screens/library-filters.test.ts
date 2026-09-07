@@ -27,12 +27,13 @@ describe('reading filters from a URL', () => {
     expect(readFilters(new URLSearchParams())).toEqual(NO_FILTERS);
   });
 
-  it('reads all three', () => {
-    const params = new URLSearchParams('q=press&muscle=chest&gear=barbell,flat-bench');
+  it('reads all four', () => {
+    const params = new URLSearchParams('q=press&muscle=chest&gear=barbell,flat-bench&kit=gym');
     expect(readFilters(params)).toEqual({
       query: 'press',
       muscleGroup: 'chest',
       equipment: ['barbell', 'flat-bench'],
+      kit: 'gym',
     });
   });
 
@@ -137,5 +138,40 @@ describe('toggleEquipment', () => {
     const after = toggleEquipment(before, 'barbell');
     expect(after.query).toBe('press');
     expect(after.muscleGroup).toBe('chest');
+  });
+});
+
+describe('training with a gym or without one', () => {
+  /**
+   * The coarse question, separate from ticking equipment off a list. Somebody
+   * in a park wants one control that means "me and a bar to hang off".
+   */
+  it('round-trips through the URL', () => {
+    const filters = { ...NO_FILTERS, kit: 'bodyweight' as const };
+    expect(readFilters(writeFilters(filters))).toEqual(filters);
+  });
+
+  it('leaves the parameter out when there is no preference', () => {
+    expect(writeFilters(NO_FILTERS).has('kit')).toBe(false);
+  });
+
+  /**
+   * An unknown value would otherwise reach the repository and filter every
+   * exercise away, which happens for real: a link from a newer build, or a
+   * URL somebody edited by hand.
+   */
+  it('ignores a value it does not recognise', () => {
+    expect(readFilters(new URLSearchParams('kit=crossfit')).kit).toBeNull();
+    expect(readFilters(new URLSearchParams('kit=')).kit).toBeNull();
+  });
+
+  it('counts as a filter, so the empty state offers to clear it', () => {
+    expect(hasFilters({ ...NO_FILTERS, kit: 'gym' })).toBe(true);
+  });
+
+  it('reaches the repository, and is omitted when unset', () => {
+    const ids = new Map<string, string>();
+    expect(toExerciseFilter({ ...NO_FILTERS, kit: 'bodyweight' }, ids, ids).kit).toBe('bodyweight');
+    expect(toExerciseFilter(NO_FILTERS, ids, ids).kit).toBeUndefined();
   });
 });

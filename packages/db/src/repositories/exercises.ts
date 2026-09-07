@@ -142,6 +142,16 @@ export interface ExerciseFilter {
   readonly muscleIds?: readonly string[];
   /** Needs nothing outside this set. */
   readonly equipmentIds?: readonly string[];
+  /**
+   * Whether the exercise needs a gym at all.
+   *
+   * Coarser than `equipmentIds` on purpose, and answering a different
+   * question. Somebody who trains in a park does not want to tick eight pieces
+   * of equipment off a list to say "nothing"; they want one control that means
+   * *nothing but me and a bar to hang off*. And somebody in a gym wants the
+   * opposite, because bodyweight work is not what they came for.
+   */
+  readonly kit?: EquipmentKit;
   readonly mechanic?: Mechanic;
   readonly difficulty?: Difficulty;
 }
@@ -155,6 +165,20 @@ export interface ExerciseFilter {
  * person means by "trains".
  */
 const TRAINED_ROLES = "('primary', 'secondary')";
+
+/**
+ * The two ends of the equipment question.
+ *
+ * `bodyweight` is *needs nothing but bodyweight equipment*, not *needs
+ * literally nothing* — a pull-up needs a bar and is still bodyweight training,
+ * which is the distinction `equipment.category` already draws and the one a
+ * street-workout lifter means.
+ */
+export const EQUIPMENT_KITS = ['bodyweight', 'gym'] as const;
+export type EquipmentKit = (typeof EQUIPMENT_KITS)[number];
+
+/** Everything in this category counts as needing no gym. */
+const BODYWEIGHT_CATEGORY = 'bodyweight';
 
 /** `?, ?, ?` for a list, so ids are always bound rather than interpolated. */
 function placeholders(count: number): string {
@@ -220,6 +244,17 @@ export class ExerciseRepository {
                             AND ee.equipment_id NOT IN (${placeholders(criteria.equipmentIds.length)}))`,
       );
       parameters.push(...criteria.equipmentIds);
+    }
+
+    if (criteria.kit !== undefined) {
+      // Category, not equipment id: the question is "does this need a gym",
+      // and the answer lives on the equipment rather than on the exercise.
+      const needsGym = `EXISTS (SELECT 1 FROM exercise_equipment ee
+                                  JOIN equipment eq ON eq.id = ee.equipment_id
+                                 WHERE ee.exercise_id = e.id
+                                   AND eq.category <> ?)`;
+      conditions.push(criteria.kit === 'gym' ? needsGym : `NOT ${needsGym}`);
+      parameters.push(BODYWEIGHT_CATEGORY);
     }
 
     if (criteria.mechanic !== undefined) {

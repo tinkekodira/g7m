@@ -43,6 +43,21 @@ export const GOAL_LABELS: Record<TrainingGoal, string> = {
   get_stronger: 'Get stronger',
 };
 
+/**
+ * One line each, for the picker.
+ *
+ * Four cards each carrying a paragraph and a pace range is a wall — everything
+ * true, none of it read. The card shows this; the detail below arrives when a
+ * goal is chosen or suggested, which is the only point at which somebody
+ * actually wants it.
+ */
+export const GOAL_SUMMARIES: Record<TrainingGoal, string> = {
+  lose_fat: 'Weight down, strength kept.',
+  build_muscle: 'More size, in the reps that build it.',
+  recomp: 'Both at once, slower than either alone.',
+  get_stronger: 'Heavier bar, fewer reps.',
+};
+
 /** What choosing it changes about the training itself. */
 export const GOAL_DESCRIPTIONS: Record<TrainingGoal, string> = {
   lose_fat:

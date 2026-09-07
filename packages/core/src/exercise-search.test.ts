@@ -3,8 +3,14 @@ import {
   exerciseSearchText,
   searchExercises,
   searchTierFor,
+  typoBudget,
   type SearchableExercise,
 } from './exercise-search.js';
+
+/** A bare exercise, for the spelling tests below. */
+function exercise(name: string, popularityRank: number): SearchableExercise {
+  return { name, popularityRank };
+}
 
 const backSquat: SearchableExercise = {
   name: 'Back Squat',
@@ -130,5 +136,82 @@ describe('searchExercises', () => {
     const input = [...catalogue];
     searchExercises(input, 'squat');
     expect(input).toEqual(catalogue);
+  });
+});
+
+describe('spelling mistakes', () => {
+  /**
+   * The reason this tier exists. Postgres gets typo tolerance free from its
+   * trigram index; SQLite has no trigram operator, so offline this returned an
+   * empty screen and no clue why — which people blame the catalogue for.
+   */
+  it('finds dumbbell exercises when somebody types dumbells', () => {
+    const found = searchExercises(
+      [
+        exercise('Dumbbell Bench Press', 3),
+        exercise('Barbell Bench Press', 1),
+        exercise('Back Squat', 2),
+      ],
+      'dumbells',
+    );
+    expect(found.map((match) => match.item.name)).toEqual(['Dumbbell Bench Press']);
+    expect(found[0]?.tier).toBe('fuzzy');
+  });
+
+  it('tolerates a transposition', () => {
+    expect(searchTierFor(exercise('Barbell Row', 1), 'brabell')).toBe('fuzzy');
+  });
+
+  it('tolerates a missing letter and an extra one', () => {
+    expect(searchTierFor(exercise('Romanian Deadlift', 1), 'romanan')).toBe('fuzzy');
+    expect(searchTierFor(exercise('Romanian Deadlift', 1), 'romaniann')).toBe('fuzzy');
+  });
+
+  /**
+   * A fuzzy match must never displace a real one. Somebody typing "squat"
+   * wants the squats, not everything a letter away from them.
+   */
+  it('ranks a spelt-correctly match above a fuzzy one', () => {
+    const found = searchExercises(
+      [exercise('Barbell Curl', 9), exercise('Cable Crunch', 1)],
+      'curl',
+    );
+    expect(found[0]?.item.name).toBe('Barbell Curl');
+    expect(found[0]?.tier).not.toBe('fuzzy');
+  });
+
+  it('requires every word of a two-word query to land', () => {
+    // "dumbell bench" must not match a barbell bench press on "bench" alone.
+    expect(searchTierFor(exercise('Barbell Bench Press', 1), 'dumbell bench')).toBeNull();
+    expect(searchTierFor(exercise('Dumbbell Bench Press', 1), 'dumbell bench')).toBe('fuzzy');
+  });
+
+  /**
+   * At three characters a budget of one turns "row" into a match for "rows",
+   * "raw", "bow" and "how" at once — every short word in the catalogue, which
+   * is worse than no result at all.
+   */
+  it('does not guess at short words', () => {
+    expect(typoBudget(3)).toBe(0);
+    expect(searchTierFor(exercise('Barbell Row', 1), 'bow')).toBeNull();
+    expect(searchTierFor(exercise('Cable Fly', 1), 'sly')).toBeNull();
+  });
+
+  it('allows more mistakes in a longer word', () => {
+    expect(typoBudget(4)).toBe(1);
+    expect(typoBudget(9)).toBe(2);
+    // Two mistakes in a short word is still a different word.
+    expect(searchTierFor(exercise('Cable Fly', 1), 'tabl')).toBeNull();
+  });
+
+  it('still returns nothing for a word that is not in the catalogue', () => {
+    expect(searchExercises([exercise('Barbell Row', 1)], 'trampoline')).toEqual([]);
+  });
+
+  it('matches an alias with a typo in it', () => {
+    const rdl = { name: 'Romanian Deadlift', aliases: ['stiff leg deadlift'], popularityRank: 1 };
+    expect(searchTierFor(rdl, 'deadlfit')).toBe('fuzzy');
+    // And a prefix of an alias is still the better, earlier tier.
+    expect(searchTierFor(rdl, 'stif')).toBe('word-prefix');
   });
 });

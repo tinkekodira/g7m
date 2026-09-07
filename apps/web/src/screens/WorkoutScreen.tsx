@@ -425,13 +425,17 @@ function ExerciseCard({
 
   return (
     <section className="rounded-card bg-surface p-4">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold text-primary">{name}</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="min-w-0 text-lg font-semibold text-primary">{name}</h2>
+        {/* Bordered rather than a grey underline. The old one was the same
+            weight and colour as a caption, which on a screen whose other
+            controls are all filled or outlined read as a label rather than as
+            something to press — the same fault HeaderLink was built to fix. */}
         <button
           type="button"
           disabled={busy}
           onClick={onRemove}
-          className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
+          className="inline-flex min-h-tap shrink-0 items-center rounded-control border border-subtle bg-elevated px-3 text-sm font-medium text-secondary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
         >
           Remove
         </button>

@@ -13,6 +13,12 @@
  * and a similarity score alone does not do that — it is length-sensitive, so
  * the shorter name of a less common lift wins. Tiers fix that, and they behave
  * identically online and offline, which matters more than either being clever.
+ *
+ * The last tier is `fuzzy`, and it exists because the offline path was the
+ * weaker of the two. Postgres gets typo tolerance free from its trigram index;
+ * SQLite has no trigram operator, so somebody typing "dumbells" got an empty
+ * screen and no clue why — and an empty result set for a real word is the kind
+ * of failure people blame the catalogue for rather than their spelling.
  */
 
 /**
@@ -27,7 +33,7 @@ export function exerciseSearchText(name: string, aliases: readonly string[] = []
 }
 
 /** The tiers, best first. Exported so a caller can explain a result if it wants. */
-export const SEARCH_TIERS = ['exact', 'prefix', 'word-prefix', 'substring'] as const;
+export const SEARCH_TIERS = ['exact', 'prefix', 'word-prefix', 'substring', 'fuzzy'] as const;
 export type SearchTier = (typeof SEARCH_TIERS)[number];
 
 export interface SearchableExercise {
@@ -82,7 +88,96 @@ export function searchTierFor(exercise: SearchableExercise, query: string): Sear
   // are joined with spaces.
   if (haystack.split(' ').some((word) => word.startsWith(needle))) return 'word-prefix';
   if (haystack.includes(needle)) return 'substring';
+  if (fuzzyMatches(needle, haystack)) return 'fuzzy';
   return null;
+}
+
+/**
+ * How many single-character mistakes a word of this length is allowed.
+ *
+ * Nothing under four characters, because at three a budget of one turns "row"
+ * into a match for "rows", "raw", "bow" and "how" — every short word in the
+ * catalogue at once, which is worse than no result. The budget then grows with
+ * length, since "romanian" has more places to go wrong than "curl" does.
+ */
+export function typoBudget(wordLength: number): number {
+  if (wordLength < 4) return 0;
+  if (wordLength < 8) return 1;
+  return 2;
+}
+
+/**
+ * Every word of the query is within a typo or two of some word in the haystack.
+ *
+ * Word by word rather than over the whole string: "dumbell bench" should find
+ * the dumbbell bench press, and a whole-string distance between that query and
+ * "dumbbell bench press" is seven edits — mostly the word the user did not
+ * type. Requiring *every* query word to land is what stops a two-word search
+ * matching on one word and ignoring the other.
+ */
+function fuzzyMatches(query: string, haystack: string): boolean {
+  const tokens = query.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length === 0) return false;
+
+  const words = haystack.split(' ').filter((word) => word.length > 0);
+  return tokens.every((token) => words.some((word) => closeEnough(token, word)));
+}
+
+function closeEnough(token: string, word: string): boolean {
+  const budget = typoBudget(token.length);
+  if (budget === 0) return false;
+  // Length alone can rule it out before any of the work below.
+  if (Math.abs(token.length - word.length) > budget) return false;
+  return withinDistance(token, word, budget);
+}
+
+/**
+ * Damerau-Levenshtein distance, computed only far enough to answer "is it
+ * under `budget`".
+ *
+ * Damerau rather than plain Levenshtein, which is not a detail. Plain
+ * Levenshtein charges two edits for a transposition, so "brabell" is two
+ * mistakes away from "barbell" and falls outside a one-edit budget — and
+ * swapping two adjacent letters is the single most common way anybody mistypes
+ * a word. Counting it as one edit is the whole difference between tolerating
+ * real typos and tolerating only the tidy ones.
+ *
+ * Bounded rather than complete: the caller never wants the number, only the
+ * comparison, and a row whose best cell already exceeds the budget cannot
+ * recover — every later row is at least as large.
+ */
+function withinDistance(a: string, b: string, budget: number): boolean {
+  // Two rows back, because a transposition reaches diagonally over two.
+  let twoBack: number[] = [];
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+
+  for (let i = 1; i <= a.length; i++) {
+    const current: number[] = [i];
+    let best = i;
+
+    for (let j = 1; j <= b.length; j++) {
+      const same = a[i - 1] === b[j - 1];
+      let cost = Math.min(
+        (previous[j - 1] ?? 0) + (same ? 0 : 1),
+        (current[j - 1] ?? 0) + 1,
+        (previous[j] ?? 0) + 1,
+      );
+
+      // The adjacent swap, charged once rather than twice.
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        cost = Math.min(cost, (twoBack[j - 2] ?? 0) + 1);
+      }
+
+      current.push(cost);
+      best = Math.min(best, cost);
+    }
+
+    if (best > budget) return false;
+    twoBack = previous;
+    previous = current;
+  }
+
+  return (previous[b.length] ?? Infinity) <= budget;
 }
 
 /**

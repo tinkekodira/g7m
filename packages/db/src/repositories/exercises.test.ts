@@ -593,3 +593,99 @@ describe('primaryMuscleNames', () => {
     expect(names.size).toBe(0);
   });
 });
+
+describe('filtering by whether it needs a gym', () => {
+  /**
+   * The street-workout case. Somebody training in a park does not want to tick
+   * eight pieces of equipment off a list to say "nothing"; they want one
+   * control that means *nothing but me and a bar to hang off*.
+   */
+  beforeEach(async () => {
+    await db.seed('equipment', {
+      id: 'eq-bw',
+      slug: 'bodyweight',
+      name: 'Bodyweight',
+      category: 'bodyweight',
+    });
+    await db.seed('equipment', {
+      id: 'eq-pullup-bar',
+      slug: 'pull-up-bar',
+      name: 'Pull-up bar',
+      category: 'bodyweight',
+    });
+    await db.seed('equipment', {
+      id: 'eq-barbell',
+      slug: 'barbell',
+      name: 'Barbell',
+      category: 'barbell',
+    });
+
+    await addExercise('push-up', 'Push-Up', 1);
+    await addExercise('pull-up', 'Pull-Up', 2);
+    await addExercise('bench', 'Barbell Bench Press', 3);
+    await addExercise('sit-up', 'Sit-Up', 4);
+
+    await link('push-up', 'eq-bw');
+    await link('pull-up', 'eq-pullup-bar');
+    await link('bench', 'eq-barbell');
+    // Sit-up needs nothing at all, which is still bodyweight training.
+  });
+
+  async function addExercise(id: string, name: string, rank: number): Promise<void> {
+    await db.seed('exercises', {
+      id,
+      slug: id,
+      name,
+      is_active: 1,
+      popularity_rank: rank,
+      default_rep_low: 8,
+      default_rep_high: 12,
+    });
+  }
+
+  async function link(exerciseId: string, equipmentId: string): Promise<void> {
+    await db.seed('exercise_equipment', {
+      id: `ee-${exerciseId}-${equipmentId}`,
+      exercise_id: exerciseId,
+      equipment_id: equipmentId,
+      is_primary: 1,
+    });
+  }
+
+  it('counts a pull-up as bodyweight even though it needs a bar', () => {
+    // The distinction `equipment.category` already draws, and the one a
+    // street-workout lifter means.
+    return exercises.filter({ kit: 'bodyweight' }).then((found) => {
+      expect(found.map((entry) => entry.id).sort()).toEqual(['pull-up', 'push-up', 'sit-up']);
+    });
+  });
+
+  it('leaves out anything needing a barbell', async () => {
+    const found = await exercises.filter({ kit: 'bodyweight' });
+    expect(found.map((entry) => entry.id)).not.toContain('bench');
+  });
+
+  it('returns only gym work the other way round', async () => {
+    const found = await exercises.filter({ kit: 'gym' });
+    expect(found.map((entry) => entry.id)).toEqual(['bench']);
+  });
+
+  it('returns everything when the filter is absent', async () => {
+    expect(await exercises.filter({})).toHaveLength(4);
+  });
+
+  it('combines with the other filters rather than replacing them', async () => {
+    await db.seed('muscle_groups', { id: 'g-chest2', slug: 'chest2', name: 'Chest' });
+    await db.seed('muscles', { id: 'm-pec2', slug: 'pec2', muscle_group_id: 'g-chest2' });
+    await db.seed('exercise_muscles', {
+      id: 'em-push',
+      exercise_id: 'push-up',
+      muscle_id: 'm-pec2',
+      role: 'primary',
+      recruitment_weight: 1,
+    });
+
+    const found = await exercises.filter({ kit: 'bodyweight', muscleGroupIds: ['g-chest2'] });
+    expect(found.map((entry) => entry.id)).toEqual(['push-up']);
+  });
+});

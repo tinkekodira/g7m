@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Chip, TextField } from '@g7m/ui';
+import { Chip, KitSlider, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
+  NO_FILTERS,
   hasFilters,
   readFilters,
   toExerciseFilter,
@@ -122,6 +123,15 @@ export function ExerciseLibraryScreen() {
         }}
       />
 
+      {/* Above the muscle chips, because it is the coarser question — where
+          you are training decides most of the list before any muscle does. */}
+      <KitSlider
+        value={filters.kit ?? 'both'}
+        onChange={(position: KitPosition) => {
+          update({ ...filters, kit: position === 'both' ? null : position });
+        }}
+      />
+
       {/* A scrolling row rather than a wrapping grid: one thumb-swipe reaches
           every group, and the list below never moves down as chips wrap. */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -209,7 +219,7 @@ export function ExerciseLibraryScreen() {
             <EmptyLibrary
               filtered={hasFilters(filters)}
               onClear={() => {
-                update({ query: '', muscleGroup: null, equipment: [] });
+                update(NO_FILTERS);
               }}
             />
           ) : (
