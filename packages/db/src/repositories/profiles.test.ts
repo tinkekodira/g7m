@@ -221,3 +221,39 @@ describe('sex', () => {
     expect((await profiles.current())?.sex).toBeNull();
   });
 });
+
+describe('country', () => {
+  beforeEach(() => seedProfile());
+
+  it('is null until somebody answers', async () => {
+    expect((await profiles.current())?.country).toBeNull();
+  });
+
+  it('stores a two-letter code', async () => {
+    await profiles.update({ country: 'HR' });
+    expect((await profiles.current())?.country).toBe('HR');
+  });
+
+  it('normalises what a form hands it', async () => {
+    // A select can return anything; the CHECK only accepts upper case.
+    await profiles.update({ country: ' de ' });
+    expect((await profiles.current())?.country).toBe('DE');
+  });
+
+  /**
+   * The CHECK would refuse it, and a row refused on upload is discarded
+   * permanently and stranded on the device.
+   */
+  it('stores nothing rather than a value the column would reject', async () => {
+    await profiles.update({ country: 'Germany' });
+    expect((await profiles.current())?.country).toBeNull();
+    await profiles.update({ country: 'D' });
+    expect((await profiles.current())?.country).toBeNull();
+  });
+
+  it('can be cleared again', async () => {
+    await profiles.update({ country: 'HR' });
+    await profiles.update({ country: null });
+    expect((await profiles.current())?.country).toBeNull();
+  });
+});

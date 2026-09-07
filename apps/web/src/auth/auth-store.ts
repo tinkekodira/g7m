@@ -35,7 +35,7 @@ interface AuthStore {
 
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, country?: string | null) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Send a reset email. Says nothing about whether the address has an account. */
@@ -79,9 +79,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
   },
 
-  signUp: async (email, password) => {
+  signUp: async (email, password, country) => {
     set({ busy: true, error: null, notice: null });
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    // The country travels as metadata rather than being written afterwards:
+    // the profile row is created by a trigger on the server, and a client
+    // UPDATE issued before it syncs down updates nothing and reports success.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      ...(country === null || country === undefined || country === ''
+        ? {}
+        : { options: { data: { country } } }),
+    });
     if (error !== null) {
       set({ busy: false, error: friendlyAuthError(error.message) });
       return;

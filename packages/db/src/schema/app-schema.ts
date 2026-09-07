@@ -171,6 +171,8 @@ const profiles = new Table({
   birth_year: column.integer,
   /** For stating realistic rates. Never an input to what gets prescribed. */
   sex: column.text,
+  /** ISO 3166-1 alpha-2. The greeting on the home screen, and nothing else. */
+  country: column.text,
   bodyweight_kg: column.real,
   rest_seconds_default: column.integer,
   week_starts_on: column.integer,
