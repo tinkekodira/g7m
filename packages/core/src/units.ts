@@ -74,6 +74,43 @@ export function fromDisplayWeight(value: number, unitSystem: UnitSystem): number
   return round(kg, STORAGE_PRECISION);
 }
 
+/** Exact by international definition, like `KG_PER_LB`. */
+export const CM_PER_INCH = 2.54;
+
+export interface DisplayHeight {
+  readonly value: number;
+  readonly unit: 'cm' | 'in';
+}
+
+export function cmToInches(cm: number): number {
+  return cm / CM_PER_INCH;
+}
+
+export function inchesToCm(inches: number): number {
+  return inches * CM_PER_INCH;
+}
+
+/**
+ * Height, in whichever unit the user thinks in.
+ *
+ * Inches rather than feet-and-inches, and the difference is worth naming: a
+ * single number round-trips through one input, and `5'11"` needs two fields
+ * plus a rule for what 5 feet 13 inches means. Whole inches, because half an
+ * inch of height changes no plan this app will ever write.
+ */
+export function toDisplayHeight(cm: number, unitSystem: UnitSystem): DisplayHeight {
+  if (unitSystem === 'imperial') {
+    return { value: round(cmToInches(cm), 0), unit: 'in' };
+  }
+  return { value: round(cm, 1), unit: 'cm' };
+}
+
+export function fromDisplayHeight(value: number, unitSystem: UnitSystem): number {
+  const cm = unitSystem === 'imperial' ? inchesToCm(value) : value;
+  // `numeric(5,1)`, matching the body_metrics column.
+  return round(cm, 1);
+}
+
 /** The stepper increment for a unit system, expressed in kilograms. */
 export function incrementKgFor(unitSystem: UnitSystem): number {
   return unitSystem === 'imperial' ? round(lbToKg(DEFAULT_INCREMENT_LB), 4) : DEFAULT_INCREMENT_KG;

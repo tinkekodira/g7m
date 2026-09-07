@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_INCREMENT_KG,
   KG_PER_LB,
+  fromDisplayHeight,
   fromDisplayWeight,
   incrementKgFor,
   kgToLb,
   lbToKg,
   roundToIncrement,
+  toDisplayHeight,
   toDisplayWeight,
 } from './units.js';
 
@@ -108,5 +110,30 @@ describe('incrementKgFor', () => {
 
   it('is 5 lb expressed in kilograms for imperial', () => {
     expect(incrementKgFor('imperial')).toBeCloseTo(2.268, 4);
+  });
+});
+
+describe('height', () => {
+  it('shows centimetres to metric users unchanged', () => {
+    expect(toDisplayHeight(183, 'metric')).toEqual({ value: 183, unit: 'cm' });
+  });
+
+  it('shows whole inches to imperial users', () => {
+    // 183 cm is a hair over 6 foot, which is 72 inches.
+    expect(toDisplayHeight(183, 'imperial')).toEqual({ value: 72, unit: 'in' });
+  });
+
+  it('stores what an imperial user typed as centimetres', () => {
+    expect(fromDisplayHeight(72, 'imperial')).toBe(182.9);
+  });
+
+  it('rounds to what the column holds', () => {
+    // numeric(5,1) on body_metrics.height_cm.
+    expect(fromDisplayHeight(183.44, 'metric')).toBe(183.4);
+  });
+
+  it('survives a round trip to within an inch', () => {
+    const shown = toDisplayHeight(183, 'imperial');
+    expect(fromDisplayHeight(shown.value, 'imperial')).toBeCloseTo(183, 0);
   });
 });

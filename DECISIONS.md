@@ -1495,3 +1495,64 @@ bug in an app that advertises working offline.
 It arrived in the auth work (#6) and was never used. ADR-0013's statement that
 neither dependency was installed stopped being true then. Nothing new is added
 here; §0.3's question was answered by accident and is recorded now.
+
+---
+
+## ADR-0035 — What the metrics screen refuses to show
+
+**Status:** accepted · **Date:** 2026-09-07 · **Phase:** 6b
+
+### Context
+
+ADR-0032 put weight, height, activity level and age into the app as the inputs
+a plan gets built from. A screen that holds a height and a weight together
+invites two additions that both look like free value, and both are worse than
+nothing.
+
+### Decision
+
+**No BMI.** It is two lines of arithmetic and it counts muscle as excess mass,
+so it misreads precisely the person this app exists for. Somebody six months
+into a successful lean bulk would be moved from "normal" to "overweight" by the
+same app that coached them there. `packages/core/src/body.ts` says so at the
+top, so the next person to notice the omission finds the reason rather than the
+gap.
+
+The question BMI gets reached for is "am I going the right way", and
+`weightTrend` answers that from the series without issuing a verdict.
+
+**No calorie or macro estimates.** Scope rather than scepticism: g7m writes
+training plans. An activity level is here because it changes the training a
+plan should prescribe, not because it feeds a maintenance-calorie figure.
+
+**No judgement on the direction of the trend, yet.** `describeChange` reports
+"Down 3.0 kg over 6 weeks — about 0.5 kg a week" and stops. Until a goal
+exists to judge against, praising a loss is guessing at somebody who is trying
+to gain. The goal picker is the next piece of this phase, and the judgement
+belongs with it.
+
+### Consequences
+
+The screen states facts and asks for one thing a week. That is a smaller screen
+than it could be, and every number on it survives contact with a lifter.
+
+`weightTrend` averages a week at each end rather than subtracting the first
+reading from the last. Endpoint-to-endpoint hands the whole answer to two
+arbitrary mornings — weigh in dehydrated after a long Friday, then again after
+a big Sunday lunch, and a successful cut reports as a gain. It also refuses to
+state a weekly rate below fourteen days, where the two windows would overlap
+and the same readings would sit on both sides of the subtraction.
+
+### The weekly prompt is measured in elapsed days
+
+Not calendar weeks. The calendar version suggests itself first and fires on
+Monday morning at somebody who stood on the scale on Sunday night, asking them
+to do it twice in fourteen hours to satisfy a boundary they cannot see.
+
+### Charts got a second baseline
+
+`TrendChart` takes `baseline: 'zero' | 'fit'`. Zero stays the default and is
+right for volume — a week with no training really is nothing, and fitting the
+axis would redraw ordinary variation as a cliff. Bodyweight needs the other
+one: on an axis running from zero, four kilograms lost over three months is a
+flat line, which is exactly the information the chart was drawn to show.
