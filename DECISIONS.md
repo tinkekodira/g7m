@@ -1635,3 +1635,92 @@ quit in week three for gaining 0.2.
 columns and are now defined in core, re-exported by `@g7m/db`. Both change what
 a plan should contain before they are storage concerns, and the generator
 cannot import from the database layer. Callers see no difference.
+
+---
+
+## ADR-0037 — The generator adapts, and says why
+
+**Status:** accepted, provisionally · **Date:** 2026-09-07 · **Phase:** 6d
+
+### Context
+
+Two ways to build the session generator. A **fixed template per goal** is
+predictable, boring and almost impossible to get wrong. An **adaptive
+generator** reads the training history and produces a session for this person
+this week; it is much better when it works and much easier to make weird.
+
+Asked to choose, the answer was adaptive.
+
+### Decision
+
+`planSession` in `@g7m/core` takes a goal's prescription, a session focus and
+three facts about the user's actual training: what they have done this week per
+muscle group, what they lifted last time they did each exercise, and what
+equipment they own. It is pure — no clock, no database, no bodyweight.
+
+The adaptation is one rule stated three ways:
+
+- **A muscle group already at its weekly target is skipped**, and the screen
+  says so. That is the whole difference from a template.
+- **Sets are capped at the deficit**, so a group two sets short gets two sets
+  and not a full slot.
+- **The load comes from last time.** Finished the rep range, go up 2.5 kg.
+  Did not, repeat it. Away three weeks, start at 90% — three weeks off costs
+  real strength, and a first session back that fails on set two takes people
+  out of the gym for months.
+
+**Every decision carries a `reason`**, a tagged union the screen turns into a
+sentence: *"You finished the range at 80 kg last time — go up."* A plan
+somebody cannot interrogate is a plan they cannot correct, and this one will
+need correcting. The union also lets the tests assert the decision rather than
+the wording.
+
+**Starting the workout writes the plan in as unticked sets**, so the logger
+opens on a full session. Nothing is locked. The logger does not know a
+generator wrote the numbers, and `source = 'generated'` is recorded only so
+that the history can tell later.
+
+**The empty-workout route stays on the home screen.** Brief §0: somebody who
+knows what they are doing builds their own, and the generated plan is an offer
+rather than a gate.
+
+### Numbers, and where they came from
+
+Roughly 10 working sets per muscle per week is where most people stop leaving
+progress on the table; roughly 20 is where returns flatten for almost anybody.
+All four goals sit inside that band and lean low — the cost of prescribing too
+little is a slower month, the cost of prescribing too much is an injured person
+who stops. A test asserts the band holds for every goal at every experience
+level, so a future edit cannot quietly drift outside it.
+
+Beginners are prescribed *less*, not more, which surprises people. A beginner
+adapts to almost anything, gets more from practising the movement than from the
+tenth set, and is the likeliest person to be hurt by volume they cannot yet
+recover from. An unknown experience level is treated as beginner, in the
+cautious direction.
+
+Three days a week is full body rather than push/pull/legs. Splitting three days
+three ways trains each muscle once a week, and once a week is the least
+productive frequency there is.
+
+### What this is not, yet
+
+Written down because "accepted, provisionally" is doing real work above.
+
+- **Progression is linear only.** Add 2.5 kg on success, repeat on failure.
+  That is right for a first few months and stalls for everybody after. There is
+  no deload, and nothing notices somebody failing the same weight for a month.
+- **No exercise rotation over time.** The scorer prefers lifts it has numbers
+  for, which is good for progression and means it can settle onto the same five
+  movements indefinitely.
+- **The weekly deficit resets hard at the week boundary.** Somebody training
+  Sunday and Monday gets a full deficit on one and none on the other.
+- **The focus advances per session, not per day.** Two sessions in a day move
+  the rotation twice.
+- **It has never met the real catalogue.** Every test runs against a fixture.
+  If the seed's `role = 'primary'` assignments or `mechanic` labels are wrong,
+  the plan inherits that exactly, and the failure will look like a bad
+  recommendation rather than a bad join.
+
+None of these are hard to fix and none are worth guessing at before somebody
+has used it for a fortnight.

@@ -11,6 +11,7 @@ import { LearnScreen } from './screens/LearnScreen.js';
 import { ProgressScreen } from './screens/ProgressScreen.js';
 import { MetricsScreen } from './screens/MetricsScreen.js';
 import { GoalScreen } from './screens/GoalScreen.js';
+import { PlanScreen } from './screens/PlanScreen.js';
 import { SessionDetailScreen } from './screens/SessionDetailScreen.js';
 import { ExerciseTrendScreen } from './screens/ExerciseTrendScreen.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
@@ -123,6 +124,7 @@ function SignedIn() {
         <Route path="/progress" element={<ProgressScreen />} />
         <Route path="/you" element={<MetricsScreen />} />
         <Route path="/goal" element={<GoalScreen />} />
+        <Route path="/plan" element={<PlanScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
         {/* A leftover auth fragment, a bookmark from a build that named routes

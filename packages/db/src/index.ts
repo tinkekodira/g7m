@@ -87,6 +87,7 @@ export {
   type Profile,
   type ProfileChanges,
 } from './repositories/profiles.js';
+export { PlannerRepository } from './repositories/planner.js';
 export {
   GoalRepository,
   TRAINING_GOALS,

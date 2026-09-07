@@ -161,11 +161,24 @@ export function HomeScreen() {
           readout of whether the plumbing works. Train first: it is what
           somebody standing in a gym opened the app to do. */}
       <Link
-        to="/workout"
+        to="/plan"
         className="flex min-h-tap items-center justify-between rounded-card bg-accent px-4 py-3 text-on-accent active:brightness-95"
       >
-        <span className="text-base font-semibold">Train</span>
+        <span className="text-base font-semibold">Train — today’s session</span>
         <span aria-hidden>→</span>
+      </Link>
+
+      {/* Still here, and deliberately. Brief §0: somebody who knows what they
+          are doing builds their own workout, and the generated plan is an
+          offer rather than a gate. */}
+      <Link
+        to="/workout"
+        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      >
+        <span className="text-base font-medium text-primary">Start an empty workout</span>
+        <span aria-hidden className="text-muted">
+          →
+        </span>
       </Link>
 
       <Link
