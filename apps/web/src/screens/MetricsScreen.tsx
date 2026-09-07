@@ -22,6 +22,7 @@ import {
 import type { BodyMetric } from '@g7m/db';
 import { Button, Chip, TextField } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { CountryPicker } from '../components/CountryPicker.js';
 import { TrendChart } from '../components/Charts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { describeChange, weighInPrompt } from './metrics-prompt.js';
@@ -104,6 +105,7 @@ export function MetricsScreen() {
         birthYear={profile.data?.birthYear ?? null}
         age={age}
         sex={profile.data?.sex ?? null}
+        country={profile.data?.country ?? null}
         activityLevel={current.data?.activityLevel ?? null}
       />
 
@@ -253,6 +255,7 @@ function AboutYou({
   birthYear,
   age,
   sex,
+  country,
   activityLevel,
 }: {
   readonly unitSystem: UnitSystem;
@@ -260,6 +263,7 @@ function AboutYou({
   readonly birthYear: number | null;
   readonly age: number | null;
   readonly sex: Sex | null;
+  readonly country: string | null;
   readonly activityLevel: ActivityLevel | null;
 }) {
   const { write, busy } = useWrite();
@@ -354,6 +358,20 @@ function AboutYou({
           {problem}
         </p>
       )}
+
+      {/* Answered at signup, changeable here — somebody who skipped it then,
+          or who has moved, should not have to make a new account. */}
+      <div className="mt-4">
+        <CountryPicker
+          value={country}
+          disabled={busy}
+          label="Where you are from"
+          hint="Only changes the greeting on the home screen."
+          onChange={(next) => {
+            void write((r) => r.profile.update({ country: next }));
+          }}
+        />
+      </div>
 
       <fieldset className="mt-5 border-0 p-0">
         <legend className="text-sm font-medium text-secondary">Sex</legend>

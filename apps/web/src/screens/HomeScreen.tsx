@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@g7m/ui';
+import { greetingFor } from '@g7m/core';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
@@ -38,11 +39,15 @@ import { ReviewNudge } from '../components/ReviewCard.js';
 interface ProfileRow {
   readonly display_name: string | null;
   readonly unit_system: string;
+  readonly country: string | null;
+  readonly sex: string | null;
 }
 
 interface Snapshot {
   readonly displayName: string | null;
   readonly unitSystem: string;
+  readonly country: string | null;
+  readonly sex: string | null;
   readonly exerciseCount: number;
   readonly muscleCount: number;
 }
@@ -87,7 +92,7 @@ export function HomeScreen() {
         // Retried once: a device clock a second or two ahead of the server
         // makes the freshly issued token look like it came from the future.
         retryOnceIfTransient(() =>
-          supabase.from('profiles').select('display_name, unit_system').single(),
+          supabase.from('profiles').select('display_name, unit_system, country, sex').single(),
         ),
         supabase.from('exercises').select('*', { count: 'exact', head: true }),
         supabase.from('muscles').select('*', { count: 'exact', head: true }),
@@ -111,6 +116,8 @@ export function HomeScreen() {
       setSnapshot({
         displayName: row.display_name,
         unitSystem: row.unit_system,
+        country: row.country,
+        sex: row.sex,
         exerciseCount: exercises.count ?? 0,
         muscleCount: muscles.count ?? 0,
       });
@@ -150,12 +157,24 @@ export function HomeScreen() {
   }, [syncPhase, syncBusy]);
 
   const email = session?.user.email ?? 'unknown';
+  const greeting = greetingFor(
+    snapshot?.country ?? null,
+    snapshot?.sex === 'male' || snapshot?.sex === 'female' ? snapshot.sex : null,
+  );
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">
-          {snapshot?.displayName ?? 'Welcome'}
+        {/* Their own language, from the country they gave at signup. `lang`
+            and `dir` are not decoration: Arabic inside an English heading runs
+            the wrong way without them, and a screen reader spells a foreign
+            word out letter by letter. */}
+        <h1
+          lang={greeting.language}
+          dir={greeting.direction}
+          className="text-2xl font-semibold text-primary"
+        >
+          {snapshot?.displayName ?? greeting.text}
         </h1>
         <p className="mt-1 text-sm text-secondary">Signed in as {email}</p>
       </header>

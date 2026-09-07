@@ -64,6 +64,8 @@ export interface Profile {
   readonly birthYear: number | null;
   /** For stating realistic rates. Never an input to how much is prescribed. */
   readonly sex: Sex | null;
+  /** ISO 3166-1 alpha-2, upper case. The home screen greeting, and nothing else. */
+  readonly country: string | null;
   readonly bodyweightKg: number | null;
   readonly restSecondsDefault: number;
   /** 1 = Monday, matching ISO 8601. */
@@ -90,6 +92,7 @@ export interface ProfileChanges {
   readonly experienceLevel?: ExperienceLevel;
   readonly birthYear?: number | null;
   readonly sex?: Sex | null;
+  readonly country?: string | null;
   readonly bodyweightKg?: number | null;
   readonly restSecondsDefault?: number;
   readonly weekStartsOn?: number;
@@ -105,6 +108,7 @@ function toProfile(row: RawRow): Profile {
     experienceLevel: readEnum(row, 'experience_level', EXPERIENCE_LEVELS, 'beginner'),
     birthYear: readOptionalNumber(row, 'birth_year'),
     sex: readOptionalSex(row),
+    country: readOptionalString(row, 'country'),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
     restSecondsDefault: readNumber(row, 'rest_seconds_default', 120),
     weekStartsOn: readNumber(row, 'week_starts_on', 1),
@@ -161,6 +165,12 @@ export class ProfileRepository {
     if (changes.unitSystem !== undefined) set('unit_system', changes.unitSystem);
     if (changes.experienceLevel !== undefined) set('experience_level', changes.experienceLevel);
     if (changes.birthYear !== undefined) set('birth_year', clampBirthYear(changes.birthYear));
+    if (changes.country !== undefined) {
+      // Two upper-case letters, mirroring the CHECK. Anything else is stored
+      // as null: a row the server refuses is discarded and stranded.
+      const country = changes.country?.trim().toUpperCase() ?? '';
+      set('country', /^[A-Z]{2}$/.test(country) ? country : null);
+    }
     if (changes.sex !== undefined) {
       // Mirrors the CHECK. Anything else is stored as null rather than as
       // itself, because a row the server refuses is discarded and stranded.
