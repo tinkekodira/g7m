@@ -57,6 +57,26 @@ export const ACTIVITY_DESCRIPTIONS: Record<ActivityLevel, string> = {
 };
 
 /**
+ * Biological sex, for the rates the app quotes back at somebody.
+ *
+ * Used to state honest expectations — muscle is gained at roughly half the
+ * absolute rate in women, so "expect 0.1 to 0.3 kg a week" is good advice for
+ * one person and a setup for disappointment for another.
+ *
+ * Never an input to how much training is prescribed. Women do not need fewer
+ * sets, lighter loads or shorter sessions, and `programming.ts` deliberately
+ * does not import this. The inputs to a plan are the goal, the training age
+ * and the days available; those are already there and this is not one of them.
+ */
+export const SEXES = ['male', 'female'] as const;
+export type Sex = (typeof SEXES)[number];
+
+export const SEX_LABELS: Record<Sex, string> = {
+  male: 'Male',
+  female: 'Female',
+};
+
+/**
  * Age from a birth year alone, which is all `profiles.birth_year` holds.
  *
  * Accurate to within a year, deliberately: no training plan turns on whether

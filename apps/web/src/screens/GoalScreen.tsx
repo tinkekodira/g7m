@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_DAYS_PER_WEEK,
   GOAL_DESCRIPTIONS,
-  GOAL_EXPECTATIONS,
+  goalExpectation,
   GOAL_LABELS,
   MAX_DAYS_PER_WEEK,
   MIN_DAYS_PER_WEEK,
@@ -11,6 +11,7 @@ import {
   startOfDay,
   suggestGoal,
   weightTrend,
+  type Sex,
   type TrainingGoal,
 } from '@g7m/core';
 import type { BodyMetric, Goal } from '@g7m/db';
@@ -152,6 +153,7 @@ export function GoalScreen() {
             selected={current?.goal === option}
             suggested={suggestion?.goal === option}
             busy={busy}
+            sex={profile.data?.sex ?? null}
             onChoose={() => {
               void choose(option);
             }}
@@ -186,12 +188,15 @@ function GoalCard({
   selected,
   suggested,
   busy,
+  sex,
   onChoose,
 }: {
   readonly goal: TrainingGoal;
   readonly selected: boolean;
   readonly suggested: boolean;
   readonly busy: boolean;
+  /** Changes the pace quoted for building muscle, and nothing else. */
+  readonly sex: Sex | null;
   readonly onChoose: () => void;
 }) {
   return (
@@ -207,7 +212,7 @@ function GoalCard({
 
       <p className="mt-1 text-sm text-secondary">{GOAL_DESCRIPTIONS[goal]}</p>
       {/* The honest pace, before they start, so a slow week is not a failure. */}
-      <p className="mt-2 text-sm text-muted">{GOAL_EXPECTATIONS[goal]}</p>
+      <p className="mt-2 text-sm text-muted">{goalExpectation(goal, sex)}</p>
 
       <div className="mt-3">
         <Button

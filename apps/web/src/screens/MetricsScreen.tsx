@@ -4,6 +4,8 @@ import {
   ACTIVITY_DESCRIPTIONS,
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
+  SEXES,
+  SEX_LABELS,
   ageOn,
   describeWhen,
   fromDisplayHeight,
@@ -14,6 +16,7 @@ import {
   weighInStatus,
   weightTrend,
   type ActivityLevel,
+  type Sex,
   type UnitSystem,
 } from '@g7m/core';
 import type { BodyMetric } from '@g7m/db';
@@ -100,6 +103,7 @@ export function MetricsScreen() {
         heightCm={current.data?.heightCm ?? null}
         birthYear={profile.data?.birthYear ?? null}
         age={age}
+        sex={profile.data?.sex ?? null}
         activityLevel={current.data?.activityLevel ?? null}
       />
 
@@ -244,12 +248,14 @@ function AboutYou({
   heightCm,
   birthYear,
   age,
+  sex,
   activityLevel,
 }: {
   readonly unitSystem: UnitSystem;
   readonly heightCm: number | null;
   readonly birthYear: number | null;
   readonly age: number | null;
+  readonly sex: Sex | null;
   readonly activityLevel: ActivityLevel | null;
 }) {
   const { write, busy } = useWrite();
@@ -344,6 +350,31 @@ function AboutYou({
           {problem}
         </p>
       )}
+
+      <fieldset className="mt-5 border-0 p-0">
+        <legend className="text-sm font-medium text-secondary">Sex</legend>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {SEXES.map((option) => (
+            <Chip
+              key={option}
+              selected={sex === option}
+              disabled={busy}
+              onClick={() => {
+                void write((r) => r.profile.update({ sex: option }));
+              }}
+            >
+              {SEX_LABELS[option]}
+            </Chip>
+          ))}
+        </div>
+        {/* What it is for, said where it is asked. It changes the rate the app
+            quotes back — muscle is gained at roughly half the absolute rate in
+            women — and it changes nothing about how much training you get. */}
+        <p className="mt-2 text-sm text-muted">
+          Used to quote realistic rates of gain and loss. It never changes how much training you are
+          given.
+        </p>
+      </fieldset>
 
       <fieldset className="mt-5 border-0 p-0">
         <legend className="text-sm font-medium text-secondary">Your week outside the gym</legend>

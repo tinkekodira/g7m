@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { WeightTrend } from './body.js';
 import {
   GOAL_DESCRIPTIONS,
-  GOAL_EXPECTATIONS,
+  goalExpectation,
   GOAL_LABELS,
   TRAINING_GOALS,
   suggestGoal,
@@ -26,7 +26,8 @@ describe('the goals themselves', () => {
     for (const goal of TRAINING_GOALS) {
       expect(GOAL_LABELS[goal]).not.toBe('');
       expect(GOAL_DESCRIPTIONS[goal]).not.toBe('');
-      expect(GOAL_EXPECTATIONS[goal]).not.toBe('');
+      expect(goalExpectation(goal, null)).not.toBe('');
+      expect(goalExpectation(goal, 'female')).not.toBe('');
     }
   });
 
@@ -35,8 +36,8 @@ describe('the goals themselves', () => {
    * for gaining 0.2. The expectations exist to be slower than the internet's.
    */
   it('says what is realistic in numbers, not in encouragement', () => {
-    expect(GOAL_EXPECTATIONS.lose_fat).toMatch(/\d/);
-    expect(GOAL_EXPECTATIONS.build_muscle).toMatch(/\d/);
+    expect(goalExpectation('lose_fat', null)).toMatch(/\d/);
+    expect(goalExpectation('build_muscle', null)).toMatch(/\d/);
   });
 
   it('covers the four the brief asked for', () => {
@@ -120,5 +121,42 @@ describe('suggestGoal', () => {
       expect(suggestion?.because).toMatch(/if that is on purpose/i);
       expect(suggestion?.because).not.toMatch(/should|too much|overweight|need to/i);
     }
+  });
+});
+
+describe('goalExpectation', () => {
+  /**
+   * The one goal where a single number is good advice for one person and a
+   * setup for disappointment for another. Saying so is the point of stating a
+   * rate at all — it is not a smaller goal, it is the real number.
+   */
+  it('quotes a slower rate of muscle gain to women', () => {
+    const male = goalExpectation('build_muscle', 'male');
+    const female = goalExpectation('build_muscle', 'female');
+    expect(female).not.toBe(male);
+    expect(female).toMatch(/0\.05/);
+    expect(male).toMatch(/0\.1/);
+  });
+
+  it('names effort as not being the reason', () => {
+    expect(goalExpectation('build_muscle', 'female')).toMatch(/biology rather than effort/i);
+  });
+
+  /**
+   * Fat loss is quoted as a share of bodyweight, which is better advice and
+   * needs no sex: half a percent a week is the same instruction to everybody,
+   * and 0.75 kg is a very different week at 60 kg than at 100 kg.
+   */
+  it('does not vary the goals where sex changes nothing', () => {
+    for (const goal of ['lose_fat', 'recomp', 'get_stronger'] as const) {
+      expect(goalExpectation(goal, 'female')).toBe(goalExpectation(goal, 'male'));
+    }
+    expect(goalExpectation('lose_fat', null)).toMatch(/%/);
+  });
+
+  it('gives an unknown sex both figures rather than a guess', () => {
+    const unknown = goalExpectation('build_muscle', null);
+    expect(unknown).toMatch(/men/i);
+    expect(unknown).toMatch(/women/i);
   });
 });
