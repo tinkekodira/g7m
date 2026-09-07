@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
@@ -18,6 +18,8 @@ import {
   useSyncStore,
 } from '../lib/powersync/sync-store.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
+import { useTrainingReview } from '../lib/db/use-review.js';
+import { ReviewNudge } from '../components/ReviewCard.js';
 
 /**
  * Phase 1c landing screen.
@@ -64,6 +66,7 @@ export function HomeScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [local, setLocal] = useState<LocalCounts | null>(null);
   const platform = detectPlatform();
+  const review = useTrainingReview(useMemo(() => new Date(), []));
 
   const syncPhase = useSyncStore((s) => s.phase);
   const syncBusy = useSyncStore((s) => s.busy);
@@ -156,6 +159,16 @@ export function HomeScreen() {
         </h1>
         <p className="mt-1 text-sm text-secondary">Signed in as {email}</p>
       </header>
+
+      {/* The heads-up ADR-0032 asked for: it finds the user rather than
+          waiting to be opened, because the lifter running their own program is
+          exactly the one who never taps Progress. */}
+      {review.data?.review != null && (
+        <ReviewNudge
+          observations={review.data.review.observations}
+          unitSystem={review.data.unitSystem}
+        />
+      )}
 
       {/* The two things on this screen that are the actual app rather than a
           readout of whether the plumbing works. Train first: it is what

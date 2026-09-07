@@ -14,6 +14,8 @@ import { HeaderLink } from '../components/HeaderLink.js';
 import { BarChart } from '../components/Charts.js';
 import { formatVolume } from '../components/chart-scale.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { useTrainingReview } from '../lib/db/use-review.js';
+import { ReviewCard } from '../components/ReviewCard.js';
 
 /** Three months. Long enough to show a pattern, short enough to read on a phone. */
 const WEEKS_SHOWN = 12;
@@ -27,6 +29,7 @@ const WEEKS_SHOWN = 12;
  */
 export function ProgressScreen() {
   const now = useMemo(() => new Date(), []);
+  const review = useTrainingReview(now);
 
   const state = useCatalogue('progress', async (repositories) => {
     const profile = await repositories.profile.current();
@@ -60,6 +63,13 @@ export function ProgressScreen() {
         <h1 className="text-2xl font-semibold text-primary">Progress</h1>
         <HeaderLink to="/">Home</HeaderLink>
       </header>
+
+      {review.data?.review != null && (
+        <ReviewCard
+          observations={review.data.review.observations}
+          unitSystem={review.data.unitSystem}
+        />
+      )}
 
       {state.error !== null ? (
         <p role="alert" className="text-sm text-danger">

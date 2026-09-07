@@ -279,3 +279,53 @@ describe('trainedExercises', () => {
     expect(await history.trainedExercises()).toEqual([]);
   });
 });
+
+describe('groupsByExercise', () => {
+  // The shared fixture seeds exercises only; the taxonomy is this block's own.
+  beforeEach(async () => {
+    await db.seed('muscle_groups', { id: 'g-chest', slug: 'chest', name: 'Chest' });
+    await db.seed('muscle_groups', { id: 'g-back', slug: 'back', name: 'Back' });
+    await db.seed('muscles', { id: 'pec', slug: 'pec', muscle_group_id: 'g-chest' });
+    await db.seed('muscles', { id: 'lat', slug: 'lat', muscle_group_id: 'g-back' });
+    await db.seed('exercise_muscles', {
+      id: 'em-bench',
+      exercise_id: 'bench',
+      muscle_id: 'pec',
+      role: 'primary',
+      recruitment_weight: 0.95,
+    });
+  });
+
+  it('maps an exercise to the groups of its primary movers', async () => {
+    const groups = await history.groupsByExercise();
+    expect(groups.get('bench')).toEqual(['chest']);
+  });
+
+  /**
+   * The same attribution the generator prescribes against. `muscleShares`
+   * answers the other question — everything that helped — which is right for a
+   * heat map and wrong for "has your back had enough work".
+   */
+  it('leaves out muscles that only assisted', async () => {
+    await db.seed('exercise_muscles', {
+      id: 'em-bench-sec',
+      exercise_id: 'bench',
+      muscle_id: 'lat',
+      role: 'secondary',
+      recruitment_weight: 0.3,
+    });
+    expect(await history.groupsByExercise().then((g) => g.get('bench'))).toEqual(['chest']);
+  });
+
+  it('counts a group once when two primary muscles share it', async () => {
+    await db.seed('muscles', { id: 'pec-2', slug: 'pec-2', muscle_group_id: 'g-chest' });
+    await db.seed('exercise_muscles', {
+      id: 'em-bench-2',
+      exercise_id: 'bench',
+      muscle_id: 'pec-2',
+      role: 'primary',
+      recruitment_weight: 0.8,
+    });
+    expect(await history.groupsByExercise().then((g) => g.get('bench'))).toEqual(['chest']);
+  });
+});
