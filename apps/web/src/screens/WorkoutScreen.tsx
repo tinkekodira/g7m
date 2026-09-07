@@ -10,6 +10,7 @@ import {
   nextSetTemplate,
   previousSetAt,
   restSecondsFor,
+  rirToRpe,
   toDisplayWeight,
   totalVolumeKg,
   type LoadType,
@@ -250,6 +251,9 @@ export function WorkoutScreen() {
           onRemoveSet={(setId) => {
             void write((r) => r.sessions.removeSet(setId));
           }}
+          onRateEffort={(setId, repsInReserve) => {
+            void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
+          }}
           onRemove={() => {
             void write((r) => r.sessions.removeExercise(block.sessionExerciseId));
           }}
@@ -397,6 +401,7 @@ function ExerciseCard({
   onUncomplete,
   onSave,
   onRemoveSet,
+  onRateEffort,
   onRemove,
 }: {
   readonly block: ExerciseBlock;
@@ -407,9 +412,16 @@ function ExerciseCard({
   readonly onUncomplete: (setId: string) => void;
   readonly onSave: (setId: string, changes: { weightKg: number; reps: number }) => void;
   readonly onRemoveSet: (setId: string) => void;
+  readonly onRateEffort: (setId: string, repsInReserve: number) => void;
   readonly onRemove: () => void;
 }) {
   const name = block.exercise?.name ?? 'Unknown exercise';
+  const [skipped, setSkipped] = useState(false);
+
+  // Asked once, at the end, about the last set only. Once per set would be
+  // four questions for one exercise, which is three too many with a bar in
+  // your hands — and it is the last set that decides whether to add weight.
+  const awaiting = skipped ? null : unratedFinalSet(block.sets);
 
   return (
     <section className="rounded-card bg-surface p-4">
@@ -458,12 +470,103 @@ function ExerciseCard({
         </ul>
       )}
 
+      {awaiting !== null && (
+        <EffortPrompt
+          busy={busy}
+          onAnswer={(repsInReserve) => {
+            onRateEffort(awaiting.id, repsInReserve);
+          }}
+          onSkip={() => {
+            setSkipped(true);
+          }}
+        />
+      )}
+
       <Button variant="secondary" fullWidth disabled={busy} onClick={onAddSet}>
         Add set
       </Button>
     </section>
   );
 }
+
+/**
+ * The set worth asking about, or null.
+ *
+ * Only once every set is ticked — asking mid-exercise interrupts the thing it
+ * is measuring — and only if nobody has answered already.
+ */
+function unratedFinalSet(sets: readonly SessionSet[]): SessionSet | null {
+  if (sets.length === 0 || !sets.every((entry) => entry.isCompleted)) return null;
+  const last = sets[sets.length - 1];
+  return last?.rpe === null ? last : null;
+}
+
+/**
+ * How much was left at the end.
+ *
+ * Phrased as reps rather than as RPE because "how many more could you have
+ * done" is a question somebody can answer honestly with a bar still in their
+ * hands, while "rate that seven to ten" is a question they will learn to
+ * answer with whatever number they think means "hard". It is stored as RPE,
+ * which is the notation the rest of the world writes it in.
+ *
+ * Skippable, and skipping costs nothing: the generator falls back to counting
+ * reps, which answers most of the question on its own. What this adds is the
+ * one thing rep counts cannot — whether twelve reps were comfortable or a
+ * fight — and that is worth exactly one tap, not one per set.
+ */
+function EffortPrompt({
+  busy,
+  onAnswer,
+  onSkip,
+}: {
+  readonly busy: boolean;
+  readonly onAnswer: (repsInReserve: number) => void;
+  readonly onSkip: () => void;
+}) {
+  return (
+    <div className="mb-3 rounded-control border border-subtle bg-elevated p-3">
+      <p className="text-sm font-medium text-primary">
+        On that last set — how many more could you have done?
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {EFFORT_ANSWERS.map((answer) => (
+          <Button
+            key={answer.label}
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              onAnswer(answer.repsInReserve);
+            }}
+          >
+            {answer.label}
+          </Button>
+        ))}
+        <button
+          type="button"
+          onClick={onSkip}
+          className="min-h-tap px-2 text-sm text-muted underline-offset-4 hover:underline"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Four answers, and the top one is open-ended.
+ *
+ * "Three or more" rather than an exact count past three: nobody knows whether
+ * they had four left or six, and pretending otherwise would put false
+ * precision into a progression decision.
+ */
+const EFFORT_ANSWERS = [
+  { label: 'None', repsInReserve: 0 },
+  { label: '1', repsInReserve: 1 },
+  { label: '2', repsInReserve: 2 },
+  { label: '3+', repsInReserve: 3 },
+] as const;
 
 /**
  * One set.

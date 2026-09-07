@@ -4,7 +4,9 @@ import {
   FOCUS_GROUPS,
   FOCUS_LABELS,
   SESSION_FOCUSES,
-  nextFocus,
+  chooseFocus,
+  rirToRpe,
+  rpeToRir,
   prescriptionFor,
   splitFor,
 } from './programming.js';
@@ -113,24 +115,121 @@ describe('splitFor', () => {
   });
 });
 
-describe('nextFocus', () => {
-  it('walks the split in order', () => {
-    const split = splitFor(4, 'intermediate');
-    expect(nextFocus(split, 0)).toBe('upper');
-    expect(nextFocus(split, 1)).toBe('lower');
+describe('chooseFocus', () => {
+  const nothingDone = new Map<string, number>();
+
+  it('starts a fresh week at the front of the split', () => {
+    expect(chooseFocus(splitFor(4, 'intermediate'), nothingDone, 16)).toBe('upper');
+  });
+
+  it('moves on once that half of the body has had its work', () => {
+    const upperDone = new Map([
+      ['back', 16],
+      ['chest', 16],
+      ['shoulders', 16],
+      ['triceps', 16],
+      ['biceps', 16],
+    ]);
+    expect(chooseFocus(splitFor(4, 'intermediate'), upperDone, 16)).toBe('lower');
   });
 
   /**
-   * An extra session is the start of the rotation again, not a rest day the
-   * app refuses to let somebody skip.
+   * The reason this replaced a counter. Stepping through the split by session
+   * count counts *attempts*: a workout opened and abandoned advanced the
+   * rotation, and somebody who missed a Thursday stayed permanently out of
+   * phase with their own plan.
    */
-  it('wraps past the end of the week', () => {
+  it('moves on because work was done, not because a counter ticked', () => {
     const split = splitFor(4, 'intermediate');
-    expect(nextFocus(split, 4)).toBe(nextFocus(split, 0));
+
+    // One upper session in. Nothing about *how many* sessions were opened is
+    // an input here — an abandoned workout logs no sets and changes nothing,
+    // which is the whole reason this replaced a counter.
+    const afterUpper = new Map([
+      ['back', 6],
+      ['chest', 6],
+      ['shoulders', 3],
+      ['triceps', 3],
+      ['biceps', 3],
+    ]);
+    expect(chooseFocus(split, afterUpper, 16)).toBe('lower');
+
+    // And back again once the legs have had theirs, with no counter to reset.
+    const afterLower = new Map([
+      ...afterUpper,
+      ['quads', 9],
+      ['hamstrings', 9],
+      ['glutes', 9],
+      ['calves', 9],
+      ['core', 9],
+    ]);
+    expect(chooseFocus(split, afterLower, 16)).toBe('upper');
+  });
+
+  it('picks the day with the most catching up to do', () => {
+    const legsNeglected = new Map([
+      ['back', 16],
+      ['chest', 16],
+      ['shoulders', 12],
+      ['triceps', 16],
+      ['biceps', 16],
+    ]);
+    expect(chooseFocus(splitFor(6, 'intermediate'), legsNeglected, 16)).toBe('legs');
+  });
+
+  it('still goes somewhere when everything is done', () => {
+    const allDone = new Map(
+      [
+        'chest',
+        'back',
+        'shoulders',
+        'triceps',
+        'biceps',
+        'quads',
+        'hamstrings',
+        'glutes',
+        'calves',
+      ].map((group) => [group, 40] as const),
+    );
+    // The generator decides there is nothing to train; that is not this
+    // function's job, and returning nothing here would just be a crash later.
+    expect(splitFor(4, 'intermediate')).toContain(
+      chooseFocus(splitFor(4, 'intermediate'), allDone, 16),
+    );
   });
 
   it('has an answer for an empty split', () => {
-    expect(nextFocus([], 0)).toBe('full_body');
+    expect(chooseFocus([], nothingDone, 16)).toBe('full_body');
+  });
+});
+
+describe('reps in reserve and RPE', () => {
+  /**
+   * The logger asks "how many more could you have done?" because that is the
+   * question somebody can answer honestly with a bar still in their hands.
+   * RPE is the notation the rest of the world writes the answer in.
+   */
+  it('converts between the two', () => {
+    expect(rirToRpe(0)).toBe(10);
+    expect(rirToRpe(3)).toBe(7);
+    expect(rpeToRir(7)).toBe(3);
+    expect(rpeToRir(10)).toBe(0);
+  });
+
+  it('round-trips', () => {
+    for (const rir of [0, 1, 2, 3, 4]) {
+      expect(rpeToRir(rirToRpe(rir))).toBe(rir);
+    }
+  });
+
+  it('has no answer when nobody gave one', () => {
+    expect(rpeToRir(null)).toBeNull();
+    expect(rpeToRir(Number.NaN)).toBeNull();
+  });
+
+  it('clamps rather than returning nonsense', () => {
+    expect(rirToRpe(-5)).toBe(10);
+    expect(rirToRpe(99)).toBe(0);
   });
 });
 

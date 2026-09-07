@@ -1724,3 +1724,108 @@ Written down because "accepted, provisionally" is doing real work above.
 
 None of these are hard to fix and none are worth guessing at before somebody
 has used it for a fortnight.
+
+---
+
+## ADR-0038 — Five corrections to the generator
+
+**Status:** accepted · **Date:** 2026-09-07 · **Phase:** 6f
+
+ADR-0037 shipped the adaptive generator marked *accepted, provisionally* and
+listed what it was not yet. This is that list, worked through.
+
+### The training week is a trailing seven days
+
+It was "since Monday". That resets to zero on a Monday morning regardless of
+what happened on Sunday, so somebody training Saturday and Sunday would be
+offered a third chest session on the Monday — the counter having forgotten two
+days of training that their chest had not.
+
+A trailing window has no boundary to reset at, and it is the more honest
+question anyway: a muscle does not know what day it is, it knows it was trained
+thirty-six hours ago.
+
+The progress screen still shows calendar weeks, and that is not a contradiction
+— it answers "what did I do in September" while this answers "what am I
+recovered from". The plan screen says *the last 7 days* rather than *this week*
+so the two are never confused for each other.
+
+### The focus is chosen, not counted
+
+`nextFocus(split, sessionsThisWeek)` stepped through the split by a counter.
+That counts *attempts*: a workout opened and abandoned advanced the rotation,
+two sessions in one day advanced it twice, and a missed Thursday left somebody
+permanently out of phase with their own plan.
+
+`chooseFocus(split, setsByGroup, target)` picks the entry in the split with the
+most catching up to do. It answers all of those at once, and it is also just
+the better rule — the session worth doing is the one training what has been
+trained least.
+
+The split still matters and is not redundant. Picking purely by which single
+group is furthest behind would hand somebody legs three days running; the split
+is what keeps a week's work grouped sensibly.
+
+### Progression can go down
+
+Three things replace "add 2.5 kg or repeat":
+
+**A miss is detected, not asked for.** The plan is written into the session as
+target sets, so the app already knows whether every working set reached the
+range. `repsAtTopSet` carries every set at the top weight, not just the best:
+"12, 12, 12" and "12, 12, 7" are the same top set and completely different
+sessions, and only the first is a reason to add weight.
+
+**Three misses in a row is a deload**, not one. Anybody can have a bad Tuesday,
+and an app that drops the weight over one of those is an app nobody ever gets
+stronger on. Three is a plateau, and the answer to a plateau is to back off ten
+percent and run at it again. One good session clears the streak, which is what
+makes the deload self-clearing rather than something that fires again a week
+later.
+
+**Reps in reserve, asked once per exercise.** The logger asks "how many more
+could you have done?" after the last set — phrased as reps because that is a
+question somebody can answer honestly with a bar in their hands, while "rate
+that seven to ten" is one they will learn to answer with whatever number they
+think means hard. Stored as RPE, which is the notation everyone else uses.
+
+Skippable, and skipping costs nothing: detection answers most of the question
+alone. What it adds is the one thing rep counts cannot — whether twelve reps
+were comfortable or a fight — and that buys a double increment rather than a
+wasted session. Once per exercise, never once per set: four questions for one
+exercise is three too many.
+
+### Anchor the compounds, rotate the accessories
+
+The two slots want opposite things and treating them the same is what made the
+generator boring. The big lift of a session is the one somebody is trying to
+add weight to, so it should be the same lift week after week — nobody
+progresses on something they never repeat. The accessory has no such claim, and
+doing cable flies for eleven months because they won a tie-break once is how a
+plan stops being interesting and starts being ignored.
+
+So familiarity is a large bonus in the compound slot and a penalty in the
+accessory one. The penalty fades with time, so a rested accessory comes back
+around rather than being retired — a one-way door would be a different bug.
+
+### Every exercise carries the ones it beat
+
+`PlannedExercise.alternatives` holds the next two candidates for the same
+group, each planned in full so a swap lands on a real prescription rather than
+a name with no weight against it. The plan screen shows the next one faded
+underneath and swaps on a tap, both cards rendered throughout so the browser
+animates between them. `prefers-reduced-motion` removes the movement and keeps
+the swap.
+
+This is the escape hatch for the failure ADR-0037 could not test for: if the
+catalogue's muscle mapping is wrong somewhere, or a machine is missing from a
+gym, correcting it costs a tap instead of an argument.
+
+### The seed was audited
+
+All 71 primary muscle assignments read and checked. Every group named in
+`FOCUS_GROUPS` has candidates, the mechanic labels are evenly split (28
+compound, 23 isolation), and no assignment was wrong. Two notes rather than
+fixes: `erector-spinae` sits in `back`, so a deadlift competes with rows for a
+pull day's back slot; and `farmer-carry` is primary to `traps`, so it can be
+prescribed there. Both are defensible and neither was worth changing.

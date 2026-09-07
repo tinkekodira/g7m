@@ -77,7 +77,7 @@ async function logSession(
   exerciseId: string,
   startedAt: string,
   sets: readonly (readonly [number | null, number | null])[],
-  over: { completed?: boolean; setType?: string; finished?: boolean } = {},
+  over: { completed?: boolean; setType?: string; finished?: boolean; rpe?: number } = {},
 ): Promise<void> {
   await db.seed('workout_sessions', {
     id: sessionId,
@@ -104,6 +104,7 @@ async function logSession(
       load_type: 'external',
       weight_kg: weightKg,
       reps,
+      rpe: over.rpe ?? null,
       is_completed: over.completed === false ? 0 : 1,
     });
     index++;
@@ -189,49 +190,71 @@ describe('candidates', () => {
   });
 });
 
+const SINCE = new Date('2026-06-01T00:00:00.000Z');
+
 describe('lastPerformances', () => {
   it('is empty for somebody who has never trained', async () => {
-    expect(await planner.lastPerformances()).toEqual([]);
+    expect(await planner.lastPerformances(SINCE)).toEqual([]);
   });
 
   /**
-   * Not the last set of the session, which is usually the one where they ran
-   * out. Progression is judged against the best set, the way a lifter judges
-   * it themselves.
+   * The difference between "you hit 12" and "you hit 12, 12, then 7". Only
+   * the second is a session that ran out, and prescribing more weight after it
+   * is how a generated plan buries somebody.
    */
-  it('is the heaviest set of the most recent session, not the last one', async () => {
+  it('keeps every working set at the top weight, not just the best', async () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [
       [70, 12],
-      [80, 8],
-      [60, 6],
+      [80, 12],
+      [80, 12],
+      [80, 7],
     ]);
 
-    const [bench] = await planner.lastPerformances();
-    expect(bench?.topSetKg).toBe(80);
-    expect(bench?.topSetReps).toBe(8);
+    const [bench] = await planner.lastPerformances(SINCE);
+    expect(bench?.sessions[0]?.topSetKg).toBe(80);
+    expect(bench?.sessions[0]?.repsAtTopSet).toEqual([12, 12, 7]);
   });
 
-  it('reads the most recent session, not the best one ever', async () => {
-    await logSession('s1', 'bench', '2026-08-01T10:00:00.000Z', [[100, 5]]);
+  it('orders sessions newest first', async () => {
+    await logSession('s1', 'bench', '2026-08-01T10:00:00.000Z', [[75, 8]]);
     await logSession('s2', 'bench', '2026-09-01T10:00:00.000Z', [[80, 8]]);
 
-    const [bench] = await planner.lastPerformances();
-    expect(bench?.topSetKg).toBe(80);
-    expect(bench?.lastPerformedAt).toEqual(new Date('2026-09-01T10:00:00.000Z'));
+    const [bench] = await planner.lastPerformances(SINCE);
+    expect(bench?.sessions.map((entry) => entry.topSetKg)).toEqual([80, 75]);
+    expect(bench?.sessions[0]?.at).toEqual(new Date('2026-09-01T10:00:00.000Z'));
+  });
+
+  it('keeps only as many sessions as the deload rule needs', async () => {
+    for (const [index, day] of ['08-01', '08-08', '08-15', '08-22'].entries()) {
+      await logSession(`s${String(index)}`, 'bench', `2026-${day}T10:00:00.000Z`, [[80, 8]]);
+    }
+    expect((await planner.lastPerformances(SINCE))[0]?.sessions).toHaveLength(3);
+  });
+
+  it('reads reps in reserve back off the rpe column', async () => {
+    // The logger asks "how many more could you have done?" and stores it as
+    // RPE, which is the notation the rest of the world writes it in.
+    await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[80, 12]], { rpe: 7 });
+    expect((await planner.lastPerformances(SINCE))[0]?.sessions[0]?.repsInReserve).toBe(3);
+  });
+
+  it('is null when nobody answered', async () => {
+    await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[80, 12]]);
+    expect((await planner.lastPerformances(SINCE))[0]?.sessions[0]?.repsInReserve).toBeNull();
   });
 
   it('ignores warm-ups', async () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[100, 5]], {
       setType: 'warmup',
     });
-    expect(await planner.lastPerformances()).toEqual([]);
+    expect(await planner.lastPerformances(SINCE)).toEqual([]);
   });
 
   it('ignores a set that was never ticked off', async () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[100, 5]], {
       completed: false,
     });
-    expect(await planner.lastPerformances()).toEqual([]);
+    expect(await planner.lastPerformances(SINCE)).toEqual([]);
   });
 
   it('ignores a session that was never finished', async () => {
@@ -239,22 +262,27 @@ describe('lastPerformances', () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[100, 5]], {
       finished: false,
     });
-    expect(await planner.lastPerformances()).toEqual([]);
+    expect(await planner.lastPerformances(SINCE)).toEqual([]);
+  });
+
+  it('ignores anything before the window', async () => {
+    await logSession('s1', 'bench', '2026-01-01T10:00:00.000Z', [[100, 5]]);
+    expect(await planner.lastPerformances(SINCE)).toEqual([]);
   });
 
   it('handles a set with no weight on it', async () => {
     // Bodyweight work. There is a performance; there is just nothing to load.
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[null, 12]]);
-    const [bench] = await planner.lastPerformances();
-    expect(bench?.topSetKg).toBeNull();
-    expect(bench?.topSetReps).toBe(12);
+    const [bench] = await planner.lastPerformances(SINCE);
+    expect(bench?.sessions[0]?.topSetKg).toBeNull();
+    expect(bench?.sessions[0]?.repsAtTopSet).toEqual([12]);
   });
 
   it('reports one entry per exercise', async () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[80, 8]]);
     await logSession('s2', 'row', '2026-09-02T10:00:00.000Z', [[60, 10]]);
 
-    const performances = await planner.lastPerformances();
+    const performances = await planner.lastPerformances(SINCE);
     expect(performances).toHaveLength(2);
     expect(new Set(performances.map((entry) => entry.exerciseId)).size).toBe(2);
   });
@@ -262,7 +290,7 @@ describe('lastPerformances', () => {
   it('does not read another user’s training', async () => {
     await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[80, 8]]);
     const stranger = new PlannerRepository(db, { userId: 'user-2' });
-    expect(await stranger.lastPerformances()).toEqual([]);
+    expect(await stranger.lastPerformances(SINCE)).toEqual([]);
   });
 });
 
@@ -347,6 +375,6 @@ describe('when nobody is signed in', () => {
   it('refuses to read', async () => {
     const anonymous = new PlannerRepository(db, { userId: '' });
     await expect(anonymous.candidates()).rejects.toThrow(/signed-in user/);
-    await expect(anonymous.lastPerformances()).rejects.toThrow(/signed-in user/);
+    await expect(anonymous.lastPerformances(SINCE)).rejects.toThrow(/signed-in user/);
   });
 });

@@ -11,7 +11,13 @@
  * online one, so each of these reads its whole answer in one pass and the
  * assembling happens in memory, where a few thousand rows cost nothing.
  */
-import { naturalLoadType, type ExerciseHistory, type PlannableExercise } from '@g7m/core';
+import {
+  naturalLoadType,
+  rpeToRir,
+  type ExerciseHistory,
+  type PlannableExercise,
+  type SessionPerformance,
+} from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -34,6 +40,14 @@ import {
  * prescribes work against a total the progress screen does not show.
  */
 const COUNTED_SETS = "ss.is_completed = 1 AND ss.set_type <> 'warmup'";
+
+/**
+ * Sessions kept per exercise.
+ *
+ * Three is what the deload rule needs — `DELOAD_AFTER_MISSES` — and one more
+ * than that buys nothing but rows.
+ */
+const RECENT_SESSIONS = 3;
 
 export class PlannerRepository {
   constructor(
@@ -85,53 +99,33 @@ export class PlannerRepository {
   }
 
   /**
-   * The last working set of every exercise the user has ever finished.
+   * How each exercise has gone lately, newest session first.
    *
-   * "Heaviest completed set, and the reps at it" — not the last set of the
-   * session, which is usually the one where they ran out. Progression is
-   * judged against the best set, the way a lifter judges it themselves.
+   * Every working set of the top weight, not just the best one — "12, 12, 12"
+   * and "12, 12, 7" are the same top set and completely different sessions,
+   * and only the second is a reason to hold the weight rather than add to it.
+   *
+   * Bounded by `since` so this stays one small read forever rather than
+   * growing with a training history. A hundred and twenty days is far past the
+   * three weeks that count as a layoff and the three sessions that count as a
+   * plateau, so nothing downstream can want more than it returns.
    */
-  async lastPerformances(): Promise<ExerciseHistory[]> {
+  async lastPerformances(since: Date, perExercise = RECENT_SESSIONS): Promise<ExerciseHistory[]> {
     const { userId } = resolveContext(this.context);
 
     const rows = await this.db.getAll<RawRow>(
-      `WITH last_session AS (
-         SELECT se.exercise_id, max(ws.started_at) AS started_at
-           FROM session_sets ss
-           JOIN session_exercises se ON se.id = ss.session_exercise_id
-           JOIN workout_sessions ws ON ws.id = se.session_id
-          WHERE ss.user_id = ? AND ${COUNTED_SETS} AND ws.ended_at IS NOT NULL
-          GROUP BY se.exercise_id
-       )
-       SELECT se.exercise_id,
-              ls.started_at,
-              ss.weight_kg,
-              ss.reps
-         FROM last_session ls
-         JOIN session_exercises se ON se.exercise_id = ls.exercise_id
-         JOIN workout_sessions ws ON ws.id = se.session_id AND ws.started_at = ls.started_at
-         JOIN session_sets ss ON ss.session_exercise_id = se.id
+      `SELECT se.exercise_id, ws.id AS session_id, ws.started_at,
+              ss.weight_kg, ss.reps, ss.rpe
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
         WHERE ss.user_id = ? AND ${COUNTED_SETS}
-        ORDER BY se.exercise_id ASC,
-                 ss.weight_kg DESC NULLS LAST,
-                 ss.reps DESC`,
-      [userId, userId],
+          AND ws.ended_at IS NOT NULL AND ws.started_at >= ?
+        ORDER BY se.exercise_id ASC, ws.started_at DESC, ss.order_key ASC`,
+      [userId, toTimestamp(since)],
     );
 
-    // The query returns every set of the last session for each exercise,
-    // heaviest first. Taking the first row per exercise is the top set.
-    const best = new Map<string, ExerciseHistory>();
-    for (const row of rows) {
-      const exerciseId = readString(row, 'exercise_id', '');
-      if (exerciseId === '' || best.has(exerciseId)) continue;
-      best.set(exerciseId, {
-        exerciseId,
-        lastPerformedAt: readRequiredDate(row, 'started_at', new Date(0)),
-        topSetKg: readOptionalNumber(row, 'weight_kg'),
-        topSetReps: readOptionalNumber(row, 'reps'),
-      });
-    }
-    return [...best.values()];
+    return groupPerformances(rows, perExercise);
   }
 
   /**
@@ -184,6 +178,60 @@ export class PlannerRepository {
     );
     return row === null ? 0 : readNumber(row, 'sessions', 0);
   }
+}
+
+/**
+ * Flat set rows into per-exercise, per-session performances.
+ *
+ * Done here rather than in SQL for the reason `history.ts` gives: SQL is good
+ * at "which rows" and bad at "what do they mean", and "the reps at the top
+ * weight" is a meaning. The rows arrive already ordered by exercise then by
+ * session, newest first, so this is one pass.
+ */
+function groupPerformances(rows: readonly RawRow[], perExercise: number): ExerciseHistory[] {
+  const byExercise = new Map<string, Map<string, RawRow[]>>();
+
+  for (const row of rows) {
+    const exerciseId = readString(row, 'exercise_id', '');
+    const sessionId = readString(row, 'session_id', '');
+    if (exerciseId === '' || sessionId === '') continue;
+
+    const sessions = byExercise.get(exerciseId) ?? new Map<string, RawRow[]>();
+    // Insertion order is the row order, which is newest session first.
+    if (!sessions.has(sessionId) && sessions.size >= perExercise) continue;
+    sessions.set(sessionId, [...(sessions.get(sessionId) ?? []), row]);
+    byExercise.set(exerciseId, sessions);
+  }
+
+  return [...byExercise].map(([exerciseId, sessions]) => ({
+    exerciseId,
+    sessions: [...sessions.values()].map(toPerformance),
+  }));
+}
+
+function toPerformance(sets: readonly RawRow[]): SessionPerformance {
+  const first = sets[0];
+  const weights = sets.map((row) => readOptionalNumber(row, 'weight_kg'));
+  const heaviest = weights.reduce<number | null>(
+    (top, weight) => (weight !== null && (top === null || weight > top) ? weight : top),
+    null,
+  );
+
+  const atTop = sets.filter((_, index) => (weights[index] ?? null) === heaviest);
+  const reps = atTop
+    .map((row) => readOptionalNumber(row, 'reps'))
+    .filter((value): value is number => value !== null);
+
+  // The last set of the exercise is the one the logger asks about, and the
+  // only one whose answer means anything about whether to add weight.
+  const lastRpe = readOptionalNumber(sets[sets.length - 1] ?? {}, 'rpe');
+
+  return {
+    at: readRequiredDate(first ?? {}, 'started_at', new Date(0)),
+    topSetKg: heaviest,
+    repsAtTopSet: reps,
+    repsInReserve: rpeToRir(lastRpe),
+  };
 }
 
 function toPlannable(row: RawRow): PlannableExercise {

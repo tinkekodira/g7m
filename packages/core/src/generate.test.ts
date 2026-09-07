@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DELOAD_AFTER_MISSES,
   planSession,
   type ExerciseHistory,
   type PlanInput,
   type PlannableExercise,
+  type SessionPerformance,
 } from './generate.js';
 import { prescriptionFor } from './programming.js';
 
@@ -44,6 +46,7 @@ function catalogue(): PlannableExercise[] {
     exercise('Barbell Bench Press', ['chest']),
     exercise('Incline Dumbbell Press', ['chest']),
     exercise('Cable Fly', ['chest'], 'isolation'),
+    exercise('Pec Deck', ['chest'], 'isolation'),
     exercise('Barbell Row', ['back']),
     exercise('Pull-Up', ['back']),
     exercise('Lat Pulldown', ['back']),
@@ -78,14 +81,25 @@ function input(over: Partial<PlanInput> = {}): PlanInput {
   };
 }
 
-function history(exerciseId: string, over: Partial<ExerciseHistory> = {}): ExerciseHistory {
-  return {
-    exerciseId,
-    lastPerformedAt: daysAgo(7),
-    topSetKg: 80,
-    topSetReps: 8,
-    ...over,
-  };
+/** One finished session of an exercise, `days` ago. */
+function session(
+  days: number,
+  topSetKg: number | null,
+  repsAtTopSet: readonly number[],
+  repsInReserve: number | null = null,
+): SessionPerformance {
+  return { at: daysAgo(days), topSetKg, repsAtTopSet, repsInReserve };
+}
+
+function history(exerciseId: string, sessions: readonly SessionPerformance[]): ExerciseHistory {
+  return { exerciseId, sessions };
+}
+
+/** The common case: one session a week ago, 80 kg for 8. */
+function lastWeek(exerciseId: string, over: Partial<SessionPerformance> = {}): ExerciseHistory {
+  return history(exerciseId, [
+    { at: daysAgo(7), topSetKg: 80, repsAtTopSet: [8], repsInReserve: null, ...over },
+  ]);
 }
 
 describe('a first session, with nothing to go on', () => {
@@ -170,7 +184,7 @@ describe('choosing what to train', () => {
     const session = planSession(
       input({
         focus: 'push',
-        history: [history('barbell-bench-press', { lastPerformedAt: daysAgo(1) })],
+        history: [lastWeek('barbell-bench-press', { at: daysAgo(1) })],
       }),
     );
     expect(session.exercises.map((entry) => entry.exerciseId)).not.toContain('barbell-bench-press');
@@ -182,7 +196,7 @@ describe('choosing what to train', () => {
     const session = planSession(
       input({
         focus: 'push',
-        history: [history('incline-dumbbell-press', { lastPerformedAt: daysAgo(4) })],
+        history: [lastWeek('incline-dumbbell-press', { at: daysAgo(4) })],
       }),
     );
     const chest = session.exercises.find((entry) => entry.groupSlug === 'chest');
@@ -215,7 +229,7 @@ describe('what to put on the bar', () => {
     const session = planSession(
       input({
         focus: 'push',
-        history: [history('barbell-bench-press', { topSetKg: 80, topSetReps: 12 })],
+        history: [lastWeek('barbell-bench-press', { topSetKg: 80, repsAtTopSet: [12, 12, 12] })],
       }),
     );
     const bench = session.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
@@ -227,7 +241,7 @@ describe('what to put on the bar', () => {
     const session = planSession(
       input({
         focus: 'push',
-        history: [history('barbell-bench-press', { topSetKg: 80, topSetReps: 8 })],
+        history: [lastWeek('barbell-bench-press', { topSetKg: 80, repsAtTopSet: [8] })],
       }),
     );
     const bench = session.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
@@ -245,10 +259,10 @@ describe('what to put on the bar', () => {
       input({
         focus: 'push',
         history: [
-          history('barbell-bench-press', {
+          lastWeek('barbell-bench-press', {
             topSetKg: 80,
-            topSetReps: 12,
-            lastPerformedAt: daysAgo(40),
+            repsAtTopSet: [12],
+            at: daysAgo(40),
           }),
         ],
       }),
@@ -262,7 +276,7 @@ describe('what to put on the bar', () => {
     const session = planSession(
       input({
         focus: 'lower',
-        history: [history('plank', { topSetKg: 40, topSetReps: 60 })],
+        history: [lastWeek('plank', { topSetKg: 40, repsAtTopSet: [60] })],
       }),
     );
     const plank = session.exercises.find((entry) => entry.exerciseId === 'plank');
@@ -305,3 +319,216 @@ describe('the goal changes the session', () => {
     expect(cut.weeklySetsPerGroup).toBeLessThan(bulk.weeklySetsPerGroup);
   });
 });
+
+describe('being stuck', () => {
+  const missing = (days: number) => session(days, 100, [5, 5, 4]);
+
+  /**
+   * Anybody can have a bad Tuesday. An app that drops the weight over one of
+   * those is an app nobody ever gets stronger on.
+   */
+  it('does not back off after one bad session', () => {
+    const plan = planSession(
+      input({ focus: 'push', history: [history('barbell-bench-press', [missing(7)])] }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.reason.kind).toBe('repeat');
+    expect(bench?.suggestedKg).toBe(100);
+  });
+
+  it('backs off once it is a plateau rather than a bad day', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [history('barbell-bench-press', [missing(3), missing(10), missing(17)])],
+      }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.suggestedKg).toBe(90);
+    expect(bench?.reason).toEqual({ kind: 'deload', fromKg: 100, misses: DELOAD_AFTER_MISSES });
+  });
+
+  /**
+   * What makes a deload self-clearing rather than something that fires again
+   * the following week.
+   */
+  it('forgets the streak after one good session', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [
+          history('barbell-bench-press', [session(3, 100, [8, 8, 8]), missing(10), missing(17)]),
+        ],
+      }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.reason.kind).not.toBe('deload');
+  });
+
+  it('counts a session where any set fell short, not only the last one', () => {
+    // 12, 12, 7 is the same top set as 12, 12, 12 and a completely different
+    // session. Only the second is a reason to add weight.
+    const ranOut = planSession(
+      input({
+        focus: 'push',
+        history: [history('barbell-bench-press', [session(7, 80, [12, 12, 5])])],
+      }),
+    );
+    const bench = ranOut.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.reason.kind).toBe('repeat');
+  });
+});
+
+describe('reps in reserve', () => {
+  /**
+   * The one thing counting reps cannot tell you. Somebody who finishes twelve
+   * with three left is nowhere near their limit, and 2.5 kg wastes a session.
+   */
+  it('takes a bigger jump when the range was finished easily', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [history('barbell-bench-press', [session(7, 80, [12, 12, 12], 3)])],
+      }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.suggestedKg).toBe(85);
+    expect(bench?.reason).toEqual({ kind: 'jump', fromKg: 80, repsInReserve: 3 });
+  });
+
+  it('takes the normal step when it was a fight', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [history('barbell-bench-press', [session(7, 80, [12, 12, 12], 0)])],
+      }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.suggestedKg).toBe(82.5);
+    expect(bench?.reason.kind).toBe('progress');
+  });
+
+  it('works without an answer, because the prompt is skippable', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [history('barbell-bench-press', [session(7, 80, [12, 12, 12], null)])],
+      }),
+    );
+    const bench = plan.exercises.find((entry) => entry.exerciseId === 'barbell-bench-press');
+    expect(bench?.suggestedKg).toBe(82.5);
+  });
+});
+
+describe('anchor and rotate', () => {
+  /**
+   * Nobody progresses on a lift they never repeat, so the big movement of a
+   * session should be the same one week after week.
+   */
+  it('keeps the compound somebody has been training', () => {
+    const plan = planSession(
+      input({ focus: 'push', history: [lastWeek('incline-dumbbell-press', { at: daysAgo(5) })] }),
+    );
+    const chest = plan.exercises.find((entry) => entry.groupSlug === 'chest');
+    expect(chest?.exerciseId).toBe('incline-dumbbell-press');
+  });
+
+  /**
+   * The opposite rule for the accessory slot. Doing cable flies for eleven
+   * months because they won a tie-break once is how a plan gets ignored.
+   */
+  it('moves the accessory on once it has just been done', () => {
+    // Chest has two isolations in this catalogue, so there is somewhere to
+    // rotate to — which is the only situation the rule can be seen in.
+    const fresh = planSession(input({ focus: 'push', setsThisWeekByGroup: chestOnly() }));
+    expect(accessory(fresh)).toBe('cable-fly');
+
+    const after = planSession(
+      input({
+        focus: 'push',
+        setsThisWeekByGroup: chestOnly(),
+        history: [lastWeek('cable-fly', { at: daysAgo(3) })],
+      }),
+    );
+    expect(accessory(after)).toBe('pec-deck');
+  });
+
+  it('brings a rested accessory back rather than retiring it', () => {
+    // The penalty fades with time. An exercise dropped for being recent has
+    // to be able to return, or the rotation is a one-way door.
+    const after = planSession(
+      input({
+        focus: 'push',
+        setsThisWeekByGroup: chestOnly(),
+        history: [lastWeek('cable-fly', { at: daysAgo(45) })],
+      }),
+    );
+    expect(accessory(after)).toBe('cable-fly');
+  });
+});
+
+describe('alternatives', () => {
+  it('carries the exercises each choice beat', () => {
+    const plan = planSession(input({ focus: 'push' }));
+    const chest = plan.exercises.find((entry) => entry.groupSlug === 'chest');
+
+    expect(chest?.alternatives.length).toBeGreaterThan(0);
+    expect(chest?.alternatives.map((entry) => entry.exerciseId)).not.toContain(chest?.exerciseId);
+  });
+
+  it('plans them in full, so a swap lands on a real prescription', () => {
+    const plan = planSession(
+      input({
+        focus: 'push',
+        history: [lastWeek('incline-dumbbell-press', { topSetKg: 30, repsAtTopSet: [12, 12, 12] })],
+      }),
+    );
+    const chest = plan.exercises.find((entry) => entry.groupSlug === 'chest');
+    const swap = [chest, ...(chest?.alternatives ?? [])].find(
+      (entry) => entry?.exerciseId === 'incline-dumbbell-press',
+    );
+    expect(swap?.suggestedKg).toBe(32.5);
+    expect(swap?.sets).toBe(chest?.sets);
+  });
+
+  it('stops one level deep, because a menu is not a swap', () => {
+    const plan = planSession(input({ focus: 'push' }));
+    for (const exercise of plan.exercises) {
+      for (const option of exercise.alternatives) {
+        expect(option.alternatives).toEqual([]);
+      }
+    }
+  });
+
+  it('offers alternatives from the same muscle group', () => {
+    const plan = planSession(input({ focus: 'push' }));
+    for (const exercise of plan.exercises) {
+      for (const option of exercise.alternatives) {
+        expect(option.groupSlug).toBe(exercise.groupSlug);
+      }
+    }
+  });
+});
+
+/**
+ * The second chest exercise in a session — the accessory slot.
+ *
+ * The first is chosen by the compound rule, which anchors; only the second is
+ * chosen by the rule that rotates.
+ */
+function accessory(plan: {
+  exercises: readonly { groupSlug: string; exerciseId: string }[];
+}): string | undefined {
+  return plan.exercises.filter((entry) => entry.groupSlug === 'chest')[1]?.exerciseId;
+}
+
+/**
+ * Enough shoulder and triceps work banked that only chest is left, so the
+ * spare budget goes on a second chest exercise rather than elsewhere.
+ */
+function chestOnly(): Map<string, number> {
+  return new Map([
+    ['shoulders', 30],
+    ['triceps', 30],
+  ]);
+}
