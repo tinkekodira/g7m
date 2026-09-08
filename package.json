@@ -29,7 +29,8 @@
     "db:push": "supabase db push",
     "db:diff": "supabase db diff --linked",
     "db:status": "supabase migration list --linked",
-    "sync-rules": "vitest run -u packages/db/src/schema/sync-rules.test.ts"
+    "sync-rules": "vitest run -u packages/db/src/schema/sync-rules.test.ts",
+    "model:label": "vitest run packages/anatomy/tools/build-model.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
