@@ -12,6 +12,10 @@ export default defineConfig({
     include: [
       'packages/*/src/**/*.test.ts',
       'apps/*/src/**/*.test.ts',
+      // Build tooling that happens to be written in TypeScript. Vitest is the
+      // only thing here that runs it, so a generator is a test — the same
+      // arrangement `pnpm sync-rules` already uses.
+      'packages/*/tools/**/*.test.ts',
       // The service worker and its build step live outside `src`, because they
       // compile against a different lib (`WebWorker`) and a different runtime.
       // Their pure parts are still the ones most worth testing.

@@ -2307,3 +2307,97 @@ is a different feature from this one.
 A completed set dims to 60%, which is right for numbers already logged and
 wrong for the one thing on the row explaining why it was worth doing. The badge
 now sits outside the dimmed wrapper.
+
+---
+
+## ADR-0044 — The sculpt supplies the shape, the atlas supplies the anatomy
+
+**Status:** accepted · **Date:** 2026-09-08
+
+A commissioned ZBrush anatomy sculpt arrived. It is a beautiful figure and it
+could not be dropped in, for a reason worth recording because it is the reason
+*most* bought anatomy models cannot be:
+
+726,631 vertices, 1,453,242 triangles, **no normals, no UVs, no materials**,
+two auto-named groups, and one named subtool in the ZBrush file — `Eye_ball1`.
+A connected-components pass finds five pieces: the body at 696,934 vertices,
+and four blobs of about 7,500 that are the eyes. The musculature is sculpted
+*into* a single welded skin.
+
+`node-names.ts` needs a node per muscle to tap. There were none, and no
+automatic split could make any: not by loose parts, not by polygroups, not by
+material. The seams a lifter can see are sculpted grooves, not topology.
+
+### The trade the model presents
+
+The procedural body from ADR-0039 is the opposite object. It is uglier and it
+is *made of* named muscles, because it is generated from origins and
+insertions. So one has the shape and the other has the anatomy, and the useful
+move is to put the second onto the first rather than to choose.
+
+Every vertex of the sculpt takes the name of whichever procedural muscle is
+nearest. Three passes, and the last two are the ones that matter:
+
+1. **Nearest source point within a radius**, on a uniform grid.
+2. **Majority vote over neighbours**, repeated. A raw nearest-neighbour pass
+   gives a correct-looking body covered in confetti: two vertices a millimetre
+   apart can have different nearest muscles wherever two run alongside each
+   other, and a scatter of single-vertex islands is worse than a wrong label,
+   because it makes the highlight flicker under a moving finger.
+3. **Flood the rest along the surface.** Straight-line spreading would let one
+   inner thigh claim the other, and a hand claim the hip it rests against.
+
+The vote reads from a snapshot rather than in place, so the answer does not
+depend on the order the decimator happened to number the mesh in.
+
+**Declarative, not an event.** Nothing detects a label "being assigned". Given
+the sculpt and the atlas, the function says what every vertex *is*. Rerunning
+it is free and idempotent, which is what makes the fitting parameters
+sweepable — and they had to be swept.
+
+### Look at it, every time
+
+Pass three paints the labels and renders the body, and it is not optional.
+ADR-0039 was written after three rounds spent chasing rendering seams that a
+GPU would never have drawn; the lesson was to calibrate the instrument before
+trusting what it measures.
+
+It earned its keep immediately. The report from pass two said
+`wrist-extensors` had taken 5,540 vertices and `biceps-brachii` 116, which
+reads as a broken arm — and sweeping the search radius from 6 cm to 30 cm
+changed neither number, which reads as a broken search. The render showed a
+front that was *good*: the pectoral heads follow the sculpted chest, the
+rectus abdominis picks out the actual six-pack, the vastus medialis lands on
+the teardrop above the knee. The counts were misleading because the forearm
+label legitimately inherits the whole hand, and the arm was fine.
+
+### What is not solved: a skin has no room for a deep muscle
+
+The back is mottled — stable patches of trapezius, rhomboid, infraspinatus and
+teres interleaved across the upper back — and more smoothing does not touch it,
+which is the tell that they are not islands. They are what the source actually
+says.
+
+The cause is a decision made in ADR-0039 for a different object. The procedural
+body floats deep muscles outward "far enough to leave a sliver showing",
+because a bundle of separate tubes has gaps between the fascicles for a sliver
+of rhomboid to show *through*. **A single closed skin has no gaps.** The cheat
+has nowhere to go, so instead of a sliver between the trapezius fibres it takes
+a patch out of the middle of the trapezius.
+
+So the honest statement is: a skin surface can only be divided among the
+muscles that reach it. Giving the sculpt a clean back means labelling it with
+superficial muscles only, and reaching the deep ones some other way — a list,
+or a layer toggle that swaps the procedural geometry back in. That is a
+decision about the Learn tab rather than about geometry, and it is not made
+here.
+
+`teres-major` gets no vertices at all, for the same reason.
+
+### The asset stays out of the repository
+
+The repository is public (ADR-0019) and the sculpt is licensed (ADR-0009), so
+`packages/anatomy/assets/licensed/` is ignored and the pre-commit hook refuses
+it even under `git add -f`. Everything here is therefore written to be
+**absent-by-default**: `build-model.test.ts` skips itself when the fitted input
+is missing, so CI is green on a checkout that has never seen the model.
