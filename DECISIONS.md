@@ -2538,3 +2538,58 @@ over the hips is gluteus medius, which genuinely sits there. The core's lower
 edge follows the inguinal crease rather than stopping short of it, which is
 also right. Both were misread from a whole-body view at 760 pixels — the same
 mistake as the palette, one step further on.
+
+---
+## ADR-0047 — A mirror reverses the winding, and Blender will not tell you
+
+**Status:** accepted · **Date:** 2026-09-09
+
+The sculpted body shipped inside-out. Every triangle in it faced inward, and
+three.js draws front faces only — so the figure showed you the inside of its
+own far surface, which reads as a body with no back.
+
+The cause is one line. The sculpt's +x is the figure's left, so `fit.py`
+mirrors x to put its right where `atlas.ts` says it is. **Mirroring reverses
+the order a triangle's corners are visited, and therefore which way it faces.**
+
+Five rounds of renders were made of that mesh and every one of them looked
+correct, because Blender's EEVEE shades both sides of a face by default. The
+defect is invisible to any renderer that does not cull, and it is the whole
+picture in one that does.
+
+`fit.py` now reverses each triangle as it writes it, and asserts the signed
+volume of the result is positive. That number is the one fact that says whether
+a closed mesh is inside-out — it came back as −0.092 m³ and is now +0.092 —
+and it costs a second to compute against a render that cannot show the
+difference at any resolution. The diagnostic render culls backfaces from now
+on, for the same reason.
+
+**Fifth time the instrument was the problem rather than the subject.** The
+rasteriser in ADR-0039, the whole-body render in ADR-0044, the zoom level in
+ADR-0045, the palette in ADR-0046, and the culling here. The pattern is now
+clear enough to name: *a tool that is more forgiving than the target hides
+exactly the faults the target will show.* Blender is more forgiving than
+three.js about winding, so it hid a winding fault. The rule is to make the
+instrument as strict as the destination before believing it.
+
+### A closed skin is not a bundle of muscles
+
+Two things in the viewer assumed the body had gaps in it.
+
+`bodyForms()` — the skull, clavicle, sternum, kneecaps and the core underneath
+— exists so that the spaces between muscle fascicles read as body rather than
+as background. A sculpted skin has no spaces, so those forms do not show
+through it, they sit **on** it: a clavicle laid across the chest, kneecaps over
+the knees. `closedSurface` turns them off.
+
+And the resting colour. The deep red is a muscle seen with the skin taken off;
+on the skin itself it reads as a mannequin dipped in paint. A closed surface
+gets clay instead, with its own heat ramp — the same three decisions, made
+again for a different object.
+
+### The caption
+
+It said "the figure is a placeholder built from blocks" while the real model
+was on screen. It now says which body is showing and what the other one is for.
+Worth naming because it is the failure mode of every hardcoded status line:
+nobody rereads a sentence that was true when it was written.
