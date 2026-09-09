@@ -125,3 +125,65 @@ describe('describePersistence', () => {
     expect(describePersistence('denied')).toContain('nothing already synced is lost');
   });
 });
+
+/**
+ * The failure that stopped the whole app.
+ *
+ * `openDatabase` awaited this, so an advisory browser API sat on the critical
+ * path of every read. A `navigator.storage` that never answers left the
+ * promise pending for ever and every screen sat on "Loading" with nothing to
+ * show — a promise that never settles is not something a `catch` can see.
+ */
+describe('a browser that never answers', () => {
+  const never = new Promise<never>(() => undefined);
+
+  it('gives up on persist() rather than waiting for ever', async () => {
+    const storage = {
+      estimate: () => Promise.resolve({ quota: 100, usage: 10 }),
+      persisted: () => Promise.resolve(false),
+      persist: () => never,
+    } as unknown as StorageManager;
+
+    const report = await ensurePersistentStorage(storage, 10);
+    // "Could not check", not "denied": the browser never refused, it never
+    // replied, and saying it refused would be inventing an answer.
+    expect(report.state).toBe('error');
+    expect(report.quotaBytes).toBe(100);
+  });
+
+  it('gives up on persisted() too', async () => {
+    const storage = {
+      estimate: () => Promise.resolve({}),
+      persisted: () => never,
+      persist: () => Promise.resolve(true),
+    } as unknown as StorageManager;
+
+    const report = await ensurePersistentStorage(storage, 10);
+    // Falls through to asking, which answers.
+    expect(report.state).toBe('granted');
+  });
+
+  it('gives up on estimate() and still reports persistence', async () => {
+    const storage = {
+      estimate: () => never,
+      persisted: () => Promise.resolve(true),
+      persist: () => Promise.resolve(true),
+    } as unknown as StorageManager;
+
+    const report = await ensurePersistentStorage(storage, 10);
+    expect(report.state).toBe('granted');
+    expect(report.quotaBytes).toBeNull();
+  });
+
+  it('still answers quickly when the browser does', async () => {
+    const storage = {
+      estimate: () => Promise.resolve({ quota: 1, usage: 0 }),
+      persisted: () => Promise.resolve(true),
+      persist: () => Promise.resolve(true),
+    } as unknown as StorageManager;
+
+    const started = Date.now();
+    await ensurePersistentStorage(storage, 5000);
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});

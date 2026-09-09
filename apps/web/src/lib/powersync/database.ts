@@ -65,12 +65,24 @@ export function isSyncConfigured(): boolean {
 }
 
 /**
- * Open the local database, asking for durable storage first.
+ * Open the local database, and ask for durable storage on the way past.
  *
  * Safe to call before sign-in and safe to call more than once. Does not connect.
+ *
+ * **The persistence request is started, not awaited.** It used to be awaited,
+ * and that put an advisory browser API on the critical path of every read in
+ * the app: a `navigator.storage` that never answers — Brave with shields up is
+ * one — left this promise pending for ever, so every screen sat on "Loading"
+ * with no error to show, because a promise that never settles is not something
+ * a `catch` can see.
+ *
+ * Persistence asks the browser not to evict the database. It is worth asking
+ * for and it is worth nothing to wait for: the answer changes what the Home
+ * screen says about storage, and nothing else. `requestPersistenceOnce` caches
+ * the promise, so whoever wants the answer still gets the same one.
  */
 export async function openDatabase(): Promise<PowerSyncDatabase> {
-  await requestPersistenceOnce();
+  void requestPersistenceOnce();
   const db = getDatabase();
   await db.init();
   return db;
