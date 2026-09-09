@@ -272,6 +272,9 @@ export function LearnScreen() {
           <AnatomyViewer
             className="h-[52vh] w-full touch-none"
             parts={parts}
+            // A sculpted skin is closed, so the bones and the core underneath
+            // it have nothing to show through and would sit on top instead.
+            closedSurface={layer === 'surface' && sculpted.parts !== null}
             selectableSlugs={selectableSlugs}
             selectedSlug={selected}
             onSelect={setSelected}
@@ -318,10 +321,15 @@ export function LearnScreen() {
         </section>
       )}
 
-      {/* A stand-in, and said out loud rather than left to be worked out. */}
+      {/* Which body is on screen, said out loud rather than left to be worked
+          out. It was still claiming to be a placeholder after the real model
+          had loaded, which is the kind of line nobody rereads. */}
       <p className="text-xs text-muted">
-        The figure is a placeholder built from blocks — the licensed anatomy model is not in this
-        build. Everything else on this screen is real.
+        {sculpted.parts === null
+          ? 'The figure is generated from origins and insertions — the licensed anatomy model is not in this build. Everything else on this screen is real.'
+          : layer === 'surface'
+            ? 'A sculpted body, divided between the muscles that reach the skin. Look underneath for the ones that do not.'
+            : 'Under the skin: every muscle as its own shape, including the ones a surface has no room for.'}
       </p>
 
       {selected !== null && (

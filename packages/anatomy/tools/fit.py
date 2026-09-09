@@ -98,16 +98,50 @@ fhi = [max(c[i] for c in fitted) for i in range(3)]
 print('FITTED bbox', [round(x, 3) for x in flo], [round(x, 3) for x in fhi])
 print('VERTICES', len(fitted))
 
+# Mirroring x reverses which way every triangle winds, and therefore which way
+# it faces. Blender shades both sides of a face, so this is invisible in any
+# render made here; three.js draws front faces only, and an inside-out body
+# shows you the inside of its own far surface. That reads as a figure with no
+# back, which is exactly how it was eventually found — after five rounds of
+# renders that could not have shown it.
+triangles = []
+for poly in body.data.polygons:
+    verts = list(poly.vertices)
+    # Fan-triangulate anything the decimator left as a quad, reversed. The
+    # labelling only needs adjacency, and a fan gives every edge of the polygon.
+    for i in range(1, len(verts) - 1):
+        triangles.append((verts[0], verts[i + 1], verts[i]))
+
+
+def signed_volume(points, faces):
+    """The volume enclosed, signed by which way the faces point.
+
+    Positive means the normals point outward. This is the one number that says
+    whether a closed mesh is inside-out, and it costs a second to compute — so
+    it is asserted on every run rather than trusted to a render that cannot
+    show the difference.
+    """
+    total = 0.0
+    for i, j, k in faces:
+        a, b, c = points[i], points[j], points[k]
+        total += (
+            a[0] * (b[1] * c[2] - b[2] * c[1])
+            - a[1] * (b[0] * c[2] - b[2] * c[0])
+            + a[2] * (b[0] * c[1] - b[1] * c[0])
+        )
+    return total / 6.0
+
+
+volume = signed_volume(fitted, triangles)
+print(f'VOLUME {volume:.5f} m3')
+assert volume > 0, 'the mesh is inside-out: every face winds the wrong way'
+
 with open(dst, 'w', encoding='utf-8') as fh:
     fh.write('# g7m: licensed sculpt, decimated and fitted to the atlas frame.\n')
-    fh.write(f'# vertices {len(fitted)} faces {len(body.data.polygons)}\n')
+    fh.write(f'# vertices {len(fitted)} faces {len(triangles)}\n')
     for x, y, z in fitted:
         fh.write(f'v {x:.6f} {y:.6f} {z:.6f}\n')
-    for poly in body.data.polygons:
-        verts = list(poly.vertices)
-        # Fan-triangulate anything the decimator left as a quad. The labelling
-        # only needs the adjacency, and a fan gives every edge of the polygon.
-        for i in range(1, len(verts) - 1):
-            fh.write(f'f {verts[0] + 1} {verts[i] + 1} {verts[i + 1] + 1}\n')
+    for i, j, k in triangles:
+        fh.write(f'f {i + 1} {j + 1} {k + 1}\n')
 
 print('WROTE', dst)

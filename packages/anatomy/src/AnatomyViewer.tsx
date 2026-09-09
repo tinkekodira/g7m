@@ -43,6 +43,19 @@ const PALETTE = {
   core: '#6d4a41',
   /** Heat map, cold to hot. */
   heat: ['#5c4a45', '#8a4a3c', '#bd5a3f', '#e2725b', '#f6b06a'] as const,
+
+  /**
+   * The same three colours again, for a sculpted skin.
+   *
+   * A closed surface is a different object from a bundle of muscle bellies and
+   * cannot be painted like one. The deep red above is a muscle seen with the
+   * skin taken off; put it on the skin itself and the figure reads as a
+   * mannequin dipped in paint. This is the clay the reference renders used,
+   * which is what a body looks like with the light on it.
+   */
+  skin: '#c08a72',
+  skinInert: '#93796b',
+  skinHeat: ['#6f6058', '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
 };
 
 export type AnatomyMode = 'explore' | 'heatmap';
@@ -56,6 +69,15 @@ export interface AnatomyViewerProps {
   readonly mode?: AnatomyMode;
   /** Slug to 0–1, for `mode: 'heatmap'`. Absent means cold. */
   readonly intensity?: ReadonlyMap<string, number>;
+  /**
+   * The parts form a closed skin rather than a bundle of separate muscles.
+   *
+   * Two things follow. The bones and the core are not drawn, because there is
+   * no gap for them to show through and they would sit on top of a solid body
+   * instead — a clavicle laid across the chest, kneecaps over the knees. And
+   * the resting colours change: see `PALETTE.skin`.
+   */
+  readonly closedSurface?: boolean;
   readonly className?: string;
 }
 
@@ -66,6 +88,7 @@ export function AnatomyViewer({
   onSelect,
   mode = 'explore',
   intensity,
+  closedSurface = false,
   className,
 }: AnatomyViewerProps) {
   const selectable = useMemo(() => new Set(selectableSlugs), [selectableSlugs]);
@@ -104,15 +127,18 @@ export function AnatomyViewer({
         <directionalLight position={[-3, 1.4, 1.6]} intensity={0.55} color="#9fb4d8" />
         <directionalLight position={[-1.2, 3.4, -3.2]} intensity={1.5} color="#ffd9c2" />
 
-        {forms.map((form, index) => (
-          <GeneratedMesh
-            key={`form-${String(index)}`}
-            mesh={form.mesh}
-            color={form.tone === 'bone' ? PALETTE.bone : PALETTE.core}
-            tendonColor={form.tone === 'bone' ? PALETTE.bone : PALETTE.core}
-            roughness={form.tone === 'bone' ? 0.62 : 0.9}
-          />
-        ))}
+        {/* Skipped for a closed skin: nothing can be seen through it, so
+            these would sit on top of the body rather than inside it. */}
+        {!closedSurface &&
+          forms.map((form, index) => (
+            <GeneratedMesh
+              key={`form-${String(index)}`}
+              mesh={form.mesh}
+              color={form.tone === 'bone' ? PALETTE.bone : PALETTE.core}
+              tendonColor={form.tone === 'bone' ? PALETTE.bone : PALETTE.core}
+              roughness={form.tone === 'bone' ? 0.62 : 0.9}
+            />
+          ))}
 
         {parts.map((part) => {
           const isSelectable = selectable.has(part.slug);
@@ -121,8 +147,10 @@ export function AnatomyViewer({
             <GeneratedMesh
               key={part.nodeName}
               mesh={part.mesh}
-              color={colourFor({ part, isSelectable, isSelected, mode, intensity })}
-              tendonColor={PALETTE.tendon}
+              color={colourFor({ part, isSelectable, isSelected, mode, intensity, closedSurface })}
+              // Skin carries no tendon weight, so the blend does nothing; the
+              // resting colour keeps a stray weight from washing it out.
+              tendonColor={closedSurface ? PALETTE.skin : PALETTE.tendon}
               roughness={0.52}
               emissive={isSelected ? PALETTE.selected : undefined}
               onClick={
@@ -257,24 +285,26 @@ function colourFor({
   isSelected,
   mode,
   intensity,
+  closedSurface,
 }: {
   part: BodyPart;
   isSelectable: boolean;
   isSelected: boolean;
   mode: AnatomyMode;
   intensity: ReadonlyMap<string, number> | undefined;
+  closedSurface: boolean;
 }): string {
   if (isSelected) return PALETTE.selected;
-  if (!isSelectable) return PALETTE.inert;
+
+  const inert = closedSurface ? PALETTE.skinInert : PALETTE.inert;
+  if (!isSelectable) return inert;
 
   if (mode === 'heatmap') {
+    const ramp = closedSurface ? PALETTE.skinHeat : PALETTE.heat;
     const value = intensity?.get(part.slug) ?? 0;
-    const step = Math.min(
-      PALETTE.heat.length - 1,
-      Math.max(0, Math.round(value * (PALETTE.heat.length - 1))),
-    );
-    return PALETTE.heat[step] ?? PALETTE.inert;
+    const step = Math.min(ramp.length - 1, Math.max(0, Math.round(value * (ramp.length - 1))));
+    return ramp[step] ?? inert;
   }
 
-  return PALETTE.muscle;
+  return closedSurface ? PALETTE.skin : PALETTE.muscle;
 }
