@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { cloudFrom, transferLabels, type SourceCloud, type TargetMesh } from './label-transfer.js';
 import type { MeshData } from './geometry/tube.js';
 
-function mesh(positions: number[]): MeshData {
+function mesh(positions: number[], tendon?: number[]): MeshData {
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(positions.length),
     uvs: new Float32Array((positions.length / 3) * 2),
-    tendon: new Float32Array(positions.length / 3),
+    tendon: Float32Array.from(tendon ?? new Array<number>(positions.length / 3).fill(0)),
     indices: new Uint32Array(),
   };
 }
@@ -36,6 +36,43 @@ describe('cloudFrom', () => {
     expect(cloud.names).toEqual(['a', 'b']);
     expect([...cloud.label]).toEqual([0, 0, 1]);
     expect(cloud.positions.length).toBe(9);
+  });
+
+  /**
+   * The setting that gave the bicep back. The deltoid's insertion runs a third
+   * of the way down the humerus, and on a sculpt whose arm is 8 cm thicker
+   * than the atlas's, that cord of tendon vertices was the nearest thing to
+   * the whole front of the upper arm.
+   */
+  it('can leave the tendons out, because skin belongs to the belly', () => {
+    const part = {
+      nodeName: 'muscle_a_r',
+      mesh: mesh([0, 0, 0, 1, 0, 0, 2, 0, 0], [0, 0.5, 1]),
+    };
+
+    expect(cloudFrom([part]).label.length).toBe(3);
+    expect(cloudFrom([part], { maxTendon: 1 }).label.length).toBe(3);
+    expect(cloudFrom([part], { maxTendon: 0.4 }).label.length).toBe(1);
+    expect(cloudFrom([part], { maxTendon: 0.5 }).label.length).toBe(2);
+  });
+
+  it('keeps the name of a part the tendon filter emptied', () => {
+    // Otherwise the label indices shift under the caller and every vertex in
+    // the model silently changes muscle.
+    const cloud = cloudFrom(
+      [
+        { nodeName: 'all-tendon', mesh: mesh([0, 0, 0], [1]) },
+        { nodeName: 'belly', mesh: mesh([1, 0, 0], [0]) },
+      ],
+      { maxTendon: 0.4 },
+    );
+    expect(cloud.names).toEqual(['all-tendon', 'belly']);
+    expect([...cloud.label]).toEqual([1]);
+  });
+
+  it('keeps every vertex of a part that carries no tendon data', () => {
+    const bare = cloudFrom([{ nodeName: 'a', mesh: mesh([0, 0, 0, 1, 0, 0]) }], { maxTendon: 0 });
+    expect(bare.label.length).toBe(2);
   });
 
   it('copes with a part that has no geometry', () => {

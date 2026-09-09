@@ -13,6 +13,7 @@ labels are indexed by vertex and Blender's importer is free to renumber.
 
 import colorsys
 import json
+import os
 import math
 import sys
 import bpy
@@ -44,6 +45,73 @@ mesh.from_pydata(positions, [], faces)
 mesh.update()
 body = bpy.data.objects.new('body', mesh)
 bpy.context.scene.collection.objects.link(body)
+
+
+# Which group each muscle belongs to, mirroring `muscle_groups` in Postgres.
+#
+# Used by G7M_BY_GROUP=1, and the distinction it draws is the one that matters:
+# the heat map colours by muscle, so a boundary *inside* a group is invisible in
+# practice — upper and middle trapezius trained together look the same — while a
+# boundary between traps and lats is a visible edge that has to be in the right
+# place.
+GROUPS = {
+    'sternocleidomastoid': 'neck',
+    'pec-major-clavicular': 'chest',
+    'pec-major-sternal': 'chest',
+    'serratus-anterior': 'core',
+    'rectus-abdominis': 'core',
+    'external-obliques': 'core',
+    'anterior-deltoid': 'shoulders',
+    'lateral-deltoid': 'shoulders',
+    'posterior-deltoid': 'shoulders',
+    'biceps-brachii': 'biceps',
+    'brachialis': 'biceps',
+    'triceps-long-head': 'triceps',
+    'triceps-lateral-head': 'triceps',
+    'triceps-medial-head': 'triceps',
+    'brachioradialis': 'forearms',
+    'wrist-flexors': 'forearms',
+    'wrist-extensors': 'forearms',
+    'upper-trapezius': 'traps',
+    'middle-trapezius': 'traps',
+    'lower-trapezius': 'traps',
+    'rhomboids': 'back',
+    'latissimus-dorsi': 'back',
+    'teres-major': 'back',
+    'infraspinatus': 'back',
+    'erector-spinae': 'back',
+    'gluteus-maximus': 'glutes',
+    'gluteus-medius': 'glutes',
+    'rectus-femoris': 'quads',
+    'vastus-lateralis': 'quads',
+    'vastus-medialis': 'quads',
+    'hip-adductors': 'adductors',
+    'biceps-femoris': 'hamstrings',
+    'semitendinosus': 'hamstrings',
+    'semimembranosus': 'hamstrings',
+    'gastrocnemius': 'calves',
+    'soleus': 'calves',
+    'tibialis-anterior': 'calves',
+}
+
+
+def group_of(node_name: str) -> str:
+    slug = node_name.removeprefix('muscle_')
+    for suffix in ('_l', '_r'):
+        if slug.endswith(suffix):
+            slug = slug[: -len(suffix)]
+    return GROUPS.get(slug, slug)
+
+
+if os.environ.get('G7M_BY_GROUP') == '1':
+    order = []
+    for name in names:
+        group = group_of(name)
+        if group not in order:
+            order.append(group)
+    labels = [order.index(group_of(names[label])) if label >= 0 else -1 for label in labels]
+    names = order
+    print('BY GROUP', ' '.join(order))
 
 
 def hue_for(index: int) -> tuple:
@@ -93,7 +161,11 @@ reach = max(size) * 2
 cam_data = bpy.data.cameras.new('cam')
 cam_data.type = 'ORTHO'
 # The figure's height is along y in the atlas frame, not z.
-cam_data.ortho_scale = max(size.y, size.x) * 1.05
+# G7M_ORTHO and G7M_CENTER zoom in on one limb, because a whole-body render at
+# 760 pixels cannot answer a question about an upper arm.
+cam_data.ortho_scale = float(os.environ.get('G7M_ORTHO') or max(size.y, size.x) * 1.05)
+if os.environ.get('G7M_CENTER'):
+    mid = Vector([float(v) for v in os.environ['G7M_CENTER'].split(',')])
 cam_data.clip_start = 0.001
 cam_data.clip_end = reach * 6
 cam = bpy.data.objects.new('cam', cam_data)
