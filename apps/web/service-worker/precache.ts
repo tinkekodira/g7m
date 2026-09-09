@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 
 /**
- * Everything in `dist` is precached except three kinds of file.
+ * Everything in `dist` is precached except four kinds of file.
  *
  * Precaching the lot, rather than a hand-listed shell, is deliberate: the
  * PowerSync workers and the wa-sqlite WebAssembly binary are loaded lazily, so
@@ -23,6 +23,15 @@ export function shouldPrecache(file: string): boolean {
   // Source maps are megabytes that only a debugger opens, and the debugger
   // has a network.
   if (file.endsWith('.map')) return false;
+
+  // The anatomy model. Megabytes, optional, and only the Learn screen wants
+  // it — precaching would put the whole download in front of the first paint
+  // of a screen most people have not opened. It is also absent from most
+  // builds, being licensed and uncommitted, which would make the build id
+  // differ between a developer's machine and CI over a file neither needs at
+  // install time. The Learn screen fetches it when opened and the runtime
+  // cache keeps it from then on.
+  if (file.startsWith('anatomy/')) return false;
 
   // `.nojekyll` and friends: hosting markers, zero bytes, no request ever
   // made for them.
