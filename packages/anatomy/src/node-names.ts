@@ -65,6 +65,74 @@ export function parseMuscleNode(name: string): MuscleNode | null {
   return { slug: body, side: 'midline' };
 }
 
+/**
+ * The prefix for skin that covers no muscle.
+ *
+ * A head is not a muscle, and neither is a hand, a foot or the groin — but on
+ * a closed sculpted skin that surface still has to be somewhere, or the figure
+ * has holes in it. These nodes carry it: they render as part of the body and
+ * they never answer a tap.
+ *
+ * A separate prefix rather than a `muscle_` node the taxonomy happens not to
+ * know, because those two cases must not look alike. An unrecognised
+ * `muscle_*` node is a real fault — geometry that highlights and then shows an
+ * empty exercise list — and `checkModelContract` exists to report it. Naming
+ * the head `muscle_skin-head` would file a deliberate part of the model under
+ * the one heading that means "something is wrong here".
+ */
+export const SKIN_PREFIX = 'skin_';
+
+/** Slugs for skin nodes are prefixed too, so they cannot collide with a muscle. */
+const SKIN_SLUG_PREFIX = 'skin-';
+
+/** The node name for one side of a bare region: `skin_hand_l`, `skin_groin`. */
+export function skinNodeName(region: string, side: Side): string {
+  return side === 'midline' ? `${SKIN_PREFIX}${region}` : `${SKIN_PREFIX}${region}${SUFFIX[side]}`;
+}
+
+export interface BodyNode {
+  readonly slug: string;
+  readonly side: Side;
+  /** False for skin over no muscle, which renders and never selects. */
+  readonly muscle: boolean;
+}
+
+/**
+ * Read any node this project exports — muscle or bare skin.
+ *
+ * What a geometry loader wants, as against `parseMuscleNode`, which is what
+ * the *contract* wants. The loader has to build a part for everything the body
+ * is made of or the figure comes out with no head; the contract check has to
+ * ignore everything that is not a muscle or it reports the head as a fault.
+ * One function answering both questions would have to be wrong for one of them.
+ */
+export function parseBodyNode(name: string): BodyNode | null {
+  const muscle = parseMuscleNode(name);
+  if (muscle !== null) return { slug: muscle.slug, side: muscle.side, muscle: true };
+
+  const lower = name.trim().toLowerCase();
+  if (!lower.startsWith(SKIN_PREFIX)) return null;
+
+  const body = lower.slice(SKIN_PREFIX.length);
+  if (body === '') return null;
+
+  if (body.endsWith(SUFFIX.left)) {
+    return {
+      slug: `${SKIN_SLUG_PREFIX}${body.slice(0, -SUFFIX.left.length)}`,
+      side: 'left',
+      muscle: false,
+    };
+  }
+  if (body.endsWith(SUFFIX.right)) {
+    return {
+      slug: `${SKIN_SLUG_PREFIX}${body.slice(0, -SUFFIX.right.length)}`,
+      side: 'right',
+      muscle: false,
+    };
+  }
+  return { slug: `${SKIN_SLUG_PREFIX}${body}`, side: 'midline', muscle: false };
+}
+
 export interface ContractReport {
   /** Selectable muscles with no geometry. Tapping these would do nothing. */
   readonly missing: string[];

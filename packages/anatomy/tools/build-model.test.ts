@@ -24,8 +24,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { cloudFrom, transferLabels } from '../src/label-transfer.js';
-import { placeholderBodyParts } from '../src/placeholder-body.js';
-import { checkModelContract, parseMuscleNode } from '../src/node-names.js';
+import { alignToSculpt } from '../src/align.js';
+import { bareSkinForms, placeholderBodyParts } from '../src/placeholder-body.js';
+import { checkModelContract, parseBodyNode, parseMuscleNode } from '../src/node-names.js';
 import { MUSCLES } from '../src/atlas.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -55,6 +56,9 @@ const SMOOTHING_PASSES = Number(process.env.G7M_SMOOTHING ?? '3');
  * it starts to lose again, and 0.6 leaves two parts with no geometry at all.
  */
 const MAX_TENDON = Number(process.env.G7M_MAX_TENDON ?? '0.4');
+
+/** The share of the body below which a part is not a target, whatever the contract says. */
+const MIN_SHARE = 0.001;
 
 interface ParsedObj {
   readonly positions: Float32Array;
@@ -102,7 +106,31 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
     const parts = placeholderBodyParts();
     const surface = parts.filter((part) => !part.deep);
 
-    const cloud = cloudFrom(surface, { maxTendon: MAX_TENDON });
+    /**
+     * The head, the hands, the feet and the groin, claiming their own skin.
+     *
+     * Without them the flood has to give this surface to *some* muscle,
+     * because every vertex gets a label and these are attached to the body
+     * like anything else. It gave the back of the skull to the trapezius, the
+     * hand and every finger to the wrist extensors, and both feet to the
+     * soleus — 5618 vertices, the largest label on the body, on a muscle that
+     * stops at the ankle.
+     *
+     * None of that was a labelling error. It was the only answer available to
+     * a question that should never have been asked, and the fix is to let the
+     * skin over no muscle say so.
+     */
+    const bare = bareSkinForms();
+
+    /**
+     * The arms moved out to where the sculpt holds them.
+     *
+     * The two figures stand differently and `maxDistance` is 6 cm, so without
+     * this there is nothing within reach of a forearm and everything from the
+     * elbow down is assigned by the flood. See `align.ts` — including why the
+     * atlas moves out rather than the sculpt moving in.
+     */
+    const cloud = cloudFrom(alignToSculpt([...surface, ...bare]), { maxTendon: MAX_TENDON });
 
     const started = Date.now();
     const labels = transferLabels(body, cloud, {
@@ -146,12 +174,46 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
     // The flood reaches everything attached to anything, so a leftover is a
     // vertex floating free of the mesh — which would raycast to nothing.
     expect(unlabelled).toBe(0);
+
+    /**
+     * Big enough to hit with a finger.
+     *
+     * `checkModelContract` asks whether a muscle has a node, and a node with
+     * six vertices out of sixty thousand passes that question while being
+     * impossible to tap — which is exactly the failure the contract exists to
+     * prevent, arriving through the one door it does not watch. The
+     * infraspinatus was in that state: present, exported, and unreachable.
+     *
+     * A tenth of a percent of the body is a patch a couple of centimetres
+     * across. Below that nobody is selecting it on purpose.
+     */
+    const starved = [...counts]
+      .filter(([, count]) => count < labels.length * MIN_SHARE)
+      .map(([name, count]) => `${name} (${String(count)})`);
+    expect(starved, 'too small to tap').toEqual([]);
   });
 
   it('names everything the way node-names.ts expects', () => {
     const cloud = cloudFrom(placeholderBodyParts());
     for (const name of cloud.names) {
       expect(parseMuscleNode(name), name).not.toBeNull();
+    }
+  });
+
+  /**
+   * Bare skin has to be readable by the loader and invisible to the contract.
+   *
+   * If `skin_head` ever parsed as a muscle it would be reported as a node the
+   * taxonomy has never heard of — filing a deliberate part of the model under
+   * the one heading that means something is wrong.
+   */
+  it('names bare skin so the loader reads it and the contract ignores it', () => {
+    const bare = bareSkinForms();
+    expect(bare.length).toBeGreaterThan(0);
+
+    for (const { nodeName } of bare) {
+      expect(parseMuscleNode(nodeName), nodeName).toBeNull();
+      expect(parseBodyNode(nodeName)?.muscle, nodeName).toBe(false);
     }
   });
 });
@@ -219,6 +281,22 @@ describe.skipIf(!existsSync(GLB))('the exported model', () => {
       for (const side of sides) {
         expect(nodeNames.has(`muscle_${spec.slug}${side}`), `${spec.slug}${side}`).toBe(true);
       }
+    }
+  });
+
+  /**
+   * A body with no head is worse than a body with a mislabelled one.
+   *
+   * These nodes carry the surface no muscle owns, and `partsFromObject` is the
+   * only thing that draws them. Dropping them from the export would take the
+   * skull, both hands, both feet and the groin out of the figure and leave
+   * holes where they were.
+   */
+  it('exports the skin that covers no muscle', () => {
+    const nodeNames = new Set(glbNodeNames(GLB));
+    const bare = bareSkinForms();
+    for (const { nodeName } of bare) {
+      expect(nodeNames.has(nodeName), nodeName).toBe(true);
     }
   });
 

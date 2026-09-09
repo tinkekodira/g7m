@@ -15,6 +15,7 @@
  */
 export { AnatomyViewer, type AnatomyMode, type AnatomyViewerProps } from './AnatomyViewer.js';
 export {
+  bareSkinForms,
   bodyForms,
   placeholderBodyParts,
   placeholderSlugs,
@@ -22,6 +23,14 @@ export {
   type BodyPart,
 } from './placeholder-body.js';
 export { FORMS, MUSCLES, type FormSpec, type Line, type MuscleSpec } from './atlas.js';
+export {
+  SCULPT_ARMS,
+  alignToSculpt,
+  isArmNode,
+  shiftOutward,
+  type ArmAlignment,
+  type SourcePart,
+} from './align.js';
 export { loadBodyParts, partsFromObject } from './model-source.js';
 export {
   buildTube,
@@ -33,10 +42,14 @@ export {
 } from './geometry/tube.js';
 export {
   NODE_PREFIX,
+  SKIN_PREFIX,
   checkModelContract,
   meshNodeName,
   meshNodeNames,
+  parseBodyNode,
   parseMuscleNode,
+  skinNodeName,
+  type BodyNode,
   type ContractReport,
   type MuscleNode,
   type Side,

@@ -257,13 +257,13 @@ export const MUSCLES: readonly MuscleSpec[] = [
         [0.16, 1.404, -0.098],
         [0.199, 1.404, -0.062],
       ],
-      at([0.186, 1.3, -0.028]),
+      at([0.186, 1.322, -0.028]),
     ],
     fascicles: 6,
     girth: 0.027,
     flatten: 0.92,
     bellyAt: 0.42,
-    tendon: [0.08, 0.28],
+    tendon: [0.08, 0.36],
   },
 
   // ── Upper arm ─────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ export const MUSCLES: readonly MuscleSpec[] = [
     girth: 0.023,
     flatten: 0.85,
     bellyAt: 0.42,
-    tendon: [0.1, 0.28],
+    tendon: [0.1, 0.2],
     tendonThickness: 0.44,
   },
   {
@@ -378,8 +378,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
     // on the thumb side when somebody carries something heavy.
     lines: [
       [
-        [0.199, 1.203, 0.016],
-        [0.214, 1.198, -0.002],
+        [0.201, 1.184, 0.014],
+        [0.216, 1.18, -0.004],
       ],
       [
         [0.222, 1.06, 0.048],
@@ -390,8 +390,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
     fascicles: 5,
     girth: 0.017,
     flatten: 0.8,
-    bellyAt: 0.3,
-    tendon: [0.06, 0.42],
+    bellyAt: 0.32,
+    tendon: [0.1, 0.42],
     tendonThickness: 0.46,
   },
   {
@@ -445,8 +445,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
     // six-pack has separate blocks rather than being one long muscle.
     lines: [
       [
-        [0.034, 0.968, 0.082],
-        [0.072, 0.968, 0.074],
+        [0.034, 1.004, 0.082],
+        [0.072, 1.004, 0.074],
       ],
       [
         [0.036, 1.14, 0.112],
@@ -619,14 +619,23 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'infraspinatus',
+    // Across the infraspinous fossa to the greater tubercle. Genuinely
+    // superficial — only fascia covers it — but it sat 6 cm inside the
+    // sculpt's back, at the very edge of the claim radius, and the middle
+    // trapezius and posterior deltoid either side of it took all but six
+    // vertices. Laid out on the fossa where it belongs.
     lines: [
       [
-        [0.072, 1.352, -0.096],
-        [0.108, 1.424, -0.096],
+        [0.068, 1.348, -0.118],
+        [0.108, 1.428, -0.114],
       ],
-      at([0.162, 1.452, -0.058]),
+      [
+        [0.118, 1.364, -0.11],
+        [0.139, 1.42, -0.1],
+      ],
+      at([0.163, 1.45, -0.06]),
     ],
-    fascicles: 4,
+    fascicles: 5,
     girth: 0.024,
     flatten: 0.85,
     tendon: [0.08, 0.2],
@@ -887,8 +896,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
     fascicles: 7,
     girth: 0.025,
     flatten: 0.85,
-    bellyAt: 0.3,
-    tendon: [0.06, 0.44],
+    bellyAt: 0.32,
+    tendon: [0.06, 0.5],
     tendonThickness: 0.3,
   },
   {
@@ -918,20 +927,23 @@ export const MUSCLES: readonly MuscleSpec[] = [
     // The shin. Lateral to the tibia, so the bony ridge stays bare.
     lines: [
       [
-        [0.112, 0.462, 0.028],
-        [0.124, 0.458, 0.008],
+        [0.104, 0.472, 0.038],
+        [0.136, 0.462, 0.008],
       ],
       [
-        [0.111, 0.3, 0.056],
-        [0.123, 0.296, 0.034],
+        [0.1, 0.3, 0.014],
+        [0.142, 0.292, -0.012],
       ],
-      at([0.092, 0.138, 0.032]),
+      [
+        [0.088, 0.155, 0.006],
+        [0.11, 0.152, -0.014],
+      ],
     ],
-    fascicles: 3,
-    girth: 0.018,
+    fascicles: 4,
+    girth: 0.022,
     flatten: 0.8,
-    bellyAt: 0.35,
-    tendon: [0.06, 0.34],
+    bellyAt: 0.4,
+    tendon: [0.06, 0.16],
     tendonThickness: 0.44,
   },
 ];
@@ -953,6 +965,27 @@ export interface FormSpec {
   readonly silhouette?: readonly number[];
   readonly tone: 'bone' | 'core';
   readonly midline?: boolean;
+  /**
+   * The region name, when the skin over this form belongs to no muscle.
+   *
+   * A head is not a muscle, and neither is a hand, a foot, or the groin. The
+   * label transfer divides a closed skin among whatever claims it, and with
+   * nothing here to claim these, the flood handed each to the nearest muscle
+   * that could reach it: the trapezius took the back of the skull, the wrist
+   * extensors took the hand and every finger, and the soleus took both feet —
+   * 5618 vertices, the largest label on the body, on a muscle that stops at
+   * the ankle.
+   *
+   * Naming a region here enters the form in the cloud as a claimant of its
+   * own. The skin it wins is exported as `skin_<region>`, which renders as
+   * part of the body and does not answer a tap.
+   *
+   * The bone landmarks that sit *inside* muscle territory — clavicle,
+   * sternum, patella, olecranon — deliberately have no name. They are bare in
+   * life, but a dead strip down the middle of a chest is worse anatomy
+   * teaching than a chest that runs over its own sternum.
+   */
+  readonly bare?: string;
 }
 
 export const FORMS: readonly FormSpec[] = [
@@ -970,6 +1003,7 @@ export const FORMS: readonly FormSpec[] = [
     silhouette: [0.52, 0.78, 0.94, 1, 1, 0.98, 0.9, 0.74],
     tone: 'bone',
     midline: true,
+    bare: 'head',
   },
   // Neck, behind the sternocleidomastoids.
   {
@@ -1019,13 +1053,21 @@ export const FORMS: readonly FormSpec[] = [
     silhouette: [0.78, 0.98, 0.8, 0.56],
     tone: 'core',
   },
-  // Hand. Flat, and bone-coloured like the plates.
+  // Hand. Flat, and bone-coloured like the plates. Long enough to reach the
+  // fingertips: a hand that stops at the knuckles leaves the fingers for the
+  // nearest muscle, and the nearest muscle is in the forearm.
   {
-    lines: [at([0.233, 0.896, 0.016]), at([0.238, 0.83, 0.02]), at([0.239, 0.784, 0.018])],
-    girth: 0.036,
-    flatten: 0.42,
-    silhouette: [0.62, 1, 0.94, 0.5],
+    lines: [
+      at([0.232, 0.906, 0.016]),
+      at([0.238, 0.84, 0.02]),
+      at([0.241, 0.79, 0.018]),
+      at([0.242, 0.744, 0.014]),
+    ],
+    girth: 0.044,
+    flatten: 0.44,
+    silhouette: [0.58, 1, 1, 0.92, 0.46],
     tone: 'bone',
+    bare: 'hand',
   },
   // Thigh.
   {
@@ -1054,6 +1096,7 @@ export const FORMS: readonly FormSpec[] = [
     silhouette: [0.35, 0.95, 1, 0.62],
     tone: 'bone',
     midline: true,
+    bare: 'groin',
   },
   // Clavicle. The bar across the top of the chest, and the landmark that
   // makes a shoulder read as a shoulder rather than as a lump on a torso.
@@ -1097,5 +1140,6 @@ export const FORMS: readonly FormSpec[] = [
     flatten: 0.62,
     silhouette: [0.7, 1, 0.86, 0.42],
     tone: 'bone',
+    bare: 'foot',
   },
 ];

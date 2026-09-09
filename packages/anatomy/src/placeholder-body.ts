@@ -28,7 +28,7 @@
 import { FORMS, MUSCLES, type FormSpec, type MuscleSpec } from './atlas.js';
 import { buildTube, mergeMeshes, type MeshData, type TubeProfile } from './geometry/tube.js';
 import { distance, lerp, mirrorX, type Vec3 } from './geometry/vec3.js';
-import { meshNodeName, type Side } from './node-names.js';
+import { meshNodeName, skinNodeName, type Side } from './node-names.js';
 
 export interface BodyPart {
   readonly nodeName: string;
@@ -139,6 +139,36 @@ export function bodyForms(): BodyForm[] {
   }
 
   return forms;
+}
+
+/**
+ * The forms whose skin belongs to no muscle, named for the model.
+ *
+ * Only the label transfer wants these, and it wants them in exactly the shape
+ * `cloudFrom` takes. A head, two hands, two feet and a groin: six claimants
+ * that answer for about a tenth of a body's surface and that no muscle should
+ * ever have been asked to account for.
+ *
+ * Not folded into `bodyForms()` because the two are used for opposite reasons.
+ * Those are drawn *under* the generated muscles so the gaps between fascicles
+ * show body; these are drawn *as* skin on a closed surface, and only one of
+ * the two bodies has either.
+ */
+export function bareSkinForms(): { nodeName: string; mesh: MeshData }[] {
+  const bare: { nodeName: string; mesh: MeshData }[] = [];
+
+  for (const spec of FORMS) {
+    if (spec.bare === undefined) continue;
+
+    if (spec.midline === true) {
+      bare.push({ nodeName: skinNodeName(spec.bare, 'midline'), mesh: buildForm(spec, false) });
+      continue;
+    }
+    bare.push({ nodeName: skinNodeName(spec.bare, 'right'), mesh: buildForm(spec, false) });
+    bare.push({ nodeName: skinNodeName(spec.bare, 'left'), mesh: buildForm(spec, true) });
+  }
+
+  return bare;
 }
 
 /** The slugs this body provides geometry for. */

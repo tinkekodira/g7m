@@ -50,11 +50,16 @@ const PALETTE = {
    * A closed surface is a different object from a bundle of muscle bellies and
    * cannot be painted like one. The deep red above is a muscle seen with the
    * skin taken off; put it on the skin itself and the figure reads as a
-   * mannequin dipped in paint. This is the clay the reference renders used,
-   * which is what a body looks like with the light on it.
+   * mannequin dipped in paint. This is clay, which is what a body looks like
+   * with the light on it.
+   *
+   * Dark clay, and darker than a body in daylight, because the resting colour
+   * is a background: the whole job of `explore` is that one muscle is lit and
+   * the rest is not. Lit against a light body the selection was a change of
+   * hue; against this it is a change of hue *and* value, which is the same
+   * reason the heat map's cold end sits down here.
    */
-  skin: '#c08a72',
-  skinInert: '#93796b',
+  skin: '#7d5747',
   skinHeat: ['#6f6058', '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
 };
 
@@ -296,14 +301,29 @@ function colourFor({
 }): string {
   if (isSelected) return PALETTE.selected;
 
-  const inert = closedSurface ? PALETTE.skinInert : PALETTE.inert;
-  if (!isSelectable) return inert;
+  const ramp = closedSurface ? PALETTE.skinHeat : PALETTE.heat;
+
+  /**
+   * Not selectable, which means two different things on the two bodies.
+   *
+   * On the generated one it is a muscle the taxonomy carries and nobody
+   * programs for, and `inert` says so by being visibly duller than the rest.
+   *
+   * On a sculpted skin it is a head, a hand, a foot or the groin: skin over no
+   * muscle at all. That is not a muscle to play down, it is the body — so it
+   * takes the body's own resting colour, and goes cold with everything else on
+   * the heat map. A figure whose hands are a different shade from its arms
+   * looks like it is wearing gloves.
+   */
+  if (!isSelectable) {
+    if (!closedSurface) return PALETTE.inert;
+    return mode === 'heatmap' ? (ramp[0] ?? PALETTE.skin) : PALETTE.skin;
+  }
 
   if (mode === 'heatmap') {
-    const ramp = closedSurface ? PALETTE.skinHeat : PALETTE.heat;
     const value = intensity?.get(part.slug) ?? 0;
     const step = Math.min(ramp.length - 1, Math.max(0, Math.round(value * (ramp.length - 1))));
-    return ramp[step] ?? inert;
+    return ramp[step] ?? PALETTE.inert;
   }
 
   return closedSurface ? PALETTE.skin : PALETTE.muscle;

@@ -96,6 +96,12 @@ GROUPS = {
 
 
 def group_of(node_name: str) -> str:
+    # Bare skin is one group, not four. A head, two hands, two feet and a
+    # groin are all the same answer to "which muscle is this" — none — and
+    # showing them apart would invite reading a boundary into them.
+    if node_name.startswith('skin_'):
+        return 'bare'
+
     slug = node_name.removeprefix('muscle_')
     for suffix in ('_l', '_r'):
         if slug.endswith(suffix):
@@ -141,6 +147,9 @@ GROUP_COLOURS = {
     'adductors': (0.90, 0.35, 0.60),
     'calves': (0.62, 0.25, 0.80),
     'neck': (0.96, 0.82, 0.74),
+    # Skin over no muscle. Bone-white, which is what a printed plate does with
+    # a skull and a hand for exactly the same reason.
+    'bare': (0.87, 0.83, 0.75),
 }
 
 
