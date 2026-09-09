@@ -2593,3 +2593,125 @@ It said "the figure is a placeholder built from blocks" while the real model
 was on screen. It now says which body is showing and what the other one is for.
 Worth naming because it is the failure mode of every hardcoded status line:
 nobody rereads a sentence that was true when it was written.
+
+## ADR-0048 — Skin over no muscle, and two figures standing differently
+
+Nine faults reported from the Learn screen, in one message: the traps included
+the head, the rear delts ran down into the triceps, the abs reached the groin,
+the wrist extensors covered the hands, the quads reached the groin too, the
+soleus covered the front of the leg and both feet, the shin covered far too
+little, and the calves were "funky".
+
+They had two causes between them, and neither was a labelling error.
+
+### Every vertex gets a label, including the ones that are not muscle
+
+`transferLabels` gives every vertex of the skin a name, and the flood makes
+sure of it — a vertex further from every muscle than the claim radius takes
+whichever label reaches it first along the surface. That is the right rule for
+a shoulder. It is a nonsense question for a skull.
+
+So the answer came back as nonsense, and it was the largest thing in the file:
+
+| label | vertices | what it actually owned |
+| --- | --- | --- |
+| `soleus_r` | 5618 | the whole foot, wrapping front to back, down to y 0.009 |
+| `wrist-extensors_r` | 5534 | the palm and every finger |
+| `sternocleidomastoid_r` | 2774 | the entire right half of the face |
+| `upper-trapezius_r` | 1044 | the back of the skull, to the crown |
+
+The soleus stops at the ankle and the sternocleidomastoid is not selectable, so
+the whole face was silently dead to taps. None of that is a mislabelling. It is
+the only answer available to a question that should never have been asked.
+
+`FormSpec.bare` names the regions where the skin covers no muscle — head,
+hands, feet, groin — and enters them in the cloud as claimants of their own.
+They export as `skin_<region>`, render as part of the body, and never answer a
+tap. Afterwards: `skin_head` 6103, `skin_foot_r` 4723, `skin_hand_r` 4091, and
+the soleus is 700 vertices lying entirely behind the leg.
+
+**A separate prefix, not a `muscle_` node the taxonomy happens not to know.**
+Those two cases must not look alike. An unrecognised `muscle_*` node is a real
+fault — geometry that highlights and then shows an empty exercise list — and
+`checkModelContract` exists to report it. Filing the head under that heading
+would put a deliberate part of the model in the one bucket that means something
+is wrong.
+
+**The bone landmarks inside muscle territory deliberately get no name.** The
+clavicle, sternum, patella and olecranon are bare in life. A dead strip down
+the middle of a chest teaches worse anatomy than a chest that runs over its own
+sternum.
+
+### Two bodies in different poses cannot be compared by distance
+
+The second cause was registration. `fit.py` scales the sculpt to 1.8 m and
+stands it on the floor, which is enough for a torso and not enough for a limb:
+the atlas's arms hang close to the body and the sculpt's are held out in a wide
+stance. At the shoulder the two agree within a couple of centimetres. At the
+wrist the sculpt is **14 cm** further out, and the claim radius is 6 cm.
+
+So from the elbow down there was nothing within reach, and both forearms and
+both hands were assigned entirely by flood. That is why the wrist extensors
+owned the fingers while the wrist flexors — the other side of the same forearm
+— had 86 vertices, and why enlarging the bare hand form did nothing: it could
+not reach either.
+
+**The source moves out; the sculpt never moves.** The obvious version brings
+the sculpt's arms *in* to the atlas. It works, and it is wrong: the sculpt is a
+much wider figure, so an arm brought in far enough to meet the atlas's lands on
+the sculpt's own hip. Measured, it put the gluteus maximus and the latissimus
+dorsi out at x 0.36, claiming skin on a forearm. Moving the atlas's arm *out*
+cannot collide with anything — it travels into empty space, and the atlas's own
+hip stays fifteen centimetres from anything it might wrongly claim.
+
+`align.ts` shifts the eight arm muscles and the hand form outward on a ramp
+that is zero at the shoulder, so the arm pivots rather than slides and the
+deltoids — which were always inside the radius — keep their skin. Arm parts are
+named, not found by coordinate: on a figure where the obliques reach x 0.146
+and the biceps starts at 0.148, a threshold is one bad number away from moving
+half a lat into a forearm.
+
+**The sign of the z shift was the whole of it.** Set forward, the wrist flexors
+stood outside the front of the arm and claimed nothing at all. The sculpt's
+forearm hangs *behind* the atlas's; its front face is at z 0.017 and the
+flexors were at 0.018 to 0.056. The same mistake was in the shin, pointing the
+other way: tibialis anterior sat at z 0.068 where the sculpt's shin front is at
+−0.014, so the gastrocnemius wrapped round to take the front of the leg. The
+shin now runs y 0.154 to 0.506 — from the ankle to below the knee — instead of
+stopping at 0.360.
+
+### A node is not a target
+
+The measurements turned up something nobody had reported: `infraspinatus_r` had
+**six vertices out of sixty thousand**. It is in the taxonomy, it is
+selectable, it was exported, and `checkModelContract` passed — because the
+contract asks whether a muscle has a node, and six vertices is a node.
+
+That is the failure the contract exists to prevent, arriving through the one
+door it does not watch. `MIN_SHARE` now fails the build for any part under a
+tenth of a percent of the body, which is a patch a couple of centimetres
+across; below that nobody selects it on purpose. The infraspinatus was crowded
+out by the middle trapezius and the posterior deltoid because it sat 6 cm
+inside the sculpt's back, at the very edge of the radius. Laid on the
+infraspinous fossa where it belongs, it is 377.
+
+**A sixth turn of the ADR-0047 pattern, in a new form.** Five times the
+instrument was more forgiving than the target. Here the *check* asked a weaker
+question than the one that mattered — presence instead of reachability — and a
+weaker question passes for the same reason a more forgiving tool does.
+
+### Naming
+
+`rectus-femoris` was the only muscle still wearing its Latin name in the slot
+meant for a name people use, next to "Shin", "Calf" and "Wrist extensors". It
+is now "Front quad", not "Quadriceps": the quadriceps is the group of four, and
+three of them are separate rows, so naming one head after the group would offer
+"Quadriceps", "Outer quad" and "Inner quad" side by side as though the first
+contained the other two.
+
+### The resting colour
+
+`explore` works by lighting one muscle and leaving the rest dark, so the
+resting colour is a background. Against the old light clay a selection was a
+change of hue; against the darker clay it is a change of hue **and** value —
+the same reason the heat map's cold end sits down there.

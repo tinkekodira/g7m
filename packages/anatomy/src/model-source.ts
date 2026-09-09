@@ -8,10 +8,16 @@
  *
  * ## What it looks for
  *
- * Meshes whose names parse as muscle nodes, and only those. A real anatomy
+ * Meshes whose names parse as nodes of ours, and only those. A real anatomy
  * model contains bones, organs, a skin, lights and cameras alongside the
- * muscles, and `parseMuscleNode` returning null is how each of those is left
+ * muscles, and `parseBodyNode` returning null is how each of those is left
  * alone rather than guessed at.
+ *
+ * Bare skin — `skin_head`, `skin_hand_l` — comes through as a part like any
+ * other, and that is deliberate. It has to be drawn or the figure has a hole
+ * where its head was; it must never be selectable, and it is not, because its
+ * slug is one the taxonomy has never heard of and the viewer only selects
+ * what the taxonomy offers.
  *
  * ## Tendon weight is zero, deliberately
  *
@@ -24,7 +30,7 @@
  */
 import { Matrix3, Vector3, type Matrix4, type Object3D } from 'three';
 import type { MeshData } from './geometry/tube.js';
-import { parseMuscleNode } from './node-names.js';
+import { parseBodyNode } from './node-names.js';
 import type { BodyPart } from './placeholder-body.js';
 
 /**
@@ -41,7 +47,7 @@ export function partsFromObject(root: Object3D): BodyPart[] {
   root.traverse((object) => {
     if (!isMesh(object)) return;
 
-    const node = parseMuscleNode(object.name);
+    const node = parseBodyNode(object.name);
     if (node === null) return;
 
     const mesh = meshDataFrom(object.geometry, object.matrixWorld);
