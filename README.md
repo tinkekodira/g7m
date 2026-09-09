@@ -67,6 +67,14 @@ what makes the 3D anatomy model viable everywhere without a rewrite.
   > **administrator** terminal. Without it, `pnpm` is not on your PATH and
   > scripts that call `pnpm` internally will fail. `npm install -g pnpm@10` also
   > works if you would rather not use Corepack.
+  >
+  > **Or neither.** [`pnpm.cmd`](./pnpm.cmd) in the repository root forwards to
+  > Corepack, and `cmd.exe` looks in the current directory before it looks at
+  > PATH — so `pnpm dev` typed here works with no install and no administrator.
+  > It puts the root on PATH for whatever it launches, which is what stops the
+  > *inner* `pnpm` in scripts like `dev` and `typecheck` failing after the outer
+  > one succeeded. In PowerShell, which does not search the current directory,
+  > it is `.\pnpm.cmd dev`.
 
 - **Git LFS** — `git lfs install`. Binary assets (`.glb`, `.mp4`, …) are stored
   through LFS; cloning without it gives you pointer files instead of models.
