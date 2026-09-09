@@ -41,8 +41,36 @@ export interface PersistenceReport {
  * browser — the branches here are exactly the ones that are painful to
  * reproduce by hand.
  */
+/**
+ * How long to wait for the browser to answer, in milliseconds.
+ *
+ * These calls are supposed to be immediate. A browser that does not answer at
+ * all is not hypothetical — Brave with shields up is one — and a `catch`
+ * cannot see a promise that never settles, so without a clock this waits for
+ * ever and reports nothing.
+ */
+export const PERSISTENCE_TIMEOUT_MS = 2500;
+
+/** Whichever comes first, and never a leaked timer. */
+async function within<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => {
+          resolve(fallback);
+        }, ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export async function ensurePersistentStorage(
   storage: StorageManager | undefined = globalThis.navigator?.storage,
+  timeoutMs: number = PERSISTENCE_TIMEOUT_MS,
 ): Promise<PersistenceReport> {
   if (storage === undefined || typeof storage.persist !== 'function') {
     return { state: 'unsupported', quotaBytes: null, usageBytes: null };
@@ -51,7 +79,7 @@ export async function ensurePersistentStorage(
   let quotaBytes: number | null = null;
   let usageBytes: number | null = null;
   try {
-    const estimate = await storage.estimate();
+    const estimate = await within(storage.estimate(), timeoutMs, {});
     quotaBytes = estimate.quota ?? null;
     usageBytes = estimate.usage ?? null;
   } catch {
@@ -61,10 +89,13 @@ export async function ensurePersistentStorage(
   try {
     // Checking first matters: `persist()` can re-prompt on some engines, and
     // there is nothing to gain by asking for what we already hold.
-    if (await storage.persisted()) {
+    if (await within(storage.persisted(), timeoutMs, false)) {
       return { state: 'granted', quotaBytes, usageBytes };
     }
-    const granted = await storage.persist();
+    // `null` rather than false, so a browser that never answers is reported as
+    // "could not check" instead of as a refusal it never made.
+    const granted = await within<boolean | null>(storage.persist(), timeoutMs, null);
+    if (granted === null) return { state: 'error', quotaBytes, usageBytes };
     return { state: granted ? 'granted' : 'denied', quotaBytes, usageBytes };
   } catch {
     return { state: 'error', quotaBytes, usageBytes };
