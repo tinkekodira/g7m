@@ -12,10 +12,11 @@
  * inspectable code in the repository, on the one path where a mistake persists
  * on the user's device after the fix has shipped.
  */
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { build, type Plugin, type ResolvedConfig } from 'vite';
 import { precacheId, sha256, shouldPrecache, type PrecacheEntry } from './precache.js';
+import { describeOverBudget, entryScript } from './budget.js';
 
 export interface ServiceWorkerOptions {
   /** The worker's entry, relative to the Vite root. */
@@ -46,6 +47,22 @@ export function serviceWorker(options: ServiceWorkerOptions = {}): Plugin {
         })),
       );
       const buildId = precacheId(entries);
+
+      /**
+       * The entry chunk, checked rather than warned about.
+       *
+       * Vite prints a size warning on every build, which is the same as
+       * printing none. This throws, because the failure it catches — a
+       * dependency arriving in the entry through a module that only needed it
+       * on one screen — is invisible in a diff and shows up as a slow first
+       * load on somebody else's phone.
+       */
+      const entryFile = entryScript(await readFile(path.join(outDir, 'index.html'), 'utf8'));
+      if (entryFile !== null) {
+        const { size } = await stat(path.join(outDir, entryFile));
+        const complaint = describeOverBudget(entryFile, size);
+        if (complaint !== null) throw new Error(complaint);
+      }
 
       await build({
         // Without this the nested build would load `vite.config.ts`, which
