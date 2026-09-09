@@ -209,16 +209,34 @@ export function LearnScreen() {
         </p>
       )}
 
-      {/* Development-time honesty. A model that is missing muscles renders
-          perfectly and simply ignores taps on the parts it lacks. */}
-      {report !== null && (report.missing.length > 0 || report.unknown.length > 0) && (
-        <p className="rounded-card bg-surface p-3 text-xs text-muted">
-          {report.missing.length > 0 &&
-            `${String(report.missing.length)} muscles have no geometry and cannot be tapped. `}
-          {report.unknown.length > 0 &&
-            `${String(report.unknown.length)} shapes match no muscle in the catalogue.`}
+      {/*
+        The catalogue decides what a tap can select, so without it the model
+        spins beautifully and answers nothing.
+
+        Said out loud because every other symptom points the wrong way: the
+        body renders, the heat map runs, and the only sign is that clicking
+        does nothing — which reads as a broken model rather than as an empty
+        table. The same sentence the exercise library uses, for the same rows.
+      */}
+      {!taxonomy.loading && taxonomy.error === null && selectableSlugs.length === 0 && (
+        <p className="rounded-card bg-surface p-3 text-sm text-secondary">
+          No muscles on this device yet, so nothing on the model can be tapped. They arrive with the
+          first sync — open the app once with a connection and they stay for good.
         </p>
       )}
+
+      {/* Development-time honesty. A model that is missing muscles renders
+          perfectly and simply ignores taps on the parts it lacks. */}
+      {report !== null &&
+        selectableSlugs.length > 0 &&
+        (report.missing.length > 0 || report.unknown.length > 0) && (
+          <p className="rounded-card bg-surface p-3 text-xs text-muted">
+            {report.missing.length > 0 &&
+              `${String(report.missing.length)} muscles have no geometry and cannot be tapped. `}
+            {report.unknown.length > 0 &&
+              `${String(report.unknown.length)} shapes match no muscle in the catalogue.`}
+          </p>
+        )}
 
       {/* Two modes, one model. The heat map is the same body with different
           colours on it — a second viewer for it would drift until one
