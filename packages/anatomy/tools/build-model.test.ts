@@ -25,12 +25,14 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { cloudFrom, transferLabels } from '../src/label-transfer.js';
 import { placeholderBodyParts } from '../src/placeholder-body.js';
-import { parseMuscleNode } from '../src/node-names.js';
+import { checkModelContract, parseMuscleNode } from '../src/node-names.js';
+import { MUSCLES } from '../src/atlas.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ASSETS = join(HERE, '..', 'assets', 'licensed', 'full_body');
 const FITTED = join(ASSETS, 'body_fit.obj');
 const LABELS = join(ASSETS, 'body_labels.json');
+const GLB = join(ASSETS, 'body.glb');
 
 /**
  * How far a skin vertex may be from a muscle and still be claimed by it.
@@ -150,6 +152,86 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
     const cloud = cloudFrom(placeholderBodyParts());
     for (const name of cloud.names) {
       expect(parseMuscleNode(name), name).not.toBeNull();
+    }
+  });
+});
+
+/**
+ * The node names inside a GLB, without a glTF library.
+ *
+ * A GLB is a twelve-byte header and then length-prefixed chunks, the first of
+ * which is the JSON. Reading the names out of it is twenty lines; taking a
+ * dependency to do it would be a strange trade for a build script that runs
+ * on one machine.
+ */
+function glbNodeNames(path: string): string[] {
+  const file = readFileSync(path);
+  const view = new DataView(file.buffer, file.byteOffset, file.byteLength);
+  if (view.getUint32(0, true) !== 0x46546c67) throw new Error(`${path} is not a GLB`);
+
+  let at = 12;
+  while (at + 8 <= file.byteLength) {
+    const length = view.getUint32(at, true);
+    const kind = view.getUint32(at + 4, true);
+    const body = file.subarray(at + 8, at + 8 + length);
+    // 0x4e4f534a is 'JSON'. The next chunk is the binary buffer.
+    if (kind === 0x4e4f534a) {
+      const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
+      const nodes = (parsed as { nodes?: { name?: string }[] }).nodes ?? [];
+      return nodes.map((node) => node.name ?? '');
+    }
+    at += 8 + length + ((4 - (length % 4)) % 4);
+  }
+  throw new Error(`${path} has no JSON chunk`);
+}
+
+/**
+ * The check the whole arrangement was built around.
+ *
+ * `node-names.ts` says a muscle with no mesh is a part of the body that cannot
+ * be tapped, and a mesh with no muscle is one that highlights and then shows
+ * an empty exercise list — and that neither raises anything anywhere. This is
+ * where it gets raised.
+ */
+describe.skipIf(!existsSync(GLB))('the exported model', () => {
+  const surfaceSlugs = MUSCLES.filter((spec) => spec.deep !== true).map((spec) => spec.slug);
+
+  it('has a node for every muscle that reaches the skin, and nothing else', () => {
+    const nodeNames = glbNodeNames(GLB);
+    console.log(`nodes ${String(nodeNames.length)}`);
+
+    const report = checkModelContract(
+      { all: MUSCLES.map((spec) => spec.slug), selectable: surfaceSlugs },
+      nodeNames,
+    );
+    if (report.missing.length > 0) console.log('MISSING:', report.missing.join(' '));
+    if (report.unknown.length > 0) console.log('UNKNOWN:', report.unknown.join(' '));
+
+    expect(report.missing).toEqual([]);
+    expect(report.unknown).toEqual([]);
+  });
+
+  it('names both sides of every paired muscle', () => {
+    const nodeNames = new Set(glbNodeNames(GLB));
+    for (const spec of MUSCLES) {
+      if (spec.deep === true) continue;
+      const sides = spec.midline === true ? [''] : ['_l', '_r'];
+      for (const side of sides) {
+        expect(nodeNames.has(`muscle_${spec.slug}${side}`), `${spec.slug}${side}`).toBe(true);
+      }
+    }
+  });
+
+  /**
+   * The deep ones are deliberately absent: a closed skin has no room for a
+   * muscle that never reaches it (ADR-0045). They live on the layer below.
+   */
+  it('leaves the deep muscles out', () => {
+    const nodeNames = new Set(glbNodeNames(GLB));
+    const deep = MUSCLES.filter((spec) => spec.deep === true);
+    expect(deep.length).toBeGreaterThan(0);
+    for (const spec of deep) {
+      expect(nodeNames.has(`muscle_${spec.slug}_r`), spec.slug).toBe(false);
     }
   });
 });
