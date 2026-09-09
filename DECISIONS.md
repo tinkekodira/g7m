@@ -2491,3 +2491,50 @@ one zoomed render settled in a minute what two sweeps could not. This is the
 third time in this project that the instrument, rather than the thing being
 measured, was the problem — ADR-0039 for the rasteriser, ADR-0044 for the
 whole-body render, and here for the zoom level.
+
+---
+## ADR-0046 — The palette was the bug, twice, and the lumbar erectors were 18 mm wide
+
+**Status:** accepted · **Date:** 2026-09-09
+
+A reader looked at the group render from ADR-0045 and reported that the
+abdomen and the thigh had been labelled as one group. They had not. `core` is
+index 2 and `quads` is index 10, and the golden-angle hue generator put them at
+0.236 and 0.180 — two yellows a shade apart.
+
+Recoloured to match the printed anatomy charts everybody has already seen, so a
+boundary can be compared against one rather than puzzled over. That immediately
+exposed a second collision of the same kind: the chart uses two oranges for the
+deltoid and the lat, and copying it literally made the border between them —
+which runs right across the upper back — invisible. The lat is brown here, and
+the adductors are pink rather than the chart's dark blue, which was a shade off
+the hamstrings they share an inner-thigh border with.
+
+**Both were the diagnostic lying about the data.** ADR-0039 was the rasteriser,
+ADR-0044 was the whole-body render, ADR-0045 was the zoom level, and this is
+the palette. Four times now the instrument has been the thing that was wrong,
+and three of those cost a wrong conclusion before anyone checked.
+
+### The lumbar erectors
+
+Looking properly then showed something real. `erector-spinae` spanned x from
+0.026 to 0.044 — an **18 mm** strip either side of the spine — against a
+`gluteus-maximus` 34 mm thick whose origin reaches up to y = 1.086. On a
+sculpted skin the glutes therefore took the lumbar region.
+
+A real lumbar erector is 5 to 6 cm across and is the muscle somebody actually
+sees on a lower back. The columns are now widest at the waist and narrow
+upward, which is both what the muscle does and what settles who owns that skin.
+Five fascicles rather than three.
+
+This changes the procedural body as well as the labelling, and it improves it:
+the lower back had a groove where it should have had two columns.
+
+### What was not wrong
+
+The glute boundary, which looked ten centimetres too high on the full-body
+render, is right. It sits at the iliac crest, and the light-blue reaching up
+over the hips is gluteus medius, which genuinely sits there. The core's lower
+edge follows the inguinal crease rather than stopping short of it, which is
+also right. Both were misread from a whole-body view at 760 pixels — the same
+mistake as the palette, one step further on.

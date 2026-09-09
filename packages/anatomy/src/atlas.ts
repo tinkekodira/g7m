@@ -635,21 +635,28 @@ export const MUSCLES: readonly MuscleSpec[] = [
     slug: 'erector-spinae',
     // Paired columns either side of the spine, not one midline slab — the
     // groove between them is the shape of a back.
+    //
+    // Widest at the waist and narrowing upward, which is both what the muscle
+    // does and what decides who owns the lower back. It was an 18 mm strip
+    // here, against a gluteus maximus 34 mm thick reaching up to y = 1.086 —
+    // so on a sculpted skin the glutes took the whole lumbar region, ten
+    // centimetres above the pelvis. A real lumbar erector is 5 to 6 cm across
+    // and is the muscle somebody actually sees on a lower back.
     lines: [
       [
-        [0.03, 0.998, -0.088],
-        [0.042, 0.998, -0.088],
+        [0.02, 0.998, -0.086],
+        [0.072, 0.998, -0.078],
       ],
       [
-        [0.03, 1.2, -0.096],
-        [0.044, 1.2, -0.096],
+        [0.022, 1.2, -0.096],
+        [0.064, 1.2, -0.088],
       ],
       [
-        [0.026, 1.42, -0.08],
-        [0.038, 1.42, -0.08],
+        [0.024, 1.42, -0.082],
+        [0.052, 1.42, -0.076],
       ],
     ],
-    fascicles: 3,
+    fascicles: 5,
     girth: 0.029,
     flatten: 0.85,
     bellyAt: 0.42,

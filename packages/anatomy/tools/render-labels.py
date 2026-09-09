@@ -114,13 +114,49 @@ if os.environ.get('G7M_BY_GROUP') == '1':
     print('BY GROUP', ' '.join(order))
 
 
+# Group colours, borrowed from the printed anatomy charts everybody has seen.
+#
+# Not decoration. Golden-angle hues put `core` at 0.236 and `quads` at 0.180 —
+# two yellows a shade apart — and a reader looking at that render concluded the
+# abdomen and the thigh had been labelled as one group. They had not. Matching
+# a chart people already know means a boundary can be compared against one
+# rather than puzzled over.
+GROUP_COLOURS = {
+    'traps': (0.88, 0.13, 0.14),
+    'chest': (0.95, 0.55, 0.50),
+    'shoulders': (0.98, 0.58, 0.08),
+    # Brown, where the chart uses a second orange. Deltoid and lat meet along a
+    # long border across the whole upper back, and two oranges a shade apart
+    # made that border invisible in the first attempt at this palette.
+    'back': (0.52, 0.28, 0.10),
+    'biceps': (0.98, 0.88, 0.20),
+    'triceps': (0.60, 0.58, 0.12),
+    'forearms': (0.25, 0.80, 0.28),
+    'core': (0.10, 0.42, 0.16),
+    'glutes': (0.35, 0.80, 0.92),
+    'quads': (0.13, 0.45, 0.85),
+    'hamstrings': (0.38, 0.34, 0.80),
+    # Pink, where the chart uses a dark blue that is a shade off the
+    # hamstrings. The two share a border down the inner thigh.
+    'adductors': (0.90, 0.35, 0.60),
+    'calves': (0.62, 0.25, 0.80),
+    'neck': (0.96, 0.82, 0.74),
+}
+
+
 def hue_for(index: int) -> tuple:
-    """Golden-angle hues, so neighbours in the list are never neighbours in colour."""
+    """A colour per label. Distinct is the only requirement."""
     if index < 0:
         return (1.0, 0.0, 1.0)
+
+    known = GROUP_COLOURS.get(names[index]) if index < len(names) else None
+    if known is not None:
+        return known
+
+    # Golden-angle hues for the sixty-four individual muscles, where no chart
+    # exists to borrow from and neighbours in the list must not be neighbours
+    # in colour.
     h = (index * 0.61803398875) % 1.0
-    # Alternating value as well as hue: two muscles that touch are usually
-    # adjacent in the list, and hue alone is hard to separate at low saturation.
     v = 0.95 if index % 2 == 0 else 0.62
     return colorsys.hsv_to_rgb(h, 0.78, v)
 
