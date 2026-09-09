@@ -50,6 +50,35 @@ export default defineConfig({
     format: 'es',
   },
 
+  /**
+   * PowerSync must not be pre-bundled, or its SQLite worker cannot be found.
+   *
+   * `@powersync/web` opens the database from `lib/worker/client.js` with
+   *
+   *     new SharedWorker(new URL('./worker.js', import.meta.url))
+   *
+   * where `worker.js` is that file's sibling. Vite's dependency optimizer
+   * flattens the whole package into one file under `node_modules/.vite/deps/`,
+   * so `import.meta.url` points there instead and the browser asks for
+   * `.vite/deps/worker.js` — which esbuild never copied.
+   *
+   * The worker never starts, `db.init()` never settles, and every screen waits
+   * for a database nobody is opening. There is no error to catch: a promise
+   * that never settles is not something a `catch` can see. The only signal is
+   * one line in the dev server log.
+   *
+   * This is development only, which is why every build stayed green —
+   * `optimizeDeps` does not run for `vite build`, and Rollup resolves the
+   * worker correctly. The same shape as the `envDir` bug above: CI passing and
+   * `pnpm dev` broken, on a repository where the served build is what CI sees.
+   *
+   * `@journeyapps/wa-sqlite` is excluded with it. It ships the `.wasm` binaries
+   * the VFS loads by relative URL, and they flatten the same way.
+   */
+  optimizeDeps: {
+    exclude: ['@powersync/web', '@journeyapps/wa-sqlite'],
+  },
+
   server: {
     port: 5173,
     strictPort: true,

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -41,5 +41,69 @@ describe('vite config', () => {
       `Vite reads environment files from ${envDir}, which has no .env.example. ` +
         'Unset, `envDir` defaults to apps/web and the app starts with no environment at all.',
     ).toBe(true);
+  });
+});
+
+/**
+ * The database that never opened.
+ *
+ * `@powersync/web` starts SQLite from `lib/worker/client.js` with
+ * `new SharedWorker(new URL('./worker.js', import.meta.url))`, where the worker
+ * is that file's own sibling. Vite's dependency optimizer flattens a package
+ * into a single file under `node_modules/.vite/deps/`, so `import.meta.url`
+ * becomes that directory instead and the browser asks for a `worker.js` that
+ * esbuild never copied there.
+ *
+ * The worker never starts, `db.init()` never settles, and every screen waits on
+ * a database nobody is opening. Nothing is raised: a promise that never settles
+ * is not something a `catch` can see, so the app shows "Loading" for ever and
+ * the only trace is one line in the dev server log.
+ *
+ * The same shape as the blank page above, and for the same reason — the
+ * optimizer has no part in `vite build`, so every check stayed green while
+ * `pnpm dev` could not open a database at all.
+ */
+describe('dependency optimizer', () => {
+  const appRoot = fileURLToPath(new URL('..', import.meta.url));
+
+  /** Package, the module that reaches for a file beside itself, and that file. */
+  const RELATIVE_ASSETS = [
+    ['@powersync/web', 'lib/worker/client.js', 'lib/worker/worker.js'],
+    ['@journeyapps/wa-sqlite', 'dist/wa-sqlite-async.mjs', 'dist/wa-sqlite-async.wasm'],
+  ] as const;
+
+  it('leaves the packages that load their own assets alone', async () => {
+    const config = await resolveConfig({ root: appRoot }, 'serve', 'development', 'development');
+    const exclude = config.optimizeDeps.exclude ?? [];
+
+    for (const [name] of RELATIVE_ASSETS) {
+      expect(
+        exclude,
+        `${name} would be pre-bundled, and the file it loads relative to its own ` +
+          'module would be looked for in .vite/deps, where nothing put it.',
+      ).toContain(name);
+    }
+  });
+
+  /**
+   * The premise, rather than the workaround.
+   *
+   * If either package stops reaching for a file beside itself — a bundled
+   * worker entry, an inlined wasm — then the exclusion above is inherited
+   * rather than reasoned, and it is worth finding out which before keeping it.
+   */
+  it('is excluding them for a reason that still holds', () => {
+    for (const [name, loader, asset] of RELATIVE_ASSETS) {
+      const source = readFileSync(join(appRoot, 'node_modules', name, loader), 'utf8');
+      expect(
+        source,
+        `${name}/${loader} no longer resolves anything against its own URL.`,
+      ).toContain('import.meta.url');
+
+      expect(
+        existsSync(join(appRoot, 'node_modules', name, asset)),
+        `${name} no longer ships ${asset} beside ${loader}.`,
+      ).toBe(true);
+    }
   });
 });
