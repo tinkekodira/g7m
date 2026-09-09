@@ -105,3 +105,30 @@ exactly where the deltoid meets the pec. The body is one surface and has to
 keep shading like one. This is also why the pieces are built directly instead
 of with `mesh.separate`, which gives no way to know which original vertex a
 duplicate came from.
+
+## Pass five — put it in front of the app
+
+```
+mkdir -p apps/web/public/anatomy
+cp packages/anatomy/assets/licensed/full_body/body.glb apps/web/public/anatomy/body.glb
+pnpm dev
+```
+
+The Learn screen fetches `/anatomy/body.glb` on open. If it is not there — and
+for most checkouts it will not be, the model being licensed and uncommitted —
+the screen falls back to the generated body and says nothing about it. A
+missing optional asset that shouts is worse than one that is quietly absent.
+
+`apps/web/public/anatomy/` is ignored, and the pre-commit hook refuses a raw
+`.glb` anywhere, which is the second lock on the same door.
+
+The **Look underneath** button appears only when a sculpted model actually
+loaded, and swaps to the generated body — which is every muscle as its own
+object, including the five a closed skin has no room for. Peeling is the honest
+way to reach a rhomboid: it is genuinely under the trapezius, and letting
+somebody tap it on the surface would teach something false about where it is.
+
+**Where the file comes from on a real device is still open.** ADR-0009 says
+"fetched at build time" and that has not been built; this is a path a developer
+drops a file at, and nothing more.
+

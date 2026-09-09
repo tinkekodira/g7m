@@ -22,6 +22,7 @@ export {
   type BodyPart,
 } from './placeholder-body.js';
 export { FORMS, MUSCLES, type FormSpec, type Line, type MuscleSpec } from './atlas.js';
+export { loadBodyParts, partsFromObject } from './model-source.js';
 export {
   buildTube,
   mergeMeshes,

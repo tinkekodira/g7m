@@ -6,6 +6,16 @@ function entry(path: string, content: string): PrecacheEntry {
 }
 
 describe('shouldPrecache', () => {
+  /**
+   * The one file whose absence must not change the build id. It is licensed
+   * and uncommitted, so a developer's machine has it and CI does not — and a
+   * precache manifest that differs between them would tell every device there
+   * is an update on every deploy.
+   */
+  it('leaves the anatomy model out', () => {
+    expect(shouldPrecache('anatomy/body.glb')).toBe(false);
+  });
+
   it('takes the shell, the assets and the icons', () => {
     for (const file of [
       'index.html',

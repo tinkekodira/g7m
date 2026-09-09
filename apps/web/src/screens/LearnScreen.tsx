@@ -1,6 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
+import { useSculptedBody } from '../lib/anatomy-model.js';
 import { Chip } from '@g7m/ui';
 import {
   DEFAULT_WEEK_START,
@@ -49,7 +50,26 @@ export function LearnScreen() {
   const [mode, setMode] = useState<AnatomyMode>('explore');
   const now = useMemo(() => new Date(), []);
 
-  const parts = useMemo(() => placeholderBodyParts(), []);
+  /**
+   * Which body is on screen.
+   *
+   * `surface` is the sculpted skin, divided between the muscles that reach it.
+   * `deep` is the generated body, which is every muscle as its own object —
+   * including the five that a closed skin has no room for (ADR-0045).
+   *
+   * Peeling is the honest way to reach a rhomboid. It is genuinely under the
+   * trapezius, and an app that lets you tap it on the surface is teaching
+   * something false about where it is.
+   */
+  const [layer, setLayer] = useState<'surface' | 'deep'>('surface');
+
+  const generated = useMemo(() => placeholderBodyParts(), []);
+  const sculpted = useSculptedBody();
+
+  // Falls back without comment. Most checkouts have no model — it is licensed
+  // and the repository is public — and the generated body is a complete one.
+  const surface = sculpted.parts ?? generated;
+  const parts = layer === 'deep' ? generated : surface;
 
   const taxonomy = useCatalogue('muscles', async (repositories) => {
     const [all, selectable] = await Promise.all([
@@ -74,9 +94,13 @@ export function LearnScreen() {
         all: taxonomy.data.all.map((muscle) => muscle.slug),
         selectable: taxonomy.data.selectable.map((muscle) => muscle.slug),
       },
-      parts.map((part) => part.nodeName),
+      // Both layers together, because that is what the question means: can
+      // every muscle the taxonomy offers be tapped *somewhere* in this app.
+      // Checking only the surface would report the five deep ones missing on
+      // every load, when they are one tap away on the other layer.
+      [...surface, ...generated].map((part) => part.nodeName),
     );
-  }, [taxonomy.data, parts]);
+  }, [taxonomy.data, surface, generated]);
 
   const detail = useCatalogue<MuscleDetail | null>(
     `muscle:${selected ?? ''}`,
@@ -218,7 +242,9 @@ export function LearnScreen() {
         </Chip>
       </div>
 
-      <div className="overflow-hidden rounded-card bg-elevated">
+      {/* `relative`, so the peel toggle can sit over the canvas rather than
+          taking a row of height above a viewport that is already short. */}
+      <div className="relative overflow-hidden rounded-card bg-elevated">
         <Suspense
           fallback={
             <div className="flex h-[52vh] items-center justify-center">
@@ -226,6 +252,23 @@ export function LearnScreen() {
             </div>
           }
         >
+          {/*
+            Only offered when there is something to peel. With no sculpted
+            model the generated body is already showing every muscle, and a
+            toggle between a thing and itself is a control that does nothing.
+          */}
+          {sculpted.parts !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                setLayer((current) => (current === 'surface' ? 'deep' : 'surface'));
+              }}
+              className="absolute top-3 right-3 z-10 min-h-tap rounded-control border border-subtle bg-elevated/90 px-3 text-sm font-medium text-secondary active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {layer === 'surface' ? 'Look underneath' : 'Back to the surface'}
+            </button>
+          )}
+
           <AnatomyViewer
             className="h-[52vh] w-full touch-none"
             parts={parts}

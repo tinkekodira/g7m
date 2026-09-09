@@ -29,6 +29,7 @@ import numpy as np
 
 argv = sys.argv[sys.argv.index('--') + 1 :]
 obj_path, labels_path, out_path = argv[0], argv[1], argv[2]
+DRACO = len(argv) > 3 and argv[3] == 'draco'
 
 positions: list[tuple[float, float, float]] = []
 faces: list[tuple[int, ...]] = []
@@ -133,7 +134,12 @@ bpy.ops.export_scene.gltf(
     # The mesh is already in the atlas frame, which is glTF's own convention:
     # +y up, +z front. Blender assumes its own z-up and would rotate it.
     export_yup=False,
-    export_draco_mesh_compression_enable=True,
+    # Uncompressed. Draco takes this from 2.7 MB to 438 KB and costs a decoder
+    # the app would have to carry: Brief §5 says the model works offline, so it
+    # cannot be fetched from a CDN on first paint, and bundling it is 200 KB of
+    # wasm plus a loader path to get wrong. Worth revisiting when the file is
+    # actually being downloaded by a phone; not worth it to look at it locally.
+    export_draco_mesh_compression_enable=DRACO,
     export_draco_mesh_compression_level=6,
 )
 print('WROTE', out_path)

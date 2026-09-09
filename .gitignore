@@ -54,3 +54,7 @@ supabase/.temp/
 
 # --- Licensed assets: never commit (see DECISIONS.md ADR-0009) ---
 packages/anatomy/assets/licensed/
+# A developer's local copy of the built model. Same rule, other end of the
+# pipeline: the pre-commit hook refuses a raw .glb anywhere, and this stops one
+# being staged in the first place.
+apps/web/public/anatomy/
