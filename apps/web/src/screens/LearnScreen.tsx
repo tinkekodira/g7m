@@ -218,6 +218,18 @@ export function LearnScreen() {
         does nothing — which reads as a broken model rather than as an empty
         table. The same sentence the exercise library uses, for the same rows.
       */}
+      {/*
+        Loading is a third state and it looked exactly like the second one.
+        A catalogue that never arrives and a catalogue that arrived empty both
+        showed nothing at all, so "tapping does nothing" had two possible
+        causes and no way to tell them apart from the screen.
+      */}
+      {taxonomy.loading && (
+        <p className="rounded-card bg-surface p-3 text-sm text-secondary">
+          Loading the muscle catalogue…
+        </p>
+      )}
+
       {!taxonomy.loading && taxonomy.error === null && selectableSlugs.length === 0 && (
         <p className="rounded-card bg-surface p-3 text-sm text-secondary">
           No muscles on this device yet, so nothing on the model can be tapped. They arrive with the
@@ -237,6 +249,23 @@ export function LearnScreen() {
               `${String(report.unknown.length)} shapes match no muscle in the catalogue.`}
           </p>
         )}
+
+      {/*
+        Counts, in development only.
+        
+        Three numbers that between them explain every way a tap can do
+        nothing: no muscles to select, no shapes to select them on, or the two
+        not matching. Working that out from the outside took a round trip and
+        a guess; it is one line here.
+      */}
+      {import.meta.env.DEV && (
+        <p className="numeric text-xs text-muted">
+          {String(selectableSlugs.length)} selectable · {String(parts.length)} shapes ·{' '}
+          {report === null
+            ? 'catalogue not read yet'
+            : `${String(report.missing.length)} missing, ${String(report.unknown.length)} unknown`}
+        </p>
+      )}
 
       {/* Two modes, one model. The heat map is the same body with different
           colours on it — a second viewer for it would drift until one
