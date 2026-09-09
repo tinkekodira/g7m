@@ -79,3 +79,29 @@ This is not optional. No number in pass two's report can tell you whether a
 bicep is in the right place, and ADR-0039 was written after three rounds of
 chasing rendering seams that a GPU would never have drawn. Look at the body
 before building anything on the labels.
+
+## Pass four — split and export
+
+```
+blender --background --factory-startup --python packages/anatomy/tools/split.py --   packages/anatomy/assets/licensed/full_body/body_fit.obj   packages/anatomy/assets/licensed/full_body/body_labels.json   packages/anatomy/assets/licensed/full_body/body.glb
+```
+
+Cuts the labelled skin into one object per muscle, named the way
+`node-names.ts` says, and writes a Draco-compressed GLB. Sixty-four objects,
+120,000 triangles, **438 KB**.
+
+Run `pnpm model:label` again afterwards: it checks the GLB against the atlas
+with `checkModelContract` and fails if a muscle that reaches the skin has no
+node, or a node names a muscle that does not exist. That check is the reason
+any of this is arranged the way it is — a muscle with no mesh cannot be tapped
+and a mesh with no muscle shows an empty exercise list, and neither raises
+anything on its own.
+
+**Normals are computed once on the whole body and carried onto the pieces as
+custom split normals.** Splitting duplicates the vertices along every cut, and
+a piece left to average its own face normals disagrees with its neighbour about
+which way the surface faces — which puts a hard line across a smooth shoulder
+exactly where the deltoid meets the pec. The body is one surface and has to
+keep shading like one. This is also why the pieces are built directly instead
+of with `mesh.separate`, which gives no way to know which original vertex a
+duplicate came from.
