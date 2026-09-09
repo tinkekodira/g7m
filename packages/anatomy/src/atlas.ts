@@ -82,6 +82,24 @@ export interface MuscleSpec {
    * the reason a six-pack has six of anything.
    */
   readonly bands?: number;
+  /**
+   * Covered by another muscle across essentially its whole area.
+   *
+   * The procedural body floats these outward far enough to leave a sliver
+   * showing between the fascicles of whatever covers them, because a bundle of
+   * separate tubes has gaps for a sliver to show through and a muscle nobody
+   * can tap is worse than one that cheats by four millimetres.
+   *
+   * A sculpted skin has no gaps. Labelling it from a floated deep muscle does
+   * not carve a sliver, it takes a patch out of the middle of the trapezius —
+   * which is what ADR-0044 found on the back. So the flag: the skin is divided
+   * among the muscles that reach it, and these are reached by peeling it away.
+   *
+   * Judged by whether a lean, muscular body shows the muscle at all. The
+   * infraspinatus stays superficial because it genuinely does; the rhomboids
+   * under it do not.
+   */
+  readonly deep?: boolean;
 }
 
 /** A point, as a degenerate line. Most insertions are one. */
@@ -273,6 +291,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'brachialis',
+    // Under the biceps. The lateral sliver is real and is small.
+    deep: true,
     // Under the biceps in life. Floated just proud of it here so the sliver
     // either side of the biceps can be tapped.
     lines: [
@@ -334,6 +354,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'triceps-medial-head',
+    // Under the long and lateral heads.
+    deep: true,
     lines: [
       [
         [0.16, 1.28, -0.041],
@@ -534,6 +556,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'rhomboids',
+    // Under the trapezius, all of it.
+    deep: true,
     // Under the trapezius in life. Floated out at the medial border, where
     // the trapezius is thinnest, so there is something to tap.
     lines: [
@@ -578,6 +602,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'teres-major',
+    // Under the posterior deltoid and the lat.
+    deep: true,
     lines: [
       [
         [0.096, 1.322, -0.092],
@@ -808,6 +834,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
   },
   {
     slug: 'semimembranosus',
+    // Under the semitendinosus and the biceps femoris.
+    deep: true,
     // Under the semitendinosus, wider and flatter, showing either side of it.
     lines: [
       [

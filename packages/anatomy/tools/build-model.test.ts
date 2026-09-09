@@ -44,6 +44,16 @@ const LABELS = join(ASSETS, 'body_labels.json');
 const MAX_DISTANCE = Number(process.env.G7M_MAX_DISTANCE ?? '0.06');
 const SMOOTHING_PASSES = Number(process.env.G7M_SMOOTHING ?? '3');
 
+/**
+ * How much tendon a source vertex may be and still claim skin.
+ *
+ * See `CloudOptions.maxTendon`. This is the setting that gave the bicep back:
+ * at 1.0 it had 127 vertices of sixty thousand, at 0.4 it has 521 and the
+ * deltoid has stopped running a third of the way down the humerus. Below 0.3
+ * it starts to lose again, and 0.6 leaves two parts with no geometry at all.
+ */
+const MAX_TENDON = Number(process.env.G7M_MAX_TENDON ?? '0.4');
+
 interface ParsedObj {
   readonly positions: Float32Array;
   readonly indices: Uint32Array;
@@ -74,7 +84,23 @@ function readObj(path: string): ParsedObj {
 describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
   it('gets a muscle name on every vertex', () => {
     const body = readObj(FITTED);
-    const cloud = cloudFrom(placeholderBodyParts());
+
+    /**
+     * Surface muscles only, which is ADR-0044's answer to the mottled back.
+     *
+     * A closed skin can only be divided among the muscles that reach it.
+     * Letting a rhomboid — floated outward by the procedural body so that a
+     * sliver shows between the trapezius fascicles — bid for skin does not
+     * carve a sliver, because there are no gaps in a skin. It takes a patch
+     * out of the middle of the trapezius instead.
+     *
+     * The deep ones are reached by peeling the skin away and showing the
+     * procedural body underneath, where they are separate objects already.
+     */
+    const parts = placeholderBodyParts();
+    const surface = parts.filter((part) => !part.deep);
+
+    const cloud = cloudFrom(surface, { maxTendon: MAX_TENDON });
 
     const started = Date.now();
     const labels = transferLabels(body, cloud, {
@@ -98,7 +124,10 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
       `vertices ${String(labels.length)}  faces ${String(body.indices.length / 3)}  ` +
         `sources ${String(cloud.label.length)}  in ${String(elapsed)}ms`,
     );
-    console.log(`named parts hit ${String(counts.size)} of ${String(cloud.names.length)}`);
+    console.log(
+      `named parts hit ${String(counts.size)} of ${String(cloud.names.length)} on the surface, ` +
+        `${String(parts.length - surface.length)} deep ones left for the layer below`,
+    );
 
     const missing = cloud.names.filter((name) => !counts.has(name));
     if (missing.length > 0) console.log('NO GEOMETRY:', missing.join(' '));

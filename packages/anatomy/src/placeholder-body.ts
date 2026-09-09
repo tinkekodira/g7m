@@ -35,6 +35,14 @@ export interface BodyPart {
   readonly slug: string;
   readonly side: Side;
   readonly mesh: MeshData;
+  /**
+   * Covered by another muscle, and so not on the surface of a real skin.
+   *
+   * Carried through from the atlas rather than looked up again, because the
+   * one caller that needs it is dividing a sculpted skin between these parts
+   * and would otherwise have to reach back into `MUSCLES` to ask.
+   */
+  readonly deep: boolean;
 }
 
 export interface BodyForm {
@@ -93,6 +101,7 @@ export function placeholderBodyParts(): BodyPart[] {
         nodeName: meshNodeName(spec.slug, 'midline'),
         slug: spec.slug,
         side: 'midline',
+        deep: spec.deep ?? false,
         mesh: buildMuscle(spec, false),
       });
       continue;
@@ -105,12 +114,14 @@ export function placeholderBodyParts(): BodyPart[] {
       nodeName: meshNodeName(spec.slug, 'right'),
       slug: spec.slug,
       side: 'right',
+      deep: spec.deep ?? false,
       mesh: buildMuscle(spec, false),
     });
     parts.push({
       nodeName: meshNodeName(spec.slug, 'left'),
       slug: spec.slug,
       side: 'left',
+      deep: spec.deep ?? false,
       mesh: buildMuscle(spec, true),
     });
   }

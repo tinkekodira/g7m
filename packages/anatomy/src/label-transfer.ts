@@ -66,27 +66,52 @@ export interface TransferOptions {
  * "what did I just touch", and collapsing them here would need them separated
  * again by position later, using exactly the information this threw away.
  */
+export interface CloudOptions {
+  /**
+   * Drop vertices whose tendon blend is above this, 0 keeping only pure belly
+   * and 1 keeping everything.
+   *
+   * A tendon is not a muscle for this purpose. The deltoid's insertion runs a
+   * third of the way down the humerus, and on a sculpt whose arm is 8 cm
+   * thicker than the atlas's, that thin cord of tendon vertices was the
+   * nearest thing to the whole front of the upper arm — so the deltoid took
+   * the bicep's territory and `biceps-brachii` came back with 127 vertices out
+   * of sixty thousand.
+   *
+   * Nothing has to be invented to fix it: `buildTube` already records how much
+   * of each vertex is tendon, for the colour blend. Skin belongs to the belly
+   * underneath it, which is the part that changes shape when the muscle works
+   * and the part somebody means when they point at it.
+   */
+  readonly maxTendon?: number;
+}
+
 export function cloudFrom(
   parts: readonly { readonly nodeName: string; readonly mesh: MeshData }[],
+  options: CloudOptions = {},
 ): SourceCloud {
-  let total = 0;
-  for (const part of parts) total += part.mesh.positions.length / 3;
+  const maxTendon = options.maxTendon ?? 1;
 
-  const positions = new Float32Array(total * 3);
-  const label = new Int32Array(total);
+  const kept: number[] = [];
+  const label: number[] = [];
   const names: string[] = [];
 
-  let at = 0;
   for (const part of parts) {
     const index = names.length;
     names.push(part.nodeName);
+
     const source = part.mesh.positions;
-    positions.set(source, at * 3);
-    label.fill(index, at, at + source.length / 3);
-    at += source.length / 3;
+    const tendon = part.mesh.tendon;
+    for (let v = 0; v < source.length / 3; v += 1) {
+      // A part with no tendon data at all keeps every vertex, which is what a
+      // caller passing a bare point cloud means.
+      if ((tendon[v] ?? 0) > maxTendon) continue;
+      kept.push(source[v * 3]!, source[v * 3 + 1]!, source[v * 3 + 2]!);
+      label.push(index);
+    }
   }
 
-  return { positions, label, names };
+  return { positions: Float32Array.from(kept), label: Int32Array.from(label), names };
 }
 
 /**

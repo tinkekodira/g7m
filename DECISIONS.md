@@ -2401,3 +2401,93 @@ The repository is public (ADR-0019) and the sculpt is licensed (ADR-0009), so
 it even under `git add -f`. Everything here is therefore written to be
 **absent-by-default**: `build-model.test.ts` skips itself when the fitted input
 is missing, so CI is green on a checkout that has never seen the model.
+
+---
+
+## ADR-0045 — Skin belongs to the belly, and only to what reaches the surface
+
+**Status:** accepted · **Date:** 2026-09-09
+
+ADR-0044 left the labelled sculpt with two faults: a mottled upper back, and
+`biceps-brachii` holding 127 vertices out of sixty thousand. Both are fixed,
+and neither by what looked like the obvious fix.
+
+### Deep muscles come off the skin
+
+A closed skin can only be divided among the muscles that reach it.
+
+ADR-0039 floats deep muscles outward "far enough to leave a sliver showing",
+which works on a bundle of separate tubes because there are gaps between the
+fascicles for a sliver to show *through*. A single welded skin has no gaps, so
+the cheat does not carve a sliver — it takes a patch out of the middle of the
+trapezius.
+
+`MuscleSpec.deep` now marks the five that are covered across essentially their
+whole area: **rhomboids**, **teres-major**, **brachialis**,
+**triceps-medial-head**, **semimembranosus**. The test is whether a lean,
+muscular body shows the muscle at all. The infraspinatus stays superficial
+because it genuinely does; the rhomboids under it do not.
+
+Those five come out of the labelling source, and the skin is divided among the
+remaining thirty-two — all sixty-four of their left-and-right parts get
+geometry, where before two had none. They are reached instead by peeling the
+skin away and showing the procedural body underneath, where every muscle is
+already a separate object. The procedural body stops being a placeholder and
+becomes the deep layer.
+
+### The mottled back was mostly an illusion
+
+More smoothing never touched it, which is the tell that those patches are
+stable rather than noise. What settled it was rendering the same labels
+collapsed into their `muscle_groups` row: **by group the back is clean** — a
+coherent trapezius diamond, a coherent lat and erector region, clean deltoid
+caps, clean hamstring bands.
+
+The patchwork is upper against middle against lower trapezius, and lats against
+infraspinatus against erectors. The heat map colours by muscle, and muscles in
+one group are trained together and shaded alike, so a boundary inside a group
+is invisible in practice. A boundary between traps and lats is not, and those
+are in the right places.
+
+`G7M_BY_GROUP=1` exists so this can be checked rather than argued about.
+
+### Skin belongs to the belly, not the tendon
+
+The bicep was the real fault, and the cause was not the one that looked
+obvious.
+
+**Two failed attempts, recorded because both were plausible.** The two figures
+genuinely are in different poses — measured at the same height, the sculpt's
+hands are 41 cm from the midline and the procedural body's are 27, about
+thirteen degrees more abduction. Rotating the atlas's arms to match made it
+*worse*: the bicep fell from 127 to 50, because swinging the arm out moved the
+triceps into the sculpt's arm and the bicep further from it. Inflating the arm
+about its own axis was worse again, since a straight shoulder-to-hand line
+pushes the forearm muscles up into the upper arm; brachioradialis went from 358
+vertices to 3,294.
+
+Zooming in on the arm — which should have happened two experiments earlier —
+showed the deltoid claiming the entire front of the humerus with the bicep as a
+small leaf in the middle of it. The deltoid inserts a third of the way down the
+humerus, and on a sculpt whose arm is 8 cm thicker than the atlas's, that thin
+cord of **tendon** vertices was the nearest thing to the whole front of the
+upper arm.
+
+Nothing had to be invented. `buildTube` already records how much of every
+vertex is tendon, for the colour blend. Excluding vertices above `maxTendon`
+0.4 from the source quadrupled the bicep to 521 and put the deltoid back on the
+shoulder, with every part still holding geometry.
+
+The principle is worth stating on its own: **skin belongs to the belly
+underneath it.** The belly is what changes shape when the muscle works and what
+somebody means when they point at it. A tendon is a cord passing under the
+surface on its way to a bone, and it should not own the skin it passes beneath.
+
+### Look before transforming
+
+Both failed attempts were arithmetic applied to a hypothesis formed from a
+table of vertex counts. The counts were real and the hypothesis was wrong, and
+one zoomed render settled in a minute what two sweeps could not. This is the
+third time in this project that the instrument, rather than the thing being
+measured, was the problem — ADR-0039 for the rasteriser, ADR-0044 for the
+whole-body render, and here for the zoom level.
