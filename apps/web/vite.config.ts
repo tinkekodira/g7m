@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -10,6 +11,21 @@ export default defineConfig({
    * bundle is written. See `service-worker/plugin.ts`.
    */
   plugins: [react(), tailwindcss(), serviceWorker()],
+
+  /**
+   * `.env.local` lives at the repository root, so this has to say so.
+   *
+   * `envDir` defaults to `root`, which is this directory, and the README tells
+   * you to copy `.env.example` — which is at the repository root — to
+   * `.env.local` beside it. So Vite loaded no variables at all, `env.ts` threw
+   * at startup, and the app was a blank page.
+   *
+   * It was invisible for months because CI does not use a file: the values
+   * arrive as `process.env` from repository secrets, which Vite reads whatever
+   * `envDir` says. Every deployed build worked and only `pnpm dev` was broken,
+   * which is the worst way round for something nobody had needed to run yet.
+   */
+  envDir: fileURLToPath(new URL('../../', import.meta.url)),
 
   /**
    * Relative asset URLs, so one build artefact works wherever it is served
