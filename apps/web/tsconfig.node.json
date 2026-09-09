@@ -12,6 +12,8 @@
     "vite.config.ts",
     "service-worker/plugin.ts",
     "service-worker/precache.ts",
-    "service-worker/precache.test.ts"
+    "service-worker/precache.test.ts",
+    "service-worker/budget.ts",
+    "service-worker/budget.test.ts"
   ]
 }

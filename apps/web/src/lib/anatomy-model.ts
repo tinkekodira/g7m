@@ -14,7 +14,7 @@
  * second lock on the same door.
  */
 import { useEffect, useState } from 'react';
-import { loadBodyParts, type BodyPart } from '@g7m/anatomy';
+import type { BodyPart } from '@g7m/anatomy';
 
 /** Where a local copy goes. See `packages/anatomy/tools/README.md`. */
 export const MODEL_URL = '/anatomy/body.glb';
@@ -32,7 +32,18 @@ export function useSculptedBody(): SculptedBody {
   useEffect(() => {
     let cancelled = false;
 
-    void loadBodyParts(MODEL_URL)
+    /**
+     * Imported here rather than at the top of the file, and this is load-bearing.
+     *
+     * `@g7m/anatomy` reaches three.js, and this module is statically reachable
+     * from the entry — `App.tsx` imports `LearnScreen`, which imports this. A
+     * static import therefore pulled 627 KB of three into the first chunk every
+     * user downloads, for a screen most of them have not opened and a model
+     * most builds do not have. The viewer is already lazy; the loader has to be
+     * too, or it drags the same dependency in through the back door.
+     */
+    void import('@g7m/anatomy')
+      .then(async ({ loadBodyParts }) => loadBodyParts(MODEL_URL))
       .then((loaded) => {
         if (!cancelled && loaded !== null) setParts(loaded);
       })
