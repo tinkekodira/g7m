@@ -7,17 +7,65 @@
  * back to the generated body, and the user is told nothing. A missing optional
  * asset that shouts is worse than one that is quietly not there.
  *
- * Where it comes from is still open — ADR-0009 says "fetched at build time"
- * and that has not been built. For now it is a path a developer drops a file
- * at, and `apps/web/public/anatomy/` is ignored so it cannot be committed by
- * accident. The pre-commit hook refuses a raw `.glb` as well, which is the
- * second lock on the same door.
+ * ADR-0009's "fetched at build time" is now built:
+ * `scripts/install-anatomy-model.mjs` writes the model and a manifest naming
+ * it, CI runs that with a URL from a repository secret, and
+ * `apps/web/public/anatomy/` stays ignored so nothing can be committed by
+ * accident. The pre-commit hook refuses a raw `.glb` as well.
+ *
+ * ## Two reasons this goes through a manifest
+ *
+ * The filename carries a content hash, so a rebuilt model is a new URL. The
+ * service worker deliberately leaves `anatomy/` out of its precache — the
+ * model is megabytes and only one screen wants it — and keeps it in the
+ * runtime cache instead. At a fixed URL that means a device which has the
+ * model never asks for it again: rebuild the geometry, deploy, and every phone
+ * that has opened Learn keeps the old body for good.
+ *
+ * And the URL is resolved against `document.baseURI` rather than written from
+ * the root. It used to be `/anatomy/body.glb`, which is correct on a dev
+ * server and wrong everywhere this actually ships — on GitHub Pages the app
+ * lives under `/g7m/`, so a leading slash asks the domain root for a file that
+ * is not there. Same reason `base` is `./` in the Vite config (ADR-0027).
  */
 import { useEffect, useState } from 'react';
 import type { BodyPart } from '@g7m/anatomy';
 
-/** Where a local copy goes. See `packages/anatomy/tools/README.md`. */
-export const MODEL_URL = '/anatomy/body.glb';
+/** Names the current model file. Written by `scripts/install-anatomy-model.mjs`. */
+export const MANIFEST_URL = 'anatomy/manifest.json';
+
+/**
+ * Resolved against the page, not the domain root.
+ *
+ * Exported for the test: getting this wrong is invisible in development and
+ * breaks only once deployed under a path.
+ */
+export function anatomyUrl(file: string, baseUri: string): string {
+  return new URL(file, baseUri).href;
+}
+
+interface ModelManifest {
+  readonly model: string;
+}
+
+/**
+ * The model file this build carries, or null if it carries none.
+ *
+ * Absent is the normal case and reads as null all the way through: no
+ * manifest, an unreadable one, or one naming nothing.
+ */
+async function currentModelUrl(baseUri: string): Promise<string | null> {
+  const response = await fetch(anatomyUrl(MANIFEST_URL, baseUri));
+  if (!response.ok) return null;
+
+  // A dev server that falls back to its index page answers 200 with HTML, so
+  // the status alone is not enough to know a manifest arrived.
+  const parsed: unknown = await response.json().catch(() => null);
+  const model = (parsed as ModelManifest | null)?.model;
+  if (typeof model !== 'string' || model === '') return null;
+
+  return anatomyUrl(`anatomy/${model}`, baseUri);
+}
 
 export interface SculptedBody {
   /** Null while loading, and null for good when there is no model to load. */
@@ -42,8 +90,12 @@ export function useSculptedBody(): SculptedBody {
      * most builds do not have. The viewer is already lazy; the loader has to be
      * too, or it drags the same dependency in through the back door.
      */
-    void import('@g7m/anatomy')
-      .then(async ({ loadBodyParts }) => loadBodyParts(MODEL_URL))
+    void currentModelUrl(document.baseURI)
+      .then(async (url) => {
+        if (url === null) return null;
+        const { loadBodyParts } = await import('@g7m/anatomy');
+        return loadBodyParts(url);
+      })
       .then((loaded) => {
         if (!cancelled && loaded !== null) setParts(loaded);
       })

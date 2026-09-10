@@ -5,10 +5,14 @@ import {
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
   GOAL_LABELS,
+  MAX_AGE,
+  MIN_AGE,
   SEXES,
   SEX_LABELS,
   TRAINING_GOALS,
   fromDisplayHeight,
+  parseBirthDate,
+  toDateOnly,
   type ActivityLevel,
   type Sex,
   type TrainingGoal,
@@ -18,9 +22,9 @@ import { Button, Chip, TextField } from '@g7m/ui';
 import { CountryPicker } from '../components/CountryPicker.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
-  birthYearFromAge,
   firstUnanswered,
   isOptional,
+  isUsableBirthDate,
   nextStep,
   previousStep,
   progressOf,
@@ -61,7 +65,7 @@ export function WelcomeScreen() {
 
   const answers: OnboardingAnswers = {
     displayName: profile.data?.displayName ?? null,
-    birthYear: profile.data?.birthYear ?? null,
+    birthDate: profile.data?.birthDate ?? null,
     sex: profile.data?.sex ?? null,
     heightCm: metrics.data?.heightCm ?? null,
     activityLevel: metrics.data?.activityLevel ?? null,
@@ -72,7 +76,7 @@ export function WelcomeScreen() {
   // Answers in progress. The component stays mounted as the step changes, so
   // going back to a question still shows what was typed into it.
   const [name, setName] = useState('');
-  const [age, setAge] = useState('');
+  const [dob, setDob] = useState('');
   const [height, setHeight] = useState('');
   const [sex, setSex] = useState<Sex | null>(null);
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
@@ -112,13 +116,15 @@ export function WelcomeScreen() {
         await write((r) => r.profile.update({ displayName: name }));
         return true;
       }
-      case 'age': {
-        const year = birthYearFromAge(Number(age), now);
-        if (year === null) {
-          setProblem('Enter your age in years.');
+      case 'dob': {
+        const born = parseBirthDate(dob);
+        if (!isUsableBirthDate(born, now)) {
+          setProblem(
+            `Enter the day you were born. Between ${String(MIN_AGE)} and ${String(MAX_AGE)}.`,
+          );
           return false;
         }
-        await write((r) => r.profile.update({ birthYear: year }));
+        await write((r) => r.profile.update({ birthDate: born }));
         return true;
       }
       case 'sex': {
@@ -213,16 +219,16 @@ export function WelcomeScreen() {
           />
         )}
 
-        {step === 'age' && (
+        {/* A real date input, so a phone opens its own date picker rather
+            than a keyboard and three separators to get wrong. */}
+        {step === 'dob' && (
           <TextField
-            label="Age"
-            inputMode="numeric"
-            value={age}
-            placeholder={
-              answers.birthYear === null ? '' : String(now.getFullYear() - answers.birthYear)
-            }
+            label="Date of birth"
+            type="date"
+            value={dob === '' && answers.birthDate !== null ? toDateOnly(answers.birthDate) : dob}
+            max={toDateOnly(now)}
             onChange={(event) => {
-              setAge(event.target.value);
+              setDob(event.target.value);
             }}
           />
         )}
@@ -340,7 +346,7 @@ export function WelcomeScreen() {
 /** The heading for each question. */
 const TITLES: Record<OnboardingStep, string> = {
   name: 'What should we call you?',
-  age: 'How old are you?',
+  dob: 'When were you born?',
   sex: 'Your sex',
   height: 'How tall are you?',
   activity: 'How active is your week?',
@@ -357,7 +363,7 @@ const TITLES: Record<OnboardingStep, string> = {
  */
 const BLURBS: Record<OnboardingStep, string> = {
   name: 'Only used to say hello.',
-  age: 'Used to pick sensible starting weights.',
+  dob: 'Used to pick sensible starting weights.',
   sex: 'Used to quote realistic rates of gain and loss. It never changes how much training you are given, and it is the one answer you cannot change later.',
   height: 'Used with your weight to track what is changing.',
   activity: 'Everything outside the gym. It changes what your training has to fit around.',

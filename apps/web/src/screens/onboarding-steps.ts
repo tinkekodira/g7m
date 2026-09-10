@@ -11,7 +11,14 @@
  * somebody closes the app halfway through is not visibly broken — it just
  * asks them their name again.
  */
-import type { ActivityLevel, Sex, TrainingGoal } from '@g7m/core';
+import {
+  MAX_AGE,
+  MIN_AGE,
+  ageFrom,
+  type ActivityLevel,
+  type Sex,
+  type TrainingGoal,
+} from '@g7m/core';
 
 /**
  * In order, and the order is deliberate.
@@ -23,7 +30,7 @@ import type { ActivityLevel, Sex, TrainingGoal } from '@g7m/core';
  */
 export const ONBOARDING_STEPS = [
   'name',
-  'age',
+  'dob',
   'sex',
   'height',
   'activity',
@@ -36,7 +43,7 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 /** What has been answered so far, from the profile and the latest metrics. */
 export interface OnboardingAnswers {
   readonly displayName: string | null;
-  readonly birthYear: number | null;
+  readonly birthDate: Date | null;
   readonly sex: Sex | null;
   readonly heightCm: number | null;
   readonly activityLevel: ActivityLevel | null;
@@ -46,7 +53,7 @@ export interface OnboardingAnswers {
 
 export const NO_ANSWERS: OnboardingAnswers = {
   displayName: null,
-  birthYear: null,
+  birthDate: null,
   sex: null,
   heightCm: null,
   activityLevel: null,
@@ -71,8 +78,8 @@ export function isAnswered(step: OnboardingStep, answers: OnboardingAnswers): bo
   switch (step) {
     case 'name':
       return answers.displayName !== null && answers.displayName.trim() !== '';
-    case 'age':
-      return answers.birthYear !== null;
+    case 'dob':
+      return answers.birthDate !== null;
     case 'sex':
       return answers.sex !== null;
     case 'height':
@@ -120,15 +127,15 @@ export function progressOf(step: OnboardingStep): { position: number; total: num
 }
 
 /**
- * The year somebody born this many years ago was born.
+ * Whether a date of birth belongs to somebody this app will train.
  *
- * Onboarding asks an age because that is what a person knows without thinking;
- * the column stores a year because that is the fact that does not go stale.
- * Off by up to a year depending on the birthday, which is the correct
- * precision for choosing a starting weight and the wrong precision for
- * anything else — so the You screen asks for the year itself.
+ * Both screens ask for the date itself, and they used to disagree — the
+ * welcome flow asked an age and the You screen asked a year, so answering 26
+ * in one place and reading 2000 in the other left somebody working out whether
+ * the app agreed with itself. A date settles that, and it is the only version
+ * of the fact that could ever wish anyone a happy birthday.
  */
-export function birthYearFromAge(age: number, now: Date): number | null {
-  if (!Number.isInteger(age) || age < 13 || age > 100) return null;
-  return now.getFullYear() - age;
+export function isUsableBirthDate(birthDate: Date | null, now: Date): boolean {
+  const age = ageFrom(birthDate, now);
+  return age !== null && age >= MIN_AGE && age <= MAX_AGE;
 }

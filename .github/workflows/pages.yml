@@ -40,6 +40,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # ADR-0009: the licensed model is fetched at build time and never
+      # committed. `ANATOMY_MODEL_URL` is a repository secret holding a signed,
+      # read-only, expiring link to the GLB in Supabase Storage.
+      #
+      # Skipped rather than failed when the secret is absent, which is every
+      # fork and every pull request from one. The app treats a missing model as
+      # the normal case and renders the generated body, so a build without it is
+      # a working build — just not the pretty one.
+      - name: Anatomy model
+        working-directory: apps/web
+        env:
+          ANATOMY_MODEL_URL: ${{ secrets.ANATOMY_MODEL_URL }}
+        run: |
+          if [ -z "$ANATOMY_MODEL_URL" ]; then
+            echo "No ANATOMY_MODEL_URL secret; building with the generated body."
+            exit 0
+          fi
+          node scripts/install-anatomy-model.mjs "$ANATOMY_MODEL_URL"
+
       - name: Build
         working-directory: apps/web
         env:

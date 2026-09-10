@@ -77,9 +77,7 @@ export {
 } from './repositories/database.js';
 export {
   EXPERIENCE_LEVELS,
-  MAX_BIRTH_YEAR,
   MAX_REST_DEFAULT_SECONDS,
-  MIN_BIRTH_YEAR,
   MIN_REST_DEFAULT_SECONDS,
   ProfileRepository,
   UNIT_SYSTEMS,

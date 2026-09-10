@@ -35,6 +35,9 @@ const EXPECTED_LOCAL_TYPE: Readonly<Record<string, 'TEXT' | 'INTEGER' | 'REAL'>>
   text: 'TEXT',
   'character varying': 'TEXT',
   'timestamp with time zone': 'TEXT',
+  // A date is a date, not an instant. Held as `YYYY-MM-DD` text so it survives
+  // the trip without a timezone moving it a day.
+  date: 'TEXT',
   ARRAY: 'TEXT',
   json: 'TEXT',
   jsonb: 'TEXT',

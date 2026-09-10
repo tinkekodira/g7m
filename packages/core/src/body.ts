@@ -90,6 +90,57 @@ export function ageOn(birthYear: number | null, on: Date): number | null {
   return age >= 0 && age <= 120 ? age : null;
 }
 
+/** Nobody younger is being given a training program by this app. */
+export const MIN_AGE = 13;
+/** Above this it is a typo, not a lifter. */
+export const MAX_AGE = 100;
+
+/**
+ * A date of birth from a `YYYY-MM-DD` field, or null if it is not one.
+ *
+ * Held in UTC on purpose. A date of birth is a date, not an instant, and
+ * reading one back with local getters shifts it a day west of Greenwich —
+ * which is a birthday greeting on the wrong day, and an age that flickers.
+ *
+ * Rejects the dates a regex alone would accept. `new Date(2001, 1, 31)` is
+ * quietly the 3rd of March, so the parts are read back and compared: a day
+ * that rolled over is a typo, not a date.
+ */
+export function parseBirthDate(text: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
+  if (match === null) return null;
+
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  const survived =
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+  return survived ? date : null;
+}
+
+/** A date of birth as the `YYYY-MM-DD` the column and the input both want. */
+export function toDateOnly(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${String(date.getUTCFullYear())}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+/**
+ * Age in whole years, from a date of birth.
+ *
+ * The subtraction people reach for — this year minus that year — is wrong for
+ * everybody who has not had their birthday yet, which is on average half of
+ * them. That is a year of difference in the starting weights this feeds.
+ */
+export function ageFrom(birthDate: Date | null, on: Date): number | null {
+  if (birthDate === null || Number.isNaN(birthDate.getTime())) return null;
+
+  let age = on.getUTCFullYear() - birthDate.getUTCFullYear();
+  const months = on.getUTCMonth() - birthDate.getUTCMonth();
+  if (months < 0 || (months === 0 && on.getUTCDate() < birthDate.getUTCDate())) age -= 1;
+
+  return age >= 0 && age <= 120 ? age : null;
+}
+
 /** One reading from the scale. Oldest first, wherever a series is passed. */
 export interface WeighIn {
   readonly at: Date;

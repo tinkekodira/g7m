@@ -109,24 +109,27 @@ duplicate came from.
 ## Pass five — put it in front of the app
 
 ```
-mkdir -p apps/web/public/anatomy
-cp packages/anatomy/assets/licensed/full_body/body.glb apps/web/public/anatomy/body.glb
+pnpm --filter @g7m/web anatomy:install packages/anatomy/assets/licensed/full_body/body.glb
 pnpm dev
 ```
 
-The Learn screen fetches `/anatomy/body.glb` on open. If it is not there — and
-for most checkouts it will not be, the model being licensed and uncommitted —
-the screen falls back to the generated body and says nothing about it. A
-missing optional asset that shouts is worse than one that is quietly absent.
+The script writes the model under a content-hashed name and a
+`manifest.json` naming it. Do not copy the file in by hand: the hash is what
+makes a rebuilt model a *new URL*, and without that a device which already has
+one never asks for another. `anatomy/` is deliberately left out of the service
+worker's precache and kept in the runtime cache instead, so at a fixed name a
+phone that has opened Learn once keeps that body for good.
+
+The same script is what CI runs, with a signed URL from a repository secret
+instead of a path — see `.github/workflows/pages.yml`.
+
+The Learn screen reads the manifest on open. If there is none — and for most
+checkouts there will not be, the model being licensed and uncommitted — the
+screen falls back to the generated body and says nothing about it. A missing
+optional asset that shouts is worse than one that is quietly absent.
 
 `apps/web/public/anatomy/` is ignored, and the pre-commit hook refuses a raw
 `.glb` anywhere, which is the second lock on the same door.
-
-The **Look underneath** button appears only when a sculpted model actually
-loaded, and swaps to the generated body — which is every muscle as its own
-object, including the five a closed skin has no room for. Peeling is the honest
-way to reach a rhomboid: it is genuinely under the trapezius, and letting
-somebody tap it on the surface would teach something false about where it is.
 
 **Where the file comes from on a real device is still open.** ADR-0009 says
 "fetched at build time" and that has not been built; this is a path a developer

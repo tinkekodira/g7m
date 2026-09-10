@@ -168,7 +168,10 @@ const profiles = new Table({
   display_name: column.text,
   unit_system: column.text,
   experience_level: column.text,
-  birth_year: column.integer,
+  // A date, not a year. `birth_year` still exists in Postgres and holds the
+  // answers given before this column did — it is simply not carried to devices
+  // any more, because nothing reads it. See the birth_date migration.
+  birth_date: column.text,
   /** For stating realistic rates. Never an input to what gets prescribed. */
   sex: column.text,
   /** ISO 3166-1 alpha-2. The greeting on the home screen, and nothing else. */
@@ -469,5 +472,17 @@ export const UNSYNCED_COLUMNS: Readonly<Record<string, Readonly<Record<string, s
   exercise_muscles: {
     created_at: 'Reference data.',
     updated_at: 'Reference data.',
+  },
+  profiles: {
+    /**
+     * Replaced by `birth_date`, and kept rather than dropped.
+     *
+     * It holds the answers people gave before a date could be asked for, and
+     * dropping the column would destroy those for nothing. There is no
+     * backfill because there cannot be an honest one — turning 2000 into a
+     * date means inventing a day, and an invented birthday is worse than none.
+     * Anyone who had only a year is asked again.
+     */
+    birth_year: 'Replaced by birth_date. Kept server-side so old answers are not destroyed.',
   },
 };
