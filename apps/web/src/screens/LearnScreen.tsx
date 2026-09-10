@@ -283,26 +283,38 @@ export function LearnScreen() {
       </div>
 
       <div className="overflow-hidden rounded-card bg-elevated">
-        <Suspense
-          fallback={
-            <div className="flex h-[52vh] items-center justify-center">
-              <p className="text-sm text-muted">Loading the model…</p>
-            </div>
-          }
-        >
-          <AnatomyViewer
-            className="h-[52vh] w-full touch-none"
-            parts={parts}
-            // A sculpted skin is closed, so the bones and the core underneath
-            // it have nothing to show through and would sit on top instead.
-            closedSurface={sculpted.parts !== null}
-            selectableSlugs={selectableSlugs}
-            selectedSlug={selected}
-            onSelect={setSelected}
-            mode={mode}
-            {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
-          />
-        </Suspense>
+        {/*
+          Nothing is drawn until it is known *which* body to draw.
+
+          `parts` falls back to the generated figure the moment this screen
+          mounts, because that is the right answer for a build with no licensed
+          model. It is the wrong answer for one that has a model and has not
+          finished fetching it yet: the procedural body rendered first and was
+          replaced a second later, so opening Learn flashed the old figure and
+          then swapped. On a warm cache the swap is too quick to see, which is
+          what made it look intermittent.
+
+          The placeholder was already the right thing to show while waiting —
+          it was only ever shown for the lazy chunk, never for the model.
+        */}
+        {sculpted.loading ? (
+          <ModelPlaceholder />
+        ) : (
+          <Suspense fallback={<ModelPlaceholder />}>
+            <AnatomyViewer
+              className="h-[52vh] w-full touch-none"
+              parts={parts}
+              // A sculpted skin is closed, so the bones and the core underneath
+              // it have nothing to show through and would sit on top instead.
+              closedSurface={sculpted.parts !== null}
+              selectableSlugs={selectableSlugs}
+              selectedSlug={selected}
+              onSelect={setSelected}
+              mode={mode}
+              {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
+            />
+          </Suspense>
+        )}
       </div>
 
       {mode === 'heatmap' ? (
@@ -361,6 +373,15 @@ export function LearnScreen() {
         />
       )}
     </main>
+  );
+}
+
+/** The same waiting state whether the chunk or the model is still coming. */
+function ModelPlaceholder() {
+  return (
+    <div className="flex h-[52vh] items-center justify-center">
+      <p className="text-sm text-muted">Loading the model…</p>
+    </div>
   );
 }
 
