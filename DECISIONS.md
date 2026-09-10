@@ -2715,3 +2715,82 @@ contained the other two.
 resting colour is a background. Against the old light clay a selection was a
 change of hue; against the darker clay it is a change of hue **and** value —
 the same reason the heat map's cold end sits down there.
+
+## ADR-0049 — A feature that existed because the geometry needed one
+
+"What is the point of the Look underneath feature? Why would a user ever use
+that?"
+
+The honest answer was that they would not. It existed to solve an
+implementation constraint and was shipped as though it were a feature.
+
+Five muscles are marked `deep` in the atlas — rhomboids, teres major,
+brachialis, triceps medial head, semimembranosus. A closed sculpted skin has no
+room for a muscle that never reaches it (ADR-0045), so they have no surface
+geometry. They were selectable in the taxonomy, so something had to be able to
+reach them, and a toggle that swapped the sculpt for the generated body was
+that something.
+
+Three things wrong with it, and the first is fatal:
+
+**Discovery ran backwards.** Nobody taps "Look underneath" *hoping* to find a
+rhomboid. You would have to already know rhomboids exist and are hidden — at
+which point the model is not what you need. The control never said what was
+under there.
+
+**Two of the five had nothing to show.** The rhomboids and the teres major are
+prime movers for no exercise in the catalogue, so the reward for finding them
+was *"Nothing in the catalogue trains this as a prime mover."*
+
+**It was not a peel.** The surface is the photoreal sculpt and the layer under
+it is the procedural tube figure. They look nothing alike, so it read as
+swapping to a different model rather than looking inside the same body — which
+is the one idea the whole feature rested on.
+
+It is gone. The five muscles keep their rows, their exercises and their share
+of the heat map; they stop being tap targets, because there is nothing to tap.
+`is_selectable` answers "should a tap select this", and the answer is now no.
+Left true, the Learn screen would have told every user, permanently and
+correctly, that five muscles have no geometry — and a warning that is always on
+is not a warning.
+
+### The larger thing the question turned up
+
+Chasing the value of the peel meant asking what was behind it, and the answer
+was that **eleven of the thirty-seven muscles in the taxonomy opened an empty
+panel**: serratus, tibialis anterior, middle and lower trapezius, wrist
+extensors, gluteus medius, adductors, infraspinatus, hip adductors, and the two
+above. Tapping the shin said nothing trains it.
+
+The exercises were there the whole time. The rhomboids are in eight of them,
+the middle trapezius six, the gluteus medius four, the shin two. Every one of
+those rows was in `exercise_muscles`, and the panel asked
+`forMuscle(id, 'primary')` and threw the rest away.
+
+**The specification was already written, in a test.** `seed.test.ts` has, in as
+many words: *"The §6 Compound toggle shows exercises where the muscle is
+primary OR secondary. A selectable muscle matching neither opens an empty
+panel, which is a dead end the user cannot tell from a bug."* It then asserts
+that no selectable muscle lacks both — and it passed, on every run, for months.
+
+So a test was guarding an invariant that nothing consumed. It guaranteed the
+data existed while the screen declined to ask for it, and it went green each
+time it did so. That is a new shape of the ADR-0047 pattern: not an instrument
+more forgiving than the target, but **a check that verifies the input to a
+behaviour nobody implemented.** A passing test is evidence about the thing it
+tests, and the thing it tested was the seed.
+
+The panel now shows both roles, in a third section rather than merged: a
+supporting muscle is a different answer to "what trains this", not a worse one,
+and folding a face pull in among the rows would say otherwise. Stabilizers stay
+out — holding a joint still while the lift happens elsewhere is not what
+somebody tapping a muscle is asking about.
+
+### One list, two ends
+
+`deep` in the atlas keeps a muscle out of the skin labelling. `is_selectable`
+in Postgres keeps it from being tapped. They have to name the same five, and
+nothing in the build can check that they do: the taxonomy lives in a database
+the anatomy package does not depend on and should not. So both ends are pinned
+to an explicit list, and marking a sixth muscle deep fails a test that names
+the migration it needs.

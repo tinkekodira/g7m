@@ -59,7 +59,8 @@ export function partsFromObject(root: Object3D): BodyPart[] {
       side: node.side,
       mesh,
       // A muscle that reaches the skin, by definition: the deep ones are not
-      // in this file at all (ADR-0045). They come from the layer below.
+      // in this file at all (ADR-0045), and nothing here has to stand in for
+      // them — they are not selectable on either body.
       deep: false,
     });
   });

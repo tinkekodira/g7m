@@ -100,8 +100,9 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
      * carve a sliver, because there are no gaps in a skin. It takes a patch
      * out of the middle of the trapezius instead.
      *
-     * The deep ones are reached by peeling the skin away and showing the
-     * procedural body underneath, where they are separate objects already.
+     * The deep ones are left out of the export entirely. They are drawn on
+     * the generated body, which has gaps for them, and they are not tap
+     * targets on either — the taxonomy marks them unselectable (ADR-0049).
      */
     const parts = placeholderBodyParts();
     const surface = parts.filter((part) => !part.deep);
@@ -156,7 +157,7 @@ describe.skipIf(!existsSync(FITTED))('the licensed model', () => {
     );
     console.log(
       `named parts hit ${String(counts.size)} of ${String(cloud.names.length)} on the surface, ` +
-        `${String(parts.length - surface.length)} deep ones left for the layer below`,
+        `${String(parts.length - surface.length)} deep ones left out of the skin`,
     );
 
     const missing = cloud.names.filter((name) => !counts.has(name));
@@ -302,7 +303,8 @@ describe.skipIf(!existsSync(GLB))('the exported model', () => {
 
   /**
    * The deep ones are deliberately absent: a closed skin has no room for a
-   * muscle that never reaches it (ADR-0045). They live on the layer below.
+   * muscle that never reaches it (ADR-0045), and the taxonomy no longer
+   * offers them as tap targets (ADR-0049).
    */
   it('leaves the deep muscles out', () => {
     const nodeNames = new Set(glbNodeNames(GLB));

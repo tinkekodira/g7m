@@ -93,7 +93,12 @@ export interface MuscleSpec {
    * A sculpted skin has no gaps. Labelling it from a floated deep muscle does
    * not carve a sliver, it takes a patch out of the middle of the trapezius —
    * which is what ADR-0044 found on the back. So the flag: the skin is divided
-   * among the muscles that reach it, and these are reached by peeling it away.
+   * among the muscles that reach it, and these are kept out of that division.
+   *
+   * They are still drawn on the generated body, which is a bundle of separate
+   * shapes and has room for them. They are not tap targets on either body —
+   * `is_selectable` says so in the taxonomy — because the app no longer offers
+   * a second layer to reach them on. See ADR-0049.
    *
    * Judged by whether a lean, muscular body shows the muscle at all. The
    * infraspinatus stays superficial because it genuinely does; the rhomboids
