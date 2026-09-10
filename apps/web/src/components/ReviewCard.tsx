@@ -1,6 +1,14 @@
 import { Link } from 'react-router';
-import { toneOf, type Observation, type UnitSystem } from '@g7m/core';
-import { describeObservation } from '../screens/review-copy.js';
+import {
+  supersededBy,
+  toneOf,
+  toneOfLink,
+  type Link as ObservationLink,
+  type Observation,
+  type Tone,
+  type UnitSystem,
+} from '@g7m/core';
+import { describeLink, describeObservation } from '../screens/review-copy.js';
 
 /**
  * What the log says about how the training is going.
@@ -10,9 +18,17 @@ import { describeObservation } from '../screens/review-copy.js';
  * the entire point, because the lifter who ignores the plan is the one this
  * was built for.
  *
- * Three observations, not seven. `reviewTraining` returns everything it found,
+ * Three lines, not seven. `reviewTraining` returns everything it found,
  * ranked, and the cut happens here: a review somebody scrolls is a review
  * somebody stops opening.
+ *
+ * Links come first, and they are the point of the card. An observation is one
+ * fact; a link is two of them read together, which is the difference between
+ * "your squat has not moved" and "your squat has not moved, and the deficit
+ * you asked for is why". The fact a link reasoned *from* stays on the list
+ * underneath — that is what lets somebody check its working rather than take
+ * its word for it — but the one it speaks for is dropped, or the card says the
+ * same thing twice.
  */
 
 /** Enough to be useful, few enough to read standing up. */
@@ -30,14 +46,47 @@ const DOT_CLASSES = {
   neutral: 'bg-muted',
 } as const;
 
+interface Entry {
+  readonly key: string;
+  readonly heading: string;
+  readonly detail: string;
+  readonly tone: Tone;
+}
+
+/** Links, then whatever they have not already spoken for. */
+function entriesFor(
+  observations: readonly Observation[],
+  links: readonly ObservationLink[],
+  unitSystem: UnitSystem,
+): Entry[] {
+  const spoken = supersededBy(links);
+
+  return [
+    ...links.map((link) => ({
+      key: `link-${link.kind}`,
+      ...describeLink(link, unitSystem),
+      tone: toneOfLink(link),
+    })),
+    ...observations
+      .filter((observation) => !spoken.has(observation.kind))
+      .map((observation) => ({
+        key: `observation-${observation.kind}`,
+        ...describeObservation(observation, unitSystem),
+        tone: toneOf(observation),
+      })),
+  ];
+}
+
 export function ReviewCard({
   observations,
+  links = [],
   unitSystem,
 }: {
   readonly observations: readonly Observation[];
+  readonly links?: readonly ObservationLink[];
   readonly unitSystem: UnitSystem;
 }) {
-  const shown = observations.slice(0, SHOWN);
+  const shown = entriesFor(observations, links, unitSystem).slice(0, SHOWN);
   if (shown.length === 0) return null;
 
   return (
@@ -48,14 +97,10 @@ export function ReviewCard({
       </p>
 
       <ul className="flex flex-col gap-3">
-        {shown.map((observation, index) => {
-          const line = describeObservation(observation, unitSystem);
-          const tone = toneOf(observation);
+        {shown.map((entry) => {
+          const tone = entry.tone;
           return (
-            <li
-              key={`${observation.kind}-${String(index)}`}
-              className={`rounded-control border p-3 ${TONE_CLASSES[tone]}`}
-            >
+            <li key={entry.key} className={`rounded-control border p-3 ${TONE_CLASSES[tone]}`}>
               <div className="flex items-baseline gap-2">
                 {/* A dot rather than colouring the text: the heading has to stay
                     readable, and a red sentence reads as an error rather than
@@ -64,9 +109,9 @@ export function ReviewCard({
                   aria-hidden
                   className={`mt-1.5 size-2 shrink-0 rounded-full ${DOT_CLASSES[tone]}`}
                 />
-                <p className="text-sm font-semibold text-primary">{line.heading}</p>
+                <p className="text-sm font-semibold text-primary">{entry.heading}</p>
               </div>
-              <p className="mt-1 text-sm text-secondary">{line.detail}</p>
+              <p className="mt-1 text-sm text-secondary">{entry.detail}</p>
             </li>
           );
         })}
@@ -84,18 +129,20 @@ export function ReviewCard({
  */
 export function ReviewNudge({
   observations,
+  links = [],
   unitSystem,
 }: {
   readonly observations: readonly Observation[];
+  readonly links?: readonly ObservationLink[];
   readonly unitSystem: UnitSystem;
 }) {
-  const headline = observations[0];
+  const headline = entriesFor(observations, links, unitSystem)[0];
   // Nothing to say before there is data, and no point nudging somebody towards
   // a screen that will only tell them to come back later.
-  if (headline === undefined || headline.kind === 'too_soon') return null;
+  if (headline === undefined || headline.key === 'observation-too_soon') return null;
 
-  const line = describeObservation(headline, unitSystem);
-  const tone = toneOf(headline);
+  const line = headline;
+  const tone = headline.tone;
 
   return (
     <Link

@@ -3004,3 +3004,62 @@ Embedding the model in the app is squarely use in one's own project. Serving it
 from a public site does make the file downloadable by anyone who looks, and the
 hash does not change that: it is a cache key, not a lock. Recorded here so the
 decision is visible rather than implied.
+
+## ADR-0053 — Reading two observations together
+
+`reviewTraining` reports facts, each true alone and each independent of the
+rest. That left the reader to join them, and a stalled squat means three
+completely different things depending on what sits beside it:
+
+| beside it | what it means |
+| --- | --- |
+| training 1.4× a week against 4 | not training it enough |
+| losing 0.9 kg a week | the deficit is doing this, and that is what a deficit does |
+| showing up, weight steady | now it is the programming |
+
+Same fact, opposite advice. `explain.ts` reads the observations a second time
+and says what they mean together. Nothing new is measured.
+
+This is also the answer to "what would the Claude layer have done". Narrating
+these joins is what an LLM would have been for, and a template with the numbers
+interpolated does it for nothing, offline, deterministically, and with tests.
+
+### The rules that keep it honest
+
+**One explanation per subject.** The three stall causes answer the same
+question, so exactly one may fire — attendance, then fuelling, then
+programming, because each is a more basic cause than the next. Somebody
+training once a week *and* cutting hard is told about the attendance.
+
+**Absence of evidence is not evidence.** No `pace` observation means there are
+no weigh-ins, not that the weight is steady. "It is your programming" therefore
+requires a `pace` observation to *exist* and show no meaningful loss. With no
+weigh-ins the honest output is no link at all — and that is a test.
+
+**The signed rate, never the verdict.** This is the trap the feature would
+otherwise have walked into. `verdict: 'fast'` means losing quickly on a cut and
+*gaining* quickly on a bulk; only the first can stall a lift. Reading
+`perWeekKg` directly makes the rule mean one thing regardless of goal. A rule
+keyed on the verdict would have blamed a surplus for a stall, and — worse —
+missed the most common case there is, because losing at exactly the rate that
+was asked for still flattens a lift.
+
+**A link speaks for its subject, not for its evidence.** "Your squat is stuck,
+and your weight explains it" above "your squat has not moved" is one thing said
+twice. The stalled lift is dropped from the list; the weigh-in trend stays,
+because that is what lets somebody check the working instead of taking the
+app's word.
+
+**It explains, it never diagnoses.** "Usually", "most of", "worth" — a stalled
+lift beside a fast cut is very probably the cut and is not certainly the cut.
+ADR-0035 still holds: these are about training and fuelling, never about a
+body.
+
+**An expected stall is not a warning.** `stall_from_deficit` is toned neutral.
+Printing the thing that is going to plan in red tells somebody their plan is a
+problem.
+
+### Empty is the common answer
+
+Most weeks contain no pair worth joining. Inventing a connection to fill a card
+is how an app teaches somebody to stop reading it.

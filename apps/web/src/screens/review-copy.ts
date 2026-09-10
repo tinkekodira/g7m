@@ -19,7 +19,13 @@
  * holding this back" is why it was worth surfacing. Without that a review is a
  * dashboard, and dashboards do not change what anybody does on Tuesday.
  */
-import { GOAL_LABELS, toDisplayWeight, type Observation, type UnitSystem } from '@g7m/core';
+import {
+  GOAL_LABELS,
+  toDisplayWeight,
+  type Link,
+  type Observation,
+  type UnitSystem,
+} from '@g7m/core';
 
 export interface Line {
   /** A few words. The thing being reported on. */
@@ -124,6 +130,59 @@ function describePace(
       return {
         heading: 'Your weight is going the other way',
         detail: `${rate} a week ${direction}, and you asked for ${goal}. Either the goal has changed or the week has; both are worth a look.`,
+      };
+  }
+}
+
+/**
+ * How a joined-up observation is worded.
+ *
+ * The register shifts here, and deliberately. Every line above is a statement
+ * about one thing that happened. A link is a statement about *two* — and the
+ * only reason to print it is to say what they mean together, so these are the
+ * lines that are allowed to draw a conclusion.
+ *
+ * They still do not diagnose. "Usually", "most of", "worth" — a stalled lift
+ * beside a fast cut is very probably the cut and is not certainly the cut, and
+ * a sentence that pretends otherwise is one the reader catches out eventually.
+ */
+export function describeLink(link: Link, unitSystem: UnitSystem): Line {
+  const show = (kg: number): string => {
+    const display = toDisplayWeight(Math.abs(kg), unitSystem);
+    return `${String(display.value)} ${display.unit}`;
+  };
+  const group = (slug: string): string => GROUP_WORDS[slug] ?? slug;
+  const rate = (perWeek: number): string => `${String(Math.round(perWeek * 10) / 10)} a week`;
+
+  switch (link.kind) {
+    case 'stall_needs_attendance':
+      return {
+        heading: `Your ${link.name.toLowerCase()} is stuck, and the sessions are why`,
+        detail: `You have trained ${rate(link.perWeek)} against the ${String(link.target)} you set. A lift needs to come round often enough to be pushed — this one is not a programming problem yet.`,
+      };
+
+    case 'stall_from_deficit':
+      return {
+        heading: `Your ${link.name.toLowerCase()} is stuck, and your weight explains it`,
+        detail: `Still ${show(link.kg)}, while you are losing ${show(link.perWeekKg)} a week. Strength usually flattens in a deficit — holding the number is the win here, so this is worth leaving alone rather than rebuilding the plan around.`,
+      };
+
+    case 'stall_is_programming':
+      return {
+        heading: `Your ${link.name.toLowerCase()} is stuck, and nothing else explains it`,
+        detail: `Still ${show(link.kg)} after ${String(link.sessions)} sessions, with the sessions happening and your weight where you asked it to be. That leaves the training: back off about ten percent and run at it again, which the plan does for you after three short sessions.`,
+      };
+
+    case 'shortfall_is_attendance':
+      return {
+        heading: `Your ${group(link.group)} is behind because the sessions are`,
+        detail: `Training ${rate(link.perWeek)} against the ${String(link.target)} you set. Adding volume to a plan you are not getting to will not fix this one — the attendance comes first.`,
+      };
+
+    case 'progress_confirmed':
+      return {
+        heading: 'This is working',
+        detail: `Your ${link.name.toLowerCase()} went ${show(link.fromKg)} to ${show(link.toKg)}, and your weight is moving at ${show(link.perWeekKg)} a week, which is where you asked for it. Nothing here needs changing.`,
       };
   }
 }
