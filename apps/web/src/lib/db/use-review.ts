@@ -10,6 +10,8 @@ import { useMemo } from 'react';
 import {
   DEFAULT_WEEK_START,
   REVIEW_WEEKS,
+  linksFrom,
+  type Link,
   reviewTraining,
   startOfDay,
   type Review,
@@ -21,6 +23,8 @@ import { useCatalogue, type QueryState } from './use-catalogue.js';
 export interface TrainingReview {
   /** Null until a goal is chosen — there is nothing to measure against. */
   readonly review: Review | null;
+  /** What the observations say when read together. Often empty, which is fine. */
+  readonly links: readonly Link[];
   readonly unitSystem: UnitSystem;
   readonly weekStartsOn: WeekStart;
 }
@@ -39,7 +43,8 @@ export function useTrainingReview(now: Date): QueryState<TrainingReview> {
     const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
     const weekStartsOn = (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart;
 
-    if (goal === null) return { review: null, unitSystem, weekStartsOn };
+    // No goal, so nothing to measure against and nothing to join up either.
+    if (goal === null) return { review: null, links: [], unitSystem, weekStartsOn };
 
     /*
      * The window is the last six weeks, or since the goal was set if that is
@@ -60,22 +65,28 @@ export function useTrainingReview(now: Date): QueryState<TrainingReview> {
       repositories.bodyMetrics.between({ from }),
     ]);
 
-    return {
-      unitSystem,
-      weekStartsOn,
-      review: reviewTraining({
-        goal: goal.goal,
-        daysPerWeek: goal.daysPerWeek,
-        experienceLevel: profile?.experienceLevel ?? null,
-        sex: profile?.sex ?? null,
-        sets,
-        groupsByExercise,
-        exerciseNames: new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
-        weighIns: weighIns
-          .filter((entry): entry is typeof entry & { weightKg: number } => entry.weightKg !== null)
-          .map((entry) => ({ at: entry.recordedAt, weightKg: entry.weightKg })),
-        now,
-      }),
-    };
+    const review = reviewTraining({
+      goal: goal.goal,
+      daysPerWeek: goal.daysPerWeek,
+      experienceLevel: profile?.experienceLevel ?? null,
+      sex: profile?.sex ?? null,
+      sets,
+      groupsByExercise,
+      exerciseNames: new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
+      weighIns: weighIns
+        .filter((entry): entry is typeof entry & { weightKg: number } => entry.weightKg !== null)
+        .map((entry) => ({ at: entry.recordedAt, weightKg: entry.weightKg })),
+      now,
+    });
+
+    /**
+     * What the observations say when read together.
+     *
+     * Computed here rather than inside `reviewTraining` because it is a second
+     * pass over the same answers, not another way of finding them — and
+     * keeping it separate is what lets it be tested against hand-written
+     * observations instead of against a whole training history.
+     */
+    return { unitSystem, weekStartsOn, review, links: linksFrom(review.observations) };
   });
 }

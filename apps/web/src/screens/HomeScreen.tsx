@@ -197,6 +197,7 @@ export function HomeScreen() {
       {review.data?.review != null && (
         <ReviewNudge
           observations={review.data.review.observations}
+          links={review.data.links}
           unitSystem={review.data.unitSystem}
         />
       )}

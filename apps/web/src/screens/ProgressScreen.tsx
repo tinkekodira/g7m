@@ -67,6 +67,7 @@ export function ProgressScreen() {
       {review.data?.review != null && (
         <ReviewCard
           observations={review.data.review.observations}
+          links={review.data.links}
           unitSystem={review.data.unitSystem}
         />
       )}
