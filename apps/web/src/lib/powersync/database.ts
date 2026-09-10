@@ -24,6 +24,7 @@ import { AppSchema } from '@g7m/db';
 import { env } from '../env.js';
 import { requestPersistenceOnce } from '../storage.js';
 import { createConnector, type ConnectorEvents } from './connector.js';
+import { DRAIN_POLL_MS, DRAIN_TIMEOUT_MS, drainQueue, type Handover } from './handover.js';
 
 /**
  * `OPFSCoopSyncVFS`, chosen by measurement rather than by default.
@@ -119,10 +120,50 @@ export async function disconnectSync(): Promise<void> {
  *
  * For switching accounts on a shared device, where leaving one user's training
  * history in another user's local database would be worse than the cost of a
- * full re-sync. Discards anything still queued, so it is not the ordinary
- * sign-out.
+ * full re-sync. **Discards anything still queued**, which is why nothing calls
+ * it directly — `handOverDevice` drains first.
  */
 export async function disconnectAndClear(): Promise<void> {
   if (database === null) return;
   await database.disconnectAndClear();
+}
+
+/**
+ * Give the device up, ready for a different account.
+ *
+ * This is what a sign-out has to do, and for a long time it did neither half.
+ *
+ * The write queue is not per user: PowerSync keeps one local database and one
+ * CRUD queue for whoever is signed in. A set logged by one account and not yet
+ * uploaded is still queued when the next account signs in, and is then sent
+ * with *their* token — Postgres refuses it, correctly, because the row carries
+ * somebody else's `user_id`. `classifyUploadError` reads that 42501 as
+ * permanent, which it is, so the batch completes and the write is gone. The
+ * first account then comes back to a device re-synced from a server that never
+ * received it.
+ *
+ * So: drain, then clear. If the queue will not drain — offline, or a server
+ * refusing — the device is left exactly as it is and the caller is told how
+ * much is still on it. Unsent work on a device can be recovered by signing
+ * back in with a connection. Unsent work that has been deleted cannot.
+ */
+export async function handOverDevice(): Promise<Handover> {
+  const db = database;
+  // Never opened, so there is nothing on this device to hand over or protect.
+  if (db === null) return { state: 'cleared' };
+
+  const pending = await drainQueue(async () => (await db.getUploadQueueStats()).count, {
+    timeoutMs: DRAIN_TIMEOUT_MS,
+    pollMs: DRAIN_POLL_MS,
+    sleep: async (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    now: () => Date.now(),
+  });
+
+  if (pending > 0) {
+    await db.disconnect();
+    return { state: 'kept', pending };
+  }
+
+  await db.disconnectAndClear();
+  return { state: 'cleared' };
 }

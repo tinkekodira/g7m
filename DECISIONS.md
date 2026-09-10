@@ -3063,3 +3063,60 @@ problem.
 
 Most weeks contain no pair worth joining. Inventing a connection to fill a card
 is how an app teaches somebody to stop reading it.
+
+## ADR-0054 — A sign-out has to hand the device over
+
+Reported: training logged on one account, a sign-out, a sign-in on a second
+account, and on returning to the first the data was gone.
+
+`signOut` was one line — `supabase.auth.signOut()`. It did neither of the two
+things a sign-out on this architecture has to do.
+
+### The write queue is not per user
+
+PowerSync keeps one local database and one CRUD queue for whoever is signed in.
+A set logged by one account and not yet uploaded is still sitting in that queue
+when the next account signs in, and is then sent **with their token**.
+
+Postgres refuses it, correctly — the row carries a `user_id` that is not
+theirs, and row level security is doing exactly its job. `classifyUploadError`
+reads the 42501 as permanent, which it also is: retrying cannot help, because
+the identity is wrong rather than the network. So the batch completes and the
+write is discarded.
+
+Every part of that chain behaves as designed. The fault is upstream of all of
+it: a queue belonging to one identity was still live when another arrived.
+
+The first account then signs back in, the device re-syncs from the server, and
+whatever never reached the server is gone from both.
+
+### Drain, then clear
+
+`handOverDevice` waits for the queue to empty before wiping anything.
+
+If it drains, the local database is cleared and the next account starts on an
+empty device — no leftovers of somebody else's training, and no queue that can
+be uploaded under the wrong name.
+
+If it will not drain — offline, or a server refusing — **nothing is wiped** and
+the user is told how much is still on the device. Unsent work on a device is
+recoverable by signing back in with a connection. Unsent work that has been
+deleted is not. Given a choice between the two, the recoverable one wins even
+though it leaves data on a shared device for longer.
+
+`disconnectAndClear` had existed since Phase 2 for exactly this and nothing had
+ever called it — the fourth column, flag or function found this month that was
+built, documented, and never wired to anything.
+
+### Polling the count, not watching the status
+
+`SyncStatus.uploading` is false both when the queue is empty and when it is
+full and failing, so it cannot answer "is there anything left". The count can,
+and `getUploadQueueStats` is the only thing that reports it.
+
+### What this does not fix
+
+Whether it is what destroyed the reported data is not established. If those
+sets had already uploaded, they are still in Postgres and something else is
+keeping them from coming back. The distinguishing check is whether the rows
+exist server-side, which needs the database rather than the code.
