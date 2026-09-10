@@ -1,5 +1,6 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { cx } from './cx.js';
+import { displayed, typed } from './number-field.js';
 
 export interface StepperProps {
   readonly label: string;
@@ -26,6 +27,18 @@ export interface StepperProps {
  * brings up a keypad with no decimal point in several locales, and it silently
  * clears itself when the value is momentarily unparseable — which is every
  * keystroke of "0.5" after the first.
+ *
+ * ## While it has focus, the field belongs to the typist
+ *
+ * It used to be controlled straight from the number, and so could not be typed
+ * into. Entering `5` put 5 in the parent, which came back as `"5.0"` — a
+ * different string from the one in the box, so React rewrote the field and
+ * dropped the caret at the end. The next digit made `"5.00"`, which parses to
+ * 5, which renders `"5.0"`. The field could not reach 50.
+ *
+ * So a keystroke starts a draft, the draft is what shows, and it is cleared on
+ * blur — and by the buttons, which are an edit from the other direction and
+ * have to win. `number-field.ts` holds the rules and the tests.
  */
 export function Stepper({
   label,
@@ -40,8 +53,16 @@ export function Stepper({
 }: StepperProps) {
   const id = useId();
 
+  /** The typist's own text, while they are typing. Null the rest of the time. */
+  const [draft, setDraft] = useState<string | null>(null);
+
   const clamp = (next: number): number => Math.min(max, Math.max(min, next));
-  const show = (n: number): string => n.toFixed(decimals);
+
+  /** A change from the buttons, which also ends any draft the field is holding. */
+  const commit = (next: number): void => {
+    setDraft(null);
+    onChange(clamp(round(next, decimals)));
+  };
 
   return (
     <div className="flex flex-col gap-1">
@@ -55,7 +76,7 @@ export function Stepper({
           label={`Decrease ${label}`}
           disabled={disabled || value <= min}
           onClick={() => {
-            onChange(clamp(round(value - step, decimals)));
+            commit(value - step);
           }}
         >
           −
@@ -71,12 +92,19 @@ export function Stepper({
           onFocus={(event) => {
             event.target.select();
           }}
-          value={show(value)}
+          value={displayed(draft, value, decimals)}
           onChange={(event) => {
-            const parsed = Number(event.target.value.replace(',', '.'));
-            // An unparseable value leaves the number alone rather than
-            // becoming NaN, which would render as "NaN" and save as 0.
-            if (Number.isFinite(parsed)) onChange(clamp(parsed));
+            const next = typed(event.target.value, min, max);
+            setDraft(next.draft);
+            // Null while the box is empty or the number half-written, which
+            // leaves the value alone rather than reporting NaN or a zero
+            // nobody asked for.
+            if (next.value !== null) onChange(next.value);
+          }}
+          // Formatting happens here and nowhere else: 5 becomes 5.0 when the
+          // field is done being typed in, not while it is.
+          onBlur={() => {
+            setDraft(null);
           }}
           className={cx(
             'numeric min-w-0 flex-1 bg-transparent text-center text-lg text-primary',
@@ -89,7 +117,7 @@ export function Stepper({
           label={`Increase ${label}`}
           disabled={disabled || value >= max}
           onClick={() => {
-            onChange(clamp(round(value + step, decimals)));
+            commit(value + step);
           }}
         >
           +

@@ -128,6 +128,67 @@ const LIST_ORDER = 'ORDER BY popularity_rank ASC, name ASC';
 const LIST_ORDER_ALIASED = 'ORDER BY e.popularity_rank ASC, e.name ASC';
 
 /**
+ * What to put first when the question was about a muscle.
+ *
+ * Popularity alone is the wrong answer to a narrowed list. Filtering the
+ * library to Biceps used to open on Pull-Up, Lat Pulldown and Barbell Row —
+ * all true, all back exercises, and none of them what somebody who tapped
+ * "Biceps" came for. The curl was fourth because a pull-up is a more popular
+ * exercise, which is a fact about the catalogue and not about biceps.
+ *
+ * So rank by how the filtered muscles are actually involved: prime movers
+ * before supporting muscles, then by how much of the work they do, and only
+ * then by popularity. `COALESCE` puts anything the relevance join did not
+ * match last rather than first, which is where SQLite would otherwise sort a
+ * null.
+ */
+const RELEVANCE_ORDER =
+  'ORDER BY COALESCE(rel.role_rank, 2) ASC, COALESCE(rel.best, 0) DESC, ' +
+  'e.popularity_rank ASC, e.name ASC';
+
+/**
+ * A join carrying how strongly each exercise involves the filtered muscles.
+ *
+ * Null when the filter says nothing about muscles, in which case the plain
+ * popularity order is the right one — there is no relevance to rank by.
+ *
+ * Specific muscles win over groups when both are given: it is the narrower
+ * question, so it is the one the user is more likely to have meant.
+ */
+function relevanceJoin(criteria: ExerciseFilter): { sql: string; parameters: SqlValue[] } | null {
+  const ranked =
+    "MIN(CASE em.role WHEN 'primary' THEN 0 ELSE 1 END) AS role_rank, " +
+    'MAX(em.recruitment_weight) AS best';
+
+  const muscleIds = criteria.muscleIds;
+  if (muscleIds !== undefined && muscleIds.length > 0) {
+    return {
+      sql: `LEFT JOIN (SELECT em.exercise_id AS ex, ${ranked}
+                         FROM exercise_muscles em
+                        WHERE em.role IN ${TRAINED_ROLES}
+                          AND em.muscle_id IN (${placeholders(muscleIds.length)})
+                        GROUP BY em.exercise_id) rel ON rel.ex = e.id`,
+      parameters: [...muscleIds],
+    };
+  }
+
+  const groupIds = criteria.muscleGroupIds;
+  if (groupIds !== undefined && groupIds.length > 0) {
+    return {
+      sql: `LEFT JOIN (SELECT em.exercise_id AS ex, ${ranked}
+                         FROM exercise_muscles em
+                         JOIN muscles m ON m.id = em.muscle_id
+                        WHERE em.role IN ${TRAINED_ROLES}
+                          AND m.muscle_group_id IN (${placeholders(groupIds.length)})
+                        GROUP BY em.exercise_id) rel ON rel.ex = e.id`,
+      parameters: [...groupIds],
+    };
+  }
+
+  return null;
+}
+
+/**
  * What the library screen narrows the catalogue by.
  *
  * Every field is optional, and an omitted field is not a constraint. An empty
@@ -267,9 +328,20 @@ export class ExerciseRepository {
       parameters.push(criteria.difficulty);
     }
 
+    /**
+     * Ranked by involvement when the filter named muscles, popularity when it
+     * did not. See `RELEVANCE_ORDER`.
+     *
+     * The join's parameters go first because the join comes first in the
+     * statement, and these are positional.
+     */
+    const relevance = relevanceJoin(criteria);
     const rows = await this.db.getAll<RawRow>(
-      `SELECT e.* FROM exercises e WHERE ${conditions.join(' AND ')} ${LIST_ORDER_ALIASED}`,
-      parameters,
+      `SELECT e.* FROM exercises e
+       ${relevance?.sql ?? ''}
+       WHERE ${conditions.join(' AND ')}
+       ${relevance === null ? LIST_ORDER_ALIASED : RELEVANCE_ORDER}`,
+      [...(relevance?.parameters ?? []), ...parameters],
     );
     return rows.map(toExercise);
   }

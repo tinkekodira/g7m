@@ -240,3 +240,24 @@ export function countryName(code: string, locale?: string): string {
     return code;
   }
 }
+
+/**
+ * What to call somebody, from what they typed as their name.
+ *
+ * The first word only. A greeting is the one place in an app that should sound
+ * like a person talking, and "Welcome, Tin Milanović" is a form letter —
+ * nobody is greeted by their full name except by an institution.
+ *
+ * Null when there is nothing usable, which is the common case: the field is
+ * optional and most people never fill it in. The caller then greets them
+ * without a name rather than inventing one from an email address, which is how
+ * an app ends up saying "Welcome, milanovic.tin+test".
+ */
+export function firstName(displayName: string | null): string | null {
+  if (displayName === null) return null;
+
+  // Any whitespace, not just a space: a name pasted from a form can arrive
+  // with a non-breaking space or a tab in it.
+  const first = displayName.trim().split(/\s+/)[0] ?? '';
+  return first === '' ? null : first;
+}

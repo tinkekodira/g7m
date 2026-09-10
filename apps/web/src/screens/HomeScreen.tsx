@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@g7m/ui';
-import { greetingFor } from '@g7m/core';
+import { firstName, greetingFor } from '@g7m/core';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
@@ -165,6 +165,16 @@ export function HomeScreen() {
     snapshot?.sex === 'male' || snapshot?.sex === 'female' ? snapshot.sex : null,
   );
 
+  /**
+   * Greeted by name, where there is one.
+   *
+   * The heading used to show the name *instead of* the greeting, so anybody
+   * who filled the field in got "Tin" where everybody else got "Bienvenue" —
+   * a label rather than a welcome. The name now joins the greeting, in
+   * whichever language the greeting is already in.
+   */
+  const name = firstName(snapshot?.displayName ?? null);
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="pt-6 pb-2">
@@ -177,9 +187,8 @@ export function HomeScreen() {
           dir={greeting.direction}
           className="text-2xl font-semibold text-primary"
         >
-          {snapshot?.displayName ?? greeting.text}
+          {name === null ? greeting.text : `${greeting.text}, ${name}!`}
         </h1>
-        <p className="mt-1 text-sm text-secondary">Signed in as {email}</p>
       </header>
 
       {/* The heads-up ADR-0032 asked for: it finds the user rather than
@@ -299,6 +308,10 @@ export function HomeScreen() {
           <p className="text-sm text-muted">Loading…</p>
         ) : (
           <>
+            {/* Which account this is, moved down out of the greeting. It
+                answers "whose account am I in", which is this card's whole
+                job — not the first line somebody reads on opening the app. */}
+            <Row label="Signed in" value={email} />
             <Row label="Units" value={snapshot.unitSystem === 'metric' ? 'Kilograms' : 'Pounds'} />
             <Row label="Exercises available" value={snapshot.exerciseCount} />
             <Row label="Muscles on the model" value={snapshot.muscleCount} />

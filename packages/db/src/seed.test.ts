@@ -43,8 +43,14 @@ describe('volumes', () => {
     expect(await count('select count(*) n from public.equipment')).toBe(29);
   });
 
-  it('seeds exactly 50 exercises', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(50);
+  /**
+   * The 50 from the brief, plus the two added afterwards: the skull crusher
+   * and the dumbbell pullover. Counted rather than left open, because an
+   * exercise that fails to insert — a bad slug in a join, a check constraint —
+   * shows up nowhere else. The catalogue simply comes up one short.
+   */
+  it('seeds the 50 exercises from the brief, and the ones added since', async () => {
+    expect(await count('select count(*) n from public.exercises')).toBe(52);
   });
 });
 
