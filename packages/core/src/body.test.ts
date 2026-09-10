@@ -4,7 +4,10 @@ import {
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
   MIN_TREND_DAYS,
+  ageFrom,
   ageOn,
+  parseBirthDate,
+  toDateOnly,
   weighInStatus,
   weightTrend,
   type WeighIn,
@@ -207,5 +210,80 @@ describe('weightTrend', () => {
       { at: new Date(START.getTime() + 28 * DAY), weightKg: 80 },
     ]);
     expect(trend?.samples).toBe(2);
+  });
+});
+
+describe('parseBirthDate', () => {
+  it('reads a date out of the field', () => {
+    const date = parseBirthDate('2001-05-14');
+    expect(date?.getUTCFullYear()).toBe(2001);
+    expect(date?.getUTCMonth()).toBe(4);
+    expect(date?.getUTCDate()).toBe(14);
+  });
+
+  /**
+   * `new Date(2001, 1, 31)` is quietly the 3rd of March. A regex alone accepts
+   * it, so the parts are read back — a day that rolled over is a typo.
+   */
+  it('refuses a date that does not exist', () => {
+    expect(parseBirthDate('2001-02-31')).toBeNull();
+    expect(parseBirthDate('2001-13-01')).toBeNull();
+    expect(parseBirthDate('2001-00-10')).toBeNull();
+  });
+
+  it('keeps the 29th of February in a year that has one', () => {
+    expect(parseBirthDate('2000-02-29')?.getUTCDate()).toBe(29);
+    expect(parseBirthDate('2001-02-29')).toBeNull();
+  });
+
+  it('is null for anything that is not a date at all', () => {
+    for (const bad of ['', '  ', 'yesterday', '14/05/2001', '2001-5-14']) {
+      expect(parseBirthDate(bad), bad).toBeNull();
+    }
+  });
+});
+
+describe('toDateOnly', () => {
+  it('round-trips through the field format', () => {
+    const date = parseBirthDate('1998-11-03');
+    expect(date === null ? null : toDateOnly(date)).toBe('1998-11-03');
+  });
+
+  /**
+   * Held in UTC throughout. Reading a date of birth back with local getters
+   * moves it a day west of Greenwich, which is a birthday on the wrong date
+   * and an age that flickers around it.
+   */
+  it('does not drift a day in a western timezone', () => {
+    expect(toDateOnly(new Date('2001-01-01T00:00:00.000Z'))).toBe('2001-01-01');
+  });
+});
+
+describe('ageFrom', () => {
+  const born = parseBirthDate('2000-06-15');
+
+  it('counts whole years', () => {
+    expect(ageFrom(born, new Date('2026-06-15T00:00:00.000Z'))).toBe(26);
+  });
+
+  /**
+   * The subtraction people reach for — this year minus that year — is wrong
+   * for everybody who has not had their birthday yet, which is on average half
+   * of them, and it is a year of difference in the starting weights this feeds.
+   */
+  it('does not count a birthday that has not happened yet', () => {
+    expect(ageFrom(born, new Date('2026-06-14T00:00:00.000Z'))).toBe(25);
+    expect(ageFrom(born, new Date('2026-01-02T00:00:00.000Z'))).toBe(25);
+    expect(ageFrom(born, new Date('2026-12-31T00:00:00.000Z'))).toBe(26);
+  });
+
+  it('has nothing to say without a date', () => {
+    expect(ageFrom(null, new Date())).toBeNull();
+    expect(ageFrom(new Date('nonsense'), new Date())).toBeNull();
+  });
+
+  it('rejects a date that would make somebody impossible', () => {
+    expect(ageFrom(parseBirthDate('1850-01-01'), new Date('2026-01-01T00:00:00.000Z'))).toBeNull();
+    expect(ageFrom(parseBirthDate('2030-01-01'), new Date('2026-01-01T00:00:00.000Z'))).toBeNull();
   });
 });

@@ -23,7 +23,7 @@ async function seedProfile(over: Record<string, string | number | null> = {}): P
     display_name: 'Milan',
     unit_system: 'metric',
     experience_level: 'beginner',
-    birth_year: null,
+    birth_date: null,
     bodyweight_kg: null,
     rest_seconds_default: 120,
     week_starts_on: 1,
@@ -130,14 +130,29 @@ describe('update', () => {
     });
   });
 
-  describe('birth year', () => {
-    it('keeps one inside 1900–2100', async () => {
-      expect((await profiles.update({ birthYear: 1998 }))?.birthYear).toBe(1998);
+  describe('date of birth', () => {
+    it('stores and reads back the day itself', async () => {
+      const born = new Date(Date.UTC(1998, 10, 3));
+      const saved = await profiles.update({ birthDate: born });
+      expect(saved?.birthDate?.toISOString().slice(0, 10)).toBe('1998-11-03');
     });
 
-    it('drops one outside the range rather than storing it', async () => {
-      expect((await profiles.update({ birthYear: 1200 }))?.birthYear).toBeNull();
-      expect((await profiles.update({ birthYear: 3000 }))?.birthYear).toBeNull();
+    /**
+     * Written as a date, not an instant. Storing a timestamp would read back a
+     * day earlier anywhere west of Greenwich, which is a birthday on the wrong
+     * date and an age that flickers around it.
+     */
+    it('keeps the date it was given, with no time on it', async () => {
+      await profiles.update({ birthDate: new Date(Date.UTC(2001, 0, 1)) });
+      const row = await profiles.current();
+      expect(row?.birthDate?.getUTCFullYear()).toBe(2001);
+      expect(row?.birthDate?.getUTCMonth()).toBe(0);
+      expect(row?.birthDate?.getUTCDate()).toBe(1);
+    });
+
+    it('clears back to nothing', async () => {
+      await profiles.update({ birthDate: new Date(Date.UTC(1998, 10, 3)) });
+      expect((await profiles.update({ birthDate: null }))?.birthDate).toBeNull();
     });
   });
 

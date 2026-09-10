@@ -2932,3 +2932,75 @@ thinking; the column keeps a birth year because that is the fact that does not
 go stale. The conversion is off by up to a year depending on the birthday,
 which is the right precision for choosing a starting weight and the wrong one
 for anything else — so the You screen goes on asking for the year itself.
+
+## ADR-0052 — One question about age, and a model that reaches a phone
+
+### A date of birth, asked the same way twice
+
+The welcome flow asked an age and the You screen asked a year of birth.
+Neither is wrong and having both is: somebody who answers 26 in one place and
+reads 2000 in the other has to work out whether the app agrees with itself.
+
+Both now ask for the date. It is also the only version of this fact that can be
+used for anything else — a year cannot wish anyone a happy birthday.
+
+`birth_year` is **not** dropped from Postgres. It holds the answers given
+before the date column existed, and there is deliberately no backfill: turning
+2000 into a date means inventing a day, and an invented birthday is worse than
+none. The client stops carrying the column, `UNSYNCED_COLUMNS` says why, and
+anyone who had only a year is asked again.
+
+Held in UTC throughout. A date of birth is a date, not an instant, and reading
+one back with local getters moves it a day west of Greenwich — a birthday
+greeting on the wrong day and an age that flickers around it. `ageFrom` also
+counts the birthday rather than subtracting years, which is a year of
+difference for everybody who has not had theirs yet: on average half of them,
+feeding straight into starting weights.
+
+`app-schema.test.ts` caught both halves of this before it could ship — a
+Postgres column that was neither synced nor explained, and a `date` type with
+no agreed SQLite equivalent. It is the two-directional check earning its keep.
+
+### The model was never shipped, and could not have been found if it were
+
+Reported as "I still do not see the new 3D model on my phone". Two independent
+faults, either of which alone was enough.
+
+**It was never in a deployed build.** `apps/web/public/anatomy/body.glb` is
+gitignored, correctly, and nothing in `pages.yml` fetched it. ADR-0009 said the
+asset is fetched at build time; that had never been built. Every Pages
+deploy — which *is* how the app reaches a phone (ADR-0026) — shipped without a
+model and fell back to the generated body exactly as designed.
+
+**And the URL was root-relative.** `/anatomy/body.glb` is right on a dev server
+at the domain root and wrong everywhere the app ships: on Pages it lives under
+`/g7m/`, so the leading slash asked the domain root for a file that is not
+there. It is resolved against `document.baseURI` now, for the same reason
+`base` is `./` (ADR-0027), and there is a test — this is invisible in
+development and breaks only once deployed under a path.
+
+### The filename carries a content hash
+
+Not obscurity; anyone can read the manifest. Cache correctness.
+
+`anatomy/` is deliberately outside the service worker's precache — megabytes,
+optional, wanted by one screen — and kept in the runtime cache instead. That is
+the right trade and it has a consequence: at a fixed URL, a device that has the
+model never asks for it again. Rebuild the geometry, deploy, and every phone
+that has opened Learn keeps the old body permanently. A hash in the name makes
+a new model a new URL.
+
+The installer refuses anything that is not a GLB before writing. An expired
+signed URL answers 200 with an XML error document and a mistyped path answers
+with a dev server's index page; both are valid files, neither is a model, and
+writing one produces a build that looks complete and silently shows the
+generated body.
+
+### On the licence
+
+The author's terms allow sharing, copying, remixing and commercial use, and
+refuse redistribution — "selling or re-uploading the file" — and AI training.
+Embedding the model in the app is squarely use in one's own project. Serving it
+from a public site does make the file downloadable by anyone who looks, and the
+hash does not change that: it is a cache key, not a lock. Recorded here so the
+decision is visible rather than implied.

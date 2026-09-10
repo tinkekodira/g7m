@@ -18,6 +18,7 @@ import {
   type ExperienceLevel,
   type Sex,
   type UnitSystem,
+  toDateOnly,
 } from '@g7m/core';
 import {
   resolveContext,
@@ -52,8 +53,6 @@ export type { ExperienceLevel };
 /** Postgres CHECKs. Enforced here too — see `clampProfile` for why. */
 export const MIN_REST_DEFAULT_SECONDS = 15;
 export const MAX_REST_DEFAULT_SECONDS = 900;
-export const MIN_BIRTH_YEAR = 1900;
-export const MAX_BIRTH_YEAR = 2100;
 
 export interface Profile {
   readonly id: string;
@@ -61,7 +60,7 @@ export interface Profile {
   readonly displayName: string | null;
   readonly unitSystem: UnitSystem;
   readonly experienceLevel: ExperienceLevel;
-  readonly birthYear: number | null;
+  readonly birthDate: Date | null;
   /** For stating realistic rates. Never an input to how much is prescribed. */
   readonly sex: Sex | null;
   /** ISO 3166-1 alpha-2, upper case. The home screen greeting, and nothing else. */
@@ -90,7 +89,7 @@ export interface ProfileChanges {
   readonly displayName?: string | null;
   readonly unitSystem?: UnitSystem;
   readonly experienceLevel?: ExperienceLevel;
-  readonly birthYear?: number | null;
+  readonly birthDate?: Date | null;
   readonly sex?: Sex | null;
   readonly country?: string | null;
   readonly bodyweightKg?: number | null;
@@ -106,7 +105,7 @@ function toProfile(row: RawRow): Profile {
     displayName: readOptionalString(row, 'display_name'),
     unitSystem: readEnum(row, 'unit_system', UNIT_SYSTEMS, 'metric'),
     experienceLevel: readEnum(row, 'experience_level', EXPERIENCE_LEVELS, 'beginner'),
-    birthYear: readOptionalNumber(row, 'birth_year'),
+    birthDate: readDate(row, 'birth_date'),
     sex: readOptionalSex(row),
     country: readOptionalString(row, 'country'),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
@@ -164,7 +163,11 @@ export class ProfileRepository {
     }
     if (changes.unitSystem !== undefined) set('unit_system', changes.unitSystem);
     if (changes.experienceLevel !== undefined) set('experience_level', changes.experienceLevel);
-    if (changes.birthYear !== undefined) set('birth_year', clampBirthYear(changes.birthYear));
+    if (changes.birthDate !== undefined) {
+      // Stored as the date the column is, not as an instant. A timestamp here
+      // would be read back a day earlier anywhere west of Greenwich.
+      set('birth_date', changes.birthDate === null ? null : toDateOnly(changes.birthDate));
+    }
     if (changes.country !== undefined) {
       // Two upper-case letters, mirroring the CHECK. Anything else is stored
       // as null: a row the server refuses is discarded and stranded.
@@ -211,12 +214,6 @@ function clampBodyweight(value: number | null): number | null {
   // numeric(5,2): three digits before the point, so 999.99 is the ceiling the
   // column can physically hold.
   return Math.min(999.99, Math.round(value * 100) / 100);
-}
-
-function clampBirthYear(value: number | null): number | null {
-  if (value === null || !Number.isInteger(value)) return null;
-  if (value < MIN_BIRTH_YEAR || value > MAX_BIRTH_YEAR) return null;
-  return value;
 }
 
 function clampRestDefault(value: number): number {

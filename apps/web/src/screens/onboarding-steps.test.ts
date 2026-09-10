@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   NO_ANSWERS,
   ONBOARDING_STEPS,
-  birthYearFromAge,
+  isUsableBirthDate,
   firstUnanswered,
   isAnswered,
   isOptional,
@@ -15,7 +15,7 @@ import {
 
 const EVERYTHING: OnboardingAnswers = {
   displayName: 'Tin',
-  birthYear: 2000,
+  birthDate: new Date(Date.UTC(2000, 5, 15)),
   sex: 'male',
   heightCm: 183,
   activityLevel: 'moderate',
@@ -34,8 +34,8 @@ describe('the order of the flow', () => {
 
   it('walks forwards and back without falling off either end', () => {
     expect(previousStep('name')).toBeNull();
-    expect(nextStep('name')).toBe('age');
-    expect(previousStep('age')).toBe('name');
+    expect(nextStep('name')).toBe('dob');
+    expect(previousStep('dob')).toBe('name');
     expect(nextStep('goal')).toBeNull();
   });
 
@@ -83,8 +83,14 @@ describe('isAnswered', () => {
 
 describe('firstUnanswered', () => {
   it('is where somebody who closed the app halfway through picks up', () => {
-    expect(firstUnanswered({ ...NO_ANSWERS, displayName: 'Tin' })).toBe('age');
-    expect(firstUnanswered({ ...NO_ANSWERS, displayName: 'Tin', birthYear: 2000 })).toBe('sex');
+    expect(firstUnanswered({ ...NO_ANSWERS, displayName: 'Tin' })).toBe('dob');
+    expect(
+      firstUnanswered({
+        ...NO_ANSWERS,
+        displayName: 'Tin',
+        birthDate: new Date(Date.UTC(2000, 5, 15)),
+      }),
+    ).toBe('sex');
   });
 
   it('is null once every question that has to be answered has been', () => {
@@ -109,23 +115,29 @@ describe('firstUnanswered', () => {
   });
 });
 
-describe('birthYearFromAge', () => {
-  const now = new Date('2026-09-10T00:00:00Z');
+describe('isUsableBirthDate', () => {
+  const now = new Date('2026-09-10T00:00:00.000Z');
 
-  it('turns the number somebody knows into the one the column stores', () => {
-    expect(birthYearFromAge(26, now)).toBe(2000);
+  it('accepts somebody this app will train', () => {
+    expect(isUsableBirthDate(new Date(Date.UTC(2000, 5, 15)), now)).toBe(true);
   });
 
   /**
-   * Null rather than a year, so the screen can say so. A typo here sets the
-   * starting weights for somebody who does not exist, and the row it writes
-   * looks perfectly valid afterwards.
+   * False rather than a clamp, so the screen can say so. A wrong answer here
+   * sets the starting weights for somebody who does not exist, and the row it
+   * writes looks perfectly valid afterwards.
    */
-  it('refuses an age that is not one', () => {
-    expect(birthYearFromAge(0, now)).toBeNull();
-    expect(birthYearFromAge(7, now)).toBeNull();
-    expect(birthYearFromAge(150, now)).toBeNull();
-    expect(birthYearFromAge(26.5, now)).toBeNull();
-    expect(birthYearFromAge(Number.NaN, now)).toBeNull();
+  it('refuses a date that does not belong to a lifter', () => {
+    expect(isUsableBirthDate(null, now)).toBe(false);
+    expect(isUsableBirthDate(new Date(Date.UTC(2020, 0, 1)), now)).toBe(false);
+    expect(isUsableBirthDate(new Date(Date.UTC(1890, 0, 1)), now)).toBe(false);
+    expect(isUsableBirthDate(new Date(Date.UTC(2030, 0, 1)), now)).toBe(false);
+  });
+
+  /** The boundary is an age, so it moves with the birthday and not the year. */
+  it('counts the birthday, not the year', () => {
+    const thirteenTomorrow = new Date(Date.UTC(2013, 8, 11));
+    expect(isUsableBirthDate(thirteenTomorrow, now)).toBe(false);
+    expect(isUsableBirthDate(new Date(Date.UTC(2013, 8, 10)), now)).toBe(true);
   });
 });

@@ -4,11 +4,15 @@ import {
   ACTIVITY_DESCRIPTIONS,
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
+  MAX_AGE,
+  MIN_AGE,
   SEXES,
   SEX_LABELS,
-  ageOn,
+  ageFrom,
   describeWhen,
   fromDisplayHeight,
+  parseBirthDate,
+  toDateOnly,
   fromDisplayWeight,
   startOfDay,
   toDisplayHeight,
@@ -69,7 +73,7 @@ export function MetricsScreen() {
   const trend = weightTrend(weighIns);
   const status = weighInStatus(current.data?.weightAt ?? null, now);
   const prompt = weighInPrompt(status);
-  const age = ageOn(profile.data?.birthYear ?? null, now);
+  const age = ageFrom(profile.data?.birthDate ?? null, now);
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
@@ -103,7 +107,7 @@ export function MetricsScreen() {
         unitSystem={unitSystem}
         displayName={profile.data?.displayName ?? null}
         heightCm={current.data?.heightCm ?? null}
-        birthYear={profile.data?.birthYear ?? null}
+        birthDate={profile.data?.birthDate ?? null}
         age={age}
         sex={profile.data?.sex ?? null}
         country={profile.data?.country ?? null}
@@ -254,7 +258,7 @@ function AboutYou({
   unitSystem,
   displayName,
   heightCm,
-  birthYear,
+  birthDate,
   age,
   sex,
   country,
@@ -263,7 +267,7 @@ function AboutYou({
   readonly unitSystem: UnitSystem;
   readonly displayName: string | null;
   readonly heightCm: number | null;
-  readonly birthYear: number | null;
+  readonly birthDate: Date | null;
   readonly age: number | null;
   readonly sex: Sex | null;
   readonly country: string | null;
@@ -275,7 +279,7 @@ function AboutYou({
 
   const [name, setName] = useState('');
   const [height, setHeight] = useState('');
-  const [year, setYear] = useState('');
+  const [dob, setDob] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
   /**
@@ -306,17 +310,26 @@ function AboutYou({
     setHeight('');
   }
 
-  async function saveYear(): Promise<void> {
-    const typed = Number(year);
-    if (!Number.isInteger(typed) || typed < 1900 || typed > new Date().getFullYear()) {
-      setProblem('Enter the year you were born.');
+  /**
+   * The same question the welcome flow asks, asked the same way.
+   *
+   * This screen used to ask for a year while the welcome flow asked an age,
+   * so somebody who answered 26 in one place and read 2000 in the other had to
+   * work out whether the app agreed with itself. A date settles it, and it is
+   * the only version of the fact that could ever be a birthday.
+   */
+  async function saveDob(): Promise<void> {
+    const born = parseBirthDate(dob);
+    const age = ageFrom(born, new Date());
+    if (born === null || age === null || age < MIN_AGE || age > MAX_AGE) {
+      setProblem(`Enter the day you were born. Between ${String(MIN_AGE)} and ${String(MAX_AGE)}.`);
       return;
     }
     setProblem(null);
     // On `profiles`, not here: one value that does not change. The deliberate
     // deviation from ADR-0032 is recorded in the body_metrics migration.
-    await write((r) => r.profile.update({ birthYear: typed }));
-    setYear('');
+    await write((r) => r.profile.update({ birthDate: born }));
+    setDob('');
   }
 
   return (
@@ -377,21 +390,21 @@ function AboutYou({
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="min-w-0 flex-1">
           <TextField
-            label="Year of birth"
-            inputMode="numeric"
-            value={year}
-            placeholder={birthYear === null ? '' : String(birthYear)}
+            label="Date of birth"
+            type="date"
+            value={dob === '' && birthDate !== null ? toDateOnly(birthDate) : dob}
+            max={toDateOnly(new Date())}
             hint={age === null ? 'Used to set sensible starting loads' : `You are ${String(age)}`}
             onChange={(event) => {
-              setYear(event.target.value);
+              setDob(event.target.value);
             }}
           />
         </div>
         <Button
           variant="secondary"
-          disabled={busy || year.trim() === ''}
+          disabled={busy || dob.trim() === ''}
           onClick={() => {
-            void saveYear();
+            void saveDob();
           }}
         >
           Save
