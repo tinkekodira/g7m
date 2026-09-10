@@ -298,3 +298,33 @@ describe('the cost of the whole body', () => {
     expect(parts.length).toBe(paired * 2 + midline);
   });
 });
+
+/**
+ * The muscles a closed skin has no room for.
+ *
+ * `deep` decides two things a long way apart. Here it keeps the muscle out of
+ * the skin labelling, because a floated deep muscle does not carve a sliver
+ * out of a trapezius, it takes a patch out of the middle of one (ADR-0044).
+ * In Postgres the same five carry `is_selectable = false`, because with the
+ * peel layer gone there is nowhere left to tap them (ADR-0049).
+ *
+ * Nothing in the build can check those two agree — the taxonomy lives in a
+ * database this package does not depend on, and should not. So both ends are
+ * pinned to the same list, and marking a sixth muscle deep fails here with a
+ * reminder that the other end needs a migration.
+ */
+describe('the deep muscles', () => {
+  it('are the five the taxonomy also declines to offer', () => {
+    const deep = MUSCLES.filter((spec) => spec.deep === true)
+      .map((spec) => spec.slug)
+      .sort();
+
+    expect(deep, 'deep muscles need `is_selectable = false` in a migration too').toEqual([
+      'brachialis',
+      'rhomboids',
+      'semimembranosus',
+      'teres-major',
+      'triceps-medial-head',
+    ]);
+  });
+});

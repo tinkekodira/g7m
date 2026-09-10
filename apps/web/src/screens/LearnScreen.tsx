@@ -15,6 +15,7 @@ import {
 import type { Exercise, Muscle } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { sectionsFor, type MuscleSections } from './muscle-exercises.js';
 
 /**
  * Learn: the body, and what trains each part of it.
@@ -30,8 +31,7 @@ const AnatomyViewer = lazy(() =>
 
 interface MuscleDetail {
   readonly muscle: Muscle;
-  readonly compound: readonly Exercise[];
-  readonly isolation: readonly Exercise[];
+  readonly sections: MuscleSections;
 }
 
 /** Four weeks. Long enough to include a full training split, short enough to be current. */
@@ -50,26 +50,12 @@ export function LearnScreen() {
   const [mode, setMode] = useState<AnatomyMode>('explore');
   const now = useMemo(() => new Date(), []);
 
-  /**
-   * Which body is on screen.
-   *
-   * `surface` is the sculpted skin, divided between the muscles that reach it.
-   * `deep` is the generated body, which is every muscle as its own object —
-   * including the five that a closed skin has no room for (ADR-0045).
-   *
-   * Peeling is the honest way to reach a rhomboid. It is genuinely under the
-   * trapezius, and an app that lets you tap it on the surface is teaching
-   * something false about where it is.
-   */
-  const [layer, setLayer] = useState<'surface' | 'deep'>('surface');
-
   const generated = useMemo(() => placeholderBodyParts(), []);
   const sculpted = useSculptedBody();
 
   // Falls back without comment. Most checkouts have no model — it is licensed
   // and the repository is public — and the generated body is a complete one.
-  const surface = sculpted.parts ?? generated;
-  const parts = layer === 'deep' ? generated : surface;
+  const parts = sculpted.parts ?? generated;
 
   const taxonomy = useCatalogue('muscles', async (repositories) => {
     const [all, selectable] = await Promise.all([
@@ -94,13 +80,13 @@ export function LearnScreen() {
         all: taxonomy.data.all.map((muscle) => muscle.slug),
         selectable: taxonomy.data.selectable.map((muscle) => muscle.slug),
       },
-      // Both layers together, because that is what the question means: can
-      // every muscle the taxonomy offers be tapped *somewhere* in this app.
-      // Checking only the surface would report the five deep ones missing on
-      // every load, when they are one tap away on the other layer.
-      [...surface, ...generated].map((part) => part.nodeName),
+      // Whatever is on screen, which is now all of it. The five muscles a
+      // closed skin has no room for are marked unselectable in the taxonomy
+      // rather than kept behind a second body, so they are not geometry that
+      // is missing — they are not offered.
+      parts.map((part) => part.nodeName),
     );
-  }, [taxonomy.data, surface, generated]);
+  }, [taxonomy.data, parts]);
 
   const detail = useCatalogue<MuscleDetail | null>(
     `muscle:${selected ?? ''}`,
@@ -109,12 +95,19 @@ export function LearnScreen() {
       const muscle = await repositories.muscles.bySlug(selected);
       if (muscle === null) return null;
 
-      const exercises = await repositories.exercises.forMuscle(muscle.id, 'primary');
-      return {
-        muscle,
-        compound: exercises.filter((exercise) => exercise.mechanic === 'compound'),
-        isolation: exercises.filter((exercise) => exercise.mechanic === 'isolation'),
-      };
+      /**
+       * Both roles, because a supporting muscle is a real answer.
+       *
+       * Asking only for prime movers left eleven of the thirty-seven muscles
+       * in the taxonomy as dead ends — the rhomboids among them, which eight
+       * exercises work and none work first.
+       */
+      const [primary, secondary] = await Promise.all([
+        repositories.exercises.forMuscle(muscle.id, 'primary'),
+        repositories.exercises.forMuscle(muscle.id, 'secondary'),
+      ]);
+
+      return { muscle, sections: sectionsFor(primary, secondary) };
     },
   );
 
@@ -289,9 +282,7 @@ export function LearnScreen() {
         </Chip>
       </div>
 
-      {/* `relative`, so the peel toggle can sit over the canvas rather than
-          taking a row of height above a viewport that is already short. */}
-      <div className="relative overflow-hidden rounded-card bg-elevated">
+      <div className="overflow-hidden rounded-card bg-elevated">
         <Suspense
           fallback={
             <div className="flex h-[52vh] items-center justify-center">
@@ -299,29 +290,12 @@ export function LearnScreen() {
             </div>
           }
         >
-          {/*
-            Only offered when there is something to peel. With no sculpted
-            model the generated body is already showing every muscle, and a
-            toggle between a thing and itself is a control that does nothing.
-          */}
-          {sculpted.parts !== null && (
-            <button
-              type="button"
-              onClick={() => {
-                setLayer((current) => (current === 'surface' ? 'deep' : 'surface'));
-              }}
-              className="absolute top-3 right-3 z-10 min-h-tap rounded-control border border-subtle bg-elevated/90 px-3 text-sm font-medium text-secondary active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {layer === 'surface' ? 'Look underneath' : 'Back to the surface'}
-            </button>
-          )}
-
           <AnatomyViewer
             className="h-[52vh] w-full touch-none"
             parts={parts}
             // A sculpted skin is closed, so the bones and the core underneath
             // it have nothing to show through and would sit on top instead.
-            closedSurface={layer === 'surface' && sculpted.parts !== null}
+            closedSurface={sculpted.parts !== null}
             selectableSlugs={selectableSlugs}
             selectedSlug={selected}
             onSelect={setSelected}
@@ -374,9 +348,7 @@ export function LearnScreen() {
       <p className="text-xs text-muted">
         {sculpted.parts === null
           ? 'The figure is generated from origins and insertions — the licensed anatomy model is not in this build. Everything else on this screen is real.'
-          : layer === 'surface'
-            ? 'A sculpted body, divided between the muscles that reach the skin. Look underneath for the ones that do not.'
-            : 'Under the skin: every muscle as its own shape, including the ones a surface has no room for.'}
+          : 'A sculpted body, divided between the muscles that reach the skin.'}
       </p>
 
       {selected !== null && (
@@ -412,8 +384,7 @@ function MusclePanel({
     );
   }
 
-  const { muscle, compound, isolation } = detail;
-  const total = compound.length + isolation.length;
+  const { muscle, sections } = detail;
 
   return (
     <section className="rounded-card bg-surface p-4">
@@ -430,14 +401,22 @@ function MusclePanel({
       {/* The Latin name is the reason this is Learn and not just a filter. */}
       <p className="mb-4 text-sm text-secondary italic">{muscle.latinName}</p>
 
-      {total === 0 ? (
-        <p className="text-sm text-muted">Nothing in the catalogue trains this as a prime mover.</p>
+      {sections.empty ? (
+        <p className="text-sm text-muted">Nothing in the catalogue trains this yet.</p>
       ) : (
         <>
           {/* Compound first, and split rather than ranked: they are different
               kinds of answer to "what trains this", not better and worse. */}
-          <ExerciseGroup title="Compound" exercises={compound} />
-          <ExerciseGroup title="Isolation" exercises={isolation} />
+          <ExerciseGroup title="Compound" exercises={sections.compound} />
+          <ExerciseGroup title="Isolation" exercises={sections.isolation} />
+          {/* A third section rather than more rows under the first two. These
+              work the muscle without being the point of the lift, and merging
+              them in would rank a face pull alongside a row for the rhomboids. */}
+          <ExerciseGroup
+            title="Also worked"
+            hint="Worked here as a supporting muscle rather than the main one."
+            exercises={sections.also}
+          />
         </>
       )}
     </section>
@@ -446,15 +425,19 @@ function MusclePanel({
 
 function ExerciseGroup({
   title,
+  hint,
   exercises,
 }: {
   readonly title: string;
+  /** One line under the heading, where the heading alone does not say enough. */
+  readonly hint?: string;
   readonly exercises: readonly Exercise[];
 }) {
   if (exercises.length === 0) return null;
   return (
     <div className="mb-4 last:mb-0">
       <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">{title}</h3>
+      {hint !== undefined && <p className="mb-2 text-xs text-muted">{hint}</p>}
       <ul className="flex flex-col gap-1">
         {exercises.map((exercise) => (
           <li key={exercise.id}>

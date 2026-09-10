@@ -114,13 +114,32 @@ describe('every muscle is trainable', () => {
   });
 
   /**
+   * Two different reasons a muscle is carried and not offered.
+   *
    * Nothing in the 50 trains the neck, so sternocleidomastoid is seeded for the
    * model but deliberately not selectable — which is exactly what the flag is
    * for (Brief §5).
+   *
+   * The other five are the muscles a closed sculpted skin has no room for
+   * (ADR-0045). They are trained — the semimembranosus is a prime mover for
+   * three exercises — and they are still counted, still listed on the
+   * exercises that work them. There is simply no geometry on the body to tap,
+   * and the app no longer carries a second layer to reach them on (ADR-0049).
+   *
+   * Listed rather than counted, so adding a sixth is a decision somebody makes
+   * on purpose. The atlas end of the same wire is pinned in
+   * `placeholder-body.test.ts`.
    */
-  it('marks the one untrained muscle as not selectable', async () => {
-    expect(await slugs(`select slug from public.muscles where not is_selectable`)).toEqual([
+  it('offers only the muscles a tap can reach', async () => {
+    expect(
+      await slugs(`select slug from public.muscles where not is_selectable order by slug`),
+    ).toEqual([
+      'brachialis',
+      'rhomboids',
+      'semimembranosus',
       'sternocleidomastoid',
+      'teres-major',
+      'triceps-medial-head',
     ]);
   });
 
