@@ -3120,3 +3120,47 @@ Whether it is what destroyed the reported data is not established. If those
 sets had already uploaded, they are still in Postgres and something else is
 keeping them from coming back. The distinguishing check is whether the rows
 exist server-side, which needs the database rather than the code.
+
+## ADR-0055 — The database has an owner, and it is checked on the way in
+
+ADR-0054 fixed a sign-out that neither drained nor cleared. The server then
+showed what had actually happened: **the data was never lost.** Eight sessions
+sat in Postgres for the account that appeared to have none.
+
+So the upload path was fine and the fault was on the way back down. Three facts
+account for it together:
+
+* there is one SQLite file, `g7m.db`, for every account that signs in here;
+* PowerSync keeps its bucket checkpoints — its record of what it has already
+  downloaded — inside it;
+* nothing reset those when the account changed.
+
+Across a change of identity a checkpoint is worse than stale. The arriving
+account is told it already holds data it has never seen, so it never asks for
+it. Training that is safe on the server does not come down, and from the screen
+that is indistinguishable from training that was destroyed.
+
+### Clearing on the way out is not enough
+
+`handOverDevice` covers the tidy path. It does not cover a session that
+expired, a sign-out that never ran, or — the case in front of us — a device
+that is *already* in the bad state, where the fix cannot run until the user
+performs the very sign-out they have no reason to perform.
+
+So the owner is recorded outside the database and checked on connect. A
+different account clears before syncing, and a device that is already wrong
+heals itself at the next sign-in rather than needing to be handled first.
+
+### It only ever acts on positive knowledge
+
+Clearing when the owner is *unknown* would destroy unsent writes every time
+storage was wiped, or a browser arrived without the record. An unrecorded owner
+is therefore claimed, never acted on; only a recorded owner that differs from
+the arriving one clears anything. The rule is four lines and has its own tests,
+because the failure mode of getting it backwards is silent data loss on a first
+run.
+
+### Two guards, deliberately
+
+Sign-out drains then clears; sign-in clears on a mismatch. Either alone leaves a
+path open, and the overlap costs one `localStorage` read per connect.
