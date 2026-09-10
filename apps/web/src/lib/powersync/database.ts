@@ -22,9 +22,11 @@
 import { PowerSyncDatabase, WASQLiteVFS } from '@powersync/web';
 import { AppSchema } from '@g7m/db';
 import { env } from '../env.js';
+import { supabase } from '../supabase.js';
 import { requestPersistenceOnce } from '../storage.js';
 import { createConnector, type ConnectorEvents } from './connector.js';
 import { DRAIN_POLL_MS, DRAIN_TIMEOUT_MS, drainQueue, type Handover } from './handover.js';
+import { OWNER_KEY, claimFor } from './owner.js';
 
 /**
  * `OPFSCoopSyncVFS`, chosen by measurement rather than by default.
@@ -99,8 +101,62 @@ export async function openDatabase(): Promise<PowerSyncDatabase> {
 export async function connectSync(events: ConnectorEvents = {}): Promise<boolean> {
   if (!isSyncConfigured()) return false;
   const db = await openDatabase();
+  await claimDatabaseForCurrentUser(db);
   await db.connect(createConnector(events));
   return true;
+}
+
+/** `localStorage` throws outright in some privacy modes, so every touch is guarded. */
+function readOwner(): string | null {
+  try {
+    return localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeOwner(userId: string): void {
+  try {
+    localStorage.setItem(OWNER_KEY, userId);
+  } catch {
+    // A device that cannot remember its owner simply never clears on this
+    // path. `handOverDevice` still covers the ordinary sign-out.
+  }
+}
+
+/**
+ * Wipe the local database if it belongs to a different account.
+ *
+ * There is one SQLite file for every account that signs in here, and
+ * PowerSync's bucket checkpoints — its record of what it has already
+ * downloaded — live in it. Across a change of identity those are worse than
+ * stale: the arriving account can be told it already holds data it has never
+ * seen, and never asks for it. Training that is safe on the server does not
+ * come back down, which is precisely what it looks like when it goes wrong.
+ *
+ * `handOverDevice` clears on sign-out and covers the tidy path. This covers
+ * the rest — an expired session, a sign-out that never ran, a device already
+ * left in that state — and it is why a broken device heals itself on the next
+ * sign-in rather than needing a clean sign-out first.
+ *
+ * Only ever acts on positive knowledge: an unrecorded owner is claimed, never
+ * cleared. See `owner.ts`.
+ */
+async function claimDatabaseForCurrentUser(db: PowerSyncDatabase): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const arriving = data.session?.user.id ?? '';
+  const claim = claimFor(readOwner(), arriving);
+
+  if (claim.action === 'clear') {
+    // Worth a line: this deletes local rows, and somebody reading a support
+    // report needs to see that it happened and why.
+    console.warn(
+      `The local database belonged to ${claim.previous}. Clearing it for a different account.`,
+    );
+    await db.disconnectAndClear();
+  }
+
+  if (arriving !== '') writeOwner(arriving);
 }
 
 /**
