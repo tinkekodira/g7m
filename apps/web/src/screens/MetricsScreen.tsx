@@ -418,28 +418,40 @@ function AboutYou({
         />
       </div>
 
+      {/*
+        Answered once, at signup, and not editable afterwards.
+
+        The chips are still offered to anybody who has no answer on file —
+        every account made before the welcome flow existed, which is all of
+        them so far. Somebody who has answered sees what they answered.
+      */}
       <fieldset className="mt-5 border-0 p-0">
         <legend className="text-sm font-medium text-secondary">Sex</legend>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {SEXES.map((option) => (
-            <Chip
-              key={option}
-              selected={sex === option}
-              disabled={busy}
-              onClick={() => {
-                void write((r) => r.profile.update({ sex: option }));
-              }}
-            >
-              {SEX_LABELS[option]}
-            </Chip>
-          ))}
-        </div>
+        {sex === null ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {SEXES.map((option) => (
+              <Chip
+                key={option}
+                selected={false}
+                disabled={busy}
+                onClick={() => {
+                  void write((r) => r.profile.update({ sex: option }));
+                }}
+              >
+                {SEX_LABELS[option]}
+              </Chip>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-base text-primary">{SEX_LABELS[sex]}</p>
+        )}
         {/* What it is for, said where it is asked. It changes the rate the app
             quotes back — muscle is gained at roughly half the absolute rate in
             women — and it changes nothing about how much training you get. */}
         <p className="mt-2 text-sm text-muted">
           Used to quote realistic rates of gain and loss. It never changes how much training you are
           given.
+          {sex !== null && ' Set when you signed up, and not editable here.'}
         </p>
       </fieldset>
 

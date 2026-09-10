@@ -2872,3 +2872,63 @@ actually ends, with the abdomen holding the lower chest. The sternal origin
 runs to the sixth costal cartilage, not the fourth; extended there it is 898
 skin vertices rather than 645, and the abdomen starts at the inframammary line
 where a chart puts it.
+
+## ADR-0051 — Ask at the start, and never redirect between the two
+
+Everything the coaching loop runs on — an age, a height, an activity level, a
+goal — was askable only on the You screen, which is a screen most people never
+open. So the generator picked starting weights for a person who did not exist,
+and the greeting had no name because nothing had ever asked for one.
+
+The questions now come once, when the account is new: name, age, sex, height,
+activity, country, goal. One per screen, with the step in the URL — the same
+reason the library's filters live there, so a phone's back gesture means "the
+previous question" rather than "leave".
+
+### Onboarding replaces the app; it does not redirect to it
+
+The obvious shape is a route guard that redirects to `/welcome`, and it has a
+race that is invisible until it bites.
+
+`useCatalogue` deliberately does not report `loading` on a re-read — flashing a
+spinner over data already on screen is worse than useless. So in the moment
+after the last question writes `onboarded_at`, a guard is still holding the row
+that says it is null, and it redirects. Somebody who has just answered the
+final question lands back on the first one.
+
+Swapping *which routes exist* has no such moment. `Gate` renders the welcome
+routes or the app routes; when the re-read lands, the app's routes are simply
+what is mounted, and the stale `/welcome/goal` URL falls through to the
+catch-all that already sends unknown paths home. The flow's last step therefore
+navigates nowhere at all, which is the part that looks wrong and is right.
+
+**It fails open.** Onboarding shows only when there is a profile row *and* it
+says the questions are unanswered. A row that has not synced yet reads as null,
+and treating that as "not onboarded" would offer a returning user a flow whose
+writes have nothing to write to — and, on a device that never gets a
+connection, lock them out of an app whose whole claim is that it works offline.
+Being asked a moment late is the cheaper mistake.
+
+### `onboarded_at` decides, not the answers
+
+Deriving "finished" from whether every field is filled in would drag somebody
+back through the flow months later because they cleared their name. The column
+has existed since the first migration and nothing had ever written to it —
+the third such column found in three sessions, after `display_name` and the
+supporting-exercise rows.
+
+### Sex is asked once
+
+It changes the rates the app quotes back and nothing about the training given,
+and it is the one answer the You screen does not offer to edit. The chips are
+still shown to anybody with no answer on file, which is every account made
+before this flow existed. Worth noting as a one-way door: there is currently no
+route back from a wrong answer except a database edit.
+
+### Age in, year stored
+
+The flow asks an age because that is the number a person knows without
+thinking; the column keeps a birth year because that is the fact that does not
+go stale. The conversion is off by up to a year depending on the birthday,
+which is the right precision for choosing a starting weight and the wrong one
+for anything else — so the You screen goes on asking for the year itself.
