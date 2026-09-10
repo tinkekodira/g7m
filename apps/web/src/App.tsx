@@ -14,6 +14,8 @@ import { GoalScreen } from './screens/GoalScreen.js';
 import { PlanScreen } from './screens/PlanScreen.js';
 import { SessionDetailScreen } from './screens/SessionDetailScreen.js';
 import { ExerciseTrendScreen } from './screens/ExerciseTrendScreen.js';
+import { WelcomeScreen } from './screens/WelcomeScreen.js';
+import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
 
@@ -115,23 +117,75 @@ export function App() {
 function SignedIn() {
   return (
     <HashRouter>
-      <Routes>
-        <Route path="/" element={<HomeScreen />} />
-        <Route path="/exercises" element={<ExerciseLibraryScreen />} />
-        <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
-        <Route path="/workout" element={<WorkoutScreen />} />
-        <Route path="/learn" element={<LearnScreen />} />
-        <Route path="/progress" element={<ProgressScreen />} />
-        <Route path="/you" element={<MetricsScreen />} />
-        <Route path="/goal" element={<GoalScreen />} />
-        <Route path="/plan" element={<PlanScreen />} />
-        <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
-        <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
-        {/* A leftover auth fragment, a bookmark from a build that named routes
-            differently, a typo. Home is a better answer than a blank page, and
-            `replace` keeps the bad URL out of the back button. */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Gate />
     </HashRouter>
+  );
+}
+
+/**
+ * The new-account questions, or the app. Never both, and never a redirect
+ * between them.
+ *
+ * The obvious shape for this is a guard that redirects to `/welcome`, and it
+ * has a race that is invisible until it bites. `useCatalogue` deliberately does
+ * not report `loading` on a re-read — flashing a spinner over data that is
+ * already on screen is worse than useless — so for a moment after the flow
+ * writes `onboarded_at`, a guard still holds the old row saying it is null. It
+ * would send somebody who had just answered the last question back to the
+ * first one.
+ *
+ * Swapping which routes exist has no such moment. When the re-read lands the
+ * app's routes are simply what is mounted, and the welcome URL falls through
+ * to the catch-all that already sends unknown paths home.
+ *
+ * **Fails open.** Onboarding shows only when there is a profile row that says
+ * the questions are unanswered. A row that has not synced yet reads as null,
+ * and treating that as "not onboarded" would offer a returning user a flow
+ * whose writes have nothing to write to — and on a device that never gets a
+ * connection, lock them out of an app that is supposed to work offline. Being
+ * asked a moment late is the cheaper mistake.
+ */
+function Gate() {
+  const profile = useCatalogue('profile', (r) => r.profile.current());
+  const asking = profile.data !== null && profile.data.onboardedAt === null;
+
+  return asking ? <WelcomeRoutes /> : <AppRoutes />;
+}
+
+/**
+ * While the questions are unanswered, they are the only thing there is.
+ *
+ * Anything that is not a step lands on `WelcomeScreen` without one, which is
+ * how it knows to resume at the first question still needing an answer.
+ */
+function WelcomeRoutes() {
+  return (
+    <Routes>
+      <Route path="/welcome/:step" element={<WelcomeScreen />} />
+      <Route path="*" element={<WelcomeScreen />} />
+    </Routes>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomeScreen />} />
+      <Route path="/exercises" element={<ExerciseLibraryScreen />} />
+      <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
+      <Route path="/workout" element={<WorkoutScreen />} />
+      <Route path="/learn" element={<LearnScreen />} />
+      <Route path="/progress" element={<ProgressScreen />} />
+      <Route path="/you" element={<MetricsScreen />} />
+      <Route path="/goal" element={<GoalScreen />} />
+      <Route path="/plan" element={<PlanScreen />} />
+      <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
+      <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
+      {/* A leftover auth fragment, a bookmark from a build that named
+            routes differently, a typo — and `/welcome/goal`, one render after
+            the last question is answered. Home is a better answer than a blank
+            page, and `replace` keeps the bad URL out of the back button. */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
