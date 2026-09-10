@@ -689,3 +689,71 @@ describe('filtering by whether it needs a gym', () => {
     expect(found.map((entry) => entry.id)).toEqual(['push-up']);
   });
 });
+
+/**
+ * The library opened on the wrong exercises.
+ *
+ * Filtering it to Biceps listed Pull-Up, Lat Pulldown and Barbell Row above
+ * the curl, because popularity was the whole order and a pull-up is a more
+ * popular exercise than a curl. Every one of those does train the biceps.
+ * None of them is what somebody who tapped "Biceps" was looking for.
+ */
+describe('ranking a filtered list', () => {
+  beforeEach(async () => {
+    await db.seed('muscle_groups', { id: 'g-biceps', slug: 'biceps', name: 'Biceps' });
+    await db.seed('muscles', {
+      id: 'm-biceps',
+      slug: 'biceps-brachii',
+      muscle_group_id: 'g-biceps',
+    });
+
+    const links: [string, string, string, string, number, number][] = [
+      // id, slug, name, role, recruitment, popularity
+      ['pullup', 'pull-up', 'Pull-Up', 'secondary', 0.6, 1],
+      ['row', 'barbell-row', 'Barbell Row', 'secondary', 0.5, 2],
+      ['curl', 'barbell-curl', 'Barbell Curl', 'primary', 0.95, 40],
+      ['hammer', 'hammer-curl', 'Hammer Curl', 'primary', 0.8, 50],
+    ];
+
+    for (const [id, slug, name, role, weight, rank] of links) {
+      await seedExercise({ id, slug, name, popularity_rank: rank });
+      await db.seed('exercise_muscles', {
+        id: `xm-${id}`,
+        exercise_id: id,
+        muscle_id: 'm-biceps',
+        role,
+        recruitment_weight: weight,
+      });
+    }
+  });
+
+  const names = async (criteria: Parameters<ExerciseRepository['filter']>[0]): Promise<string[]> =>
+    (await exercises.filter(criteria)).map((exercise) => exercise.name);
+
+  it('puts what targets the group above what merely borrows it', async () => {
+    expect(await names({ muscleGroupIds: ['g-biceps'] })).toEqual([
+      'Barbell Curl',
+      'Hammer Curl',
+      'Pull-Up',
+      'Barbell Row',
+    ]);
+  });
+
+  it('ranks within a role by how much of the work the muscle does', async () => {
+    const ranked = await names({ muscleGroupIds: ['g-biceps'] });
+    // 0.95 before 0.80, and the more popular pull-up still behind both.
+    expect(ranked.indexOf('Barbell Curl')).toBeLessThan(ranked.indexOf('Hammer Curl'));
+  });
+
+  it('ranks the same way when the filter names a muscle rather than a group', async () => {
+    expect((await names({ muscleIds: ['m-biceps'] }))[0]).toBe('Barbell Curl');
+  });
+
+  /**
+   * Nothing was asked about muscles, so there is no relevance to rank by and
+   * popularity is the right answer again.
+   */
+  it('falls back to popularity when the filter says nothing about muscles', async () => {
+    expect(await names({})).toEqual(['Pull-Up', 'Barbell Row', 'Barbell Curl', 'Hammer Curl']);
+  });
+});

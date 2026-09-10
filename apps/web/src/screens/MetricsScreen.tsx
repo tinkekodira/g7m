@@ -101,6 +101,7 @@ export function MetricsScreen() {
 
       <AboutYou
         unitSystem={unitSystem}
+        displayName={profile.data?.displayName ?? null}
         heightCm={current.data?.heightCm ?? null}
         birthYear={profile.data?.birthYear ?? null}
         age={age}
@@ -251,6 +252,7 @@ function WeightSection({
 
 function AboutYou({
   unitSystem,
+  displayName,
   heightCm,
   birthYear,
   age,
@@ -259,6 +261,7 @@ function AboutYou({
   activityLevel,
 }: {
   readonly unitSystem: UnitSystem;
+  readonly displayName: string | null;
   readonly heightCm: number | null;
   readonly birthYear: number | null;
   readonly age: number | null;
@@ -270,9 +273,24 @@ function AboutYou({
   const heightUnit = unitSystem === 'imperial' ? 'in' : 'cm';
   const shownHeight = heightCm === null ? null : toDisplayHeight(heightCm, unitSystem);
 
+  const [name, setName] = useState('');
   const [height, setHeight] = useState('');
   const [year, setYear] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+
+  /**
+   * The name the home screen greets you by.
+   *
+   * The column and the repository have supported this since the first
+   * migration — trimmed, blanked back to null, tested — and nothing in the app
+   * ever wrote to it, so it was null for everybody and the greeting had no
+   * name to use. This is the missing half.
+   */
+  async function saveName(): Promise<void> {
+    setProblem(null);
+    await write((r) => r.profile.update({ displayName: name }));
+    setName('');
+  }
 
   async function saveHeight(): Promise<void> {
     const typed = Number(height.replace(',', '.'));
@@ -306,6 +324,33 @@ function AboutYou({
       <h2 className="mb-3 text-lg font-semibold text-primary">About you</h2>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <TextField
+            label="Your name"
+            value={name}
+            placeholder={displayName ?? ''}
+            hint={
+              displayName === null
+                ? 'Only used to say hello on the home screen'
+                : `The home screen greets you as ${displayName}`
+            }
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+          />
+        </div>
+        <Button
+          variant="secondary"
+          disabled={busy || name.trim() === ''}
+          onClick={() => {
+            void saveName();
+          }}
+        >
+          Save
+        </Button>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="min-w-0 flex-1">
           <TextField
             label={`Height (${heightUnit})`}

@@ -2794,3 +2794,81 @@ nothing in the build can check that they do: the taxonomy lives in a database
 the anatomy package does not depend on and should not. So both ends are pinned
 to an explicit list, and marking a sixth muscle deep fails a test that names
 the migration it needs.
+
+## ADR-0050 — Present, and unreachable
+
+Five things reported from a session with the app on a phone. Two of them were
+the same fault as ADR-0049, arriving again from a different direction: the
+thing existed, and the way to it did not.
+
+### The exercise that was already there
+
+"Some exercises are missing, like skullcrushers and cable lat pullovers."
+
+The skull crusher was genuinely missing. The cable pullover was not — it has
+been in the catalogue since the first seed, as `straight-arm-pulldown`. It
+could not be found because its aliases were `straight arm pushdown` and `lat
+pushdown`, so a search for *pullover* — which is what everybody calls it —
+matched nothing at all, and `popularity_rank: 180` put it near the bottom of
+every list it appeared in.
+
+The row was right. The words were wrong. It keeps its name, because renaming a
+thing people have already learned is its own cost, and gains the words people
+reach for.
+
+That is twice now — the supporting exercises in ADR-0049 and this — that a gap
+in the app turned out to be a gap in the *route*, not in the data. Worth
+naming, because the two look identical from the outside and the fixes are
+nothing alike: one is a query, one is a synonym, and neither is "add the thing
+that is missing".
+
+### Popularity is the wrong answer to a narrowed question
+
+Filtering the library to Biceps opened on Pull-Up, Lat Pulldown and Barbell
+Row, with the curl fourth. Every one of those does train the biceps, and the
+order was pure `popularity_rank` — a fact about the catalogue as a whole, asked
+of a list that was no longer the whole catalogue.
+
+A filtered list now ranks by how the filtered muscles are actually involved:
+prime movers before supporting muscles, then by recruitment weight, and only
+then by popularity. The unfiltered list is unchanged, because with no muscle in
+the question there is no relevance to sort by and popularity is right again.
+
+### While it has focus, the field belongs to the typist
+
+The weight stepper could not be typed into. It was controlled straight from the
+number — `value={value.toFixed(1)}` — so entering `5` put 5 in the parent,
+which came back as the string `"5.0"`. That is a different string from the one
+in the box, so React rewrote the field and dropped the caret at the end; the
+next digit made `"5.00"`, which parses to 5, which renders `"5.0"`.
+
+The field could not reach 50. Every digit after the first was swallowed by a
+decimal point that arrived uninvited.
+
+A keystroke now starts a draft, the draft is what shows, and formatting happens
+on blur. Two rules came out of writing the tests and neither was obvious:
+an **empty** box is not zero — `Number('')` is 0, and clearing a weight to
+retype it used to silently set it to zero — and a **half-typed** number is not
+a mistake, so `"-"` and `"1e"` leave the value alone rather than reporting NaN.
+
+### A greeting with nobody in it
+
+`profiles.display_name` has existed since the first migration, with a
+repository that trims it, blanks it back to null and has tests for both. Nothing
+in the app ever wrote to it. So it was null for every user, and the home screen
+— which showed the name *instead of* the greeting — fell through to
+"Bienvenue" for everybody and put the account's email address underneath.
+
+A column, a repository and a test, and no way in. The greeting now joins the
+name rather than being replaced by it, the email moved to the account card
+where "whose account is this" is actually asked, and the You screen finally has
+the field that fills it in.
+
+### The chest ended above the pectoral
+
+Measured on the sculpt, `pec-major-sternal` dominated down to y 1.30 and had
+lost the surface entirely by 1.24 — a hand's width above where a pectoral
+actually ends, with the abdomen holding the lower chest. The sternal origin
+runs to the sixth costal cartilage, not the fourth; extended there it is 898
+skin vertices rather than 645, and the abdomen starts at the inframammary line
+where a chart puts it.

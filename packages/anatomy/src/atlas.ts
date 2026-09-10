@@ -170,11 +170,11 @@ export const MUSCLES: readonly MuscleSpec[] = [
     lines: [
       [
         [0.014, 1.428, 0.083],
-        [0.03, 1.246, 0.085],
+        [0.034, 1.206, 0.079],
       ],
       [
         [0.085, 1.4, 0.115],
-        [0.108, 1.288, 0.1],
+        [0.113, 1.249, 0.097],
       ],
       [
         [0.15, 1.408, 0.056],
@@ -182,7 +182,7 @@ export const MUSCLES: readonly MuscleSpec[] = [
       ],
       at([0.165, 1.412, 0.02]),
     ],
-    fascicles: 9,
+    fascicles: 10,
     girth: 0.03,
     flatten: 0.9,
     bellyAt: 0.45,
@@ -458,8 +458,8 @@ export const MUSCLES: readonly MuscleSpec[] = [
         [0.078, 1.14, 0.102],
       ],
       [
-        [0.038, 1.298, 0.104],
-        [0.08, 1.298, 0.092],
+        [0.038, 1.262, 0.106],
+        [0.08, 1.262, 0.094],
       ],
     ],
     fascicles: 3,

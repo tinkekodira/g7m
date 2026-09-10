@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GREETABLE_COUNTRIES, countryName, greetingFor } from './greeting.js';
+import { GREETABLE_COUNTRIES, countryName, firstName, greetingFor } from './greeting.js';
 
 describe('greetingFor', () => {
   it('greets somebody in the language of where they are from', () => {
@@ -112,5 +112,28 @@ describe('countryName', () => {
     expect(countryName('ZZ', 'en')).not.toBe('');
     expect(countryName('Z', 'en')).toBe('Z');
     expect(countryName('DE', 'not-a-locale')).not.toBe('');
+  });
+});
+
+describe('firstName', () => {
+  it('greets somebody by the name they go by, not their full one', () => {
+    expect(firstName('Tin Milanović')).toBe('Tin');
+    expect(firstName('Tin')).toBe('Tin');
+  });
+
+  it('copes with the whitespace a pasted name arrives with', () => {
+    expect(firstName('  Tin  Milanović ')).toBe('Tin');
+    expect(firstName('Tin	Milanović')).toBe('Tin');
+  });
+
+  /**
+   * The common case. The field is optional and most people never fill it in,
+   * so the greeting has to read without one rather than inventing a name from
+   * an email address.
+   */
+  it('has nothing to say when there is no name', () => {
+    expect(firstName(null)).toBeNull();
+    expect(firstName('')).toBeNull();
+    expect(firstName('   ')).toBeNull();
   });
 });
