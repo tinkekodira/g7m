@@ -29,6 +29,22 @@ import { bodyForms, type BodyPart } from './placeholder-body.js';
  * into a flat orange blob.
  */
 
+/**
+ * Skin with nothing to say about it.
+ *
+ * One colour, used as the resting tone in `explore` and as the cold end of the
+ * heat ramp, because in both modes it means the same thing: this part of the
+ * body is not what you are being shown. Two shades a few degrees apart said
+ * that twice and made the figure look like two different bodies depending on
+ * which chip was selected.
+ *
+ * Grey rather than the warmer clay it used to be. The resting colour is a
+ * background — the whole job of both modes is that some of the figure is lit
+ * and the rest is not — and pulling the red out of it widens the gap to the
+ * orange without making the body any darker.
+ */
+const RESTING_SKIN = '#6f6058';
+
 const PALETTE = {
   /** Resting muscle. Deep enough that the selection has somewhere to go. */
   muscle: '#a3453a',
@@ -50,17 +66,14 @@ const PALETTE = {
    * A closed surface is a different object from a bundle of muscle bellies and
    * cannot be painted like one. The deep red above is a muscle seen with the
    * skin taken off; put it on the skin itself and the figure reads as a
-   * mannequin dipped in paint. This is clay, which is what a body looks like
-   * with the light on it.
+   * mannequin dipped in paint.
    *
-   * Dark clay, and darker than a body in daylight, because the resting colour
-   * is a background: the whole job of `explore` is that one muscle is lit and
-   * the rest is not. Lit against a light body the selection was a change of
-   * hue; against this it is a change of hue *and* value, which is the same
-   * reason the heat map's cold end sits down here.
+   * Both start from `RESTING_SKIN`, which is the point: an unselected muscle
+   * and an untrained one are the same statement, and they should not be two
+   * colours.
    */
-  skin: '#7d5747',
-  skinHeat: ['#6f6058', '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
+  skin: RESTING_SKIN,
+  skinHeat: [RESTING_SKIN, '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
 };
 
 export type AnatomyMode = 'explore' | 'heatmap';
