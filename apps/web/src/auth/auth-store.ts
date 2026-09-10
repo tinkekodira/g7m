@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.js';
 import { appBaseUrl } from '../lib/app-url.js';
+import { handOverDevice } from '../lib/powersync/database.js';
 import {
   INITIAL_AUTH_STATE,
   friendlyAuthError,
@@ -137,10 +138,43 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (error !== null) set({ busy: false, error: friendlyAuthError(error.message) });
   },
 
+  /**
+   * End the session, and hand the device over first.
+   *
+   * The order matters. PowerSync keeps one local database and one write queue
+   * for whoever is signed in, so anything still queued here would be uploaded
+   * with the *next* account's token — refused by row level security, correctly,
+   * and then thrown away as permanently unsendable. Draining before the session
+   * ends is what stops a set logged on one account being destroyed by somebody
+   * signing in on another.
+   *
+   * A queue that will not drain leaves the device untouched and says so. Unsent
+   * work still on a device can be recovered by signing back in with a
+   * connection; unsent work that has been deleted cannot.
+   */
   signOut: async () => {
-    set({ busy: true, error: null });
+    set({ busy: true, error: null, notice: null });
+
+    // Never allowed to block the sign-out itself: somebody handing a phone over
+    // needs the session gone whatever the database is doing. Failing here
+    // leaves the device as it is, which is the safe direction.
+    const handover = await handOverDevice().catch((cause: unknown) => {
+      console.error('Could not hand the device over cleanly.', cause);
+      return { state: 'kept', pending: 0 } as const;
+    });
+
     const { error } = await supabase.auth.signOut();
-    set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
+
+    const unsent =
+      handover.state === 'kept' && handover.pending > 0
+        ? `${String(handover.pending)} changes had not reached the server, so nothing on this device was cleared. Sign back in with a connection to save them.`
+        : null;
+
+    set({
+      busy: false,
+      error: error === null ? null : friendlyAuthError(error.message),
+      notice: unsent,
+    });
   },
 
   /**
