@@ -37,6 +37,56 @@ export const WEIGHT_FIELD_MEANING: Record<LoadType, string | null> = {
   assisted: 'Assistance',
 };
 
+/**
+ * Whether a set can carry weight on top of the lifter: a belt and plates on a
+ * dip, a vest on a pull-up, a plate on a back extension.
+ *
+ * `bodyweight_plus` has existed since the first schema — the CHECK allows it,
+ * `effectiveLoadKg` adds it to bodyweight, records compare it by effective load
+ * and prefill carries it forward. What never existed was a way to *choose* it:
+ * a dip is logged as `bodyweight` because the dip station is bodyweight
+ * equipment, `WEIGHT_FIELD_MEANING.bodyweight` is null, and so a weighted dip
+ * could only ever be recorded as reps. This is the question the screen asks
+ * before offering the switch.
+ *
+ * Not `assisted`: an assistance machine already has its own field, and "add
+ * weight" on top of assistance means nothing.
+ */
+export function canAddWeight(loadType: LoadType): boolean {
+  return loadType === 'bodyweight' || loadType === 'bodyweight_plus';
+}
+
+/**
+ * Last time's set, as it reads beside this one: "100 × 5", "+20 × 8", "10 reps".
+ *
+ * The weight number means four different things, and the hint used to print it
+ * the same way every time. A plain dip read "Last: 0 × 10", which looks like a
+ * mistake; a weighted one would have read "Last: 20 × 8", which is 20 kg
+ * *added* printed as if it were 20 kg *lifted*. The sign carries the meaning:
+ * `+` is added to the lifter, `−` is taken off them by an assistance machine.
+ *
+ * `show` formats a positive number of kilograms in the lifter's units, without
+ * the unit — the hint has always been unit-less to stay short.
+ */
+export function describePreviousSet(
+  set: Pick<LoggedSet, 'loadType' | 'weightKg' | 'reps'>,
+  show: (kg: number) => string,
+): string {
+  const reps = `${String(set.reps)} ${set.reps === 1 ? 'rep' : 'reps'}`;
+  const bare = !Number.isFinite(set.weightKg) || set.weightKg <= 0;
+
+  switch (set.loadType) {
+    case 'external':
+      return `${show(Math.max(0, set.weightKg))} × ${String(set.reps)}`;
+    case 'bodyweight':
+      return reps;
+    case 'bodyweight_plus':
+      return bare ? reps : `+${show(set.weightKg)} × ${String(set.reps)}`;
+    case 'assisted':
+      return bare ? reps : `−${show(set.weightKg)} × ${String(set.reps)}`;
+  }
+}
+
 export interface LoggedSet {
   readonly setType: SetType;
   readonly loadType: LoadType;
