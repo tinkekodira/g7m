@@ -16,7 +16,7 @@
  */
 import { countsTowardVolume, setVolumeKg } from './load.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
-import { DEFAULT_WEEK_START, startOfWeek, type WeekStart } from './week.js';
+import { DEFAULT_WEEK_START, dateKey, startOfWeek, type WeekStart } from './week.js';
 
 export const PERIODS = ['week', 'month', 'all'] as const;
 export type Period = (typeof PERIODS)[number];
@@ -174,7 +174,7 @@ export function volumeBuckets(
 
   const moment = now.getTime();
   return spans.map((span, index) => ({
-    key: monthly ? monthKey(span.start) : dayKey(span.start),
+    key: monthly ? monthKey(span.start) : dateKey(span.start),
     start: span.start,
     end: span.end,
     volumeKg: round2(totals[index]?.volumeKg ?? 0),
@@ -284,10 +284,6 @@ function monthsIn(span: Span): Span[] {
     months.push({ start: month, end: addMonths(month, 1) });
   }
   return months;
-}
-
-function dayKey(date: Date): string {
-  return `${monthKey(date)}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function monthKey(date: Date): string {

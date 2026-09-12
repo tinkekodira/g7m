@@ -256,6 +256,17 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
+/** A clipboard with a list on it — a plan to follow. */
+export function ClipboardIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="5" y="4.5" width="14" height="16.5" rx="2.5" />
+      <path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5" />
+      <path d="M8.5 10h7M8.5 13.5h7M8.5 17h4" />
+    </Glyph>
+  );
+}
+
 export function AlertIcon(props: IconProps) {
   return (
     <Glyph {...props}>

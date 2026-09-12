@@ -7,6 +7,7 @@
  * purpose, the comparison that must not point downwards on a Tuesday.
  */
 import type { Comparison, Period, VolumeBucket } from '@g7m/core';
+import { monthName, monthShort, weekdayName, weekdayShort } from '../lib/date-words.js';
 
 export const PERIOD_OPTIONS = [
   { value: 'week', label: 'Weekly' },
@@ -43,45 +44,6 @@ export function previousPhrase(period: Period): string | null {
   }
 }
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-const WEEKDAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-] as const;
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
-
 /**
  * Under a column.
  *
@@ -92,8 +54,8 @@ const MONTH_NAMES = [
  * English, like the rest of the app outside the greeting (see greeting.ts).
  */
 export function captionFor(bucket: VolumeBucket, period: Period): string {
-  if (period === 'all') return MONTHS[bucket.start.getMonth()] ?? '';
-  if (period === 'week') return WEEKDAYS[bucket.start.getDay()] ?? '';
+  if (period === 'all') return monthShort(bucket.start);
+  if (period === 'week') return weekdayShort(bucket.start);
   const day = bucket.start.getDate();
   return (day - 1) % 7 === 0 ? String(day) : '';
 }
@@ -101,9 +63,9 @@ export function captionFor(bucket: VolumeBucket, period: Period): string {
 /** A column read aloud: "Monday", "8 September", "September 2026". */
 export function bucketName(bucket: VolumeBucket, period: Period): string {
   const date = bucket.start;
-  if (period === 'week') return WEEKDAY_NAMES[date.getDay()] ?? '';
-  if (period === 'month') return `${String(date.getDate())} ${MONTH_NAMES[date.getMonth()] ?? ''}`;
-  return `${MONTH_NAMES[date.getMonth()] ?? ''} ${String(date.getFullYear())}`;
+  if (period === 'week') return weekdayName(date);
+  if (period === 'month') return `${String(date.getDate())} ${monthName(date)}`;
+  return `${monthName(date)} ${String(date.getFullYear())}`;
 }
 
 /**
@@ -175,7 +137,7 @@ export function describeComparison(
 export function sinceLine(firstAt: Date | null): ComparisonLine | null {
   if (firstAt === null) return null;
   return {
-    headline: `${MONTHS[firstAt.getMonth()] ?? ''} ${String(firstAt.getFullYear())}`,
+    headline: `${monthShort(firstAt)} ${String(firstAt.getFullYear())}`,
     detail: 'first workout',
     ahead: false,
   };
@@ -183,5 +145,5 @@ export function sinceLine(firstAt: Date | null): ComparisonLine | null {
 
 /** The date tile beside a workout in the list: "12" over "SEP". */
 export function dateTile(date: Date): { readonly day: string; readonly month: string } {
-  return { day: String(date.getDate()), month: (MONTHS[date.getMonth()] ?? '').toUpperCase() };
+  return { day: String(date.getDate()), month: monthShort(date).toUpperCase() };
 }

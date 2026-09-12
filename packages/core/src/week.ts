@@ -45,6 +45,18 @@ export function startOfWeek(date: Date, weekStartsOn: WeekStart = DEFAULT_WEEK_S
 }
 
 /**
+ * A calendar date as `2026-09-10`, in local time.
+ *
+ * The key a day is filed under. A workout at 01:00 on a Thursday belongs to
+ * Thursday, wherever UTC puts it — the reason at the top of this file.
+ */
+export function dateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${String(date.getFullYear())}-${month}-${day}`;
+}
+
+/**
  * A stable, sortable label for a week: `2026-09-07`, its first day.
  *
  * Deliberately not an ISO week number. `2026-W37` sorts correctly and tells a
@@ -52,10 +64,7 @@ export function startOfWeek(date: Date, weekStartsOn: WeekStart = DEFAULT_WEEK_S
  * off-by-one bugs nobody needs for a chart of squats.
  */
 export function weekKey(date: Date, weekStartsOn: WeekStart = DEFAULT_WEEK_START): string {
-  const start = startOfWeek(date, weekStartsOn);
-  const month = String(start.getMonth() + 1).padStart(2, '0');
-  const day = String(start.getDate()).padStart(2, '0');
-  return `${String(start.getFullYear())}-${month}-${day}`;
+  return dateKey(startOfWeek(date, weekStartsOn));
 }
 
 export function isSameWeek(
