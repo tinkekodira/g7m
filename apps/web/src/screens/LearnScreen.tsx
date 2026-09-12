@@ -3,18 +3,9 @@ import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { Chip } from '@g7m/ui';
-import {
-  DEFAULT_WEEK_START,
-  prescriptionFor,
-  recentWeeks,
-  relativeVolume,
-  startOfDay,
-  suggestForNeglected,
-  volumeByMuscle,
-} from '@g7m/core';
 import type { Exercise, Muscle } from '@g7m/db';
-import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { HEATMAP_WEEKS, useNeglected, useTrainingHeat } from '../lib/db/use-trained-body.js';
 import { sectionsFor, type MuscleSections } from './muscle-exercises.js';
 
 /**
@@ -33,17 +24,6 @@ interface MuscleDetail {
   readonly muscle: Muscle;
   readonly sections: MuscleSections;
 }
-
-/** Four weeks. Long enough to include a full training split, short enough to be current. */
-const HEATMAP_WEEKS = 4;
-
-/**
- * Sessions before the app offers an opinion about what is missing.
- *
- * A cold shoulder after two workouts is not a gap in somebody's training, it
- * is a Tuesday.
- */
-const SESSIONS_BEFORE_ADVICE = 5;
 
 export function LearnScreen() {
   const [selected, setSelected] = useState<string | null>(null);
@@ -117,83 +97,17 @@ export function LearnScreen() {
   );
 
   /**
-   * Volume per muscle over the last four weeks, keyed by slug for the viewer.
-   *
-   * Only fetched in heat-map mode. It reads a month of training and joins the
-   * whole `exercise_muscles` table, which is not work to do for somebody who
-   * opened this screen to look at where their lats are.
+   * Volume per muscle over the last four weeks, and what to add about the cold
+   * ones. Only fetched in heat-map mode — see `use-trained-body.ts`, which
+   * Profile reads too, so the two bodies agree.
    */
-  const heat = useCatalogue(`heat:${mode}`, async (repositories) => {
-    if (mode !== 'heatmap') return null;
-
-    const weeks = recentWeeks(now, HEATMAP_WEEKS, DEFAULT_WEEK_START);
-    const [sets, shares, muscles] = await Promise.all([
-      repositories.history.completedSets({ from: weeks[0] ?? now }),
-      repositories.history.muscleShares(),
-      repositories.muscles.list(),
-    ]);
-
-    // The viewer knows muscles by slug; everything below it uses ids.
-    const slugById = new Map(muscles.map((muscle) => [muscle.id, muscle.slug]));
-    const byId = relativeVolume(volumeByMuscle(sets, shares));
-
-    const bySlug = new Map<string, number>();
-    for (const [muscleId, value] of byId) {
-      const slug = slugById.get(muscleId);
-      if (slug !== undefined) bySlug.set(slug, value);
-    }
-    return { intensity: bySlug, trained: sets.length > 0 };
-  });
-
-  /**
-   * What to do about the muscles the heat map shows cold.
-   *
-   * The map answers "what have I trained" and stops there, which leaves the
-   * more useful half of the question — so what do I add — as an exercise for
-   * the reader. Scored by the same function that picks tomorrow's session, so
-   * the suggestion here and the exercise there agree.
-   *
-   * Silent below five sessions. A cold shoulder after two workouts is not a
-   * gap in somebody's training, it is a Tuesday.
-   */
-  const todo = useCatalogue(`todo:${mode}`, async (repositories) => {
-    if (mode !== 'heatmap') return null;
-
-    const [profile, goal, sessions] = await Promise.all([
-      repositories.profile.current(),
-      repositories.goals.current(),
-      repositories.history.sessionSummaries(SESSIONS_BEFORE_ADVICE + 1),
-    ]);
-    if (sessions.length < SESSIONS_BEFORE_ADVICE) return null;
-
-    const since = startOfDay(now);
-    since.setDate(since.getDate() - 7);
-
-    const [catalogue, history, setsThisWeekByGroup] = await Promise.all([
-      repositories.planner.candidates(),
-      repositories.planner.lastPerformances(since),
-      repositories.planner.setsByGroupSince(since),
-    ]);
-
-    const prescription = prescriptionFor(
-      goal?.goal ?? 'build_muscle',
-      profile?.experienceLevel ?? null,
-    );
-
-    return suggestForNeglected({
-      catalogue,
-      history,
-      setsThisWeekByGroup,
-      weeklyTarget: prescription.weeklySetsPerGroup,
-      now,
-    });
-  });
+  const heat = useTrainingHeat(now, mode === 'heatmap');
+  const todo = useNeglected(now, mode === 'heatmap');
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
+      <header className="pt-6 pb-2">
         <h1 className="text-2xl font-semibold text-primary">Learn</h1>
-        <HeaderLink to="/">Home</HeaderLink>
       </header>
 
       {taxonomy.error !== null && (

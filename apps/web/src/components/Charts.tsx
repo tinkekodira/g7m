@@ -82,6 +82,113 @@ export function BarChart({
   );
 }
 
+export interface ColumnDatum {
+  readonly key: string;
+  readonly value: number;
+  /** Under the column. Empty leaves a gap — thirty-one day numbers do not fit a phone. */
+  readonly caption: string;
+  /** Still filling up, so drawn lighter: a month three days old is not a collapse. */
+  readonly inProgress?: boolean;
+  /** Has not happened yet. No column, and a fainter caption. */
+  readonly future?: boolean;
+  /** The caption to pick out — today. */
+  readonly highlight?: boolean;
+}
+
+/**
+ * The progress screen's chart: one column per day, or per month.
+ *
+ * Taller and rounder than `BarChart`, with its gridlines drawn and — where
+ * there are few enough columns to have room — each column's value printed on
+ * top of it. Seven numbers over seven days is the answer somebody wanted; an
+ * axis they have to read across to is a step between them and it.
+ *
+ * Columns are measured against a plot area that stops short of the top, so
+ * the tallest one still has room for its label above it.
+ */
+export function ColumnChart({
+  data,
+  summary,
+  format = formatVolume,
+  showValues = data.length <= 12,
+}: {
+  readonly data: readonly ColumnDatum[];
+  readonly summary: string;
+  readonly format?: (value: number) => string;
+  readonly showValues?: boolean;
+}) {
+  const max = niceMax(data.map((datum) => datum.value));
+  const gap = data.length > 14 ? 'gap-0.5' : 'gap-1.5';
+
+  return (
+    <figure className="m-0">
+      <div role="img" aria-label={summary} className="relative h-44">
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-5 bottom-0 flex flex-col justify-between"
+        >
+          <div className="border-t border-dashed border-subtle" />
+          <div className="border-t border-dashed border-subtle" />
+          <div className="border-t border-subtle" />
+        </div>
+
+        {/* Without labels on the columns, the top line needs its value. */}
+        {!showValues && max > 0 && (
+          <span className="numeric absolute top-0 left-0 text-[11px] text-muted">
+            {format(max)}
+          </span>
+        )}
+
+        <div className={`absolute inset-x-0 top-5 bottom-0 flex items-end ${gap}`}>
+          {data.map((datum) => {
+            const height = Math.max(datum.value > 0 ? 3 : 0, fractionOf(datum.value, max) * 100);
+            return (
+              <div
+                key={datum.key}
+                className="relative flex h-full min-w-0 flex-1 items-end justify-center"
+              >
+                {showValues && datum.value > 0 && (
+                  <span
+                    className="numeric absolute left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap text-secondary"
+                    style={{ bottom: `calc(${String(height)}% + 4px)` }}
+                  >
+                    {format(datum.value)}
+                  </span>
+                )}
+                {!datum.future && (
+                  <div
+                    className={`w-full max-w-9 rounded-t-md transition-[height] duration-300 ease-out ${
+                      datum.inProgress === true ? 'bg-accent/55' : 'bg-accent'
+                    }`}
+                    style={{ height: `${String(height)}%` }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={`mt-2 flex ${gap}`}>
+        {data.map((datum) => (
+          <span
+            key={`${datum.key}-caption`}
+            className={`numeric min-w-0 flex-1 text-center text-[11px] ${
+              datum.highlight === true
+                ? 'font-semibold text-primary'
+                : datum.future === true
+                  ? 'text-muted/60'
+                  : 'text-muted'
+            }`}
+          >
+            {datum.caption}
+          </span>
+        ))}
+      </div>
+    </figure>
+  );
+}
+
 /**
  * A trend line, with a dot per session.
  *

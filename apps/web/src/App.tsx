@@ -15,6 +15,9 @@ import { PlanScreen } from './screens/PlanScreen.js';
 import { SessionDetailScreen } from './screens/SessionDetailScreen.js';
 import { ExerciseTrendScreen } from './screens/ExerciseTrendScreen.js';
 import { WelcomeScreen } from './screens/WelcomeScreen.js';
+import { ProfileScreen } from './screens/ProfileScreen.js';
+import { SettingsScreen } from './screens/SettingsScreen.js';
+import { TabLayout } from './components/TabLayout.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
@@ -167,20 +170,33 @@ function WelcomeRoutes() {
   );
 }
 
+/**
+ * The app's screens, all but one under the tab bar.
+ *
+ * The workout is the exception. It is somewhere you are *in* rather than
+ * somewhere you pass through, it pins its own bars — rest timer, undo, "still
+ * training?" — to the bottom of the screen, and five other destinations under
+ * a thumb mid-set are five ways to leave a workout by accident. Its header
+ * link and Finish are the ways out.
+ */
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomeScreen />} />
-      <Route path="/exercises" element={<ExerciseLibraryScreen />} />
-      <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
+      <Route element={<TabLayout />}>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/learn" element={<LearnScreen />} />
+        <Route path="/progress" element={<ProgressScreen />} />
+        <Route path="/profile" element={<ProfileScreen />} />
+        <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/exercises" element={<ExerciseLibraryScreen />} />
+        <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />
+        <Route path="/you" element={<MetricsScreen />} />
+        <Route path="/goal" element={<GoalScreen />} />
+        <Route path="/plan" element={<PlanScreen />} />
+        <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
+        <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
+      </Route>
       <Route path="/workout" element={<WorkoutScreen />} />
-      <Route path="/learn" element={<LearnScreen />} />
-      <Route path="/progress" element={<ProgressScreen />} />
-      <Route path="/you" element={<MetricsScreen />} />
-      <Route path="/goal" element={<GoalScreen />} />
-      <Route path="/plan" element={<PlanScreen />} />
-      <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
-      <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       {/* A leftover auth fragment, a bookmark from a build that named
             routes differently, a typo — and `/welcome/goal`, one render after
             the last question is answered. Home is a better answer than a blank

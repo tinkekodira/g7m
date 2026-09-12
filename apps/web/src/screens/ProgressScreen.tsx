@@ -1,204 +1,321 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
+  PERIODS,
+  comparePeriods,
   describeWhen,
-  personalRecords,
-  recentWeeks,
+  formatMinutes,
+  periodWindow,
+  startOfDay,
+  totalsWithin,
   trainingMinutes,
-  weeklyVolume,
-  type PersonalRecord,
+  volumeBuckets,
+  type Period,
   type WeekStart,
 } from '@g7m/core';
 import type { SessionSummary } from '@g7m/db';
-import { HeaderLink } from '../components/HeaderLink.js';
-import { BarChart } from '../components/Charts.js';
-import { formatVolume } from '../components/chart-scale.js';
+import { SegmentedControl, cx } from '@g7m/ui';
+import { ColumnChart } from '../components/Charts.js';
+import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
+import { ChevronRightIcon, ClockIcon, FlameIcon } from '../components/icons.js';
+import { ReviewCard } from '../components/ReviewCard.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
-import { ReviewCard } from '../components/ReviewCard.js';
+import {
+  PERIOD_OPTIONS,
+  captionFor,
+  chartSummary,
+  dateTile,
+  describeComparison,
+  periodFrom,
+  periodPhrase,
+  sinceLine,
+  type ComparisonLine,
+} from './progress-view.js';
 
-/** Three months. Long enough to show a pattern, short enough to read on a phone. */
-const WEEKS_SHOWN = 12;
+/** Workouts listed before "Show all". Enough to see the last fortnight or so. */
+const RECENT_SHOWN = 5;
 
 /**
- * Progress.
+ * Progress: this week, this month, or all of it.
  *
  * Reads only finished sessions, so nothing here moves while somebody is
- * mid-workout — a week's bar growing under you as you train reads as a bug
+ * mid-workout — a day's column growing under you as you train reads as a bug
  * even when the arithmetic is right.
+ *
+ * Everything the three views need is read once, when the screen opens, and
+ * each view is arithmetic over it. Switching between them is then instant,
+ * which is the difference between a control somebody flicks through and one
+ * they tap once and wait on.
+ *
+ * Bests used to live here and moved to Profile, beside the rest of what
+ * somebody is — this screen is about what they have been doing.
  */
 export function ProgressScreen() {
   const now = useMemo(() => new Date(), []);
   const review = useTrainingReview(now);
 
-  const state = useCatalogue('progress', async (repositories) => {
-    const profile = await repositories.profile.current();
+  // In the URL like every other filter (ADR-0034), so the back button returns
+  // to the view that was showing rather than resetting to the week.
+  const [params, setParams] = useSearchParams();
+  const period = periodFrom(params.get('period'));
+  const choose = (next: Period): void => {
+    setParams(next === 'week' ? {} : { period: next }, { replace: true });
+  };
+
+  const state = useCatalogue(`progress-${startOfDay(now).toISOString()}`, async (r) => {
+    const profile = await r.profile.current();
     const weekStartsOn = (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart;
-    const weeks = recentWeeks(now, WEEKS_SHOWN, weekStartsOn);
 
-    const [sets, summaries, exerciseNames] = await Promise.all([
-      // The window starts at the first week shown, so the chart reads exactly
-      // the rows it draws rather than a year of history to plot three months.
-      repositories.history.completedSets({ from: weeks[0] ?? now }),
-      repositories.history.sessionSummaries(20),
-      repositories.history.trainedExercises(),
-    ]);
+    // Every counted workout, because all time has to count all of them. Each
+    // is one aggregated row; a year of training is a couple of hundred.
+    const summaries = await r.history.sessionSummaries(null);
+    const firstAt = summaries.at(-1)?.startedAt ?? null;
 
+    // Sets as far back as any of the three views reaches — the month before
+    // this one, or the start of the all-time chart — so no view needs a read
+    // of its own.
+    const earliest = PERIODS.map((each) => {
+      const window = periodWindow(each, now, weekStartsOn, firstAt);
+      return window.previous?.start ?? window.chart.start;
+    }).reduce((a, b) => (a < b ? a : b));
+
+    const sets = await r.history.completedSets({ from: earliest });
     return {
       weekStartsOn,
-      weeks,
-      // Records are computed over the visible window, not all time. Said out
-      // loud on screen, because "best ever" and "best in three months" are
-      // different claims and only one of them is true here.
-      records: personalRecords(sets),
-      volume: weeklyVolume(sets, weeks, weekStartsOn),
+      unitSystem: profile?.unitSystem ?? 'metric',
       summaries,
-      names: new Map(exerciseNames.map((entry) => [entry.exerciseId, entry.name])),
+      firstAt,
+      sets,
     };
   });
 
+  const view = useMemo(() => {
+    if (state.data === null) return null;
+    const { weekStartsOn, summaries, firstAt, sets } = state.data;
+
+    const window = periodWindow(period, now, weekStartsOn, firstAt);
+    const buckets = volumeBuckets(window, sets, now);
+    const current = totalsWithin(summaries, window.current);
+    const previous = window.previous === null ? null : totalsWithin(summaries, window.previous);
+
+    return {
+      window,
+      buckets,
+      current,
+      workouts: comparePeriods(current.workouts, previous?.workouts ?? null),
+      minutes: comparePeriods(current.minutes, previous?.minutes ?? null),
+      volumeKg: buckets.reduce((sum, bucket) => sum + bucket.volumeKg, 0),
+    };
+  }, [state.data, period, now]);
+
+  const unitSystem = state.data?.unitSystem ?? 'metric';
+  const short = (kg: number): string => formatVolumeShort(kg, unitSystem);
+  const total = (kg: number): string => formatWeightTotal(kg, unitSystem);
+  const since = period === 'all' ? sinceLine(state.data?.firstAt ?? null) : null;
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
+      <header className="pt-6">
         <h1 className="text-2xl font-semibold text-primary">Progress</h1>
-        <HeaderLink to="/">Home</HeaderLink>
       </header>
 
-      {review.data?.review != null && (
-        <ReviewCard
-          observations={review.data.review.observations}
-          links={review.data.links}
-          unitSystem={review.data.unitSystem}
-        />
-      )}
+      <SegmentedControl label="Period" options={PERIOD_OPTIONS} value={period} onChange={choose} />
 
       {state.error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
           {state.error}
         </p>
-      ) : state.loading ? (
-        <p className="text-sm text-muted">Loading…</p>
-      ) : state.data === null || state.data.summaries.length === 0 ? (
-        <p className="rounded-card bg-surface p-4 text-sm text-secondary">
+      ) : state.loading || view === null || state.data === null ? (
+        <p className="rounded-card bg-surface p-4 text-sm text-muted">Loading…</p>
+      ) : state.data.summaries.length === 0 ? (
+        <p className="rounded-card border border-subtle bg-surface p-4 text-sm text-secondary">
           Nothing here yet. Finish a workout and it will show up — the charts need completed
           sessions, so the one you are part-way through does not count until you tap Finish.
         </p>
       ) : (
         <>
-          <section className="rounded-card bg-surface p-4">
-            <h2 className="mb-1 text-lg font-semibold text-primary">Volume</h2>
-            <p className="mb-3 text-xs text-muted">
-              Load times reps, over the last {String(WEEKS_SHOWN)} weeks. The final bar is the week
-              you are in.
+          <StatCard
+            icon={<FlameIcon className="size-6" />}
+            tone="accent"
+            title="Total workouts"
+            value={String(view.current.workouts)}
+            caption={periodPhrase(period)}
+            side={since ?? describeComparison(view.workouts, period, String)}
+          />
+          <StatCard
+            icon={<ClockIcon className="size-6" />}
+            tone="success"
+            title="Active time"
+            value={formatMinutes(view.current.minutes)}
+            caption={periodPhrase(period)}
+            side={since ?? describeComparison(view.minutes, period, formatMinutes)}
+          />
+
+          <section className="rounded-card border border-subtle bg-surface p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-lg font-semibold text-primary">Volume</h2>
+              <span className="numeric text-sm text-secondary">
+                {total(view.volumeKg)}{' '}
+                <span className="text-muted">
+                  {period === 'all' && view.window.clipped
+                    ? 'in the last 12 months'
+                    : periodPhrase(period)}
+                </span>
+              </span>
+            </div>
+            <p className="mt-1 mb-4 text-xs text-muted">
+              Weight times reps, over every working set.
+              {period === 'all' ? ' One column a month.' : ' One column a day.'}
             </p>
-            <BarChart
-              data={state.data.volume.map((week) => ({
-                label: week.week,
-                value: week.volumeKg,
-                caption: captionFor(week.week),
+            <ColumnChart
+              data={view.buckets.map((bucket) => ({
+                key: bucket.key,
+                value: bucket.volumeKg,
+                caption: captionFor(bucket, period),
+                // A day is trained or it is not. A month in progress is
+                // partial, and drawn lighter so it does not read as a slump.
+                inProgress: period === 'all' && bucket.inProgress,
+                future: bucket.future,
+                highlight: period !== 'all' && bucket.inProgress,
               }))}
-              summary={describeVolume(state.data.volume)}
+              format={short}
+              summary={chartSummary(view.buckets, period, total)}
             />
           </section>
 
-          <section className="rounded-card bg-surface p-4">
-            <h2 className="mb-3 text-lg font-semibold text-primary">Recent workouts</h2>
-            <ul className="flex flex-col">
-              {state.data.summaries.map((summary) => (
-                <li key={summary.sessionId}>
-                  <SessionRow summary={summary} now={now} />
-                </li>
-              ))}
-            </ul>
-          </section>
+          {review.data?.review != null && (
+            <ReviewCard
+              observations={review.data.review.observations}
+              links={review.data.links}
+              unitSystem={review.data.unitSystem}
+            />
+          )}
 
-          <section className="rounded-card bg-surface p-4">
-            <h2 className="mb-1 text-lg font-semibold text-primary">Bests</h2>
-            <p className="mb-3 text-xs text-muted">
-              Over the last {String(WEEKS_SHOWN)} weeks, not all time.
-            </p>
-            <Records records={state.data.records} names={state.data.names} />
-          </section>
+          <RecentWorkouts summaries={state.data.summaries} now={now} />
         </>
       )}
     </main>
   );
 }
 
+const TONES = {
+  accent: 'bg-accent/15 text-accent',
+  success: 'bg-success/15 text-success',
+} as const;
+
+/** One headline number, what it covers, and how it compares. */
+function StatCard({
+  icon,
+  tone,
+  title,
+  value,
+  caption,
+  side,
+}: {
+  readonly icon: ReactNode;
+  readonly tone: keyof typeof TONES;
+  readonly title: string;
+  readonly value: string;
+  readonly caption: string;
+  readonly side: ComparisonLine | null;
+}) {
+  return (
+    <section className="rise flex items-center gap-4 rounded-card border border-subtle bg-surface p-4">
+      <span
+        aria-hidden
+        className={cx(
+          'flex size-12 shrink-0 items-center justify-center rounded-full',
+          TONES[tone],
+        )}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-sm font-medium text-secondary">{title}</h2>
+        <p className="numeric text-2xl font-bold text-primary">{value}</p>
+        <p className="text-xs text-muted">{caption}</p>
+      </div>
+      {side !== null && (
+        <div className="shrink-0 text-right">
+          <p
+            className={cx(
+              'numeric text-sm font-semibold',
+              side.ahead ? 'text-success' : 'text-secondary',
+            )}
+          >
+            {side.headline}
+          </p>
+          <p className="text-xs text-muted">{side.detail}</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RecentWorkouts({
+  summaries,
+  now,
+}: {
+  readonly summaries: readonly SessionSummary[];
+  readonly now: Date;
+}) {
+  const [all, setAll] = useState(false);
+  const shown = all ? summaries : summaries.slice(0, RECENT_SHOWN);
+
+  return (
+    <section className="rounded-card border border-subtle bg-surface p-4">
+      <h2 className="mb-1 text-lg font-semibold text-primary">Recent workouts</h2>
+      <ul className="flex flex-col">
+        {shown.map((summary) => (
+          <li key={summary.sessionId} className="border-b border-subtle last:border-b-0">
+            <SessionRow summary={summary} now={now} />
+          </li>
+        ))}
+      </ul>
+      {summaries.length > RECENT_SHOWN && (
+        <button
+          type="button"
+          onClick={() => {
+            setAll((previous) => !previous);
+          }}
+          className="mt-2 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated"
+        >
+          {all ? 'Show fewer' : `Show all ${String(summaries.length)}`}
+        </button>
+      )}
+    </section>
+  );
+}
+
 function SessionRow({ summary, now }: { readonly summary: SessionSummary; readonly now: Date }) {
   // From the sets, not from how long the workout was open. See `trainingMinutes`.
   const minutes = trainingMinutes([summary.firstSetAt, summary.lastSetAt]);
+  const tile = dateTile(summary.startedAt);
 
   return (
     <Link
       to={`/progress/session/${summary.sessionId}`}
-      className="flex min-h-tap items-center justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
+      className="flex min-h-tap items-center gap-3 py-3 active:opacity-80"
     >
-      <span className="text-base text-primary">
-        {summary.name ?? describeWhen(summary.startedAt, now)}
+      <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-control bg-elevated leading-none">
+        <span className="numeric text-base font-semibold text-primary">{tile.day}</span>
+        <span className="mt-0.5 text-[10px] font-medium tracking-wide text-muted">
+          {tile.month}
+        </span>
       </span>
-      <span className="numeric shrink-0 text-sm text-secondary">
-        {summary.setCount} {summary.setCount === 1 ? 'set' : 'sets'}
-        {minutes !== null && ` · ${String(minutes)} min`}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-base font-medium text-primary">
+          {summary.name ?? 'Workout'}
+        </span>
+        <span className="numeric block text-xs text-muted">
+          {describeWhen(summary.startedAt, now)} · {summary.setCount}{' '}
+          {summary.setCount === 1 ? 'set' : 'sets'}
+          {minutes !== null && ` · ${String(minutes)} min`}
+        </span>
       </span>
+      <ChevronRightIcon className="size-5 shrink-0 text-muted" />
     </Link>
   );
-}
-
-const RECORD_LABELS: Record<PersonalRecord['recordType'], string> = {
-  max_weight: 'Heaviest',
-  estimated_1rm: 'Best estimated 1RM',
-  max_session_volume: 'Most in one session',
-};
-
-function Records({
-  records,
-  names,
-}: {
-  readonly records: readonly PersonalRecord[];
-  readonly names: ReadonlyMap<string, string>;
-}) {
-  // One line per exercise, showing its heaviest — the whole list is three
-  // entries per exercise and reads as a spreadsheet.
-  const heaviest = records.filter((record) => record.recordType === 'max_weight');
-
-  if (heaviest.length === 0) {
-    return <p className="text-sm text-muted">Nothing measurable yet.</p>;
-  }
-
-  return (
-    <ul className="flex flex-col">
-      {heaviest.map((record) => (
-        <li
-          key={`${record.exerciseId}-${record.recordType}`}
-          className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
-        >
-          <Link
-            to={`/progress/exercise/${record.exerciseId}`}
-            className="text-sm text-primary underline-offset-4 hover:underline"
-          >
-            {names.get(record.exerciseId) ?? 'Unknown exercise'}
-          </Link>
-          <span className="numeric shrink-0 text-sm text-secondary">
-            <span className="text-muted">{RECORD_LABELS[record.recordType]} </span>
-            {formatVolume(record.value)} kg
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** `7 Sep` becomes `7/9`, because twelve of these share a phone's width. */
-function captionFor(weekKey: string): string {
-  const [, month, day] = weekKey.split('-');
-  if (month === undefined || day === undefined) return '';
-  return `${String(Number(day))}/${String(Number(month))}`;
-}
-
-function describeVolume(weeks: readonly { week: string; volumeKg: number; sessions: number }[]) {
-  const trained = weeks.filter((week) => week.sessions > 0).length;
-  const total = weeks.reduce((sum, week) => sum + week.volumeKg, 0);
-  return `Weekly training volume. ${String(trained)} of the last ${String(weeks.length)} weeks had a workout in them, ${formatVolume(total)} kg in total.`;
 }
