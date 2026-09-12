@@ -5,6 +5,7 @@ import {
   describeWhen,
   personalRecords,
   recentWeeks,
+  trainingMinutes,
   weeklyVolume,
   type PersonalRecord,
   type WeekStart,
@@ -126,10 +127,8 @@ export function ProgressScreen() {
 }
 
 function SessionRow({ summary, now }: { readonly summary: SessionSummary; readonly now: Date }) {
-  const minutes =
-    summary.endedAt === null
-      ? null
-      : Math.round((summary.endedAt.getTime() - summary.startedAt.getTime()) / 60000);
+  // From the sets, not from how long the workout was open. See `trainingMinutes`.
+  const minutes = trainingMinutes([summary.firstSetAt, summary.lastSetAt]);
 
   return (
     <Link

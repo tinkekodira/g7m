@@ -3211,3 +3211,55 @@ The gate is *four sessions and twelve days*; the observation reported only the
 sessions. Ten sessions in five days came out as "10 of 4 sessions logged".
 `too_soon` now carries both dimensions and the copy names the one that is
 actually short — and says how long is left.
+
+## ADR-0057 — Three attempts at one button, and a clock that measured the wrong thing
+
+### Hold-to-repeat, third time
+
+ADR-0056 gave the stepper pointer capture, and holds then worked on the first
+two exercises and failed from the third. No code distinguishes exercises by
+position; the boundary is layout. On the reporting phone one exercise card is
+about 770px, so the first two fit on screen and the third is the first that
+has to be scrolled to.
+
+On a scrolled page iOS reads a finger held still on a button as the opening of
+a pan, and cancels the touch. Capture stops a `pointerleave`; it cannot stop a
+`pointercancel`. `touch-action: none` is meant to prevent exactly this, and
+WebKit honours it unreliably once a page has scrolled with a fixed layer on
+screen. `preventDefault` on a native, non-passive `touchstart` is the
+instruction it does not second-guess — non-passive because React registers its
+own touch handlers as passive and ignores the call.
+
+That cancels iOS's synthesised click too, which would have left the
+press-then-click flag set for ever and swallowed the next keyboard press. The
+flag is now cleared a task after `pointerup` instead.
+
+**Why it took three attempts.** Every fix was reasoned from a report, because
+iOS touch cannot be reproduced on the machine this is built on — desktop
+WebKit with emulated touch has no UIKit gesture recogniser, which is the thing
+deciding tap from scroll. That is the ADR-0047 pattern once more: the
+instrument is more forgiving than the target. Each report narrowed it — "first
+exercise only", then "first two only" — and each was right about what it saw.
+
+### Training time is read from the sets
+
+"13 sets · 2112 min" was a session left open for a day and a half. Duration
+was `endedAt − startedAt`, which measures how long a workout was *open*.
+`trainingMinutes` measures from the first ticked working set to the last, and
+cannot be inflated by anything either side. It misses the warm-up before the
+first set, which is the right direction to be wrong in. Both the list and the
+detail screen read it, so they cannot disagree about one session.
+
+### A session with nothing ticked is not a workout
+
+They listed as "0 sets · 0 min", and they counted: Learn waits for five
+sessions before offering advice, and five abandoned workouts met that with no
+training behind them. `sessionSummaries` now reports only sessions with at
+least one ticked working set. Nothing is deleted.
+
+### Left for a decision
+
+The live "elapsed" clock on the workout screen still counts from opening, so a
+forgotten workout still reads as a day and a half. Closing it automatically, or
+asking "still training?" after some hours idle, changes the workout flow and is
+not decided here.

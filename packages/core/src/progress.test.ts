@@ -8,6 +8,7 @@ import {
   weeklyVolume,
   type HistoricalSet,
   type MuscleShare,
+  trainingMinutes,
 } from './progress.js';
 import { recentWeeks } from './week.js';
 
@@ -311,5 +312,49 @@ describe('personalRecords', () => {
     for (const record of personalRecords([set()])) {
       expect(RECORD_TYPES).toContain(record.recordType);
     }
+  });
+});
+
+describe('trainingMinutes', () => {
+  const at = (minute: number): Date => new Date(Date.UTC(2026, 8, 12, 18, minute));
+
+  it('times a session from its first ticked set to its last', () => {
+    expect(trainingMinutes([at(0), at(20), at(47)])).toBe(47);
+  });
+
+  it('does not care what order the sets arrive in', () => {
+    expect(trainingMinutes([at(47), at(0), at(20)])).toBe(47);
+  });
+
+  /**
+   * The reported case. Nothing about how long the workout was left open can
+   * reach this number, because the workout's own start and end are not in it.
+   */
+  it('is not inflated by a workout left open', () => {
+    // Three sets across an evening; the session itself ran for a day and a half.
+    expect(trainingMinutes([at(0), at(25), at(52)])).toBe(52);
+  });
+
+  it('ignores sets that were never ticked', () => {
+    expect(trainingMinutes([at(0), null, at(30), null])).toBe(30);
+  });
+
+  /** "1 set · 0 min" is not a duration, it is a missing one. */
+  it('has nothing to say about a single set', () => {
+    expect(trainingMinutes([at(10)])).toBeNull();
+  });
+
+  it('has nothing to say about sets inside the same minute', () => {
+    const start = at(0);
+    expect(trainingMinutes([start, new Date(start.getTime() + 20_000)])).toBeNull();
+  });
+
+  it('has nothing to say about nothing', () => {
+    expect(trainingMinutes([])).toBeNull();
+    expect(trainingMinutes([null, null])).toBeNull();
+  });
+
+  it('skips a timestamp that did not parse rather than returning NaN', () => {
+    expect(trainingMinutes([at(0), new Date('not a date'), at(40)])).toBe(40);
   });
 });
