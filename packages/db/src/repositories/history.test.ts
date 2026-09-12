@@ -246,6 +246,20 @@ describe('sessionSummaries', () => {
     expect(await history.sessionSummaries(2)).toHaveLength(2);
   });
 
+  /** "All time" on the progress screen has to count every workout, not the last fifty. */
+  it('returns every workout when asked for no limit', async () => {
+    for (let day = 1; day <= 60; day++) {
+      const date = new Date(Date.UTC(2026, 6, day, 10));
+      await loggedSession(date.toISOString(), 'bench', [{ weightKg: 100, reps: 5 }]);
+    }
+    expect(await history.sessionSummaries()).toHaveLength(50);
+    const all = await history.sessionSummaries(null);
+    expect(all).toHaveLength(60);
+    // Still newest first, with nothing dropped from either end.
+    expect(all[0]?.startedAt.toISOString()).toBe('2026-08-29T10:00:00.000Z');
+    expect(all.at(-1)?.startedAt.toISOString()).toBe('2026-07-01T10:00:00.000Z');
+  });
+
   /**
    * A workout opened and walked away from. It listed as "0 sets · 442 min",
    * and it counted: Learn waits for five sessions before offering advice, and

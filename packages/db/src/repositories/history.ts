@@ -201,9 +201,16 @@ export class HistoryRepository {
    * waits for five sessions before offering advice, and five abandoned ones
    * met that threshold with no training behind it at all. Nothing is deleted —
    * the rows are still there — they are just not reported as training.
+   *
+   * `null` for every workout ever logged, which is what "all time" on the
+   * progress screen has to count. A year of training is a couple of hundred of
+   * these rows, and each is already one aggregated line.
    */
-  async sessionSummaries(limit = 50): Promise<SessionSummary[]> {
+  async sessionSummaries(limit: number | null = 50): Promise<SessionSummary[]> {
     const { userId } = resolveContext(this.context);
+    // A limit of -1 is SQLite for "no limit", which keeps this one statement
+    // rather than two that could drift apart.
+    const bound = limit === null ? -1 : Math.max(1, Math.trunc(limit));
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg,
               (SELECT COUNT(*) FROM session_exercises se
@@ -222,7 +229,7 @@ export class HistoryRepository {
         WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL
         ORDER BY ws.started_at DESC, ws.id DESC
         LIMIT ?`,
-      [userId, Math.max(1, Math.trunc(limit))],
+      [userId, bound],
     );
 
     return rows.map((row) => ({
