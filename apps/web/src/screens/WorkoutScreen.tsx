@@ -4,6 +4,8 @@ import { Button, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
   bestsFrom,
+  canAddWeight,
+  describePreviousSet,
   formatRest,
   fromDisplayWeight,
   incrementKgFor,
@@ -64,6 +66,19 @@ interface Workout {
   readonly session: WorkoutSession;
   readonly profile: Profile | null;
   readonly blocks: readonly ExerciseBlock[];
+}
+
+/**
+ * What a set row hands back when it is ticked or saved.
+ *
+ * The load type travels with the numbers because it changes what the weight
+ * *means*: 20 on a dip with `bodyweight_plus` is twenty kilograms on a belt,
+ * and the same 20 saved as `bodyweight` would be thrown away.
+ */
+interface SetEdit {
+  readonly weightKg: number;
+  readonly reps: number;
+  readonly loadType: LoadType;
 }
 
 export function WorkoutScreen() {
@@ -625,9 +640,9 @@ function ExerciseCard({
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
   readonly onAddSet: () => void;
-  readonly onComplete: (setId: string, changes: { weightKg: number; reps: number }) => void;
+  readonly onComplete: (setId: string, changes: SetEdit) => void;
   readonly onUncomplete: (setId: string) => void;
-  readonly onSave: (setId: string, changes: { weightKg: number; reps: number }) => void;
+  readonly onSave: (setId: string, changes: SetEdit) => void;
   readonly onRemoveSet: (setId: string) => void;
   readonly onRateEffort: (setId: string, repsInReserve: number) => void;
   readonly onRemove: () => void;
@@ -824,17 +839,36 @@ function SetRow({
   readonly previous: SetTemplate | null;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
-  readonly onComplete: (changes: { weightKg: number; reps: number }) => void;
+  readonly onComplete: (changes: SetEdit) => void;
   readonly onUncomplete: () => void;
-  readonly onSave: (changes: { weightKg: number; reps: number }) => void;
+  readonly onSave: (changes: SetEdit) => void;
   readonly onRemove: () => void;
 }) {
   const [weight, setWeight] = useState(() => toDisplayWeight(set.weightKg, unitSystem).value);
   const [reps, setReps] = useState(set.reps);
 
-  const weightLabel = WEIGHT_FIELD_MEANING[set.loadType];
+  /**
+   * Plain bodyweight or weighted, held here and written on the tick like the
+   * numbers are.
+   *
+   * A dip is logged as `bodyweight` because the dip station is bodyweight
+   * equipment, and `bodyweight` has no weight field — so a weighted dip could
+   * only ever be recorded as reps, though `bodyweight_plus` has been in the
+   * schema, the volume maths and the records since the start. This is the
+   * switch that was missing. Prefill already carries the choice forward, to the
+   * next set and to next week.
+   */
+  const [loadType, setLoadType] = useState<LoadType>(set.loadType);
+
+  const weightLabel = WEIGHT_FIELD_MEANING[loadType];
   const stepDisplay = toDisplayWeight(incrementKgFor(unitSystem), unitSystem).value;
-  const changes = { weightKg: fromDisplayWeight(weight, unitSystem), reps };
+  const changes: SetEdit = {
+    // Plain bodyweight carries no weight. A stale number left in the field from
+    // before "bodyweight only" was chosen must not be saved as added load.
+    weightKg: loadType === 'bodyweight' ? 0 : fromDisplayWeight(weight, unitSystem),
+    reps,
+    loadType,
+  };
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
 
@@ -867,7 +901,9 @@ function SetRow({
           <span className="numeric text-xs text-muted">
             {previous === null
               ? 'First time'
-              : `Last: ${String(toDisplayWeight(previous.weightKg, unitSystem).value)} × ${String(previous.reps)}`}
+              : `Last: ${describePreviousSet(previous, (kg) =>
+                  String(toDisplayWeight(kg, unitSystem).value),
+                )}`}
           </span>
         </div>
 
@@ -938,7 +974,27 @@ function SetRow({
           </button>
         </div>
 
-        <div className="mt-1 flex justify-end gap-4">
+        <div className="mt-1 flex items-center gap-4">
+          {/* On its own side of the row: it changes what is being logged,
+              where the two on the right save it or throw it away. */}
+          {canAddWeight(loadType) && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (loadType === 'bodyweight') {
+                  setLoadType('bodyweight_plus');
+                  return;
+                }
+                setLoadType('bodyweight');
+                setWeight(0);
+              }}
+              className="text-xs font-medium text-secondary underline-offset-4 hover:underline"
+            >
+              {loadType === 'bodyweight' ? '+ Add weight' : 'Bodyweight only'}
+            </button>
+          )}
+          <span className="flex-1" />
           {!set.isCompleted && (
             <button
               type="button"

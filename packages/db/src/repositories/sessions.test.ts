@@ -429,6 +429,67 @@ describe('logging sets', () => {
   });
 });
 
+/**
+ * Weighted dips, pull-ups and the rest.
+ *
+ * `bodyweight_plus` has been in the schema from the start and nothing could
+ * reach it: a dip is logged as `bodyweight`, which has no weight field. These
+ * are the writes the new switch makes, checked against real SQLite.
+ */
+describe('adding weight to a bodyweight movement', () => {
+  let exerciseId: string;
+
+  beforeEach(async () => {
+    const session = await sessions.start({ bodyweightKg: 80 });
+    exerciseId = (await sessions.addExercise(session.id, 'squat')).id;
+  });
+
+  it('turns a bodyweight set into a weighted one and keeps it', async () => {
+    const added = await sessions.addSet(
+      exerciseId,
+      template({ loadType: 'bodyweight', weightKg: 0, reps: 10 }),
+    );
+
+    await sessions.completeSet(added.id, { loadType: 'bodyweight_plus', weightKg: 20, reps: 8 });
+
+    const saved = await rawSet(added.id);
+    expect(saved.load_type).toBe('bodyweight_plus');
+    expect(saved.weight_kg).toBe(20);
+    expect(saved.reps).toBe(8);
+  });
+
+  /**
+   * "Bodyweight only" must take the plates off. A stale 20 left in the field
+   * and saved as plain bodyweight would still read as 20 kg added anywhere
+   * that trusted the number without its type.
+   */
+  it('drops the added weight when switched back to bodyweight', async () => {
+    const added = await sessions.addSet(
+      exerciseId,
+      template({ loadType: 'bodyweight_plus', weightKg: 20, reps: 8 }),
+    );
+
+    await sessions.updateSet(added.id, { loadType: 'bodyweight', weightKg: 20 });
+
+    const saved = await rawSet(added.id);
+    expect(saved.load_type).toBe('bodyweight');
+    expect(saved.weight_kg).toBe(0);
+  });
+
+  it('is what next week sees, so the next session starts weighted', async () => {
+    clock = new Date('2026-09-01T10:00:00.000Z');
+    const first = await sessions.start({ bodyweightKg: 80 });
+    const dips = await sessions.addExercise(first.id, 'squat');
+    const set = await sessions.addSet(dips.id, template({ loadType: 'bodyweight', weightKg: 0 }));
+    await sessions.completeSet(set.id, { loadType: 'bodyweight_plus', weightKg: 15, reps: 8 });
+    await sessions.finish(first.id);
+
+    const [last] = await sessions.lastPerformance('squat');
+    expect(last?.loadType).toBe('bodyweight_plus');
+    expect(last?.weightKg).toBe(15);
+  });
+});
+
 describe('lastPerformance', () => {
   async function loggedSession(when: string, sets: readonly SetTemplate[]): Promise<string> {
     clock = new Date(when);

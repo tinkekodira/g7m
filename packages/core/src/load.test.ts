@@ -10,6 +10,8 @@ import {
   type LoadType,
   type LoggedSet,
   type SetType,
+  canAddWeight,
+  describePreviousSet,
 } from './load.js';
 
 function set(over: Partial<LoggedSet> = {}): LoggedSet {
@@ -246,5 +248,78 @@ describe('naturalLoadType', () => {
    */
   it('is external for bodyweight kit plus something loaded', () => {
     expect(naturalLoadType(['bodyweight', 'other'])).toBe('external');
+  });
+});
+
+describe('canAddWeight', () => {
+  /**
+   * The switch the screen was missing. A dip is logged as `bodyweight` because
+   * the dip station is bodyweight equipment, and nothing ever let it become the
+   * `bodyweight_plus` the schema has always supported.
+   */
+  it('offers added weight on a bodyweight movement', () => {
+    expect(canAddWeight('bodyweight')).toBe(true);
+  });
+
+  it('keeps offering it once weight has been added, so it can be taken off', () => {
+    expect(canAddWeight('bodyweight_plus')).toBe(true);
+  });
+
+  it('does not offer it where a weight field already exists', () => {
+    expect(canAddWeight('external')).toBe(false);
+    // Assistance has its own field, and "add weight" on top of it means nothing.
+    expect(canAddWeight('assisted')).toBe(false);
+  });
+});
+
+describe('describePreviousSet', () => {
+  const show = (kg: number): string => String(kg);
+
+  it('reads a barbell set the way it always has', () => {
+    expect(describePreviousSet({ loadType: 'external', weightKg: 100, reps: 5 }, show)).toBe(
+      '100 × 5',
+    );
+  });
+
+  /** It used to read "Last: 0 × 10", which looks like a mistake. */
+  it('does not print a zero weight for a bodyweight set', () => {
+    expect(describePreviousSet({ loadType: 'bodyweight', weightKg: 0, reps: 10 }, show)).toBe(
+      '10 reps',
+    );
+  });
+
+  /**
+   * 20 kg on a belt is not a 20 kg lift. Without the sign this would have read
+   * exactly like one.
+   */
+  it('marks added weight as added', () => {
+    expect(describePreviousSet({ loadType: 'bodyweight_plus', weightKg: 20, reps: 8 }, show)).toBe(
+      '+20 × 8',
+    );
+  });
+
+  it('marks assistance as taken off', () => {
+    expect(describePreviousSet({ loadType: 'assisted', weightKg: 30, reps: 8 }, show)).toBe(
+      '−30 × 8',
+    );
+  });
+
+  it('reads a weighted set with nothing added as plain reps', () => {
+    expect(describePreviousSet({ loadType: 'bodyweight_plus', weightKg: 0, reps: 8 }, show)).toBe(
+      '8 reps',
+    );
+  });
+
+  it('says "rep" for one', () => {
+    expect(describePreviousSet({ loadType: 'bodyweight', weightKg: 0, reps: 1 }, show)).toBe(
+      '1 rep',
+    );
+  });
+
+  it('uses the formatter it is given, so pounds read as pounds', () => {
+    const inPounds = (kg: number): string => String(Math.round(kg * 2.20462));
+    expect(
+      describePreviousSet({ loadType: 'bodyweight_plus', weightKg: 20, reps: 8 }, inPounds),
+    ).toBe('+44 × 8');
   });
 });
