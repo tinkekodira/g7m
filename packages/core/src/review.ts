@@ -32,9 +32,10 @@
 import { daysBetween } from './week.js';
 import { paceTarget, type ExperienceLevel, type TrainingGoal } from './goals.js';
 import { prescriptionFor } from './programming.js';
-import { exerciseTrend, type HistoricalSet } from './progress.js';
+import type { HistoricalSet } from './progress.js';
 import { weightTrend, type Sex, type WeighIn } from './body.js';
 import { countsTowardVolume } from './load.js';
+import { judgeLift, liftImprovement, type LiftMark } from './lift-progress.js';
 
 /**
  * Sessions before there is anything worth saying.
@@ -57,11 +58,13 @@ const SHORT_OF_TARGET = 0.55;
 /** Above this, it is getting more than it can use. */
 const OVER_TARGET = 1.6;
 
-/** Sessions on one lift before "no heavier than the first" means anything. */
-const SESSIONS_BEFORE_STALLED = 3;
-
-/** And days, so three sessions in one week is not a plateau. */
-const DAYS_BEFORE_STALLED = 20;
+/**
+ * A bodyweight to rank climbers with when no session recorded one.
+ *
+ * Ranking only — which of two improving lifts to mention. Never shown, and
+ * never part of whether a lift is improving at all (see `lift-progress.ts`).
+ */
+const RANKING_BODYWEIGHT_KG = 75;
 
 /** Weekly change below this is noise, not a direction. */
 const MEANINGFUL_KG = 0.1;
@@ -100,20 +103,33 @@ export type Observation =
       readonly perWeek: number;
       readonly target: number;
     }
+  /**
+   * A new best since the first session in the window.
+   *
+   * Carried as sets rather than kilograms, because the progress may be in the
+   * reps — 80 kg for 6 to 80 kg for 10 — or in no weight at all, on a pull-up.
+   */
   | {
       readonly kind: 'lift_climbing';
       readonly exerciseId: string;
       readonly name: string;
-      readonly fromKg: number;
-      readonly toKg: number;
+      readonly from: LiftMark;
+      readonly to: LiftMark;
+      /** Reps are seconds: a plank, a hang. */
+      readonly timed: boolean;
       readonly sessions: number;
     }
+  /** A best that has stood for three sessions and twenty days. */
   | {
       readonly kind: 'lift_stalled';
       readonly exerciseId: string;
       readonly name: string;
-      readonly kg: number;
-      readonly sessions: number;
+      readonly best: LiftMark;
+      readonly timed: boolean;
+      /** Sessions since the best that did not beat it. */
+      readonly sessionsSince: number;
+      /** Days since the best was set. */
+      readonly daysSince: number;
     }
   | {
       readonly kind: 'pace';
@@ -142,6 +158,13 @@ export interface ReviewInput {
   /** Primary muscle groups per exercise. From the catalogue. */
   readonly groupsByExercise: ReadonlyMap<string, readonly string[]>;
   readonly exerciseNames: ReadonlyMap<string, string>;
+  /**
+   * Exercises whose reps are seconds. From the catalogue.
+   *
+   * Only changes how a lift is described — "45 s", not "45 reps". More seconds
+   * is a better hold in exactly the way more reps is a better set.
+   */
+  readonly timedExercises?: ReadonlySet<string>;
   readonly weighIns: readonly WeighIn[];
   readonly now: Date;
 }
@@ -188,7 +211,7 @@ export function reviewTraining(input: ReviewInput): Review {
   const found: Observation[] = [
     ...consistency(sessions, weeks, input.daysPerWeek),
     ...groupBalance(counted, input.groupsByExercise, weeks, prescription.weeklySetsPerGroup),
-    ...lifts(counted, input.exerciseNames),
+    ...lifts(counted, input.exerciseNames, input.timedExercises ?? new Set(), input.now),
     ...pace(input),
   ];
 
@@ -261,65 +284,85 @@ function groupBalance(
 }
 
 /**
- * The lift that has moved most, and the one that has not moved at all.
+ * The lift that has moved most, and the one stuck the longest.
  *
  * Both, when both exist. A review that only ever reports problems is one people
  * stop opening, and "your bench has gone from 80 to 90" is not a consolation
  * prize — it is the thing they are actually doing this for.
+ *
+ * What counts as moving is `judgeLift`'s: a new best, heavier or as heavy for
+ * more reps, on the lift's own ladder. A lift is one or the other, never both —
+ * one that climbed early and has sat still since is stuck, because that is
+ * what it is now.
  */
-function lifts(sets: readonly HistoricalSet[], names: ReadonlyMap<string, string>): Observation[] {
+function lifts(
+  sets: readonly HistoricalSet[],
+  names: ReadonlyMap<string, string>,
+  timed: ReadonlySet<string>,
+  now: Date,
+): Observation[] {
   const byExercise = new Map<string, HistoricalSet[]>();
   for (const set of sets) {
     byExercise.set(set.exerciseId, [...(byExercise.get(set.exerciseId) ?? []), set]);
   }
 
-  const found: Observation[] = [];
-  let climber: Observation | undefined;
-  let climbed = 0;
-  let staller: Observation | undefined;
-  let stalledFor = 0;
+  const bodyweight = latestBodyweight(sets) ?? RANKING_BODYWEIGHT_KG;
+  let climber: { readonly observation: Observation; readonly score: number } | undefined;
+  let staller: { readonly observation: Observation; readonly days: number } | undefined;
 
   for (const [exerciseId, own] of byExercise) {
-    const trend = exerciseTrend(own);
-    const first = trend[0];
-    const last = trend[trend.length - 1];
-    if (first === undefined || last === undefined || trend.length < SESSIONS_BEFORE_STALLED) {
-      continue;
-    }
-
-    const days = daysBetween(first.performedAt, last.performedAt);
-    const gain = last.topSetKg - first.topSetKg;
+    const verdict = judgeLift(own, now);
     const name = names.get(exerciseId) ?? 'that lift';
 
-    if (gain > 0 && gain > climbed) {
-      climbed = gain;
-      climber = {
-        kind: 'lift_climbing',
-        exerciseId,
-        name,
-        fromKg: first.topSetKg,
-        toKg: last.topSetKg,
-        sessions: trend.length,
-      };
-    }
-
-    // Not heavier than the first session, over enough sessions and enough time
-    // that it is a plateau rather than a fortnight.
-    if (gain <= 0 && days >= DAYS_BEFORE_STALLED && days > stalledFor) {
-      stalledFor = days;
-      staller = {
-        kind: 'lift_stalled',
-        exerciseId,
-        name,
-        kg: last.topSetKg,
-        sessions: trend.length,
-      };
+    if (verdict.kind === 'climbing') {
+      const score = liftImprovement(verdict.from, verdict.to, bodyweight);
+      if (climber === undefined || score > climber.score) {
+        climber = {
+          score,
+          observation: {
+            kind: 'lift_climbing',
+            exerciseId,
+            name,
+            from: verdict.from,
+            to: verdict.to,
+            timed: timed.has(exerciseId),
+            sessions: verdict.sessions,
+          },
+        };
+      }
+    } else if (verdict.kind === 'stalled') {
+      // The longest plateau is the one most worth breaking.
+      if (staller === undefined || verdict.plateauDays > staller.days) {
+        staller = {
+          days: verdict.plateauDays,
+          observation: {
+            kind: 'lift_stalled',
+            exerciseId,
+            name,
+            best: verdict.best,
+            timed: timed.has(exerciseId),
+            sessionsSince: verdict.sessionsSince,
+            daysSince: verdict.daysSince,
+          },
+        };
+      }
     }
   }
 
-  if (climber !== undefined) found.push(climber);
-  if (staller !== undefined) found.push(staller);
-  return found;
+  return [
+    ...(climber === undefined ? [] : [climber.observation]),
+    ...(staller === undefined ? [] : [staller.observation]),
+  ];
+}
+
+/** The most recent bodyweight any of these sessions recorded. */
+function latestBodyweight(sets: readonly HistoricalSet[]): number | null {
+  let latest: HistoricalSet | null = null;
+  for (const set of sets) {
+    if (set.bodyweightKg === null) continue;
+    if (latest === null || set.performedAt > latest.performedAt) latest = set;
+  }
+  return latest?.bodyweightKg ?? null;
 }
 
 /**

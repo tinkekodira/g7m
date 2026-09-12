@@ -3371,3 +3371,62 @@ Not settled here: the review calls a lift stalled when its top-set weight has
 not risen, which misreads rep progress at a steady weight — the progression
 the plan itself prescribes — and every bodyweight movement. It needs its own
 change.
+
+---
+
+## ADR-0059 — A lift is judged by its new bests, on its own ladder
+
+**Status:** accepted · **Date:** 2026-09-12
+
+### Context
+
+The review called a lift stalled when the heaviest effective load in its last
+session was no more than in its first. That told people who were progressing
+that they were stuck, three ways:
+
+- **Reps did not count.** 80 kg for 6, then for 10, is the double progression
+  the plan itself prescribes ("same weight, more reps"), and it read as "has
+  not moved".
+- **Bodyweight movements were weighed by the body.** A pull-up's effective load
+  is mostly bodyweight, so twelve pull-ups at 80 kg ranked below six at 82 kg,
+  and gaining weight read as getting stronger. The copy then said "Still 82 kg"
+  about a pull-up — a sentence about the scale.
+- **Only the ends were compared.** An early jump followed by a month of
+  standing still read as "going up", and the plateau was never reported.
+
+The stall advice also promised the plan would back the weight off, which it
+does for barbell and machine lifts and never for bodyweight movements or holds.
+
+### Decision
+
+`lift-progress.ts` places every set on its exercise's own **ladder**: the bar
+for an external lift, the belt for a weighted bodyweight movement, minus the
+assistance on a machine, zero for bodyweight alone. Bodyweight is never on it.
+
+A set **beats** another if it is higher on the ladder, or level with more reps.
+Heavier for fewer reps counts — the step up after topping out a rep range is
+the commonest progression there is — and lighter for more reps counts neither
+way. Not an estimated one-rep max, which would rank 80 × 10 above 85 × 6.
+
+A lift is **climbing** when some session set a new best after the first, and
+**stalled** when its best has stood for three sessions and twenty days —
+measured from the session that set it, not from the start of the window. A
+plateau outranks an early climb: what a lift is doing now is the finding.
+
+The observations and the links built on them carry sets, not kilograms, and
+the copy says a set as a lifter would: "80 kg × 6 to 80 kg × 10", "6 reps to
+11 reps", "8 reps with 20 kg of help", "60 s". Timed holds are flagged from the
+catalogue (`trainedExercises` now carries `isTimeBased`). A bodyweight or timed
+plateau gets advice that is true — an extra set, a slower rep, and the plain
+statement that the plan does not change these.
+
+Climbers are still ranked against each other, by an Epley estimate over the
+ladder with one fixed bodyweight added back for bodyweight movements. That is
+ranking only, never a claim on screen.
+
+### Consequences
+
+The review's lift observations can now agree with the plan: a session that
+repeats the weight for more reps is progress in both. "Best" in the copy is
+"best lately" — the review reads six weeks, and an older all-time best may
+exist outside them.

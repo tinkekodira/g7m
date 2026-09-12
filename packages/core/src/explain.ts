@@ -38,6 +38,7 @@
  */
 import type { Observation, Tone } from './review.js';
 import type { TrainingGoal } from './goals.js';
+import type { LiftMark } from './lift-progress.js';
 
 /**
  * Weekly loss past which a stalled lift is unsurprising, in kilograms.
@@ -64,7 +65,9 @@ export type Link =
   | {
       readonly kind: 'stall_from_deficit';
       readonly name: string;
-      readonly kg: number;
+      /** The best that has stood — a set, because the plateau may be in reps. */
+      readonly best: LiftMark;
+      readonly timed: boolean;
       readonly perWeekKg: number;
       readonly goal: TrainingGoal;
     }
@@ -72,8 +75,9 @@ export type Link =
   | {
       readonly kind: 'stall_is_programming';
       readonly name: string;
-      readonly kg: number;
-      readonly sessions: number;
+      readonly best: LiftMark;
+      readonly timed: boolean;
+      readonly sessionsSince: number;
     }
   /** A group behind its target because the sessions are not happening. */
   | {
@@ -86,8 +90,9 @@ export type Link =
   | {
       readonly kind: 'progress_confirmed';
       readonly name: string;
-      readonly fromKg: number;
-      readonly toKg: number;
+      readonly from: LiftMark;
+      readonly to: LiftMark;
+      readonly timed: boolean;
       readonly perWeekKg: number;
     };
 
@@ -144,7 +149,8 @@ export function linksFrom(observations: readonly Observation[]): Link[] {
       links.push({
         kind: 'stall_from_deficit',
         name: stalled.name,
-        kg: stalled.kg,
+        best: stalled.best,
+        timed: stalled.timed,
         perWeekKg: pace.perWeekKg,
         goal: pace.goal,
       });
@@ -154,8 +160,9 @@ export function linksFrom(observations: readonly Observation[]): Link[] {
       links.push({
         kind: 'stall_is_programming',
         name: stalled.name,
-        kg: stalled.kg,
-        sessions: stalled.sessions,
+        best: stalled.best,
+        timed: stalled.timed,
+        sessionsSince: stalled.sessionsSince,
       });
     }
     // `losing === undefined`: no weigh-ins. Nothing honest to say about why.
@@ -186,8 +193,9 @@ export function linksFrom(observations: readonly Observation[]): Link[] {
     links.push({
       kind: 'progress_confirmed',
       name: climbing.name,
-      fromKg: climbing.fromKg,
-      toKg: climbing.toKg,
+      from: climbing.from,
+      to: climbing.to,
+      timed: climbing.timed,
       perWeekKg: pace.perWeekKg,
     });
   }

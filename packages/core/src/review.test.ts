@@ -272,15 +272,112 @@ describe('the lifts themselves', () => {
     const review = reviewTraining(input({ sets: climbing('bench', 80, 2.5) }));
     const observation = find(review, 'lift_climbing');
     expect(observation?.name).toBe('Barbell Bench Press');
-    expect(observation?.fromKg).toBe(80);
-    expect(observation?.toKg).toBe(90);
+    expect(observation?.from).toEqual({ loadType: 'external', weightKg: 80, reps: 8 });
+    expect(observation?.to).toEqual({ loadType: 'external', weightKg: 90, reps: 8 });
+    expect(observation?.timed).toBe(false);
   });
 
   it('reports a lift that has not moved', () => {
     const review = reviewTraining(input({ sets: climbing('squat', 100, 0) }));
     const observation = find(review, 'lift_stalled');
     expect(observation?.name).toBe('Back Squat');
-    expect(observation?.kg).toBe(100);
+    expect(observation?.best).toEqual({ loadType: 'external', weightKg: 100, reps: 8 });
+    expect(observation?.sessionsSince).toBe(4);
+  });
+
+  /** Weekly sessions of one lift, with each session's single set given. */
+  function sessionsOf(
+    exerciseId: string,
+    tops: readonly Partial<HistoricalSet>[],
+  ): HistoricalSet[] {
+    return tops.map((top, s) =>
+      set({
+        sessionId: `${exerciseId}${String(s)}`,
+        exerciseId,
+        performedAt: daysAgo((tops.length - s) * 7),
+        ...top,
+      }),
+    );
+  }
+
+  /**
+   * The reported bug. Adding reps at the same weight is the progression the
+   * plan itself prescribes, and it used to read as "has not moved".
+   */
+  it('counts more reps at the same weight as going up', () => {
+    const review = reviewTraining(
+      input({
+        sets: sessionsOf('bench', [
+          { weightKg: 80, reps: 6 },
+          { weightKg: 80, reps: 7 },
+          { weightKg: 80, reps: 8 },
+          { weightKg: 80, reps: 10 },
+        ]),
+      }),
+    );
+    expect(find(review, 'lift_stalled')).toBeUndefined();
+    expect(find(review, 'lift_climbing')?.to).toMatchObject({ weightKg: 80, reps: 10 });
+  });
+
+  /**
+   * And the report that found it: pull-ups going up in reps while the scale
+   * came down, which effective load read as a lift going nowhere.
+   */
+  it('reads pull-ups by their reps, not by the scale', () => {
+    const review = reviewTraining(
+      input({
+        exerciseNames: new Map([['pullup', 'Pull-up']]),
+        sets: sessionsOf('pullup', [
+          { loadType: 'bodyweight', weightKg: 0, reps: 6, bodyweightKg: 83 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 8, bodyweightKg: 82 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 9, bodyweightKg: 81.5 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 11, bodyweightKg: 81 },
+        ]),
+      }),
+    );
+    expect(find(review, 'lift_stalled')).toBeUndefined();
+    expect(find(review, 'lift_climbing')).toMatchObject({
+      name: 'Pull-up',
+      from: { loadType: 'bodyweight', reps: 6 },
+      to: { loadType: 'bodyweight', reps: 11 },
+    });
+  });
+
+  /** An early jump used to hide a month of standing still. */
+  it('reports the plateau a lift is on now, not the jump before it', () => {
+    const review = reviewTraining(
+      input({
+        sets: sessionsOf('squat', [
+          { weightKg: 100, reps: 5 },
+          { weightKg: 110, reps: 5 },
+          { weightKg: 110, reps: 5 },
+          { weightKg: 110, reps: 4 },
+          { weightKg: 110, reps: 5 },
+        ]),
+      }),
+    );
+    expect(find(review, 'lift_climbing')).toBeUndefined();
+    expect(find(review, 'lift_stalled')).toMatchObject({
+      exerciseId: 'squat',
+      best: { weightKg: 110, reps: 5 },
+      sessionsSince: 3,
+    });
+  });
+
+  it('marks a timed hold, so it is described in seconds', () => {
+    const review = reviewTraining(
+      input({
+        timedExercises: new Set(['plank']),
+        // Four sessions: the review says nothing at all below `MIN_SESSIONS`.
+        sets: sessionsOf('plank', [
+          { loadType: 'bodyweight', weightKg: 0, reps: 45 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 50 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 55 },
+          { loadType: 'bodyweight', weightKg: 0, reps: 60 },
+        ]),
+      }),
+    );
+    expect(find(review, 'lift_climbing')).toMatchObject({ exerciseId: 'plank', timed: true });
   });
 
   /**
@@ -490,8 +587,24 @@ describe('every observation has a tone', () => {
       { kind: 'consistency', perWeek: 1, target: 4, weeks: 4 },
       { kind: 'group_short', group: 'back', perWeek: 2, target: 16 },
       { kind: 'group_over', group: 'chest', perWeek: 30, target: 16 },
-      { kind: 'lift_climbing', exerciseId: 'a', name: 'A', fromKg: 80, toKg: 90, sessions: 5 },
-      { kind: 'lift_stalled', exerciseId: 'b', name: 'B', kg: 100, sessions: 5 },
+      {
+        kind: 'lift_climbing',
+        exerciseId: 'a',
+        name: 'A',
+        from: { loadType: 'external', weightKg: 80, reps: 8 },
+        to: { loadType: 'external', weightKg: 90, reps: 8 },
+        timed: false,
+        sessions: 5,
+      },
+      {
+        kind: 'lift_stalled',
+        exerciseId: 'b',
+        name: 'B',
+        best: { loadType: 'external', weightKg: 100, reps: 5 },
+        timed: false,
+        sessionsSince: 4,
+        daysSince: 28,
+      },
       { kind: 'pace', verdict: 'on_track', perWeekKg: -0.5, goal: 'lose_fat' },
     ];
     for (const observation of all) {
