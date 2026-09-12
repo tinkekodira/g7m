@@ -73,13 +73,21 @@ export interface SculptedBody {
   readonly loading: boolean;
 }
 
-export function useSculptedBody(): SculptedBody {
-  const [parts, setParts] = useState<readonly BodyPart[] | null>(null);
-  const [loading, setLoading] = useState(true);
+/**
+ * The body, loaded once per page rather than once per screen.
+ *
+ * Two screens draw it now — Learn and Profile — and they are a tab apart.
+ * Loading per mount meant every hop between them fetched the manifest, parsed
+ * megabytes of geometry again and showed "Loading the model…" for a second on
+ * a body that was already in memory. The promise is kept so the second screen
+ * waits on the first one's load instead of starting its own, and the answer is
+ * kept so a screen opened afterwards can draw it on its very first render.
+ */
+let pending: Promise<readonly BodyPart[] | null> | null = null;
+let settled: { readonly parts: readonly BodyPart[] | null } | null = null;
 
-  useEffect(() => {
-    let cancelled = false;
-
+function loadOnce(): Promise<readonly BodyPart[] | null> {
+  pending ??= currentModelUrl(document.baseURI)
     /**
      * Imported here rather than at the top of the file, and this is load-bearing.
      *
@@ -90,23 +98,43 @@ export function useSculptedBody(): SculptedBody {
      * most builds do not have. The viewer is already lazy; the loader has to be
      * too, or it drags the same dependency in through the back door.
      */
-    void currentModelUrl(document.baseURI)
-      .then(async (url) => {
-        if (url === null) return null;
-        const { loadBodyParts } = await import('@g7m/anatomy');
-        return loadBodyParts(url);
-      })
-      .then((loaded) => {
-        if (!cancelled && loaded !== null) setParts(loaded);
-      })
-      .catch((cause: unknown) => {
+    .then(async (url) => {
+      if (url === null) return null;
+      const { loadBodyParts } = await import('@g7m/anatomy');
+      return loadBodyParts(url);
+    })
+    .then(
+      (parts) => {
+        // Kept, including "this build has no model", which is the normal
+        // answer and will not change until the page does.
+        settled = { parts };
+        return parts;
+      },
+      (cause: unknown) => {
         // Worth a line for whoever put the file there, and nothing at all for
-        // everybody else.
+        // everybody else. Not kept: a fetch that failed on a bad connection
+        // gets another go the next time a screen asks.
         console.warn('Could not load the anatomy model; using the generated body.', cause);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        pending = null;
+        return null;
+      },
+    );
+  return pending;
+}
+
+export function useSculptedBody(): SculptedBody {
+  const [parts, setParts] = useState<readonly BodyPart[] | null>(() => settled?.parts ?? null);
+  const [loading, setLoading] = useState(() => settled === null);
+
+  useEffect(() => {
+    if (settled !== null) return;
+    let cancelled = false;
+
+    void loadOnce().then((loaded) => {
+      if (cancelled) return;
+      setParts(loaded);
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;

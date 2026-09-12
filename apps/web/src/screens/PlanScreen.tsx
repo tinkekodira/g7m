@@ -4,20 +4,15 @@ import {
   FOCUS_LABELS,
   GOAL_LABELS,
   formatRest,
-  chooseFocus,
-  planSession,
-  prescriptionFor,
-  splitFor,
-  startOfDay,
   toDisplayWeight,
   type LoadReason,
   type PlannedExercise,
-  type PlannedSession,
   type UnitSystem,
 } from '@g7m/core';
 import { Button } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { useWrite } from '../lib/db/use-catalogue.js';
+import { startPlannedWorkout, useTodaysPlan } from '../lib/db/use-todays-plan.js';
 
 /**
  * Today's session, generated.
@@ -32,83 +27,20 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
  * sets, which means the logger opens on a full workout rather than an empty
  * one. Nothing is locked: the logger can change every number, and does not
  * know or care that a generator wrote them.
- */
-/**
- * The window the weekly targets are measured over.
  *
- * A trailing seven days, not the calendar week. A calendar week resets to zero
- * on a Monday morning regardless of what happened on Sunday, so somebody
- * training Saturday and Sunday would be offered a third chest session on the
- * Monday — the counter having forgotten two days of training that their chest
- * has not. A muscle does not know what day it is; it knows it was trained
- * thirty-six hours ago.
+ * Built by `useTodaysPlan`, which Home's workout card reads too, so the card
+ * and this screen can never describe two different sessions.
  */
-const TRAILING_DAYS = 7;
-
-/** Far past the layoff and plateau windows the generator can ask about. */
-const HISTORY_DAYS = 120;
-
 export function PlanScreen() {
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
-
-  const profile = useCatalogue('profile', (r) => r.profile.current());
-  const goal = useCatalogue('goal-current', (r) => r.goals.current());
-
-  // Anchored to the start of today so the keys are stable for the day rather
-  // than changing every render and re-querying forever.
-  const today = useMemo(() => startOfDay(now), [now]);
-  const trailingWeek = useMemo(() => daysBefore(today, TRAILING_DAYS), [today]);
-  const historyFrom = useMemo(() => daysBefore(today, HISTORY_DAYS), [today]);
-  const dayKey = today.toISOString();
-
-  const catalogue = useCatalogue('plan-candidates', (r) => r.planner.candidates());
-  const performances = useCatalogue(`plan-history-${dayKey}`, (r) =>
-    r.planner.lastPerformances(historyFrom),
-  );
-  const weekSets = useCatalogue(`plan-trailing-${dayKey}`, (r) =>
-    r.planner.setsByGroupSince(trailingWeek),
-  );
+  const { profile, goal, noGoal, ready, plan, unitSystem, error } = useTodaysPlan(now);
 
   const { write, busy } = useWrite();
 
   // Which alternative is showing for each slot. Empty means the generator's
   // own choice, which is the case for every slot until somebody taps.
   const [swaps, setSwaps] = useState<ReadonlyMap<string, number>>(new Map());
-
-  const unitSystem: UnitSystem = profile.data?.unitSystem ?? 'metric';
-  const ready =
-    goal.data !== null &&
-    catalogue.data !== null &&
-    performances.data !== null &&
-    weekSets.data !== null;
-
-  const plan = useMemo<PlannedSession | null>(() => {
-    if (
-      goal.data === null ||
-      catalogue.data === null ||
-      performances.data === null ||
-      weekSets.data === null
-    ) {
-      return null;
-    }
-
-    const experience = profile.data?.experienceLevel ?? null;
-    const prescription = prescriptionFor(goal.data.goal, experience);
-    const split = splitFor(goal.data.daysPerWeek, experience);
-
-    return planSession({
-      // Which day of the split has the most catching up to do, rather than
-      // the next one along. A workout opened and abandoned logs no sets and
-      // therefore moves nothing, which a session counter could not manage.
-      focus: chooseFocus(split, weekSets.data, prescription.weeklySetsPerGroup),
-      prescription,
-      catalogue: catalogue.data,
-      history: performances.data,
-      setsThisWeekByGroup: weekSets.data,
-      now,
-    });
-  }, [goal.data, catalogue.data, performances.data, weekSets.data, profile.data, now]);
 
   /**
    * What is actually being prescribed, after any swaps.
@@ -125,29 +57,13 @@ export function PlanScreen() {
   async function start(): Promise<void> {
     if (plan === null || chosen.length === 0) return;
 
-    const started = await write(async (r) => {
-      const session = await r.sessions.start({
-        source: 'generated',
-        name: FOCUS_LABELS[plan.focus],
-        bodyweightKg: profile.data?.bodyweightKg ?? null,
-      });
-
-      for (const exercise of chosen) {
-        const slot = await r.sessions.addExercise(session.id, exercise.exerciseId);
-        // The sets go in unticked. The logger opens on a full workout, every
-        // number of which it is free to change — it does not know a generator
-        // wrote them, and nothing here is locked.
-        for (let index = 0; index < exercise.sets; index++) {
-          await r.sessions.addSet(slot.id, {
-            weightKg: exercise.suggestedKg ?? 0,
-            reps: exercise.repLow,
-            loadType: exercise.loadType,
-            setType: 'working',
-          });
-        }
-      }
-      return session;
-    });
+    const started = await write((r) =>
+      startPlannedWorkout(r, {
+        plan,
+        exercises: chosen,
+        bodyweightKg: profile?.bodyweightKg ?? null,
+      }),
+    );
 
     if (started !== null) void navigate('/workout');
   }
@@ -157,23 +73,22 @@ export function PlanScreen() {
       <header className="flex items-start justify-between gap-3 pt-6 pb-2">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold text-primary">Today’s session</h1>
-          {goal.data !== null && (
+          {goal !== null && (
             <p className="mt-1 text-sm text-secondary">
-              Built for {GOAL_LABELS[goal.data.goal].toLowerCase()}, {goal.data.daysPerWeek} days a
-              week.
+              Built for {GOAL_LABELS[goal.goal].toLowerCase()}, {goal.daysPerWeek} days a week.
             </p>
           )}
         </div>
         <HeaderLink to="/">Home</HeaderLink>
       </header>
 
-      {(profile.error ?? goal.error ?? catalogue.error) !== null && (
+      {error !== null && (
         <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
-          {profile.error ?? goal.error ?? catalogue.error}
+          {error}
         </p>
       )}
 
-      {goal.data === null && !goal.loading ? (
+      {noGoal ? (
         <NoGoal />
       ) : !ready || plan === null ? (
         <p className="rounded-card bg-surface p-4 text-sm text-muted">Working out your session…</p>
@@ -415,11 +330,4 @@ function WeekDone({ rested }: { readonly rested: readonly string[] }) {
 function listOf(items: readonly string[]): string {
   if (items.length <= 1) return items[0] ?? '';
   return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1] ?? ''}`;
-}
-
-/** `days` before a date, kept out of the component so the memo stays readable. */
-function daysBefore(from: Date, days: number): Date {
-  const at = new Date(from);
-  at.setDate(at.getDate() - days);
-  return at;
 }
