@@ -4,6 +4,7 @@ import { Chip, KitSlider, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { addedState } from './added-exercise.js';
 import {
   NO_FILTERS,
   hasFilters,
@@ -57,8 +58,11 @@ export function ExerciseLibraryScreen() {
     void (async () => {
       const session = await write((r) => r.sessions.active());
       if (session == null) return;
-      await write((r) => r.sessions.addExercise(session.id, exercise.id));
-      await navigate('/workout');
+      const entry = await write((r) => r.sessions.addExercise(session.id, exercise.id));
+      // The entry just created, handed back so the workout can scroll to it.
+      // It used to be discarded here, and the workout reopened at the top — on
+      // the first exercise, four away from the one just chosen.
+      await navigate('/workout', entry === null ? undefined : { state: addedState(entry.id) });
     })();
   };
 

@@ -6,6 +6,10 @@ import {
   looksAbandoned,
   openSessionSummary,
   restRemaining,
+  idleLimitMinutes,
+  idleMinutes,
+  lastActivityAt,
+  shouldAskStillTraining,
 } from './workout-timer.js';
 
 const START = new Date('2026-09-06T10:00:00.000Z');
@@ -145,5 +149,120 @@ describe('openSessionSummary', () => {
     for (const minutes of [0, 1, 59, 60, 239, 240, 1440]) {
       expect(summarise(minutes).detail, String(minutes)).not.toBe('');
     }
+  });
+});
+
+describe('still training?', () => {
+  const at = (minute: number): Date => new Date(Date.UTC(2026, 8, 12, 18, 0) + minute * 60_000);
+  const STRENGTH = idleLimitMinutes('strength');
+
+  describe('idleLimitMinutes', () => {
+    it('gives strength half an hour', () => {
+      expect(idleLimitMinutes('strength')).toBe(30);
+    });
+
+    /**
+     * Cardio does not exist yet, but the limit was decided with it, and a
+     * treadmill session is exactly the one that ticks nothing for an hour on
+     * purpose. It must never arrive inheriting the strength number.
+     */
+    it('gives cardio far longer than strength', () => {
+      expect(idleLimitMinutes('cardio')).toBe(120);
+      expect(idleLimitMinutes('cardio')).toBeGreaterThan(idleLimitMinutes('strength'));
+    });
+  });
+
+  describe('lastActivityAt', () => {
+    it('is the most recent ticked set', () => {
+      expect(lastActivityAt(at(0), [at(5), at(40), at(22)])).toEqual(at(40));
+    });
+
+    it('is the start while nothing has been ticked', () => {
+      expect(lastActivityAt(at(0), [])).toEqual(at(0));
+      expect(lastActivityAt(at(0), [null, null])).toEqual(at(0));
+    });
+
+    it('never goes earlier than the start', () => {
+      // A set with a clock that disagrees with the phone's.
+      expect(lastActivityAt(at(10), [at(3)])).toEqual(at(10));
+    });
+
+    it('skips a timestamp that did not parse', () => {
+      expect(lastActivityAt(at(0), [new Date('nope'), at(12)])).toEqual(at(12));
+    });
+  });
+
+  describe('shouldAskStillTraining', () => {
+    /**
+     * The reading the whole feature depends on. Thirty minutes from the
+     * *start* would interrupt almost every real workout; from the last set it
+     * is several times any rest period.
+     */
+    it('does not ask during a long session that is still being logged', () => {
+      expect(
+        shouldAskStillTraining({
+          lastActivityAt: at(70),
+          snoozedAt: null,
+          now: at(80),
+          limitMinutes: STRENGTH,
+        }),
+      ).toBe(false);
+    });
+
+    it('asks once nothing has been ticked for the limit', () => {
+      expect(
+        shouldAskStillTraining({
+          lastActivityAt: at(40),
+          snoozedAt: null,
+          now: at(70),
+          limitMinutes: STRENGTH,
+        }),
+      ).toBe(true);
+    });
+
+    it('does not ask a minute early', () => {
+      expect(
+        shouldAskStillTraining({
+          lastActivityAt: at(40),
+          snoozedAt: null,
+          now: at(69),
+          limitMinutes: STRENGTH,
+        }),
+      ).toBe(false);
+    });
+
+    /**
+     * "Keep going" has to buy a full interval. Measured from the last set, the
+     * question would come straight back the moment it was dismissed.
+     */
+    it('waits a full interval after "keep going"', () => {
+      const base = { lastActivityAt: at(0), limitMinutes: STRENGTH };
+      expect(shouldAskStillTraining({ ...base, snoozedAt: at(45), now: at(60) })).toBe(false);
+      expect(shouldAskStillTraining({ ...base, snoozedAt: at(45), now: at(75) })).toBe(true);
+    });
+
+    it('lets a set ticked after the snooze take over', () => {
+      expect(
+        shouldAskStillTraining({
+          lastActivityAt: at(50),
+          snoozedAt: at(45),
+          now: at(79),
+          limitMinutes: STRENGTH,
+        }),
+      ).toBe(false);
+    });
+
+    it('gives cardio its longer allowance', () => {
+      const quiet = { lastActivityAt: at(0), snoozedAt: null, now: at(60) };
+      expect(shouldAskStillTraining({ ...quiet, limitMinutes: STRENGTH })).toBe(true);
+      expect(shouldAskStillTraining({ ...quiet, limitMinutes: idleLimitMinutes('cardio') })).toBe(
+        false,
+      );
+    });
+  });
+
+  it('counts idle minutes down to the whole minute', () => {
+    expect(idleMinutes(at(0), new Date(at(34).getTime() + 50_000))).toBe(34);
+    expect(idleMinutes(at(10), at(5))).toBe(0);
   });
 });

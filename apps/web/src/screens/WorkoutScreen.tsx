@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { Button, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
@@ -28,7 +28,16 @@ import { buzz } from '../lib/haptics.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { describeRecord, type RecordLine } from './record-copy.js';
-import { formatElapsed, isRestOver, looksAbandoned, restRemaining } from './workout-timer.js';
+import {
+  formatElapsed,
+  idleLimitMinutes,
+  idleMinutes,
+  isRestOver,
+  lastActivityAt,
+  restRemaining,
+  shouldAskStillTraining,
+} from './workout-timer.js';
+import { addedExerciseId, exerciseAnchor, exerciseToReveal } from './added-exercise.js';
 
 /**
  * The logger.
@@ -59,9 +68,21 @@ interface Workout {
 
 export function WorkoutScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { write, busy, error: writeError } = useWrite();
 
   const [now, setNow] = useState(() => new Date());
+
+  /**
+   * When "still training?" was last answered — or last made unnecessary.
+   *
+   * Coming back from adding an exercise counts: it is about the clearest proof
+   * there is that somebody is still here, and it arrives through a remount, so
+   * this is the moment to record it.
+   */
+  const [snoozedAt, setSnoozedAt] = useState<Date | null>(() =>
+    addedExerciseId(location.state) !== null ? new Date() : null,
+  );
   const [rest, setRest] = useState<{ startedAt: Date; seconds: number } | null>(null);
   const [undo, setUndo] = useState<Undoable | null>(null);
   // Only ever increments, so removing the same thing twice still restarts the
@@ -140,7 +161,57 @@ export function WorkoutScreen() {
    * honest: a suspended tab stops firing intervals, so a sleeping phone is
    * also a phone that has not noticed rest is over.
    */
-  useWakeLock(ticking);
+  /**
+   * Still training?
+   *
+   * Asked after thirty minutes without a ticked set — idle time, never time
+   * since starting, which would interrupt nearly every real workout. It
+   * replaces a notice that appeared four hours after *starting*: that one could
+   * show mid-session on a long day, offered no button to act on, and ended by
+   * saying the elapsed time is stored with the workout, which stopped being true
+   * when durations began to be read from the sets.
+   */
+  const lastActivity =
+    workout === null
+      ? null
+      : lastActivityAt(
+          workout.session.startedAt,
+          workout.blocks.flatMap((block) =>
+            block.sets.filter((set) => set.isCompleted).map((set) => set.completedAt),
+          ),
+        );
+  const askStillTraining =
+    lastActivity !== null &&
+    shouldAskStillTraining({
+      lastActivityAt: lastActivity,
+      snoozedAt,
+      now,
+      limitMinutes: idleLimitMinutes('strength'),
+    });
+
+  // Once it looks like the training has stopped, keeping the screen awake is
+  // just a phone on a bench burning its battery until somebody comes back.
+  useWakeLock(ticking && !askStillTraining);
+
+  /**
+   * Bring a newly added exercise into view.
+   *
+   * The library hands back the entry it created. This waits until that entry is
+   * actually drawn — the workout is read asynchronously, and scrolling to an
+   * element that does not exist yet does nothing and never gets another go —
+   * then scrolls once and clears the state, so neither a re-render nor a
+   * reload does it again.
+   */
+  const entryIds = useMemo(() => workout?.blocks.map((block) => block.entry.id) ?? [], [workout]);
+  const reveal = exerciseToReveal(location.state, entryIds);
+  useEffect(() => {
+    if (reveal === null) return;
+    const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    document
+      .getElementById(exerciseAnchor(reveal))
+      ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    void navigate('.', { replace: true, state: null });
+  }, [reveal, navigate]);
 
   const remaining = restRemaining(rest?.startedAt ?? null, rest?.seconds ?? 0, now);
 
@@ -227,6 +298,14 @@ export function WorkoutScreen() {
   }
 
   const { session, profile, blocks } = workout;
+
+  /** One way to finish, whether from the button or from "still training?". */
+  const finishWorkout = (): void => {
+    buzz('success');
+    void write((r) => r.sessions.finish(session.id)).then(() => {
+      void navigate('/');
+    });
+  };
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
   const allSets = blocks.flatMap((block) =>
     block.sets.map((set) => ({
@@ -257,13 +336,6 @@ export function WorkoutScreen() {
       {writeError !== null && (
         <p role="alert" className="text-sm text-danger">
           {writeError}
-        </p>
-      )}
-
-      {looksAbandoned(session.startedAt, now) && (
-        <p className="rounded-card bg-surface p-4 text-sm text-secondary">
-          This workout has been open for hours. If you finished a while ago, end it now — the
-          elapsed time is stored with it.
         </p>
       )}
 
@@ -372,15 +444,7 @@ export function WorkoutScreen() {
       </Link>
 
       <div className="flex gap-3 py-4">
-        <Button
-          disabled={busy}
-          onClick={() => {
-            buzz('success');
-            void write((r) => r.sessions.finish(session.id)).then(() => {
-              void navigate('/');
-            });
-          }}
-        >
+        <Button disabled={busy} onClick={finishWorkout}>
           Finish workout
         </Button>
         <Button
@@ -405,7 +469,7 @@ export function WorkoutScreen() {
         independently fixed bars sit on top of each other, and the one that
         loses is the undo.
       */}
-      {(fresh !== null || undo !== null || remaining !== null) && (
+      {(fresh !== null || undo !== null || remaining !== null || askStillTraining) && (
         <div className="pb-safe-bottom fixed inset-x-0 bottom-0 z-40 flex flex-col">
           {fresh !== null && (
             <RecordBar line={describeRecord(fresh.record, fresh.exerciseName, unitSystem)} />
@@ -419,6 +483,16 @@ export function WorkoutScreen() {
                 setUndo(null);
               }}
               onExpire={forgetUndo}
+            />
+          )}
+          {askStillTraining && lastActivity !== null && (
+            <StillTrainingBar
+              minutes={idleMinutes(lastActivity, now)}
+              busy={busy}
+              onFinish={finishWorkout}
+              onKeepGoing={() => {
+                setSnoozedAt(new Date());
+              }}
             />
           )}
           {remaining !== null && (
@@ -567,7 +641,12 @@ function ExerciseCard({
   const awaiting = skipped ? null : unratedFinalSet(block.sets);
 
   return (
-    <section className="rounded-card bg-surface p-4">
+    // Found by id to be scrolled to once it has just been added; the margin
+    // stops it landing flush against the top edge of the screen.
+    <section
+      id={exerciseAnchor(block.entry.id)}
+      className="scroll-mt-4 rounded-card bg-surface p-4"
+    >
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="min-w-0 text-lg font-semibold text-primary">{name}</h2>
         {/* Bordered rather than a grey underline. The old one was the same
@@ -924,6 +1003,46 @@ function RecordBar({ line }: { readonly line: RecordLine }) {
  * what a rest timer is for. The pinning belongs to the stack above, so that the
  * undo toast can share the same corner of the screen.
  */
+/**
+ * "Still training?", pinned where the rest timer lives.
+ *
+ * In the stack rather than at the top of the list, because the moment it
+ * matters is coming back to a phone scrolled to wherever the last exercise was,
+ * and a question at the top of a long page is one nobody sees.
+ */
+function StillTrainingBar({
+  minutes,
+  busy,
+  onFinish,
+  onKeepGoing,
+}: {
+  readonly minutes: number;
+  readonly busy: boolean;
+  readonly onFinish: () => void;
+  readonly onKeepGoing: () => void;
+}) {
+  return (
+    <div role="status" className="border-t border-subtle bg-elevated">
+      <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-primary">Still training?</p>
+          <p className="text-xs text-muted">
+            Nothing ticked for {String(minutes)} {minutes === 1 ? 'minute' : 'minutes'}.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button variant="ghost" disabled={busy} onClick={onKeepGoing}>
+            Keep going
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={onFinish}>
+            Finish
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RestBar({
   remaining,
   onSkip,
