@@ -119,3 +119,66 @@ function elapsedPhrase(minutes: number, stale: boolean): string {
 function plural(count: number, noun: string): string {
   return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
 }
+
+/**
+ * What kind of session is being idled in, for how long it may go quiet.
+ *
+ * Only `strength` exists today. `cardio` is written in because the numbers were
+ * decided with it, and a treadmill session is precisely the one that ticks
+ * nothing for an hour on purpose — so it must never inherit the strength limit
+ * by default when it arrives.
+ */
+export type SessionKind = 'strength' | 'cardio';
+
+/**
+ * How long a workout may go without a ticked set before the app asks.
+ *
+ * Idle time, never time since starting. A normal strength session runs
+ * forty-five to seventy-five minutes, so a limit measured from the start would
+ * interrupt nearly every real workout; measured from the last set, thirty
+ * minutes is several times any rest period and well short of a phone left on
+ * a bench overnight.
+ */
+export function idleLimitMinutes(kind: SessionKind): number {
+  return kind === 'cardio' ? 120 : 30;
+}
+
+/**
+ * The last sign that somebody was training: the most recent ticked set, or
+ * the start if nothing has been ticked yet.
+ *
+ * Only ticked sets count. Typing into a stepper is not evidence of training —
+ * it is also what somebody does while deciding to leave.
+ */
+export function lastActivityAt(startedAt: Date, completedAt: readonly (Date | null)[]): Date {
+  let latest = startedAt.getTime();
+  for (const at of completedAt) {
+    if (at === null) continue;
+    const time = at.getTime();
+    if (!Number.isNaN(time) && time > latest) latest = time;
+  }
+  return new Date(latest);
+}
+
+/**
+ * Whether to ask "still training?".
+ *
+ * `snoozedAt` is the last time the question was answered "keep going" — or
+ * the last time something else proved they were here, like coming back from
+ * adding an exercise. The clock runs from whichever is later, so answering it
+ * buys a full interval rather than one that is already half spent.
+ */
+export function shouldAskStillTraining(input: {
+  readonly lastActivityAt: Date;
+  readonly snoozedAt: Date | null;
+  readonly now: Date;
+  readonly limitMinutes: number;
+}): boolean {
+  const since = Math.max(input.lastActivityAt.getTime(), input.snoozedAt?.getTime() ?? 0);
+  return input.now.getTime() - since >= input.limitMinutes * 60_000;
+}
+
+/** Whole minutes since the last sign of training, for the prompt's wording. */
+export function idleMinutes(lastActivity: Date, now: Date): number {
+  return Math.max(0, Math.floor((now.getTime() - lastActivity.getTime()) / 60_000));
+}
