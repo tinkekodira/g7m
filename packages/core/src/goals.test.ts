@@ -6,6 +6,7 @@ import {
   GOAL_LABELS,
   TRAINING_GOALS,
   suggestGoal,
+  goalChangedAt,
 } from './goals.js';
 
 function trend(over: Partial<WeightTrend> = {}): WeightTrend {
@@ -158,5 +159,63 @@ describe('goalExpectation', () => {
     const unknown = goalExpectation('build_muscle', null);
     expect(unknown).toMatch(/men/i);
     expect(unknown).toMatch(/women/i);
+  });
+});
+
+describe('goalChangedAt', () => {
+  const at = (iso: string): Date => new Date(iso);
+
+  /**
+   * The bug. Onboarding asked every existing account for a goal, they restated
+   * the one they had, and the review measured from that day — ten sessions
+   * became one. Restating is not changing.
+   */
+  it('does not treat a restated goal as a change', () => {
+    const history = [
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-11') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-01') },
+    ];
+    expect(goalChangedAt(history)).toBeNull();
+  });
+
+  /**
+   * And the case the first version of this fix still got wrong. If the first
+   * goal ever chosen is the one onboarding wrote, every earlier session was
+   * training with no goal at all — not training for a different one. There is
+   * nothing for it to contaminate, so nothing is cut.
+   */
+  it('cuts nothing when there has only ever been one goal', () => {
+    expect(goalChangedAt([{ goal: 'recomp', startedAt: at('2026-09-11') }])).toBeNull();
+  });
+
+  /** A cut's sessions are not evidence about a bulk. */
+  it('cuts at the switch when the goal really changed', () => {
+    const history = [
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-11') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-08-01') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-09-11'));
+  });
+
+  it('cuts at the start of the run, past any restatements after the switch', () => {
+    const history = [
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-11') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-01') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-08-01') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-09-01'));
+  });
+
+  it('uses the most recent switch, even if an older run matches', () => {
+    const history = [
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-11') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-08-01') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-06-01') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-09-11'));
+  });
+
+  it('has nothing to say about an empty history', () => {
+    expect(goalChangedAt([])).toBeNull();
   });
 });

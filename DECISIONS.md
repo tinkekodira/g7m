@@ -3164,3 +3164,50 @@ run.
 
 Sign-out drains then clears; sign-in clears on a mismatch. Either alone leaves a
 path open, and the overlap costs one `localStorage` read per connect.
+
+## ADR-0056 — Two faults that only appeared once the app was used for real
+
+### A held button stopped the moment the rest timer started
+
+Press-and-hold worked on the first exercise of a workout and on none after it.
+The difference was not the exercise. The first exercise is the one used before
+any set has been ticked, and ticking a set starts the rest timer — a bar pinned
+to the bottom of the viewport that re-renders its countdown every second.
+
+Safari re-hit-tests a stationary finger when layout changes under it, and fires
+`pointerleave` on the button the finger never left. The button treated
+`pointerleave` as "let go", so every hold died within a second of the timer
+running. It would have failed on the first exercise too, after its first set.
+
+A hold now captures the pointer (`setPointerCapture`) and ends only on
+`pointerup`, `pointercancel` or `lostpointercapture`. Under capture, whatever
+is drawn over the button is irrelevant, and `pointerleave` is no longer a
+reason to stop. This is the standard implementation of a press-and-hold
+control; the first version should have used it.
+
+### The review cut history at the wrong moments
+
+"How it is going" reported one session on an account with ten. It measured from
+the date of the goal in force, and goal decisions are append-only — so
+onboarding, which asked every existing account for a goal, wrote a fresh row
+dated that day, and everything logged before it fell out.
+
+The narrow rule: **only a change to a different goal cuts history.** A cut's
+sessions are not evidence about a bulk, and that is the whole reason the cut
+exists. Restating the same goal is not a change, and neither is choosing a goal
+for the first time — training logged before any goal existed was not done for
+some other one. `goalChangedAt` returns null in both cases and the six-week
+window is the only bound.
+
+The first attempt at this walked back past restatements to the oldest row of
+the same goal. That fixed the restatement and would still have cut every
+session before a *first* goal — the exact case of every account that had never
+opened the goal screen before onboarding. Checking the fix against the data it
+was meant for, rather than against its own tests, is what caught it.
+
+### A count that contradicted itself
+
+The gate is *four sessions and twelve days*; the observation reported only the
+sessions. Ten sessions in five days came out as "10 of 4 sessions logged".
+`too_soon` now carries both dimensions and the copy names the one that is
+actually short — and says how long is left.

@@ -202,13 +202,34 @@ function StepButton({
       type="button"
       aria-label={label}
       disabled={disabled}
-      onPointerDown={() => {
+      onPointerDown={(event) => {
+        /**
+         * The gesture belongs to this button until the finger lifts.
+         *
+         * Without capture a hold ended the moment anything changed on screen
+         * above it. The rest timer is pinned to the bottom of the viewport and
+         * re-renders its countdown every second, and Safari re-hit-tests a
+         * stationary finger when the layout moves — firing `pointerleave` on a
+         * button that nobody had left. So holding worked on the first exercise
+         * and stopped on every one after, because the first exercise is the
+         * one used before any set has been ticked and any timer is running.
+         *
+         * Captured, every event for this pointer comes here whatever is drawn
+         * over it, and only lifting the finger — or the browser genuinely
+         * taking the gesture back — ends the hold. `pointerleave` is no longer
+         * listened for at all: under capture it is not a reason to stop.
+         */
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // A synthetic event with no live pointer behind it. Nothing to hold.
+        }
         pressed.current = true;
         if (onStep()) queue();
       }}
       onPointerUp={stop}
-      onPointerLeave={stop}
       onPointerCancel={stop}
+      onLostPointerCapture={stop}
       // A long press on a touchscreen otherwise offers to copy the button.
       onContextMenu={(event) => {
         event.preventDefault();
@@ -223,6 +244,9 @@ function StepButton({
         'text-xl text-secondary select-none',
         // Without this a hold drags the page on a touchscreen instead.
         'touch-none',
+        // And without this iOS offers its long-press callout over the button,
+        // which takes the touch away from it.
+        '[-webkit-touch-callout:none]',
         'active:bg-elevated disabled:text-muted',
         'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent',
       )}

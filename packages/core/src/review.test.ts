@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MIN_DAYS,
   MIN_SESSIONS,
   reviewTraining,
   toneOf,
@@ -141,6 +142,21 @@ describe('before there is enough to go on', () => {
   it('waits for enough time even with enough sessions', () => {
     const review = reviewTraining(input({ sets: log(['bench'], { sessions: 6, overDays: 4 }) }));
     expect(kinds(review)).toEqual(['too_soon']);
+  });
+
+  /**
+   * The gate above was always right. What it reported was not: the observation
+   * carried only the session count, so six sessions over four days came out as
+   * "6 of 4 sessions logged" — a sentence that contradicts itself and reads as
+   * a broken counter. It has to say which threshold is the short one.
+   */
+  it('reports the days when it is the days that are short', () => {
+    const review = reviewTraining(input({ sets: log(['bench'], { sessions: 6, overDays: 4 }) }));
+    const early = find(review, 'too_soon');
+
+    expect(early?.sessions).toBeGreaterThanOrEqual(MIN_SESSIONS);
+    expect(early?.days).toBeLessThan(MIN_DAYS);
+    expect(early?.neededDays).toBe(MIN_DAYS);
   });
 
   it('has nothing to say about an empty log', () => {
@@ -470,7 +486,7 @@ describe('what gets shown first', () => {
 describe('every observation has a tone', () => {
   it('classifies all of them', () => {
     const all: Observation[] = [
-      { kind: 'too_soon', sessions: 1, needed: 4 },
+      { kind: 'too_soon', sessions: 1, needed: 4, days: 0, neededDays: 12 },
       { kind: 'consistency', perWeek: 1, target: 4, weeks: 4 },
       { kind: 'group_short', group: 'back', perWeek: 2, target: 16 },
       { kind: 'group_over', group: 'chest', perWeek: 30, target: 16 },
