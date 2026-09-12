@@ -17,6 +17,7 @@ import { ExerciseTrendScreen } from './screens/ExerciseTrendScreen.js';
 import { WelcomeScreen } from './screens/WelcomeScreen.js';
 import { ProfileScreen } from './screens/ProfileScreen.js';
 import { SettingsScreen } from './screens/SettingsScreen.js';
+import { CalendarScreen } from './screens/CalendarScreen.js';
 import { TabLayout } from './components/TabLayout.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
@@ -193,6 +194,7 @@ function AppRoutes() {
         <Route path="/you" element={<MetricsScreen />} />
         <Route path="/goal" element={<GoalScreen />} />
         <Route path="/plan" element={<PlanScreen />} />
+        <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>

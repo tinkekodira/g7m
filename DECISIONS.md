@@ -3430,3 +3430,32 @@ The review's lift observations can now agree with the plan: a session that
 repeats the weight for more reps is progress in both. "Best" in the copy is
 "best lately" — the review reads six weeks, and an older all-time best may
 exist outside them.
+
+---
+
+## ADR-0060 — A calendar of the days trained
+
+**Status:** accepted · **Date:** 2026-09-13
+
+Home's "You" tile became **Calendar**; the numbers it led to are on Profile,
+which has an Edit button into the same screen. The calendar shows the current
+month only, by request — any other month, or any addition to the screen, is to
+be asked about before it is built.
+
+- **A day trained is a finished workout with a ticked working set in it** —
+  `sessionSummaries`, the rule Progress already uses. A workout opened and
+  abandoned is not a day trained, and one still running has not finished.
+- **Filed by the day it started**, like every chart in the app, so a session
+  past midnight is one day, not two halves.
+- **Three states drawn three ways, so all can show at once:** a trained day is
+  filled, today is ringed, the chosen day has a tile behind it. A day that has
+  not happened is faint and cannot be pressed. A screen reader is told in
+  words what the colours say.
+- **The chosen day is in the address** (`?day=2026-09-10`), replaced rather than
+  pushed: coming back from a workout lands on the day it was opened from, and
+  the back button leaves the calendar instead of retracing every tap.
+- The day's workouts show each exercise with the sets that were ticked, worded
+  as the review words them (`describeMark`), with the full record one tap on.
+
+Day and month names moved to `lib/date-words.ts`, shared with Progress, and
+`dateKey` to `week.ts`, shared with `periods.ts`.

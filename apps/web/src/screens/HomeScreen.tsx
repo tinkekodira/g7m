@@ -14,9 +14,9 @@ import {
   BodyIcon,
   CalendarIcon,
   ChevronRightIcon,
+  ClipboardIcon,
   DumbbellIcon,
   PlayIcon,
-  ScaleIcon,
   SearchIcon,
   type IconProps,
 } from '../components/icons.js';
@@ -32,8 +32,8 @@ import { openSessionSummary, type OpenSession, type OpenSessionSummary } from '.
  *
  * The workout the app has built for today leads, and looks like it — it is
  * the reason most people open the app. Under it, four ways in: building your
- * own workout, your numbers, the exercise library and the 3D model. The tab
- * bar does the rest.
+ * own workout, the calendar of days trained, the exercise library and the 3D
+ * model. The tab bar does the rest — your numbers are on Profile.
  *
  * What this screen used to be — account, sync, storage and device panels from
  * when it existed to prove the plumbing worked — is on Settings now. The one
@@ -374,7 +374,7 @@ function tilesFor(workoutOpen: boolean): readonly Tile[] {
           to: '/plan',
           title: 'Today’s plan',
           detail: 'What the app suggests',
-          icon: CalendarIcon,
+          icon: ClipboardIcon,
           tone: 'success',
         }
       : {
@@ -385,10 +385,10 @@ function tilesFor(workoutOpen: boolean): readonly Tile[] {
           tone: 'success',
         },
     {
-      to: '/you',
-      title: 'You',
-      detail: 'Weight, goal, activity',
-      icon: ScaleIcon,
+      to: '/calendar',
+      title: 'Calendar',
+      detail: 'The days you trained',
+      icon: CalendarIcon,
       tone: 'warning',
     },
     {

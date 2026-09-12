@@ -36,6 +36,7 @@ describe('tabFor', () => {
     expect(tabFor('/you')).toBe('profile');
     expect(tabFor('/goal')).toBe('profile');
     expect(tabFor('/plan')).toBe('home');
+    expect(tabFor('/calendar')).toBe('home');
   });
 
   /** The logger is somewhere you are in, not somewhere you pass through. */
