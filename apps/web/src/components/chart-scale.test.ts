@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatVolume,
+  formatVolumeShort,
+  formatWeightExact,
+  formatWeightTotal,
   fractionOf,
   fractionWithin,
   linePoints,
@@ -187,5 +190,52 @@ describe('formatVolume', () => {
   it('is a plain zero for nothing at all', () => {
     expect(formatVolume(0)).toBe('0');
     expect(formatVolume(Number.NaN)).toBe('0');
+  });
+});
+
+describe('formatVolumeShort', () => {
+  it('is formatVolume for kilograms', () => {
+    expect(formatVolumeShort(1200, 'metric')).toBe('1.2t');
+    expect(formatVolumeShort(340, 'metric')).toBe('340');
+  });
+
+  /** A tonne is metric. Over a chart of pounds it would be a third unit. */
+  it('uses thousands of pounds, never tonnes, for pounds', () => {
+    expect(formatVolumeShort(100, 'imperial')).toBe('220');
+    expect(formatVolumeShort(1000, 'imperial')).toBe('2.2k');
+    expect(formatVolumeShort(10_000, 'imperial')).toBe('22k');
+    expect(formatVolumeShort(0, 'imperial')).toBe('0');
+    expect(formatVolumeShort(Number.NaN, 'imperial')).toBe('0');
+  });
+});
+
+describe('formatWeightTotal', () => {
+  /** It replaced `${formatVolume(kg)} kg`, which read "2.1t kg" past a tonne. */
+  it('carries its own unit, once', () => {
+    expect(formatWeightTotal(850, 'metric')).toBe('850 kg');
+    expect(formatWeightTotal(2100, 'metric')).toBe('2.1 t');
+    expect(formatWeightTotal(24_500, 'metric')).toBe('25 t');
+  });
+
+  it('says pounds to somebody who asked for pounds', () => {
+    expect(formatWeightTotal(850, 'imperial')).toBe('1,874 lb');
+    expect(formatWeightTotal(12_000, 'imperial')).toBe('26.5k lb');
+    expect(formatWeightTotal(50_000, 'imperial')).toBe('110k lb');
+  });
+
+  it('is zero in either unit for nothing, or for nonsense', () => {
+    expect(formatWeightTotal(0, 'metric')).toBe('0 kg');
+    expect(formatWeightTotal(-5, 'imperial')).toBe('0 lb');
+    expect(formatWeightTotal(Number.NaN, 'metric')).toBe('0 kg');
+  });
+});
+
+describe('formatWeightExact', () => {
+  /** The workout's running total moves with every set, not every hundred kilos. */
+  it('counts to the kilogram or pound, with separators', () => {
+    expect(formatWeightExact(2450, 'metric')).toBe('2,450 kg');
+    expect(formatWeightExact(2450, 'imperial')).toBe('5,401 lb');
+    expect(formatWeightExact(0.4, 'metric')).toBe('0 kg');
+    expect(formatWeightExact(Number.NaN, 'imperial')).toBe('0 lb');
   });
 });

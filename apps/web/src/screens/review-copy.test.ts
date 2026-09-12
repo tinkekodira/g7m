@@ -118,6 +118,20 @@ describe('muscle groups read as words', () => {
     expect(line.heading).not.toContain('-');
   });
 
+  /** It read "your glutes is behind" to everybody whose glutes were. */
+  it('agrees with a plural group', () => {
+    const plural = describeObservation(
+      { kind: 'group_short', group: 'glutes', perWeek: 0, target: 16 },
+      'metric',
+    );
+    expect(plural.heading).toBe('Your glutes are behind');
+    const singular = describeObservation(
+      { kind: 'group_short', group: 'chest', perWeek: 0, target: 16 },
+      'metric',
+    );
+    expect(singular.heading).toBe('Your chest is behind');
+  });
+
   it('falls back to the slug rather than showing nothing', () => {
     const line = describeObservation(
       { kind: 'group_short', group: 'adductors', perWeek: 2, target: 16 },

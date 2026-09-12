@@ -8,7 +8,7 @@ import {
   type UnitSystem,
 } from '@g7m/core';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { formatVolume } from '../components/chart-scale.js';
+import { formatWeightTotal } from '../components/chart-scale.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 
 /**
@@ -133,7 +133,7 @@ function SessionBody({
           <Stat label="Date" value={startedAt.toLocaleDateString()} />
           {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
           <Stat label="Sets" value={String(volume.countedSets)} />
-          <Stat label="Volume" value={`${formatVolume(volume.volumeKg)} kg`} />
+          <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
         </div>
         {volume.unknownSets > 0 && (
           <p className="mt-3 text-xs text-muted">

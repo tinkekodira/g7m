@@ -90,7 +90,7 @@ export function ReviewCard({
   if (shown.length === 0) return null;
 
   return (
-    <section className="rounded-card bg-surface p-4">
+    <section className="rounded-card border border-subtle bg-surface p-4">
       <h2 className="text-lg font-semibold text-primary">How it is going</h2>
       <p className="mt-1 mb-3 text-sm text-muted">
         Read from what you logged, whether the plan wrote it or you did.
