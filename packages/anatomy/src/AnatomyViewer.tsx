@@ -1,9 +1,10 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { BufferAttribute, BufferGeometry, Color, type Mesh } from 'three';
 import type { MeshData } from './geometry/tube.js';
 import { bodyForms, type BodyPart } from './placeholder-body.js';
+import { PALETTE } from './palette.js';
 
 /**
  * The 3D model. Spin it, tap a muscle.
@@ -29,54 +30,15 @@ import { bodyForms, type BodyPart } from './placeholder-body.js';
  * into a flat orange blob.
  */
 
-/**
- * Skin with nothing to say about it.
- *
- * One colour, used as the resting tone in `explore` and as the cold end of the
- * heat ramp, because in both modes it means the same thing: this part of the
- * body is not what you are being shown. Two shades a few degrees apart said
- * that twice and made the figure look like two different bodies depending on
- * which chip was selected.
- *
- * Grey rather than the warmer clay it used to be. The resting colour is a
- * background — the whole job of both modes is that some of the figure is lit
- * and the rest is not — and pulling the red out of it widens the gap to the
- * orange without making the body any darker.
- */
-const RESTING_SKIN = '#6f6058';
-
-const PALETTE = {
-  /** Resting muscle. Deep enough that the selection has somewhere to go. */
-  muscle: '#a3453a',
-  /** Muscles the taxonomy does not let you select. Present, not interactive. */
-  inert: '#5c4a45',
-  selected: '#f0663f',
-  /** Tendon and aponeurosis, blended in on the tendon weight. */
-  tendon: '#e6ddc9',
-  /** Skull, hands, feet. Bone, and the reason a figure reads front from back. */
-  bone: '#ded4bf',
-  /** The bulk under the muscles, so gaps show body rather than background. */
-  core: '#6d4a41',
-  /** Heat map, cold to hot. */
-  heat: ['#5c4a45', '#8a4a3c', '#bd5a3f', '#e2725b', '#f6b06a'] as const,
-
-  /**
-   * The same three colours again, for a sculpted skin.
-   *
-   * A closed surface is a different object from a bundle of muscle bellies and
-   * cannot be painted like one. The deep red above is a muscle seen with the
-   * skin taken off; put it on the skin itself and the figure reads as a
-   * mannequin dipped in paint.
-   *
-   * Both start from `RESTING_SKIN`, which is the point: an unselected muscle
-   * and an untrained one are the same statement, and they should not be two
-   * colours.
-   */
-  skin: RESTING_SKIN,
-  skinHeat: [RESTING_SKIN, '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
-};
-
 export type AnatomyMode = 'explore' | 'heatmap';
+
+/** Which side of the body the camera starts on. */
+export type AnatomyView = 'front' | 'back';
+
+/** Where the camera looks: the middle of the figure, a little below the chest. */
+const TARGET = [0, 1.02, 0] as const;
+const CAMERA_HEIGHT = 1.15;
+const CAMERA_DISTANCE = 2.6;
 
 export interface AnatomyViewerProps {
   readonly parts: readonly BodyPart[];
@@ -96,6 +58,19 @@ export interface AnatomyViewerProps {
    * the resting colours change: see `PALETTE.skin`.
    */
   readonly closedSurface?: boolean;
+  /** Front by default. The back is where the lats, glutes and hamstrings are. */
+  readonly view?: AnatomyView;
+  /**
+   * Whether the figure can be turned and tapped.
+   *
+   * Off, it is a picture: no orbit controls, no hit-testing, and no pointer
+   * events at all, so a touch passes through to the page. That is what lets a
+   * figure sit inside a screen that scrolls — orbit controls claim every touch
+   * that starts on the canvas, and a model in the middle of a long page would
+   * otherwise trap the thumb that is trying to scroll past it. It also renders
+   * on demand rather than sixty times a second, since nothing moves.
+   */
+  readonly interactive?: boolean;
   readonly className?: string;
 }
 
@@ -107,6 +82,8 @@ export function AnatomyViewer({
   mode = 'explore',
   intensity,
   closedSurface = false,
+  view = 'front',
+  interactive = true,
   className,
 }: AnatomyViewerProps) {
   const selectable = useMemo(() => new Set(selectableSlugs), [selectableSlugs]);
@@ -119,8 +96,13 @@ export function AnatomyViewer({
         // reports 3, which triples the pixels shaded and costs battery for a
         // difference nobody can see on a 6 cm figure.
         dpr={[1, 2]}
-        camera={{ position: [0, 1.15, 2.6], fov: 38 }}
+        camera={{
+          position: [0, CAMERA_HEIGHT, view === 'back' ? -CAMERA_DISTANCE : CAMERA_DISTANCE],
+          fov: 38,
+        }}
         shadows={false}
+        frameloop={interactive ? 'always' : 'demand'}
+        {...(interactive ? {} : { style: { pointerEvents: 'none' } })}
         // A tap that hits nothing is a deselect. Without this the only way out
         // of a selection is to find another muscle, which on a phone means
         // hitting a 2 cm target on purpose.
@@ -172,7 +154,7 @@ export function AnatomyViewer({
               roughness={0.52}
               emissive={isSelected ? PALETTE.selected : undefined}
               onClick={
-                isSelectable
+                isSelectable && interactive
                   ? (event) => {
                       // Otherwise the click passes through to every mesh
                       // behind it and the last one wins, which from the front
@@ -199,23 +181,47 @@ export function AnatomyViewer({
           color="#000000"
         />
 
-        <OrbitControls
-          // No panning: the figure is the whole subject, and a dragged-off
-          // model on a phone is a screen nobody can recover without a reload.
-          enablePan={false}
-          minDistance={1.2}
-          maxDistance={4}
-          target={[0, 1.02, 0]}
-          enableDamping
-          dampingFactor={0.08}
-          // Stops the camera going under the floor and looking up at the model
-          // from beneath, which is disorienting and shows nothing.
-          minPolarAngle={0.35}
-          maxPolarAngle={Math.PI / 2 + 0.3}
-        />
+        {interactive ? (
+          <OrbitControls
+            // No panning: the figure is the whole subject, and a dragged-off
+            // model on a phone is a screen nobody can recover without a reload.
+            enablePan={false}
+            minDistance={1.2}
+            maxDistance={4}
+            target={[...TARGET]}
+            enableDamping
+            dampingFactor={0.08}
+            // Stops the camera going under the floor and looking up at the model
+            // from beneath, which is disorienting and shows nothing.
+            minPolarAngle={0.35}
+            maxPolarAngle={Math.PI / 2 + 0.3}
+          />
+        ) : (
+          <LookAt />
+        )}
       </Canvas>
     </div>
   );
+}
+
+/**
+ * Aim the camera at the figure, for a view with no orbit controls to do it.
+ *
+ * The controls are what point the camera at the target in the interactive
+ * viewer. Without them a camera keeps its default heading, straight down its
+ * own axis — which from the front is near enough, and from behind is looking
+ * away from the body at the background.
+ */
+function LookAt() {
+  const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useLayoutEffect(() => {
+    camera.lookAt(TARGET[0], TARGET[1], TARGET[2]);
+    invalidate();
+  }, [camera, invalidate]);
+
+  return null;
 }
 
 /**
@@ -243,6 +249,9 @@ function GeneratedMesh({
   readonly onClick?: ((event: { stopPropagation: () => void }) => void) | undefined;
 }) {
   const ref = useRef<Mesh>(null);
+  // A picture renders on demand, so a recolour has to ask for the frame that
+  // shows it. Free in the interactive viewer, which draws every frame anyway.
+  const invalidate = useThree((state) => state.invalidate);
 
   const geometry = useMemo(() => {
     const built = new BufferGeometry();
@@ -275,7 +284,8 @@ function GeneratedMesh({
       array[i * 3 + 2] = belly.b + (tendon.b - belly.b) * weight;
     }
     attribute.needsUpdate = true;
-  }, [geometry, mesh, color, tendonColor]);
+    invalidate();
+  }, [geometry, mesh, color, tendonColor, invalidate]);
 
   return (
     <mesh ref={ref} geometry={geometry} {...(onClick === undefined ? {} : { onClick })}>
