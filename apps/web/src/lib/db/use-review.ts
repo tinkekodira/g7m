@@ -87,6 +87,9 @@ export function useTrainingReview(now: Date): QueryState<TrainingReview> {
       sets,
       groupsByExercise,
       exerciseNames: new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
+      timedExercises: new Set(
+        trained.filter((entry) => entry.isTimeBased).map((entry) => entry.exerciseId),
+      ),
       weighIns: weighIns
         .filter((entry): entry is typeof entry & { weightKg: number } => entry.weightKg !== null)
         .map((entry) => ({ at: entry.recordedAt, weightKg: entry.weightKg })),

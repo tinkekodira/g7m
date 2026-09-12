@@ -251,11 +251,16 @@ export class HistoryRepository {
    * What the progress screen offers to chart. Listing the whole catalogue
    * there would bury the four lifts somebody cares about under fifty they have
    * never done.
+   *
+   * `isTimeBased` rides along for the review, which describes a plank's best
+   * as "60 s" rather than "60 reps".
    */
-  async trainedExercises(): Promise<{ exerciseId: string; name: string; lastAt: Date }[]> {
+  async trainedExercises(): Promise<
+    { exerciseId: string; name: string; lastAt: Date; isTimeBased: boolean }[]
+  > {
     const { userId } = resolveContext(this.context);
     const rows = await this.db.getAll<RawRow>(
-      `SELECT se.exercise_id, e.name, MAX(ws.started_at) AS last_at
+      `SELECT se.exercise_id, e.name, e.is_time_based, MAX(ws.started_at) AS last_at
          FROM session_exercises se
          JOIN workout_sessions ws ON ws.id = se.session_id
          JOIN exercises e ON e.id = se.exercise_id
@@ -265,7 +270,7 @@ export class HistoryRepository {
             SELECT 1 FROM session_sets ss
              WHERE ss.session_exercise_id = se.id AND ss.is_completed = 1
           )
-        GROUP BY se.exercise_id, e.name
+        GROUP BY se.exercise_id, e.name, e.is_time_based
         ORDER BY last_at DESC, e.name ASC`,
       [userId],
     );
@@ -274,6 +279,7 @@ export class HistoryRepository {
       exerciseId: readString(row, 'exercise_id', ''),
       name: readString(row, 'name', ''),
       lastAt: new Date(readString(row, 'last_at', '')),
+      isTimeBased: readBoolean(row, 'is_time_based'),
     }));
   }
 }

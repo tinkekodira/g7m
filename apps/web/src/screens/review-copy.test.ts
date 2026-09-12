@@ -1,6 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import type { Observation } from '@g7m/core';
-import { describeObservation } from './review-copy.js';
+import type { LiftMark, Link, Observation } from '@g7m/core';
+import { describeLink, describeMark, describeObservation } from './review-copy.js';
+
+const kg = (value: number): string => `${String(value)} kg`;
+const bar = (weightKg: number, reps: number): LiftMark => ({
+  loadType: 'external',
+  weightKg,
+  reps,
+});
+const reps = (count: number): LiftMark => ({ loadType: 'bodyweight', weightKg: 0, reps: count });
+
+const STALLED_SQUAT: Observation = {
+  kind: 'lift_stalled',
+  exerciseId: 'b',
+  name: 'Back Squat',
+  best: bar(100, 5),
+  timed: false,
+  sessionsSince: 3,
+  daysSince: 24,
+};
+
+const STALLED_PULLUP: Observation = {
+  kind: 'lift_stalled',
+  exerciseId: 'p',
+  name: 'Pull-up',
+  best: reps(10),
+  timed: false,
+  sessionsSince: 3,
+  daysSince: 28,
+};
 
 const ALL: Observation[] = [
   { kind: 'too_soon', sessions: 2, needed: 4, days: 3, neededDays: 12 },
@@ -11,11 +39,13 @@ const ALL: Observation[] = [
     kind: 'lift_climbing',
     exerciseId: 'a',
     name: 'Barbell Bench Press',
-    fromKg: 80,
-    toKg: 90,
+    from: bar(80, 8),
+    to: bar(90, 8),
+    timed: false,
     sessions: 6,
   },
-  { kind: 'lift_stalled', exerciseId: 'b', name: 'Back Squat', kg: 100, sessions: 5 },
+  STALLED_SQUAT,
+  STALLED_PULLUP,
   { kind: 'pace', verdict: 'on_track', perWeekKg: -0.6, goal: 'lose_fat' },
   { kind: 'pace', verdict: 'fast', perWeekKg: -1.4, goal: 'lose_fat' },
   { kind: 'pace', verdict: 'slow', perWeekKg: -0.1, goal: 'lose_fat' },
@@ -79,21 +109,143 @@ describe('the register', () => {
   });
 
   it('says what to do about a plateau, not just that there is one', () => {
+    const line = describeObservation(STALLED_SQUAT, 'metric');
+    expect(line.detail).toMatch(/ten percent|back(ing)? off/i);
+  });
+
+  /**
+   * The plan never adjusts a bodyweight movement — it prescribes no load for
+   * one — so promising it will back one off is a promise nothing keeps.
+   */
+  it('does not promise the plan will fix a bodyweight plateau', () => {
+    const line = describeObservation(STALLED_PULLUP, 'metric');
+    expect(line.detail).not.toMatch(/ten percent|plan will do/i);
+    expect(line.detail).toMatch(/yours to adjust/i);
+  });
+});
+
+describe('what a lift did, in the terms of the lift', () => {
+  it('says a set the way a lifter says it', () => {
+    expect(describeMark(bar(100, 5), false, kg)).toBe('100 kg × 5');
+    expect(describeMark(reps(12), false, kg)).toBe('12 reps');
+    expect(describeMark(reps(1), false, kg)).toBe('1 rep');
+    expect(describeMark({ loadType: 'bodyweight_plus', weightKg: 10, reps: 6 }, false, kg)).toBe(
+      '+10 kg × 6',
+    );
+    expect(describeMark({ loadType: 'bodyweight_plus', weightKg: 0, reps: 8 }, false, kg)).toBe(
+      '8 reps',
+    );
+    expect(describeMark({ loadType: 'assisted', weightKg: 20, reps: 8 }, false, kg)).toBe(
+      '8 reps with 20 kg of help',
+    );
+  });
+
+  it('says a timed hold in seconds', () => {
+    expect(describeMark(reps(60), true, kg)).toBe('60 s');
+    expect(describeMark(bar(20, 45), true, kg)).toBe('20 kg for 45 s');
+  });
+
+  /** The reported bug: more reps at the same weight read as "has not moved". */
+  it('shows progress that was all in the reps', () => {
     const line = describeObservation(
-      { kind: 'lift_stalled', exerciseId: 'b', name: 'Back Squat', kg: 100, sessions: 5 },
+      {
+        kind: 'lift_climbing',
+        exerciseId: 'a',
+        name: 'Barbell Bench Press',
+        from: bar(80, 6),
+        to: bar(80, 10),
+        timed: false,
+        sessions: 4,
+      },
       'metric',
     );
-    expect(line.detail).toMatch(/ten percent|back(ing)? off/i);
+    expect(line.heading).toBe('Your barbell bench press is going up');
+    expect(line.detail).toContain('80 kg × 6 to 80 kg × 10 across 4 sessions');
+  });
+
+  /** "Still 82 kg" about a pull-up was a sentence about the scale. */
+  it('never describes a bodyweight movement by the lifter’s weight', () => {
+    const line = describeObservation(STALLED_PULLUP, 'metric');
+    expect(line.detail).toContain('Your best lately is still 10 reps, from 4 weeks ago');
+    expect(line.detail).not.toMatch(/\d kg/);
+  });
+
+  it('says how long a best has stood, and how many sessions have tried it', () => {
+    expect(describeObservation(STALLED_SQUAT, 'metric').detail).toContain(
+      'Your best lately is still 100 kg × 5, from 3 weeks ago, and the 3 sessions since have not beaten it.',
+    );
+  });
+});
+
+describe('joined-up lines about a lift', () => {
+  const programming = (best: LiftMark): Link => ({
+    kind: 'stall_is_programming',
+    name: 'Back Squat',
+    best,
+    timed: false,
+    sessionsSince: 3,
+  });
+
+  it('points a barbell plateau at the back-off the plan will do', () => {
+    const line = describeLink(programming(bar(100, 5)), 'metric');
+    expect(line.detail).toContain('Your best lately is still 100 kg × 5 after 3 more sessions');
+    expect(line.detail).toMatch(/ten percent/);
+  });
+
+  it('leaves a bodyweight plateau to the lifter, and says so', () => {
+    const line = describeLink(programming(reps(10)), 'metric');
+    expect(line.detail).not.toMatch(/ten percent/);
+    expect(line.detail).toMatch(/change is yours/);
+  });
+
+  it('describes a stall in a deficit by the set, not by a weight', () => {
+    const line = describeLink(
+      {
+        kind: 'stall_from_deficit',
+        name: 'Pull-up',
+        best: reps(10),
+        timed: false,
+        perWeekKg: -0.6,
+        goal: 'lose_fat',
+      },
+      'metric',
+    );
+    expect(line.detail).toContain(
+      'Your best lately is still 10 reps, while you are losing 0.6 kg a week',
+    );
+  });
+
+  it('confirms progress in the lift’s own terms', () => {
+    const line = describeLink(
+      {
+        kind: 'progress_confirmed',
+        name: 'Pull-up',
+        from: reps(6),
+        to: reps(11),
+        timed: false,
+        perWeekKg: 0.3,
+      },
+      'metric',
+    );
+    expect(line.detail).toContain('Your pull-up went 6 reps to 11 reps');
   });
 });
 
 describe('units', () => {
   it('speaks pounds to an imperial user', () => {
     const line = describeObservation(
-      { kind: 'lift_climbing', exerciseId: 'a', name: 'Bench', fromKg: 80, toKg: 90, sessions: 6 },
+      {
+        kind: 'lift_climbing',
+        exerciseId: 'a',
+        name: 'Bench',
+        from: bar(80, 8),
+        to: bar(90, 8),
+        timed: false,
+        sessions: 6,
+      },
       'imperial',
     );
-    expect(line.detail).toContain('lb');
+    expect(line.detail).toContain('176.4 lb × 8 to 198.4 lb × 8');
     expect(line.detail).not.toContain('kg');
   });
 

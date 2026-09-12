@@ -389,6 +389,19 @@ describe('trainedExercises', () => {
     expect(trained[0]?.lastAt.toISOString()).toBe('2026-09-07T10:00:00.000Z');
   });
 
+  /** The review describes a plank's best as "60 s", so it has to know which is which. */
+  it('says which exercises are timed holds', async () => {
+    await db.seed('exercises', { id: 'plank', slug: 'plank', name: 'Plank', is_time_based: 1 });
+    await loggedSession('2026-09-01T10:00:00.000Z', 'plank', [{ weightKg: 0, reps: 60 }]);
+    await loggedSession('2026-09-07T10:00:00.000Z', 'bench', [{ weightKg: 100, reps: 5 }]);
+
+    const trained = await history.trainedExercises();
+    expect(trained.map((e) => [e.exerciseId, e.isTimeBased])).toEqual([
+      ['bench', false],
+      ['plank', true],
+    ]);
+  });
+
   it('ignores an exercise that was added and never actually done', async () => {
     clock = new Date('2026-09-07T10:00:00.000Z');
     const session = await sessions.start();

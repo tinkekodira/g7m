@@ -22,6 +22,7 @@
 import {
   GOAL_LABELS,
   toDisplayWeight,
+  type LiftMark,
   type Link,
   type Observation,
   type UnitSystem,
@@ -60,6 +61,50 @@ export function groupIs(word: string): string {
   return `${word} ${word.endsWith('s') ? 'are' : 'is'}`;
 }
 
+/**
+ * A set the way a lifter says it: "100 kg × 5", "12 reps", "+10 kg × 6",
+ * "8 reps with 20 kg of help", "60 s".
+ *
+ * The weight in a sentence is the one on the bar, the belt or the machine —
+ * never the lifter's bodyweight. "Still 82 kg" about a pull-up was a sentence
+ * about the scale, and the progress on a pull-up is in the reps.
+ */
+export function describeMark(mark: LiftMark, timed: boolean, show: (kg: number) => string): string {
+  const count = timed
+    ? `${String(mark.reps)} s`
+    : `${String(mark.reps)} ${mark.reps === 1 ? 'rep' : 'reps'}`;
+  const done = timed ? ` for ${String(mark.reps)} s` : ` × ${String(mark.reps)}`;
+
+  switch (mark.loadType) {
+    case 'external':
+      return `${show(mark.weightKg)}${done}`;
+    case 'bodyweight_plus':
+      return mark.weightKg > 0 ? `+${show(mark.weightKg)}${done}` : count;
+    case 'assisted':
+      return mark.weightKg > 0 ? `${count} with ${show(mark.weightKg)} of help` : count;
+    case 'bodyweight':
+      return count;
+  }
+}
+
+/** "3 weeks ago", for how long a best has stood. Days below a fortnight. */
+function ago(days: number): string {
+  if (days < 14) return `${String(days)} ${days === 1 ? 'day' : 'days'} ago`;
+  return `${String(Math.round(days / 7))} weeks ago`;
+}
+
+/**
+ * The plan backs off a stuck barbell or machine lift by itself — three
+ * sessions short of the range and the weight comes down ten percent. It never
+ * touches a bodyweight movement or a timed hold: there is no load it
+ * prescribes for them. So the advice for a plateau depends on which it is, and
+ * telling somebody the plan will fix their pull-ups would be a promise nothing
+ * keeps.
+ */
+function planBacksOff(mark: LiftMark, timed: boolean): boolean {
+  return mark.loadType === 'external' && !timed;
+}
+
 export function describeObservation(observation: Observation, unitSystem: UnitSystem): Line {
   const show = (kg: number): string => {
     const display = toDisplayWeight(Math.abs(kg), unitSystem);
@@ -92,17 +137,29 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
         detail: `${String(observation.perWeek)} sets a week against a target of ${String(observation.target)}. Not harmful, but past a point the extra sets stop paying for the recovery they cost.`,
       };
 
-    case 'lift_climbing':
+    case 'lift_climbing': {
+      const mark = (set: LiftMark): string => describeMark(set, observation.timed, show);
       return {
         heading: `Your ${observation.name.toLowerCase()} is going up`,
-        detail: `${show(observation.fromKg)} to ${show(observation.toKg)} across ${String(observation.sessions)} sessions. That is the thing working.`,
+        detail: `${mark(observation.from)} to ${mark(observation.to)} across ${String(observation.sessions)} sessions. That is the thing working.`,
       };
+    }
 
-    case 'lift_stalled':
+    case 'lift_stalled': {
+      const { best, timed, sessionsSince, daysSince } = observation;
+      const since =
+        sessionsSince === 1
+          ? 'the session since has not'
+          : `the ${String(sessionsSince)} sessions since have not`;
       return {
         heading: `Your ${observation.name.toLowerCase()} has not moved`,
-        detail: `Still ${show(observation.kg)} after ${String(observation.sessions)} sessions. A plateau usually breaks by backing off about ten percent and running at it again, which the plan will do for you after three short sessions in a row.`,
+        detail: `Your best lately is still ${describeMark(best, timed, show)}, from ${ago(daysSince)}, and ${since} beaten it. ${
+          planBacksOff(best, timed)
+            ? 'A plateau usually breaks by backing off about ten percent and running at it again, which the plan will do for you after three short sessions in a row.'
+            : `${timed ? 'A hold' : 'A bodyweight movement'} usually moves again with an extra set or a slower, harder version of each rep. The plan does not change ${timed ? 'holds' : 'these'} for you, so this one is yours to adjust.`
+        }`,
       };
+    }
 
     case 'pace':
       return describePace(observation, show);
@@ -198,13 +255,17 @@ export function describeLink(link: Link, unitSystem: UnitSystem): Line {
     case 'stall_from_deficit':
       return {
         heading: `Your ${link.name.toLowerCase()} is stuck, and your weight explains it`,
-        detail: `Still ${show(link.kg)}, while you are losing ${show(link.perWeekKg)} a week. Strength usually flattens in a deficit — holding the number is the win here, so this is worth leaving alone rather than rebuilding the plan around.`,
+        detail: `Your best lately is still ${describeMark(link.best, link.timed, show)}, while you are losing ${show(link.perWeekKg)} a week. Strength usually flattens in a deficit — holding it is the win here, so this is worth leaving alone rather than rebuilding the plan around.`,
       };
 
     case 'stall_is_programming':
       return {
         heading: `Your ${link.name.toLowerCase()} is stuck, and nothing else explains it`,
-        detail: `Still ${show(link.kg)} after ${String(link.sessions)} sessions, with the sessions happening and your weight where you asked it to be. That leaves the training: back off about ten percent and run at it again, which the plan does for you after three short sessions.`,
+        detail: `Your best lately is still ${describeMark(link.best, link.timed, show)} after ${String(link.sessionsSince)} more ${link.sessionsSince === 1 ? 'session' : 'sessions'}, with the sessions happening and your weight where you asked it to be. That leaves the training: ${
+          planBacksOff(link.best, link.timed)
+            ? 'back off about ten percent and run at it again, which the plan does for you after three short sessions.'
+            : 'add a set, or slow each rep down. The plan does not change these for you, so the change is yours to make.'
+        }`,
       };
 
     case 'shortfall_is_attendance':
@@ -216,7 +277,7 @@ export function describeLink(link: Link, unitSystem: UnitSystem): Line {
     case 'progress_confirmed':
       return {
         heading: 'This is working',
-        detail: `Your ${link.name.toLowerCase()} went ${show(link.fromKg)} to ${show(link.toKg)}, and your weight is moving at ${show(link.perWeekKg)} a week, which is where you asked for it. Nothing here needs changing.`,
+        detail: `Your ${link.name.toLowerCase()} went ${describeMark(link.from, link.timed, show)} to ${describeMark(link.to, link.timed, show)}, and your weight is moving at ${show(link.perWeekKg)} a week, which is where you asked for it. Nothing here needs changing.`,
       };
   }
 }

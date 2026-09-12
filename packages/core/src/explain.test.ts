@@ -6,16 +6,19 @@ const STALLED: Observation = {
   kind: 'lift_stalled',
   exerciseId: 'squat',
   name: 'Barbell Back Squat',
-  kg: 100,
-  sessions: 4,
+  best: { loadType: 'external', weightKg: 100, reps: 5 },
+  timed: false,
+  sessionsSince: 3,
+  daysSince: 24,
 };
 
 const CLIMBING: Observation = {
   kind: 'lift_climbing',
   exerciseId: 'bench',
   name: 'Barbell Bench Press',
-  fromKg: 60,
-  toKg: 70,
+  from: { loadType: 'external', weightKg: 60, reps: 8 },
+  to: { loadType: 'external', weightKg: 70, reps: 8 },
+  timed: false,
   sessions: 5,
 };
 
@@ -207,9 +210,25 @@ describe('the numbers it carries', () => {
     expect(deficitLink).toMatchObject({
       kind: 'stall_from_deficit',
       name: 'Barbell Back Squat',
-      kg: 100,
+      best: { loadType: 'external', weightKg: 100, reps: 5 },
+      timed: false,
       perWeekKg: -0.9,
       goal: 'lose_fat',
+    });
+
+    const [programmingLink] = linksFrom([STALLED, pace(0, 'on_track')]);
+    expect(programmingLink).toMatchObject({
+      kind: 'stall_is_programming',
+      best: { loadType: 'external', weightKg: 100, reps: 5 },
+      sessionsSince: 3,
+    });
+
+    const [working] = linksFrom([CLIMBING, pace(0.3, 'on_track')]);
+    expect(working).toMatchObject({
+      kind: 'progress_confirmed',
+      from: { weightKg: 60, reps: 8 },
+      to: { weightKg: 70, reps: 8 },
+      timed: false,
     });
   });
 });
