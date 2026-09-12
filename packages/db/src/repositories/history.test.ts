@@ -245,6 +245,111 @@ describe('sessionSummaries', () => {
     }
     expect(await history.sessionSummaries(2)).toHaveLength(2);
   });
+
+  /**
+   * A workout opened and walked away from. It listed as "0 sets · 442 min",
+   * and it counted: Learn waits for five sessions before offering advice, and
+   * five of these met that with no training behind them at all.
+   */
+  it('leaves out a finished session with nothing ticked', async () => {
+    clock = new Date('2026-09-07T10:00:00.000Z');
+    const empty = await sessions.start();
+    const bench = await sessions.addExercise(empty.id, 'bench');
+    // A set that was entered and never ticked.
+    await sessions.addSet(bench.id, {
+      weightKg: 100,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.finish(empty.id);
+
+    // And one with nothing in it at all.
+    const bare = await sessions.start();
+    await sessions.finish(bare.id);
+
+    await loggedSession('2026-09-08T10:00:00.000Z', 'squat', [{ weightKg: 140, reps: 5 }]);
+
+    const summaries = await history.sessionSummaries();
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]?.setCount).toBe(1);
+  });
+
+  it('carries when the first and last counted sets were ticked', async () => {
+    clock = new Date('2026-09-07T18:00:00.000Z');
+    const session = await sessions.start();
+    const bench = await sessions.addExercise(session.id, 'bench');
+
+    for (const minute of ['05', '20', '47']) {
+      const added = await sessions.addSet(bench.id, {
+        weightKg: 100,
+        reps: 5,
+        loadType: 'external',
+        setType: 'working',
+      });
+      clock = new Date(`2026-09-07T18:${minute}:00.000Z`);
+      await sessions.completeSet(added.id);
+    }
+    await sessions.finish(session.id);
+
+    const [summary] = await history.sessionSummaries();
+    expect(summary?.firstSetAt?.toISOString()).toBe('2026-09-07T18:05:00.000Z');
+    expect(summary?.lastSetAt?.toISOString()).toBe('2026-09-07T18:47:00.000Z');
+  });
+
+  /**
+   * The reported case: a session left open for a day and a half. Its sets say
+   * when the training happened, whatever the workout's own end says.
+   */
+  it('times from the sets, not from how long the workout was open', async () => {
+    clock = new Date('2026-09-07T18:00:00.000Z');
+    const session = await sessions.start();
+    const bench = await sessions.addExercise(session.id, 'bench');
+    const added = await sessions.addSet(bench.id, {
+      weightKg: 100,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    clock = new Date('2026-09-07T18:40:00.000Z');
+    await sessions.completeSet(added.id);
+
+    // Finished the next evening.
+    clock = new Date('2026-09-09T06:00:00.000Z');
+    await sessions.finish(session.id);
+
+    const [summary] = await history.sessionSummaries();
+    expect(summary?.lastSetAt?.toISOString()).toBe('2026-09-07T18:40:00.000Z');
+    expect(summary?.endedAt?.toISOString()).toBe('2026-09-09T06:00:00.000Z');
+  });
+
+  it('does not start the clock at a warm-up', async () => {
+    clock = new Date('2026-09-07T18:00:00.000Z');
+    const session = await sessions.start();
+    const bench = await sessions.addExercise(session.id, 'bench');
+
+    const warmup = await sessions.addSet(bench.id, {
+      weightKg: 40,
+      reps: 10,
+      loadType: 'external',
+      setType: 'warmup',
+    });
+    clock = new Date('2026-09-07T18:02:00.000Z');
+    await sessions.completeSet(warmup.id);
+
+    const working = await sessions.addSet(bench.id, {
+      weightKg: 100,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    clock = new Date('2026-09-07T18:10:00.000Z');
+    await sessions.completeSet(working.id);
+    await sessions.finish(session.id);
+
+    const [summary] = await history.sessionSummaries();
+    expect(summary?.firstSetAt?.toISOString()).toBe('2026-09-07T18:10:00.000Z');
+  });
 });
 
 describe('trainedExercises', () => {

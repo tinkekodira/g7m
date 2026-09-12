@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router';
-import { describeWhen, toDisplayWeight, totalVolumeKg, type UnitSystem } from '@g7m/core';
+import {
+  describeWhen,
+  toDisplayWeight,
+  totalVolumeKg,
+  trainingMinutes,
+  type UnitSystem,
+} from '@g7m/core';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { formatVolume } from '../components/chart-scale.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -65,7 +71,6 @@ export function SessionDetailScreen() {
       ) : (
         <SessionBody
           startedAt={data.session.startedAt}
-          endedAt={data.session.endedAt}
           bodyweightKg={data.session.bodyweightKg}
           unitSystem={data.profile?.unitSystem ?? 'metric'}
           blocks={data.blocks}
@@ -85,18 +90,17 @@ interface Block {
     readonly weightKg: number;
     readonly reps: number;
     readonly isCompleted: boolean;
+    readonly completedAt: Date | null;
   }[];
 }
 
 function SessionBody({
   startedAt,
-  endedAt,
   bodyweightKg,
   unitSystem,
   blocks,
 }: {
   readonly startedAt: Date;
-  readonly endedAt: Date | null;
   readonly bodyweightKg: number | null;
   readonly unitSystem: UnitSystem;
   readonly blocks: readonly Block[];
@@ -111,8 +115,15 @@ function SessionBody({
     })),
   );
   const volume = totalVolumeKg(allSets, bodyweightKg);
-  const minutes =
-    endedAt === null ? null : Math.round((endedAt.getTime() - startedAt.getTime()) / 60000);
+  // From the first working set ticked to the last — the same clock the list on
+  // the progress screen reads, so the two never disagree about one session.
+  const minutes = trainingMinutes(
+    blocks.flatMap((block) =>
+      block.sets
+        .filter((set) => set.isCompleted && set.setType !== 'warmup')
+        .map((set) => set.completedAt),
+    ),
+  );
   const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
 
   return (

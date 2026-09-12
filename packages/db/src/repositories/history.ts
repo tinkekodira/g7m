@@ -51,6 +51,16 @@ export interface SessionSummary {
   readonly bodyweightKg: number | null;
   readonly exerciseCount: number;
   readonly setCount: number;
+  /**
+   * When the first and last counted sets were ticked.
+   *
+   * The clock a duration should be read from. `startedAt` and `endedAt` say how
+   * long the workout was *open*, which includes a phone left on a bench after
+   * the last set and a workout started at the door and not touched for an
+   * hour. See `trainingMinutes`.
+   */
+  readonly firstSetAt: Date | null;
+  readonly lastSetAt: Date | null;
 }
 
 function toHistoricalSet(row: RawRow): HistoricalSet {
@@ -184,6 +194,13 @@ export class HistoryRepository {
    * they are counts rather than meaning — and fetching every set of every
    * session to count them in JavaScript would read a year of training to
    * render one list.
+   *
+   * **A session with nothing ticked is not a workout, and is left out.** It is
+   * one somebody opened and walked away from, or finished without logging, and
+   * listing it read as "0 sets · 442 min". Worse, it counted: the Learn screen
+   * waits for five sessions before offering advice, and five abandoned ones
+   * met that threshold with no training behind it at all. Nothing is deleted —
+   * the rows are still there — they are just not reported as training.
    */
   async sessionSummaries(limit = 50): Promise<SessionSummary[]> {
     const { userId } = resolveContext(this.context);
@@ -191,12 +208,17 @@ export class HistoryRepository {
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
-              (SELECT COUNT(*) FROM session_sets ss
-                 JOIN session_exercises se2 ON se2.id = ss.session_exercise_id
-                WHERE se2.session_id = ws.id
-                  AND ss.is_completed = 1
-                  AND ss.set_type <> 'warmup') AS set_count
+              counted.set_count, counted.first_set_at, counted.last_set_at
          FROM workout_sessions ws
+         JOIN (SELECT se2.session_id,
+                      COUNT(*) AS set_count,
+                      MIN(ss.completed_at) AS first_set_at,
+                      MAX(ss.completed_at) AS last_set_at
+                 FROM session_sets ss
+                 JOIN session_exercises se2 ON se2.id = ss.session_exercise_id
+                WHERE ss.is_completed = 1
+                  AND ss.set_type <> 'warmup'
+                GROUP BY se2.session_id) counted ON counted.session_id = ws.id
         WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL
         ORDER BY ws.started_at DESC, ws.id DESC
         LIMIT ?`,
@@ -211,6 +233,8 @@ export class HistoryRepository {
       bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
       exerciseCount: readNumber(row, 'exercise_count', 0),
       setCount: readNumber(row, 'set_count', 0),
+      firstSetAt: readDate(row, 'first_set_at'),
+      lastSetAt: readDate(row, 'last_set_at'),
     }));
   }
 

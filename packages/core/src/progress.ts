@@ -302,3 +302,38 @@ export function personalRecords(sets: readonly HistoricalSet[]): PersonalRecord[
 function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
+
+/**
+ * How long somebody actually trained, from the sets they ticked.
+ *
+ * A workout's own start and end are the wrong clock. They measure how long the
+ * workout was *open*, and a phone left on a bench after the last set — or a
+ * workout started at the door and not touched for an hour — is open time, not
+ * training. Measured that way a real history read "13 sets · 2112 min": a
+ * session left running for a day and a half, finished the next evening.
+ *
+ * The first ticked set to the last is what anybody means by how long a session
+ * took, and it cannot be inflated by anything that happens either side of it.
+ * It does miss the warm-up before the first set, which is a few minutes and
+ * the right direction to be wrong in.
+ *
+ * Null when there is nothing to time: fewer than two ticked sets, or two within
+ * the same minute. "1 set · 0 min" is not a duration, it is a missing one.
+ */
+export function trainingMinutes(completedAt: readonly (Date | null)[]): number | null {
+  let first: number | null = null;
+  let last: number | null = null;
+
+  for (const at of completedAt) {
+    if (at === null) continue;
+    const time = at.getTime();
+    if (Number.isNaN(time)) continue;
+    if (first === null || time < first) first = time;
+    if (last === null || time > last) last = time;
+  }
+
+  if (first === null || last === null) return null;
+
+  const minutes = Math.round((last - first) / 60000);
+  return minutes < 1 ? null : minutes;
+}

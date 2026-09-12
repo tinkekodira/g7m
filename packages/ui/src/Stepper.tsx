@@ -174,10 +174,45 @@ function StepButton({
   readonly onStep: () => boolean;
   readonly children: string;
 }) {
+  const button = useRef<HTMLButtonElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const repeats = useRef(0);
   /** Set by a press, consumed by the click that follows it. */
   const pressed = useRef(false);
+
+  /**
+   * Tell iOS, on the touch itself, that this is not the start of a scroll.
+   *
+   * The second of the two things that ended a hold. Pointer capture fixed the
+   * first — a fixed bar redrawing over the button — and holds then worked on
+   * the first two exercises and failed on the third. That is where the page
+   * first has to be scrolled to reach the button, and on a scrolled page iOS
+   * reads a finger held still on a button as the opening of a pan and cancels
+   * it. Capture cannot stop a cancel; it only stops a leave.
+   *
+   * `touch-action: none` is supposed to prevent exactly this, and WebKit
+   * honours it unreliably once a page has scrolled with a fixed layer on
+   * screen. `preventDefault` on `touchstart` is the instruction it does not
+   * second-guess — and it has to be a native, non-passive listener, because
+   * React registers its touch handlers as passive and ignores the call.
+   *
+   * Scoped to touches that begin on this button, so nothing else on the page
+   * loses the ability to scroll.
+   */
+  useEffect(() => {
+    const element = button.current;
+    if (element === null) return;
+
+    const claim = (event: TouchEvent): void => {
+      if (event.cancelable) event.preventDefault();
+    };
+    element.addEventListener('touchstart', claim, { passive: false });
+    element.addEventListener('touchmove', claim, { passive: false });
+    return () => {
+      element.removeEventListener('touchstart', claim);
+      element.removeEventListener('touchmove', claim);
+    };
+  }, []);
 
   const stop = (): void => {
     if (timer.current !== null) clearTimeout(timer.current);
@@ -199,6 +234,7 @@ function StepButton({
 
   return (
     <button
+      ref={button}
       type="button"
       aria-label={label}
       disabled={disabled}
@@ -227,7 +263,16 @@ function StepButton({
         pressed.current = true;
         if (onStep()) queue();
       }}
-      onPointerUp={stop}
+      onPointerUp={() => {
+        stop();
+        // Cancelling the touch above also cancels the click iOS would have
+        // sent after it, so nothing would ever consume the flag and the next
+        // keyboard press would be swallowed. Cleared a task later instead:
+        // after a mouse press's click has been seen, whether or not one comes.
+        setTimeout(() => {
+          pressed.current = false;
+        }, 0);
+      }}
       onPointerCancel={stop}
       onLostPointerCapture={stop}
       // A long press on a touchscreen otherwise offers to copy the button.
