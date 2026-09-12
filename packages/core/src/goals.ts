@@ -228,3 +228,46 @@ export function suggestGoal(context: GoalContext): GoalSuggestion | null {
 
   return null;
 }
+
+/**
+ * When the goal in force replaced a *different* one — or null if it never has.
+ *
+ * The review measures from here, and the rule is narrow on purpose: the only
+ * thing that should cut history out of it is switching away from another
+ * goal. A cut's sessions are not evidence about a bulk.
+ *
+ * Two things must *not* cut it, and both used to:
+ *
+ * **Restating the same goal.** Decisions are append-only, so saying the same
+ * thing twice writes two rows. Onboarding asked every existing account for a
+ * goal, and each answered by restating the one it had — a new row dated that
+ * day. Measured from it, everything logged before onboarding fell out of the
+ * review, and an account with ten sessions was told it had one.
+ *
+ * **Choosing a goal for the first time.** Training logged before any goal
+ * existed was not done for some other goal; it is simply training, and it is
+ * exactly what the first review should be made of. There is no earlier
+ * decision for it to contaminate.
+ *
+ * So: walk back while the goal is unchanged. Meet a different one, and the run
+ * began at the oldest matching row after it. Reach the end without meeting
+ * one, and nothing is cut — null, and the caller's own window applies.
+ *
+ * `history` is newest first, the order `GoalRepository.history` returns.
+ */
+export function goalChangedAt(
+  history: readonly { readonly goal: TrainingGoal; readonly startedAt: Date }[],
+): Date | null {
+  const [latest, ...older] = history;
+  if (latest === undefined) return null;
+
+  let since = latest.startedAt;
+  for (const entry of older) {
+    // A different goal: the current run began at the last row we accepted.
+    if (entry.goal !== latest.goal) return since;
+    since = entry.startedAt;
+  }
+
+  // Never changed. Nothing before the first decision belongs to another goal.
+  return null;
+}

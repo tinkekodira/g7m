@@ -67,8 +67,21 @@ const DAYS_BEFORE_STALLED = 20;
 const MEANINGFUL_KG = 0.1;
 
 export type Observation =
-  /** Not enough logged yet to say anything honest. */
-  | { readonly kind: 'too_soon'; readonly sessions: number; readonly needed: number }
+  /**
+   * Not enough logged yet to say anything honest.
+   *
+   * Carries *both* things the gate checks. It used to carry only the session
+   * count, while the gate also required twelve days — so ten sessions packed
+   * into five days was reported as "10 of 4 sessions logged", a sentence that
+   * contradicts itself and reads as a broken counter.
+   */
+  | {
+      readonly kind: 'too_soon';
+      readonly sessions: number;
+      readonly needed: number;
+      readonly days: number;
+      readonly neededDays: number;
+    }
   | {
       readonly kind: 'consistency';
       readonly perWeek: number;
@@ -155,7 +168,15 @@ export function reviewTraining(input: ReviewInput): Review {
     return {
       sessions,
       spanDays,
-      observations: [{ kind: 'too_soon', sessions, needed: MIN_SESSIONS }],
+      observations: [
+        {
+          kind: 'too_soon',
+          sessions,
+          needed: MIN_SESSIONS,
+          days: Math.floor(spanDays),
+          neededDays: MIN_DAYS,
+        },
+      ],
     };
   }
 

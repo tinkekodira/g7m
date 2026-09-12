@@ -57,10 +57,7 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
 
   switch (observation.kind) {
     case 'too_soon':
-      return {
-        heading: 'Not enough to go on yet',
-        detail: `${String(observation.sessions)} of ${String(observation.needed)} sessions logged. Once there are a few, this is where you will find out how it is actually going.`,
-      };
+      return describeTooSoon(observation);
 
     case 'consistency':
       return {
@@ -98,6 +95,31 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
     case 'pace':
       return describePace(observation, show);
   }
+}
+
+/**
+ * Which of the two thresholds is short, said as that one.
+ *
+ * Sessions first when both are: it is the one somebody can do something about
+ * today, and "log a few more" is a clearer instruction than a date.
+ */
+function describeTooSoon(observation: Extract<Observation, { kind: 'too_soon' }>): Line {
+  const { sessions, needed, days, neededDays } = observation;
+
+  if (sessions < needed) {
+    return {
+      heading: 'Not enough to go on yet',
+      detail: `${String(sessions)} of ${String(needed)} sessions logged. Once there are a few, this is where you will find out how it is actually going.`,
+    };
+  }
+
+  // Enough sessions, not enough calendar. Ten sessions in five days is a
+  // weekly rate of fourteen, which is arithmetic rather than a finding.
+  const wait = Math.max(1, neededDays - days);
+  return {
+    heading: 'Enough sessions, not enough weeks',
+    detail: `${String(sessions)} sessions over ${String(days)} ${days === 1 ? 'day' : 'days'}. A weekly pattern needs about two weeks to mean anything, so this fills in ${wait === 1 ? 'tomorrow' : `in ${String(wait)} days`}.`,
+  };
 }
 
 function describePace(

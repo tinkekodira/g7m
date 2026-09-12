@@ -11,6 +11,7 @@ import {
   DEFAULT_WEEK_START,
   REVIEW_WEEKS,
   linksFrom,
+  goalChangedAt,
   type Link,
   reviewTraining,
   startOfDay,
@@ -35,9 +36,10 @@ export function useTrainingReview(now: Date): QueryState<TrainingReview> {
   const today = useMemo(() => startOfDay(now).toISOString(), [now]);
 
   return useCatalogue(`training-review-${today}`, async (repositories) => {
-    const [profile, goal] = await Promise.all([
+    const [profile, goal, goals] = await Promise.all([
       repositories.profile.current(),
       repositories.goals.current(),
+      repositories.goals.history(),
     ]);
 
     const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
@@ -56,7 +58,19 @@ export function useTrainingReview(now: Date): QueryState<TrainingReview> {
      */
     const window = startOfDay(now);
     window.setDate(window.getDate() - REVIEW_WEEKS * 7);
-    const from = goal.startedAt > window ? goal.startedAt : window;
+
+    /*
+     * Cut only at a real change of goal, never at a restatement.
+     *
+     * Goal rows are append-only, and onboarding asked every existing account
+     * for a goal — so each restated the goal it already had and got a row dated
+     * that day. Measured from that row, everything logged before onboarding fell
+     * out of the review, and ten sessions read as one. `goalChangedAt` is null
+     * unless the goal switched away from a different one, and then this window
+     * is the only bound.
+     */
+    const changedAt = goalChangedAt(goals);
+    const from = changedAt !== null && changedAt > window ? changedAt : window;
 
     const [sets, groupsByExercise, trained, weighIns] = await Promise.all([
       repositories.history.completedSets({ from }),

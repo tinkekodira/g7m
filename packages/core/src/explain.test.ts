@@ -80,7 +80,9 @@ describe('what it refuses to say', () => {
   });
 
   it('says nothing at all before there is enough logged', () => {
-    expect(linksFrom([{ kind: 'too_soon', sessions: 2, needed: 4 }])).toEqual([]);
+    expect(
+      linksFrom([{ kind: 'too_soon', sessions: 2, needed: 4, days: 3, neededDays: 12 }]),
+    ).toEqual([]);
   });
 
   it('says nothing when there is nothing to join', () => {

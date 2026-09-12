@@ -3,7 +3,7 @@ import type { Observation } from '@g7m/core';
 import { describeObservation } from './review-copy.js';
 
 const ALL: Observation[] = [
-  { kind: 'too_soon', sessions: 2, needed: 4 },
+  { kind: 'too_soon', sessions: 2, needed: 4, days: 3, neededDays: 12 },
   { kind: 'consistency', perWeek: 1.8, target: 4, weeks: 5 },
   { kind: 'group_short', group: 'back', perWeek: 4, target: 16 },
   { kind: 'group_over', group: 'chest', perWeek: 28, target: 16 },
@@ -124,5 +124,44 @@ describe('muscle groups read as words', () => {
       'metric',
     );
     expect(line.heading).toContain('adductors');
+  });
+});
+
+describe('saying which threshold is short', () => {
+  const early = (sessions: number, days: number): Observation => ({
+    kind: 'too_soon',
+    sessions,
+    needed: 4,
+    days,
+    neededDays: 12,
+  });
+
+  it('asks for sessions while there are too few', () => {
+    expect(describeObservation(early(2, 3), 'metric').detail).toContain('2 of 4 sessions');
+  });
+
+  /**
+   * The reported bug. Enough sessions, too few days, and the old copy printed
+   * "10 of 4 sessions logged" — which reads as a counter that cannot count.
+   */
+  it('never reports more sessions than it asked for', () => {
+    const line = describeObservation(early(10, 5), 'metric');
+    expect(line.detail).not.toContain('10 of 4');
+    expect(line.detail).toContain('10 sessions over 5 days');
+  });
+
+  it('says how long is left rather than only that it is too soon', () => {
+    expect(describeObservation(early(10, 5), 'metric').detail).toContain('in 7 days');
+    expect(describeObservation(early(10, 11), 'metric').detail).toContain('tomorrow');
+  });
+
+  it('asks for sessions first when both are short', () => {
+    // Four days and two sessions: "log a few more" is the one somebody can act
+    // on today, and a date is not.
+    expect(describeObservation(early(2, 4), 'metric').detail).toContain('2 of 4 sessions');
+  });
+
+  it('does not say "1 days"', () => {
+    expect(describeObservation(early(5, 1), 'metric').detail).toContain('over 1 day.');
   });
 });
