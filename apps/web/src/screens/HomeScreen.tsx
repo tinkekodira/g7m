@@ -1,195 +1,117 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
-import { Button } from '@g7m/ui';
-import { firstName, greetingFor } from '@g7m/core';
-import { supabase } from '../lib/supabase.js';
-import { useAuthStore } from '../auth/auth-store.js';
-import { detectPlatform, platformLabel } from '../platform.js';
-import { describeDataError, retryOnceIfTransient } from '../lib/errors.js';
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router';
 import {
-  describePersistence,
-  formatBytes,
-  requestPersistenceOnce,
-  type PersistenceReport,
-} from '../lib/storage.js';
+  FOCUS_LABELS,
+  estimateSessionMinutes,
+  firstName,
+  greetingFor,
+  type PlannedSession,
+} from '@g7m/core';
+import { cx } from '@g7m/ui';
+import { Avatar } from '../components/Avatar.js';
 import {
-  describeDiscarded,
-  describeSyncError,
-  describeSyncPhase,
-  useSyncStore,
-} from '../lib/powersync/sync-store.js';
-import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
-import { useTrainingReview } from '../lib/db/use-review.js';
-import { useCatalogue } from '../lib/db/use-catalogue.js';
+  AlertIcon,
+  BodyIcon,
+  CalendarIcon,
+  ChevronRightIcon,
+  DumbbellIcon,
+  PlayIcon,
+  ScaleIcon,
+  SearchIcon,
+  type IconProps,
+} from '../components/icons.js';
 import { ReviewNudge } from '../components/ReviewCard.js';
-import { openSessionSummary, type OpenSession } from './workout-timer.js';
+import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { useTrainingReview } from '../lib/db/use-review.js';
+import { startPlannedWorkout, useTodaysPlan, type TodaysPlan } from '../lib/db/use-todays-plan.js';
+import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
+import { openSessionSummary, type OpenSession, type OpenSessionSummary } from './workout-timer.js';
 
 /**
- * Phase 1c landing screen.
+ * Home: hello, today's workout, and the ways into everything else.
  *
- * Its job is to prove the whole stack works end to end: a real session, a real
- * authenticated read of the seeded catalogue, and the profile row that the
- * database trigger created on signup. Phase 3 replaces it with the exercise
- * library.
+ * The workout the app has built for today leads, and looks like it — it is
+ * the reason most people open the app. Under it, four ways in: building your
+ * own workout, your numbers, the exercise library and the 3D model. The tab
+ * bar does the rest.
+ *
+ * What this screen used to be — account, sync, storage and device panels from
+ * when it existed to prove the plumbing worked — is on Settings now. The one
+ * part of it that has to find the user rather than wait to be found, a sync
+ * that is losing data or not working, still shows here.
  */
-
-/**
- * The Supabase client is untyped until Phase 2b generates a Database type
- * with `supabase gen types`. Until then, the shape of a row is asserted at
- * the one place it is read, rather than spread as `any` through the file.
- */
-interface ProfileRow {
-  readonly display_name: string | null;
-  readonly unit_system: string;
-  readonly country: string | null;
-  readonly sex: string | null;
-}
-
-interface Snapshot {
-  readonly displayName: string | null;
-  readonly unitSystem: string;
-  readonly country: string | null;
-  readonly sex: string | null;
-  readonly exerciseCount: number;
-  readonly muscleCount: number;
-}
-
-function Row({ label, value }: { readonly label: string; readonly value: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-subtle py-2 last:border-b-0">
-      <span className="text-sm text-secondary">{label}</span>
-      <span className="numeric text-base text-primary">{value}</span>
-    </div>
-  );
-}
-
 export function HomeScreen() {
-  const session = useAuthStore((s) => s.session);
-  const signOut = useAuthStore((s) => s.signOut);
-  const busy = useAuthStore((s) => s.busy);
-
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [persistence, setPersistence] = useState<PersistenceReport | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [local, setLocal] = useState<LocalCounts | null>(null);
-  const platform = detectPlatform();
-  const review = useTrainingReview(useMemo(() => new Date(), []));
+  const now = useMemo(() => new Date(), []);
+  const profile = useCatalogue('profile', (r) => r.profile.current());
   const open = useOpenSession();
+  const today = useTodaysPlan(now);
+  const review = useTrainingReview(now);
+  const alarm = useSyncAlarm();
 
-  const syncPhase = useSyncStore((s) => s.phase);
-  const syncBusy = useSyncStore((s) => s.busy);
-  const lastSyncedAt = useSyncStore((s) => s.lastSyncedAt);
-  const discarded = useSyncStore((s) => s.discarded);
-  const connectionError = useSyncStore((s) => s.connectionError);
-  const lostMessage = describeDiscarded(discarded);
-  const syncErrorMessage = describeSyncError(connectionError ?? undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load(): Promise<void> {
-      // Three reads that each prove something different: the profile row proves
-      // the signup trigger fired, and the two counts prove an authenticated
-      // user can read reference data that an anonymous one cannot.
-      const [profile, exercises, muscles] = await Promise.all([
-        // Retried once: a device clock a second or two ahead of the server
-        // makes the freshly issued token look like it came from the future.
-        retryOnceIfTransient(() =>
-          supabase.from('profiles').select('display_name, unit_system, country, sex').single(),
-        ),
-        supabase.from('exercises').select('*', { count: 'exact', head: true }),
-        supabase.from('muscles').select('*', { count: 'exact', head: true }),
-      ]);
-
-      if (cancelled) return;
-
-      const failure = profile.error ?? exercises.error ?? muscles.error;
-      if (failure !== null) {
-        setLoadError(describeDataError(failure.message));
-        return;
-      }
-      if (profile.data === null) {
-        // The signup trigger should make this impossible. If it happens, say so
-        // plainly rather than rendering a screen full of blanks.
-        setLoadError('No profile row exists for this account.');
-        return;
-      }
-
-      const row = profile.data as unknown as ProfileRow;
-      setSnapshot({
-        displayName: row.display_name,
-        unitSystem: row.unit_system,
-        country: row.country,
-        sex: row.sex,
-        exerciseCount: exercises.count ?? 0,
-        muscleCount: muscles.count ?? 0,
-      });
-    }
-
-    void load();
-    // Phase 2 moves this ahead of the PowerSync bootstrap; for now the point
-    // is to see the real answer on a real device.
-    void requestPersistenceOnce().then((report) => {
-      if (!cancelled) setPersistence(report);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  /**
-   * Poll the local counts rather than watching them.
-   *
-   * `db.watch()` would push updates, but it also holds a subscription open for
-   * a panel that exists to be glanced at. Two seconds is fast enough to watch
-   * the catalogue arrive on a first sync and cheap enough not to matter.
-   */
-  useEffect(() => {
-    let cancelled = false;
-    const read = () => {
-      void readLocalCounts().then((counts) => {
-        if (!cancelled) setLocal(counts);
-      });
-    };
-    read();
-    const timer = setInterval(read, 2000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [syncPhase, syncBusy]);
-
-  const email = session?.user.email ?? 'unknown';
-  const greeting = greetingFor(
-    snapshot?.country ?? null,
-    snapshot?.sex === 'male' || snapshot?.sex === 'female' ? snapshot.sex : null,
-  );
-
-  /**
-   * Greeted by name, where there is one.
-   *
-   * The heading used to show the name *instead of* the greeting, so anybody
-   * who filled the field in got "Tin" where everybody else got "Bienvenue" —
-   * a label rather than a welcome. The name now joins the greeting, in
-   * whichever language the greeting is already in.
-   */
-  const name = firstName(snapshot?.displayName ?? null);
+  const greeting = greetingFor(profile.data?.country ?? null, profile.data?.sex ?? null);
+  const name = firstName(profile.data?.displayName ?? null);
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="pt-6 pb-2">
-        {/* Their own language, from the country they gave at signup. `lang`
-            and `dir` are not decoration: Arabic inside an English heading runs
-            the wrong way without them, and a screen reader spells a foreign
-            word out letter by letter. */}
-        <h1
-          lang={greeting.language}
-          dir={greeting.direction}
-          className="text-2xl font-semibold text-primary"
-        >
-          {name === null ? greeting.text : `${greeting.text}, ${name}!`}
+    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-4 pt-safe-top pb-safe-bottom">
+      <header className="flex items-center justify-between gap-4 pt-6">
+        {/*
+          Hello in their own language, from the country they gave at signup,
+          then their name. `lang` and `dir` are on the greeting alone and are
+          not decoration: Arabic inside an English heading runs the wrong way
+          without them, and a screen reader spells a foreign word out letter by
+          letter.
+        */}
+        <h1 className="min-w-0">
+          {name === null ? (
+            <span
+              lang={greeting.language}
+              dir={greeting.direction}
+              className="block text-3xl font-bold text-primary"
+            >
+              {greeting.text}
+            </span>
+          ) : (
+            <>
+              <span
+                lang={greeting.language}
+                dir={greeting.direction}
+                className="block text-lg text-secondary"
+              >
+                {greeting.text},
+              </span>
+              <span className="block truncate text-3xl font-bold text-primary">{name}</span>
+            </>
+          )}
         </h1>
+        <Link
+          to="/profile"
+          aria-label="Your profile"
+          className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Avatar name={name} />
+        </Link>
       </header>
+
+      {(alarm.lost !== null || alarm.error !== null) && <SyncWarning lost={alarm.lost !== null} />}
+
+      <TodayCard open={open} today={today} />
+
+      <section aria-labelledby="quick-access">
+        <h2 id="quick-access" className="mb-3 text-lg font-semibold text-primary">
+          Quick access
+        </h2>
+        <ul className="grid grid-cols-2 gap-3">
+          {tilesFor(open !== null).map((tile, index) => (
+            <li
+              key={tile.to}
+              className="rise"
+              style={{ animationDelay: `${String(index * 40)}ms` }}
+            >
+              <QuickTile {...tile} />
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {/* The heads-up ADR-0032 asked for: it finds the user rather than
           waiting to be opened, because the lifter running their own program is
@@ -202,221 +124,339 @@ export function HomeScreen() {
         />
       )}
 
-      {/*
-        A workout already running takes the top slot and the accent.
-
-        This screen used to offer "Start an empty workout" whether or not one
-        was open, which is the app forgetting the thing the lifter is in the
-        middle of: coming back after a phone call meant tapping through to the
-        logger to find out whether anything was still there.
-      */}
-      {open !== null && (
-        <Link
-          to="/workout"
-          className="flex min-h-tap items-center justify-between gap-4 rounded-card bg-accent px-4 py-3 text-on-accent active:brightness-95"
-        >
-          <span className="min-w-0">
-            <span className="block text-base font-semibold">{open.headline}</span>
-            <span className="numeric mt-0.5 block text-sm opacity-80">{open.detail}</span>
-          </span>
-          <span aria-hidden>→</span>
-        </Link>
-      )}
-
-      {/* The two things on this screen that are the actual app rather than a
-          readout of whether the plumbing works. Train first: it is what
-          somebody standing in a gym opened the app to do. */}
-      <Link
-        to="/plan"
-        className={`flex min-h-tap items-center justify-between rounded-card px-4 py-3 ${
-          open === null
-            ? 'bg-accent text-on-accent active:brightness-95'
-            : 'bg-surface text-primary active:bg-elevated'
-        }`}
-      >
-        <span className="text-base font-semibold">Train — today’s session</span>
-        <span aria-hidden className={open === null ? undefined : 'text-muted'}>
-          →
-        </span>
-      </Link>
-
-      {/* Still here, and deliberately. Brief §0: somebody who knows what they
-          are doing builds their own workout, and the generated plan is an
-          offer rather than a gate. Hidden while one is running, because the
-          card above already goes to the same place and means something else. */}
-      {open === null && (
-        <Link
-          to="/workout"
-          className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-        >
-          <span className="text-base font-medium text-primary">Start an empty workout</span>
-          <span aria-hidden className="text-muted">
-            →
-          </span>
-        </Link>
-      )}
-
-      <Link
-        to="/progress"
-        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-      >
-        <span className="text-base font-medium text-primary">Progress</span>
-        <span aria-hidden className="text-muted">
-          →
-        </span>
-      </Link>
-
-      <Link
-        to="/learn"
-        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-      >
-        <span className="text-base font-medium text-primary">Learn — the 3D model</span>
-        <span aria-hidden className="text-muted">
-          →
-        </span>
-      </Link>
-
-      {/* Sits with the other pillars rather than in a settings menu. The
-          weekly weigh-in is a thing the app asks of the user, so the way to it
-          has to be somewhere they already look. */}
-      <Link
-        to="/you"
-        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-      >
-        <span className="text-base font-medium text-primary">You — weight, goal, activity</span>
-        <span aria-hidden className="text-muted">
-          →
-        </span>
-      </Link>
-
-      <Link
-        to="/exercises"
-        className="flex min-h-tap items-center justify-between rounded-card bg-surface px-4 py-3 active:bg-elevated"
-      >
-        <span className="text-base font-medium text-primary">Browse exercises</span>
-        <span aria-hidden className="text-muted">
-          →
-        </span>
-      </Link>
-
-      <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-3 text-lg font-semibold text-primary">Your account</h2>
-        {loadError !== null ? (
-          <p role="alert" className="text-sm text-danger">
-            {loadError}
-          </p>
-        ) : snapshot === null ? (
-          <p className="text-sm text-muted">Loading…</p>
-        ) : (
-          <>
-            {/* Which account this is, moved down out of the greeting. It
-                answers "whose account am I in", which is this card's whole
-                job — not the first line somebody reads on opening the app. */}
-            <Row label="Signed in" value={email} />
-            <Row label="Units" value={snapshot.unitSystem === 'metric' ? 'Kilograms' : 'Pounds'} />
-            <Row label="Exercises available" value={snapshot.exerciseCount} />
-            <Row label="Muscles on the model" value={snapshot.muscleCount} />
-          </>
-        )}
-      </section>
-
-      <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-3 text-lg font-semibold text-primary">
-          Sync{syncBusy ? ' · working…' : ''}
-        </h2>
-        {/* The one message that is genuinely bad news: rows that exist here and
-            never will on the server. Shown above the counts, not below. */}
-        {lostMessage !== null && (
-          <p role="alert" className="mb-3 text-sm text-danger">
-            {lostMessage}
-          </p>
-        )}
-        {/* Why it is not connecting, when there is a reason beyond "no signal".
-            Without this the screen cannot tell a basement from a rejected
-            token, and neither can anyone reading it over your shoulder. */}
-        {syncErrorMessage !== null && (
-          <p role="alert" className="mb-3 text-sm text-danger">
-            {syncErrorMessage}
-          </p>
-        )}
-        <Row
-          label="Status"
-          value={
-            syncPhase === 'synced'
-              ? 'Connected'
-              : syncPhase === 'connecting'
-                ? 'Connecting'
-                : syncPhase === 'unconfigured'
-                  ? 'Not set up'
-                  : 'Offline'
-          }
-        />
-        {/* These come from SQLite on this device, not from the network. Turning
-            the network off and watching them stay is the whole demonstration. */}
-        <Row label="Exercises on device" value={local?.exercises ?? '—'} />
-        <Row label="Muscles on device" value={local?.muscles ?? '—'} />
-        <Row label="Equipment on device" value={local?.equipment ?? '—'} />
-        <Row label="Your profile rows" value={local?.profiles ?? '—'} />
-        <Row label="Workouts logged" value={local?.sessions ?? '—'} />
-        <Row label="Sets logged" value={local?.sets ?? '—'} />
-        <p className="mt-3 max-w-prose text-sm text-secondary">
-          {describeSyncPhase(syncPhase, lastSyncedAt)}
-        </p>
-      </section>
-
-      <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-3 text-lg font-semibold text-primary">Offline storage</h2>
-        {persistence === null ? (
-          <p className="text-sm text-muted">Checking…</p>
-        ) : (
-          <>
-            <Row
-              label="Persistent"
-              value={
-                persistence.state === 'granted'
-                  ? 'Granted'
-                  : persistence.state === 'denied'
-                    ? 'Refused'
-                    : persistence.state === 'unsupported'
-                      ? 'Unsupported'
-                      : 'Unknown'
-              }
-            />
-            <Row label="Space available" value={formatBytes(persistence.quotaBytes)} />
-            <Row label="Used" value={formatBytes(persistence.usageBytes)} />
-            <p className="mt-3 max-w-prose text-sm text-secondary">
-              {describePersistence(persistence.state)}
-            </p>
-          </>
-        )}
-      </section>
-
-      <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-3 text-lg font-semibold text-primary">Where this is running</h2>
-        <Row label="Shell" value={platform.shell} />
-        <Row label="Platform" value={platformLabel(platform.platform)} />
-        <Row
-          label="Pointer"
-          value={platform.hasFinePointer ? 'Fine — hover available' : 'Coarse — tap only'}
-        />
-      </section>
-
-      <div className="pt-2">
-        <Button
-          variant="secondary"
-          disabled={busy}
-          onClick={() => {
-            void signOut();
-          }}
-        >
-          Sign out
-        </Button>
-      </div>
-
-      <footer className="py-6 text-xs text-muted">
+      <footer className="py-4 text-xs text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
       </footer>
     </main>
+  );
+}
+
+/**
+ * Today's workout: the thing on this screen that should stand out.
+ *
+ * Five states, and each is a different thing to say:
+ *
+ *   open        a workout is already running, and carrying on beats starting
+ *   no goal     nothing to build from yet — ten seconds to fix
+ *   loading     the plan is being worked out from the history
+ *   done        the week's targets are met; resting is the advice
+ *   ready       the session, with how long it will take, and a button
+ *
+ * "Start workout" starts it here, with the generator's choices. "See the
+ * plan" is the way to the full session — every weight with its reason, and a
+ * swap for any exercise — for anybody who wants to look before they lift.
+ */
+function TodayCard({
+  open,
+  today,
+}: {
+  readonly open: OpenSessionSummary | null;
+  readonly today: TodaysPlan;
+}) {
+  const navigate = useNavigate();
+  const { write, busy, error } = useWrite();
+
+  async function start(plan: PlannedSession): Promise<void> {
+    const started = await write((r) =>
+      startPlannedWorkout(r, {
+        plan,
+        exercises: plan.exercises,
+        bodyweightKg: today.profile?.bodyweightKg ?? null,
+      }),
+    );
+    if (started !== null) void navigate('/workout');
+  }
+
+  if (open !== null) {
+    return (
+      <Hero label={open.stale ? 'Still open' : 'In progress'}>
+        <h2 className="mt-1 text-2xl font-bold text-primary">{open.headline}</h2>
+        <p className="numeric mt-1 text-sm text-secondary">{open.detail}</p>
+        <div className="mt-5">
+          <HeroLink to="/workout">{open.stale ? 'Open it' : 'Continue'}</HeroLink>
+        </div>
+      </Hero>
+    );
+  }
+
+  if (today.noGoal) {
+    return (
+      <Hero label="Today’s workout">
+        <h2 className="mt-1 text-2xl font-bold text-primary">Get a plan built for you</h2>
+        <p className="mt-1 text-sm text-secondary">
+          Pick a goal and how many days you train. It takes about ten seconds, and every session
+          after that is built from what you log.
+        </p>
+        <div className="mt-5">
+          <HeroLink to="/goal">Choose a goal</HeroLink>
+        </div>
+      </Hero>
+    );
+  }
+
+  if (today.error !== null) {
+    return (
+      <Hero label="Today’s workout">
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {today.error}
+        </p>
+      </Hero>
+    );
+  }
+
+  const plan = today.plan;
+  if (!today.ready || plan === null) {
+    return (
+      <Hero label="Today’s workout">
+        <div aria-hidden className="mt-2 h-8 w-40 animate-pulse rounded-control bg-elevated" />
+        <p className="mt-2 text-sm text-muted">Working out today’s session…</p>
+        <div aria-hidden className="mt-5 h-14 w-44 animate-pulse rounded-control bg-elevated" />
+      </Hero>
+    );
+  }
+
+  if (plan.exercises.length === 0) {
+    return (
+      <Hero label="Today’s workout">
+        <h2 className="mt-1 text-2xl font-bold text-primary">You have done the week</h2>
+        <p className="mt-1 text-sm text-secondary">
+          Everything today’s session would train has had its sets in the last seven days. Another
+          session now costs more recovery than it buys.
+        </p>
+        <div className="mt-5">
+          {/* Not a lock. Somebody who wants to train anyway is allowed to. */}
+          <HeroLink to="/workout" quiet>
+            Train anyway
+          </HeroLink>
+        </div>
+      </Hero>
+    );
+  }
+
+  const minutes = estimateSessionMinutes(plan.exercises);
+  const groups = [...new Set(plan.exercises.map((exercise) => exercise.groupSlug))];
+
+  return (
+    <Hero label="Today’s workout">
+      <h2 className="mt-1 text-3xl font-bold text-primary">{FOCUS_LABELS[plan.focus]}</h2>
+      <p className="numeric mt-1 text-sm text-secondary">
+        {plan.exercises.length} exercises · {plan.totalSets} sets
+        {minutes !== null && ` · about ${String(minutes)} min`}
+      </p>
+
+      <ul aria-label="Muscle groups" className="mt-3 flex flex-wrap gap-1.5">
+        {groups.map((group) => (
+          <li
+            key={group}
+            className="rounded-full border border-subtle bg-base/40 px-2.5 py-1 text-xs text-secondary capitalize"
+          >
+            {group}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            void start(plan);
+          }}
+          className={cx(HERO_ACTION, HERO_PRIMARY, 'pr-7 pl-5 disabled:cursor-not-allowed')}
+        >
+          <PlayIcon className="size-5" />
+          {busy ? 'Setting it up…' : 'Start workout'}
+        </button>
+        <Link
+          to="/plan"
+          className="inline-flex min-h-tap items-center px-2 text-sm font-medium text-secondary underline-offset-4 hover:text-primary hover:underline"
+        >
+          See the plan
+        </Link>
+      </div>
+
+      {error !== null && (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </Hero>
+  );
+}
+
+/**
+ * The card's frame: a warm glow in the corner and a faint dumbbell behind the
+ * words, so it reads as the one thing on the screen that is not a menu item.
+ * Both decorative, and both drawn in the design tokens rather than a photo —
+ * there is no stock picture to license, and no face to put on somebody's plan.
+ */
+function Hero({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+  return (
+    <section className="relative isolate overflow-hidden rounded-sheet border border-accent/30 bg-surface p-5">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-br from-accent/20 via-accent/5 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-16 -z-10 size-56 rounded-full bg-accent/25 blur-3xl"
+      />
+      <DumbbellIcon
+        className="pointer-events-none absolute top-5 right-4 -z-10 size-24 -rotate-12 text-accent/10"
+        strokeWidth={1.4}
+      />
+      <p className="text-xs font-semibold tracking-wider text-accent uppercase">{label}</p>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The card's actions: pill-shaped and a size up from the app's other buttons,
+ * because this is the one press the screen exists for. Written out rather than
+ * passed to `Button` as overrides — two radius utilities on one element are
+ * decided by stylesheet order, not by which was written last.
+ */
+const HERO_ACTION = cx(
+  'inline-flex min-h-14 items-center gap-2 rounded-full px-6 text-lg font-medium select-none',
+  'transition-colors duration-150',
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+);
+const HERO_PRIMARY =
+  'bg-accent text-on-accent shadow-floating hover:bg-accent-hover active:bg-accent-pressed ' +
+  'disabled:bg-strong disabled:text-muted disabled:shadow-none';
+const HERO_QUIET = 'border border-subtle bg-elevated text-primary active:bg-surface';
+
+function HeroLink({
+  to,
+  quiet = false,
+  children,
+}: {
+  readonly to: string;
+  readonly quiet?: boolean;
+  readonly children: ReactNode;
+}) {
+  return (
+    <Link to={to} className={cx(HERO_ACTION, quiet ? HERO_QUIET : HERO_PRIMARY)}>
+      {children}
+      <ChevronRightIcon className="size-5" />
+    </Link>
+  );
+}
+
+interface Tile {
+  readonly to: string;
+  readonly title: string;
+  readonly detail: string;
+  readonly icon: ComponentType<IconProps>;
+  readonly tone: keyof typeof TILE_TONES;
+}
+
+const TILE_TONES = {
+  success: 'bg-success/15 text-success',
+  warning: 'bg-warning/15 text-warning',
+  neutral: 'bg-elevated text-secondary',
+  accent: 'bg-accent/15 text-accent',
+} as const;
+
+/**
+ * The four ways in.
+ *
+ * With a workout already open the first one would lead straight back into it —
+ * the card above already does that, and says so — so its place goes to
+ * today's plan instead, which is otherwise out of reach until the workout is
+ * finished.
+ */
+function tilesFor(workoutOpen: boolean): readonly Tile[] {
+  return [
+    workoutOpen
+      ? {
+          to: '/plan',
+          title: 'Today’s plan',
+          detail: 'What the app suggests',
+          icon: CalendarIcon,
+          tone: 'success',
+        }
+      : {
+          to: '/workout',
+          title: 'Start your own workout',
+          detail: 'Build it as you go',
+          icon: DumbbellIcon,
+          tone: 'success',
+        },
+    {
+      to: '/you',
+      title: 'You',
+      detail: 'Weight, goal, activity',
+      icon: ScaleIcon,
+      tone: 'warning',
+    },
+    {
+      to: '/exercises',
+      title: 'Browse exercises',
+      detail: 'The whole library',
+      icon: SearchIcon,
+      tone: 'neutral',
+    },
+    {
+      to: '/learn',
+      title: '3D model',
+      detail: 'See what trains what',
+      icon: BodyIcon,
+      tone: 'accent',
+    },
+  ];
+}
+
+function QuickTile({ to, title, detail, icon: Icon, tone }: Tile) {
+  return (
+    <Link
+      to={to}
+      className="flex h-full min-h-32 flex-col justify-between gap-4 rounded-card border border-subtle bg-surface p-4 transition-colors active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span
+        aria-hidden
+        className={cx('flex size-11 items-center justify-center rounded-control', TILE_TONES[tone])}
+      >
+        <Icon className="size-6" />
+      </span>
+      <span>
+        <span className="block text-base leading-snug font-semibold text-primary">{title}</span>
+        <span className="mt-0.5 block text-xs text-muted">{detail}</span>
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * Sync is losing data, or not working at all. See `useSyncAlarm`.
+ *
+ * The full message is on Settings, with the panel it belongs to. Here it is
+ * one line saying what kind of trouble, and the way there.
+ */
+function SyncWarning({ lost }: { readonly lost: boolean }) {
+  return (
+    <section role="alert" className="rounded-card border border-danger/60 bg-danger/10 p-4">
+      <div className="flex items-start gap-3">
+        <AlertIcon className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-primary">
+            {lost ? 'Some changes did not reach the server' : 'Sync has stopped'}
+          </p>
+          <p className="mt-0.5 text-sm text-secondary">
+            {lost
+              ? 'They are on this phone but will not sync.'
+              : 'Everything is still saved on this phone.'}
+          </p>
+          <Link
+            to="/settings"
+            className="mt-1 inline-flex min-h-tap items-center text-sm font-medium text-primary underline underline-offset-4"
+          >
+            See what happened
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -432,7 +472,7 @@ export function HomeScreen() {
  * database that has not opened yet, and a read that failed. None of them is
  * worth an error on a landing screen — the logger itself says so properly.
  */
-function useOpenSession(): ReturnType<typeof openSessionSummary> | null {
+function useOpenSession(): OpenSessionSummary | null {
   const [now, setNow] = useState(() => new Date());
 
   const state = useCatalogue<OpenSession | null>('home-open-session', async (repositories) => {

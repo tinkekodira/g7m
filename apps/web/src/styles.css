@@ -20,6 +20,22 @@ body,
   height: 100%;
 }
 
+/* The tab bar is pinned to the bottom of every screen that has one (it carries
+   `data-tab-bar`). Anything else pinned there — the update banner — stands on
+   top of it rather than over it, and leaves the safe area to the bar, which
+   already pads past the home indicator. Keyed on the bar being in the page, so
+   the banner needs to know nothing about routes: it has to work on the
+   sign-in screen too, which has no bar. */
+:root {
+  --tab-bar-offset: 0px;
+  --pinned-inset: env(safe-area-inset-bottom, 0px);
+}
+
+:root:has([data-tab-bar]) {
+  --tab-bar-offset: calc(4rem + env(safe-area-inset-bottom, 0px));
+  --pinned-inset: 0px;
+}
+
 /* No text selection or long-press callout in the shell chrome — it makes a
    WebView feel like a web page instead of an app. Inputs opt back in. */
 body {

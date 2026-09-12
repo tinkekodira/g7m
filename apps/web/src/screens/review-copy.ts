@@ -48,6 +48,18 @@ const GROUP_WORDS: Record<string, string> = {
   core: 'core',
 };
 
+/**
+ * "Your glutes are", "your chest is".
+ *
+ * Most group names are plural — glutes, quads, hamstrings, calves, and biceps
+ * and triceps too, as the words are used — and the heading said "your glutes
+ * is behind" to everybody whose glutes were. A trailing "s" is the rule that
+ * holds for every group the app has, and for the fallback slugs as well.
+ */
+export function groupIs(word: string): string {
+  return `${word} ${word.endsWith('s') ? 'are' : 'is'}`;
+}
+
 export function describeObservation(observation: Observation, unitSystem: UnitSystem): Line {
   const show = (kg: number): string => {
     const display = toDisplayWeight(Math.abs(kg), unitSystem);
@@ -70,7 +82,7 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
 
     case 'group_short':
       return {
-        heading: `Your ${group(observation.group)} is behind`,
+        heading: `Your ${groupIs(group(observation.group))} behind`,
         detail: `${String(observation.perWeek)} sets a week against a target of ${String(observation.target)}. It is the furthest behind of anything you train, which makes it the one thing worth adding first.`,
       };
 
@@ -197,7 +209,7 @@ export function describeLink(link: Link, unitSystem: UnitSystem): Line {
 
     case 'shortfall_is_attendance':
       return {
-        heading: `Your ${group(link.group)} is behind because the sessions are`,
+        heading: `Your ${groupIs(group(link.group))} behind because the sessions are`,
         detail: `Training ${rate(link.perWeek)} against the ${String(link.target)} you set. Adding volume to a plan you are not getting to will not fix this one — the attendance comes first.`,
       };
 

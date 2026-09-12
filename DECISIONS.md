@@ -3263,3 +3263,111 @@ The live "elapsed" clock on the workout screen still counts from opening, so a
 forgotten workout still reads as a day and a half. Closing it automatically, or
 asking "still training?" after some hours idle, changes the workout flow and is
 not decided here.
+
+---
+
+## ADR-0058 — A tab bar, and a home screen that is for training
+
+**Status:** accepted · **Date:** 2026-09-12
+
+### Context
+
+Home was the Phase 1 proof that the stack worked: an account panel read over
+the network, a sync panel of on-device counts, a storage panel and a panel
+saying which shell and platform the app was in — under a column of links to
+everything else. It did its job, and it was the first thing a lifter saw. There
+was no navigation at all beyond it: every screen had a "Home" button back.
+
+The redesign asked for a bottom bar with Home in the middle, a Profile tab, a
+Settings tab holding those four panels, a Home led by the generated workout,
+and a Progress screen that reads by the day of the week.
+
+### Decision
+
+**Five tabs: Learn · Progress · Home · Profile · Settings.** Home in the middle,
+where a thumb rests, with the two screens opened most on either side of it.
+Learn takes the fifth place: it is one of the three pillars, and the only one
+that had no way in except a link on Home. The mapping from a screen to its tab
+lives in `navigation.ts` and is tested — a deeper screen lights the tab it
+belongs under, so the exercise library lights Learn and the metrics screen
+lights Profile.
+
+**Every screen has the bar except the workout.** The logger pins its own bars
+to the bottom — rest timer, undo, "still training?" — and five destinations
+under a thumb mid-set are five ways to leave a workout by accident.
+
+**The four panels moved to Settings intact; their alarms did not move with
+them.** Lost writes and a failing sync are the two messages the panels exist
+for, and a warning that only appears on a screen somebody has to go looking
+for is not a warning. `useSyncAlarm` feeds a banner on Home and a dot on the
+Settings tab as well as the panel. The "Units" row became the units switch
+itself: the row read the server's copy, which lags a local change by a sync.
+
+**The update banner stands on top of the bar.** Keyed in CSS on the bar being
+in the page (`:has([data-tab-bar])`) rather than on a route, because the banner
+lives outside the router on purpose — it must work on the sign-in screen too.
+
+**Today's workout is built in one place.** `useTodaysPlan` is what the plan
+screen and Home's card both read, so the card can never promise a different
+session from the one the plan screen lays out. The card starts the workout
+directly with the generator's choices; the plan screen is where they can be
+inspected and swapped. The "about 45 min" is `estimateSessionMinutes`: sets,
+the rests between them and a changeover per exercise, rounded to five minutes.
+
+**Dark mode is a switch that moves and changes nothing.** v1 is dark only
+(Brief §10, and the header of `tokens.css`). The preference is kept on the
+device — it is how a screen looks, not a fact about the lifter — and
+`appliedTheme` answers dark whatever was chosen. That function is the seam a
+light palette plugs into. The switch says light mode is coming, so nobody
+reads it as broken.
+
+**Kilograms or pounds is a real switch.** Every screen already converted at
+the display layer (Brief §5); nothing let anyone choose. Two places still wrote
+"kg" by hand and now convert: the running total on the workout screen and the
+volume on a workout's detail. The latter also read "2.1t kg" past a tonne.
+
+### Progress reads by period, and never points downwards
+
+Weekly, Monthly and All time, from one read: everything the three need is
+loaded when the screen opens and each view is arithmetic over it
+(`periods.ts`), so switching is instant. A week and a month are drawn a column
+per day; all time a column per month, capped at a year of columns while the
+totals stay all time — the screen says "in the last 12 months" when it clips.
+
+The comparison with last week is the part with a decision in it. On a Tuesday
+this week is two days old, and "down 60% on last week" would be arithmetic and
+a lie, said to everybody every Monday. So being ahead is stated with an arrow —
+it cannot be undone — and a shortfall shows only last week's number, with no
+arrow and no colour. "Same as last week" for two empty weeks is suppressed as
+true and useless.
+
+Bests moved to Profile and became all time; the Progress list was twelve weeks
+and had to say so.
+
+### Profile shows the body front and back, as pictures
+
+The heat map on Profile is two still figures rather than one to turn. The
+muscles people most often neglect — lats, glutes, hamstrings — are on the
+back, and a single figure facing forward hides them until somebody thinks to
+spin it. Still, too, because orbit controls claim every touch that lands on
+the canvas, and this one sits in the middle of a scrolling page.
+`AnatomyViewer` gained `view` and `interactive`: not interactive means no
+controls, no hit-testing, no pointer events and rendering on demand.
+
+Two things this found. The viewer paints any muscle it is not told is
+selectable as resting skin, so a picture must still be given the taxonomy's
+selectable list or the heat never shows. And the palette moved into
+`palette.ts`, which imports nothing, so a screen can draw a legend in the
+viewer's own colours without pulling three.js into the first chunk.
+
+### Consequences
+
+`sessionSummaries` takes `null` for no limit, which "all time" needs. The body
+model is loaded once per page (`anatomy-model.ts`) rather than once per
+screen, now that two screens draw it. The review's headings agree with plural
+groups ("your glutes are behind").
+
+Not settled here: the review calls a lift stalled when its top-set weight has
+not risen, which misreads rep progress at a steady weight — the progression
+the plan itself prescribes — and every bodyweight movement. It needs its own
+change.

@@ -7,6 +7,7 @@
  * What that costs is exactly this: the scaling nobody writes tests for and
  * everybody gets subtly wrong.
  */
+import { kgToLb, type UnitSystem } from '@g7m/core';
 
 /**
  * A round number at or above the largest value, for the top of an axis.
@@ -136,6 +137,53 @@ export function formatVolume(kg: number): string {
   if (!Number.isFinite(kg) || kg <= 0) return '0';
   if (kg >= 1000) return `${(kg / 1000).toFixed(kg >= 10_000 ? 0 : 1)}t`;
   return String(Math.round(kg));
+}
+
+/**
+ * `formatVolume` in the lifter's own unit, for a chart's bars and axis.
+ *
+ * Pounds get `k` where kilograms get `t`: a tonne is a metric unit, and "12t"
+ * over a chart of pounds would be a third number in a third unit.
+ */
+export function formatVolumeShort(kg: number, unitSystem: UnitSystem): string {
+  if (unitSystem === 'metric') return formatVolume(kg);
+  const lb = Number.isFinite(kg) ? kgToLb(kg) : 0;
+  if (lb <= 0) return '0';
+  if (lb >= 1000) return `${(lb / 1000).toFixed(lb >= 10_000 ? 0 : 1)}k`;
+  return String(Math.round(lb));
+}
+
+/**
+ * A total with its unit on: `850 kg`, `12.4 t`, `1,870 lb`, `27k lb`.
+ *
+ * Replaces a pattern that appended " kg" to `formatVolume`, which works until
+ * the total passes a tonne and the screen reads "2.1t kg" — and says kilograms
+ * to somebody who asked for pounds.
+ */
+export function formatWeightTotal(kg: number, unitSystem: UnitSystem): string {
+  const usable = Number.isFinite(kg) && kg > 0 ? kg : 0;
+
+  if (unitSystem === 'imperial') {
+    const lb = kgToLb(usable);
+    if (lb < 10_000) return `${Math.round(lb).toLocaleString('en')} lb`;
+    return `${(lb / 1000).toFixed(lb >= 100_000 ? 0 : 1)}k lb`;
+  }
+
+  if (usable < 1000) return `${String(Math.round(usable))} kg`;
+  return `${(usable / 1000).toFixed(usable >= 10_000 ? 0 : 1)} t`;
+}
+
+/**
+ * The same total to the kilogram or pound: `2,450 kg`, `5,401 lb`.
+ *
+ * For the running count on the workout screen, which should move with every
+ * set ticked. Rounded to tonnes it would sit at "2.5 t" for four sets in a row
+ * and look stuck.
+ */
+export function formatWeightExact(kg: number, unitSystem: UnitSystem): string {
+  const usable = Number.isFinite(kg) && kg > 0 ? kg : 0;
+  const value = unitSystem === 'imperial' ? kgToLb(usable) : usable;
+  return `${Math.round(value).toLocaleString('en')} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
 }
 
 function round1(value: number): number {

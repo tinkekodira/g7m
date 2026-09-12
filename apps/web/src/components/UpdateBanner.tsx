@@ -12,7 +12,9 @@ import { applyUpdate, watchForUpdates } from '../lib/service-worker/register.js'
  *
  * It sits above the safe area at the bottom, where a thumb already is, and
  * above everything else — but it does not block the page, so ignoring it costs
- * nothing.
+ * nothing. Where there is a tab bar it stands on top of the bar instead of
+ * covering it: a banner over the navigation would make ignoring it cost the
+ * whole app. The offset comes from the stylesheet, not from a route check.
  */
 export function UpdateBanner() {
   const [ready, setReady] = useState(false);
@@ -24,7 +26,7 @@ export function UpdateBanner() {
   return (
     <div
       role="status"
-      className="pb-safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-subtle bg-elevated"
+      className="fixed inset-x-0 bottom-(--tab-bar-offset) z-50 border-t border-subtle bg-elevated pb-(--pinned-inset)"
     >
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
         <p className="text-sm text-secondary">A new version of g7m is ready.</p>

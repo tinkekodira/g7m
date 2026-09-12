@@ -13,7 +13,13 @@
  *
  * Swapping in a real GLB is a change of geometry source and nothing else.
  */
-export { AnatomyViewer, type AnatomyMode, type AnatomyViewerProps } from './AnatomyViewer.js';
+export {
+  AnatomyViewer,
+  type AnatomyMode,
+  type AnatomyView,
+  type AnatomyViewerProps,
+} from './AnatomyViewer.js';
+export { PALETTE, RESTING_SKIN, heatRampFor } from './palette.js';
 export {
   bareSkinForms,
   bodyForms,

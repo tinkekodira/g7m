@@ -29,6 +29,7 @@ import { useWakeLock } from '../lib/use-wake-lock.js';
 import { buzz } from '../lib/haptics.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { UndoToast } from '../components/UndoToast.js';
+import { formatWeightExact } from '../components/chart-scale.js';
 import { describeRecord, type RecordLine } from './record-copy.js';
 import {
   formatElapsed,
@@ -342,7 +343,8 @@ export function WorkoutScreen() {
           <h1 className="text-2xl font-semibold text-primary">Workout</h1>
           <p className="numeric mt-1 text-sm text-secondary">
             {formatElapsed(session.startedAt, now)} elapsed
-            {volume.countedSets > 0 && ` · ${String(Math.round(volume.volumeKg))} kg lifted`}
+            {volume.countedSets > 0 &&
+              ` · ${formatWeightExact(volume.volumeKg, unitSystem)} lifted`}
           </p>
         </div>
         <HeaderLink to="/">Home</HeaderLink>
