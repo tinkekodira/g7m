@@ -126,6 +126,16 @@ export function renderSyncRules(): string {
 #              it first snapshots a table, which is why the replication role
 #              needs BYPASSRLS — without it the snapshot reads zero rows. See
 #              docs/powersync-setup.md step 2.)
+#
+# Timestamps are sent the way the device writes them - 2026-09-13T10:00:00.123Z,
+# a T, three fractional digits and a Z, which is what toISOString() produces.
+# Left to its legacy default the service writes 2026-09-13 10:00:00.123Z, with
+# a space, and a device then holds two spellings of time that sort differently
+# as text. See DECISIONS.md ADR-0068.
+
+config:
+  timestamps_iso8601: true
+  timestamp_max_precision: milliseconds
 
 bucket_definitions:
   catalogue:

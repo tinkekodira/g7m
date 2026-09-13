@@ -36,6 +36,7 @@ import {
   type SqlValue,
   type WritableDatabase,
 } from './database.js';
+import { instant } from './instants.js';
 import {
   readBoolean,
   readDate,
@@ -209,7 +210,7 @@ export class SessionRepository {
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM workout_sessions
         WHERE user_id = ? AND ended_at IS NULL
-        ORDER BY started_at DESC, id DESC
+        ORDER BY ${instant('started_at')} DESC, id DESC
         LIMIT 1`,
       [userId],
     );
@@ -231,7 +232,7 @@ export class SessionRepository {
     const rows = await this.db.getAll<RawRow>(
       `SELECT * FROM workout_sessions
         WHERE user_id = ? AND ended_at IS NOT NULL
-        ORDER BY started_at DESC, id DESC
+        ORDER BY ${instant('started_at')} DESC, id DESC
         LIMIT ?`,
       [userId, Math.max(1, Math.trunc(limit))],
     );
@@ -658,7 +659,7 @@ export class SessionRepository {
             SELECT 1 FROM session_sets ss
              WHERE ss.session_exercise_id = se.id AND ss.is_completed = 1
           )
-        ORDER BY ws.started_at DESC, ws.id DESC
+        ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT 1`,
       [exerciseId, userId, excludeSessionId, excludeSessionId],
     );

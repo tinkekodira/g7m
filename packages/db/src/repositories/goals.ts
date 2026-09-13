@@ -24,6 +24,7 @@ import {
   type SqlValue,
   type WritableDatabase,
 } from './database.js';
+import { instant } from './instants.js';
 import {
   readEnum,
   readNumber,
@@ -115,7 +116,7 @@ export class GoalRepository {
     const { userId } = resolveContext(this.context);
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM training_goals WHERE user_id = ?
-        ORDER BY started_at DESC, id DESC LIMIT 1`,
+        ORDER BY ${instant('started_at')} DESC, id DESC LIMIT 1`,
       [userId],
     );
     return row === null ? null : toGoal(row);
@@ -126,7 +127,7 @@ export class GoalRepository {
     const { userId } = resolveContext(this.context);
     const rows = await this.db.getAll<RawRow>(
       `SELECT * FROM training_goals WHERE user_id = ?
-        ORDER BY started_at DESC, id DESC LIMIT ?`,
+        ORDER BY ${instant('started_at')} DESC, id DESC LIMIT ?`,
       [userId, Math.max(1, Math.trunc(limit))],
     );
     return rows.map(toGoal);

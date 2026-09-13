@@ -40,7 +40,7 @@ The fake backend stands in for:
 It is faithful where the app's behaviour depends on it:
 
 - **Buckets.** They come from the deployed `sync-rules.yaml` itself.
-- **Value formats.** Values are rendered the way the service renders them for this edition of the rules. That includes timestamps with a space between date and time (`2026-09-13 10:00:00.123Z`), which is what phones actually hold.
+- **Value formats.** Values are rendered the way the service renders them under the rules' `config` block. Timestamps come out as `2026-09-13T10:00:00.123Z`, and a rules file without that block would get the legacy `2026-09-13 10:00:00.123Z`, exactly as a phone would.
 - **Checksums.** They add up, so the client's own validation runs.
 - **Write checkpoints.** They follow the `requests` mode the SDK uses by default, so an upload is not reflected on the device until the service confirms it.
 - **Error codes.** Refused writes carry the SQLSTATE and HTTP status PostgREST would send, which the upload path uses to decide between retrying and discarding.

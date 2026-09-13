@@ -26,6 +26,7 @@ import {
   type ResolvedContext,
   type SqlValue,
 } from './database.js';
+import { instant } from './instants.js';
 
 /**
  * Every table holding rows that belong to one user, in the order somebody
@@ -145,7 +146,7 @@ export class AccountRepository {
     const tables = {} as Record<UserTableName, readonly ExportRow[]>;
     for (const table of USER_TABLE_NAMES) {
       const rows = await this.db.getAll<Record<string, SqlValue>>(
-        `SELECT * FROM ${table} WHERE user_id = ? ORDER BY created_at, id`,
+        `SELECT * FROM ${table} WHERE user_id = ? ORDER BY ${instant('created_at')}, id`,
         [this.ctx.userId],
       );
       tables[table] = rows.map((row) => decodeRow(table, row));

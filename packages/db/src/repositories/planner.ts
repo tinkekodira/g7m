@@ -24,6 +24,7 @@ import {
   type QueryableDatabase,
   type RepositoryContext,
 } from './database.js';
+import { INSTANT_PARAMETER, instant } from './instants.js';
 import {
   readNumber,
   readOptionalNumber,
@@ -120,8 +121,8 @@ export class PlannerRepository {
          JOIN session_exercises se ON se.id = ss.session_exercise_id
          JOIN workout_sessions ws ON ws.id = se.session_id
         WHERE ss.user_id = ? AND ${COUNTED_SETS}
-          AND ws.ended_at IS NOT NULL AND ws.started_at >= ?
-        ORDER BY se.exercise_id ASC, ws.started_at DESC, ss.order_key ASC`,
+          AND ws.ended_at IS NOT NULL AND ${instant('ws.started_at')} >= ${INSTANT_PARAMETER}
+        ORDER BY se.exercise_id ASC, ${instant('ws.started_at')} DESC, ss.order_key ASC`,
       [userId, toTimestamp(since)],
     );
 
@@ -149,7 +150,8 @@ export class PlannerRepository {
          JOIN exercise_muscles em ON em.exercise_id = se.exercise_id AND em.role = 'primary'
          JOIN muscles m ON m.id = em.muscle_id
          JOIN muscle_groups mg ON mg.id = m.muscle_group_id
-        WHERE ss.user_id = ? AND ${COUNTED_SETS} AND ws.started_at >= ?
+        WHERE ss.user_id = ? AND ${COUNTED_SETS}
+          AND ${instant('ws.started_at')} >= ${INSTANT_PARAMETER}
         GROUP BY mg.slug`,
       [userId, toTimestamp(from)],
     );
@@ -173,7 +175,7 @@ export class PlannerRepository {
     const { userId } = resolveContext(this.context);
     const row = await this.db.getOptional<RawRow>(
       `SELECT count(*) AS sessions FROM workout_sessions
-        WHERE user_id = ? AND started_at >= ?`,
+        WHERE user_id = ? AND ${instant('started_at')} >= ${INSTANT_PARAMETER}`,
       [userId, toTimestamp(from)],
     );
     return row === null ? 0 : readNumber(row, 'sessions', 0);

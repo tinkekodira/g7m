@@ -20,6 +20,7 @@ import {
   type RepositoryContext,
   type SqlValue,
 } from './database.js';
+import { INSTANT_PARAMETER, instant, isoText } from './instants.js';
 import {
   readBoolean,
   readDate,
@@ -103,11 +104,11 @@ export class HistoryRepository {
     const parameters: SqlValue[] = [userId];
 
     if (window.from !== undefined) {
-      conditions.push('ws.started_at >= ?');
+      conditions.push(`${instant('ws.started_at')} >= ${INSTANT_PARAMETER}`);
       parameters.push(toTimestamp(window.from));
     }
     if (window.to !== undefined) {
-      conditions.push('ws.started_at < ?');
+      conditions.push(`${instant('ws.started_at')} < ${INSTANT_PARAMETER}`);
       parameters.push(toTimestamp(window.to));
     }
     if (window.exerciseId !== undefined) {
@@ -123,7 +124,7 @@ export class HistoryRepository {
          JOIN session_exercises se ON se.id = ss.session_exercise_id
          JOIN workout_sessions ws ON ws.id = se.session_id
         WHERE ${conditions.join(' AND ')}
-        ORDER BY ws.started_at ASC, ss.order_key ASC`,
+        ORDER BY ${instant('ws.started_at')} ASC, ss.order_key ASC`,
       parameters,
     );
     return rows.map(toHistoricalSet);
@@ -222,15 +223,15 @@ export class HistoryRepository {
          FROM workout_sessions ws
          JOIN (SELECT se2.session_id,
                       COUNT(*) AS set_count,
-                      MIN(ss.completed_at) AS first_set_at,
-                      MAX(ss.completed_at) AS last_set_at
+                      ${isoText(`MIN(${instant('ss.completed_at')})`)} AS first_set_at,
+                      ${isoText(`MAX(${instant('ss.completed_at')})`)} AS last_set_at
                  FROM session_sets ss
                  JOIN session_exercises se2 ON se2.id = ss.session_exercise_id
                 WHERE ss.is_completed = 1
                   AND ss.set_type <> 'warmup'
                 GROUP BY se2.session_id) counted ON counted.session_id = ws.id
         WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL
-        ORDER BY ws.started_at DESC, ws.id DESC
+        ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT ?`,
       [userId, bound],
     );
@@ -264,7 +265,8 @@ export class HistoryRepository {
   > {
     const { userId } = resolveContext(this.context);
     const rows = await this.db.getAll<RawRow>(
-      `SELECT se.exercise_id, e.name, e.is_time_based, MAX(ws.started_at) AS last_at
+      `SELECT se.exercise_id, e.name, e.is_time_based,
+              ${isoText(`MAX(${instant('ws.started_at')})`)} AS last_at
          FROM session_exercises se
          JOIN workout_sessions ws ON ws.id = se.session_id
          JOIN exercises e ON e.id = se.exercise_id
