@@ -85,6 +85,20 @@ export {
   type Profile,
   type ProfileChanges,
 } from './repositories/profiles.js';
+export {
+  AccountRepository,
+  EXPORT_COLUMN_TYPES,
+  USER_TABLE_NAMES,
+  buildAccountExport,
+  type AccountExport,
+  type ExportAccount,
+  type ExportDevice,
+  type ExportedData,
+  type ExportReference,
+  type ExportRow,
+  type ExportValue,
+  type UserTableName,
+} from './repositories/account.js';
 export { PlannerRepository } from './repositories/planner.js';
 export {
   GoalRepository,

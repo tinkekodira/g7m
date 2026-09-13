@@ -11,6 +11,7 @@
  * the tests.
  */
 import {
+  AccountRepository,
   BodyMetricsRepository,
   EquipmentRepository,
   ExerciseRepository,
@@ -46,6 +47,8 @@ export interface Repositories {
   readonly goals: GoalRepository;
   /** The reads the session generator runs on. See ADR-0037. */
   readonly planner: PlannerRepository;
+  /** Everything this user owns, for "Download your data". See ADR-0064. */
+  readonly account: AccountRepository;
 }
 
 let opening: Promise<AbstractPowerSyncDatabase> | null = null;
@@ -78,5 +81,6 @@ export async function getRepositories(userId: string): Promise<Repositories> {
     bodyMetrics: new BodyMetricsRepository(db, context),
     goals: new GoalRepository(db, context),
     planner: new PlannerRepository(db, context),
+    account: new AccountRepository(db, context),
   };
 }

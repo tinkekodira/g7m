@@ -16,8 +16,11 @@ import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useThemeStore } from '../lib/use-theme.js';
+import { prepareExport } from '../lib/data-export.js';
+import { saveFile } from '../lib/save-file.js';
 import {
   DeviceIcon,
+  DownloadIcon,
   KettlebellIcon,
   MoonIcon,
   ProfileIcon,
@@ -64,6 +67,7 @@ export function SettingsScreen() {
       <SyncPanel />
       <OfflineStorage />
       <WhereThisIsRunning />
+      <YourData />
       <SignOut />
 
       <footer className="py-4 text-xs text-muted">
@@ -362,6 +366,77 @@ function WhereThisIsRunning() {
         label="Pointer"
         value={platform.hasFinePointer ? 'Fine — hover available' : 'Coarse — tap only'}
       />
+    </Panel>
+  );
+}
+
+/**
+ * "Download your data": everything this account has put into the app, as one
+ * file.
+ *
+ * Made from this device's database, so it works offline and includes changes
+ * the server has not had yet (ADR-0064). Saved through the share sheet on a
+ * phone and as a download on a computer (`lib/save-file.ts`).
+ */
+function YourData() {
+  const user = useAuthStore((s) => s.session?.user ?? null);
+  const [state, setState] = useState<
+    | { readonly step: 'idle' }
+    | { readonly step: 'working' }
+    | { readonly step: 'done'; readonly contents: string; readonly caveat: string | null }
+    | { readonly step: 'failed'; readonly message: string }
+  >({ step: 'idle' });
+
+  const download = async () => {
+    if (user === null) return;
+    setState({ step: 'working' });
+    try {
+      const prepared = await prepareExport(user);
+      const outcome = await saveFile(prepared.file, detectPlatform().hasFinePointer);
+      setState(
+        outcome === 'cancelled'
+          ? { step: 'idle' }
+          : { step: 'done', contents: prepared.contents, caveat: prepared.caveat },
+      );
+    } catch (cause: unknown) {
+      console.error('Could not export the data.', cause);
+      setState({
+        step: 'failed',
+        message: 'The file could not be made. Nothing was changed — try again in a moment.',
+      });
+    }
+  };
+
+  return (
+    <Panel title="Your data" icon={<DownloadIcon className="size-5" />}>
+      <p className="max-w-prose text-sm text-secondary">
+        Everything you have logged — workouts, sets, records, weigh-ins, goals and your profile — as
+        one file you can keep, or open in another app. It is made on this phone, so it works
+        offline.
+      </p>
+      <Button
+        variant="secondary"
+        fullWidth
+        className="mt-3"
+        disabled={user === null || state.step === 'working'}
+        onClick={() => {
+          void download();
+        }}
+      >
+        <DownloadIcon className="size-5" />
+        {state.step === 'working' ? 'Preparing your file…' : 'Download your data'}
+      </Button>
+      {state.step === 'done' && (
+        <div role="status" className="mt-3 flex flex-col gap-2 text-sm">
+          <p className="text-secondary">{state.contents}</p>
+          {state.caveat !== null && <p className="text-warning">{state.caveat}</p>}
+        </div>
+      )}
+      {state.step === 'failed' && (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {state.message}
+        </p>
+      )}
     </Panel>
   );
 }
