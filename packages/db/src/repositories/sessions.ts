@@ -49,7 +49,15 @@ import {
   type RawRow,
 } from './rows.js';
 
-export const SESSION_SOURCES = ['manual', 'generated', 'routine'] as const;
+/**
+ * Where a session came from.
+ *
+ * `past` is a workout logged after it happened, from the calendar — started on
+ * its own day, and with nothing live about it: no clock, no rest timer, and
+ * sets that are stamped on that day rather than at the moment of typing. See
+ * ADR-0061 and the migration that allows it.
+ */
+export const SESSION_SOURCES = ['manual', 'generated', 'routine', 'past'] as const;
 export type SessionSource = (typeof SESSION_SOURCES)[number];
 
 const SET_TYPE_VALUES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
@@ -96,6 +104,13 @@ export interface StartSessionInput {
   readonly routineId?: string | null;
   /** From the profile, at the moment the workout begins. */
   readonly bodyweightKg?: number | null;
+  /**
+   * When it started, for a workout logged afterwards. Now, when omitted.
+   *
+   * Never in the future: a workout that has not happened cannot be logged, and
+   * one dated ahead would sit at the top of every list until its day came.
+   */
+  readonly startedAt?: Date;
 }
 
 /**
@@ -234,7 +249,12 @@ export class SessionRepository {
   async start(input: StartSessionInput = {}): Promise<WorkoutSession> {
     const { userId, newId, now } = resolveContext(this.context);
     const id = newId();
-    const at = toTimestamp(now());
+    const created = now();
+    const at = toTimestamp(created);
+    const startedAt =
+      input.startedAt === undefined || !(input.startedAt < created)
+        ? at
+        : toTimestamp(input.startedAt);
 
     // `(source = 'routine') = (routine_id is not null)` is a CHECK. A session
     // claiming to come from a routine it cannot name, or naming one while
@@ -256,7 +276,7 @@ export class SessionRepository {
         id,
         userId,
         emptyToNull(input.name ?? null),
-        at,
+        startedAt,
         source,
         routineId,
         positiveOrNull(input.bodyweightKg ?? null),
@@ -283,7 +303,12 @@ export class SessionRepository {
     if (session === null) throw new Error(`No session ${sessionId} on this device.`);
     if (session.endedAt !== null) return;
 
-    const endedAt = new Date(Math.max(now().getTime(), session.startedAt.getTime()));
+    // A past workout ends on the day it happened, not days later when its
+    // logging is finished: an end date is a claim about the workout.
+    const endedAt =
+      session.source === 'past'
+        ? session.startedAt
+        : new Date(Math.max(now().getTime(), session.startedAt.getTime()));
     const at = toTimestamp(endedAt);
     await this.db.execute(
       'UPDATE workout_sessions SET ended_at = ?, updated_at = ? WHERE id = ? AND user_id = ?',
@@ -532,8 +557,31 @@ export class SessionRepository {
       `UPDATE session_sets
           SET is_completed = ?, completed_at = ?, updated_at = ?
         WHERE id = ? AND user_id = ?`,
-      [writeBoolean(true), at, at, setId, userId],
+      [writeBoolean(true), await this.completionTime(setId, userId, at), at, setId, userId],
     );
+  }
+
+  /**
+   * When a set is recorded as done.
+   *
+   * Now, for a live workout. For one logged afterwards, the moment its session
+   * started: the day is known and the minute is not, and the time somebody sat
+   * typing it in three days later is the one time that is certainly wrong.
+   * Every set of a past workout then shares one instant, which is what makes
+   * its duration read as unknown (`trainingMinutes` needs a minute between the
+   * first set and the last) instead of as however long the typing took.
+   */
+  private async completionTime(setId: string, userId: string, now: string): Promise<string> {
+    const row = await this.db.getOptional<RawRow>(
+      `SELECT ws.source, ws.started_at
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
+        WHERE ss.id = ? AND ss.user_id = ?`,
+      [setId, userId],
+    );
+    if (row === null || readString(row, 'source', '') !== 'past') return now;
+    return readString(row, 'started_at', now);
   }
 
   /** Undo a completion — a mis-tap, which happens with a bar in one hand. */

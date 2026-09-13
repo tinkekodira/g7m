@@ -484,6 +484,7 @@ function useOpenSession(): OpenSessionSummary | null {
 
     return {
       startedAt: session.startedAt,
+      past: session.source === 'past',
       exerciseCount: entries.length,
       // Only what was actually done. A planned set nobody has performed yet is
       // not progress, and counting it would make an untouched plan look busy.

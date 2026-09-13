@@ -1,3 +1,5 @@
+import { dayTitle } from './calendar-view.js';
+
 /**
  * The two clocks on the workout screen.
  *
@@ -67,6 +69,8 @@ export interface OpenSession {
   readonly startedAt: Date;
   readonly exerciseCount: number;
   readonly completedSets: number;
+  /** Logged afterwards from the calendar: its start is a day, not a clock. */
+  readonly past?: boolean;
 }
 
 export interface OpenSessionSummary {
@@ -91,6 +95,22 @@ export interface OpenSessionSummary {
  * announce "0 exercises".
  */
 export function openSessionSummary(session: OpenSession, now: Date): OpenSessionSummary {
+  /**
+   * A workout being logged afterwards started days ago on purpose. Measured
+   * like a live one it read "You left a workout open · open for 72 hours",
+   * which is the one thing it certainly is not.
+   */
+  if (session.past === true) {
+    const parts = [dayTitle(session.startedAt)];
+    if (session.exerciseCount > 0) parts.push(plural(session.exerciseCount, 'exercise'));
+    if (session.completedSets > 0) parts.push(`${plural(session.completedSets, 'set')} done`);
+    return {
+      headline: 'Finish logging your past workout',
+      detail: parts.join(' · '),
+      stale: false,
+    };
+  }
+
   const stale = looksAbandoned(session.startedAt, now);
   const minutes = Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
 

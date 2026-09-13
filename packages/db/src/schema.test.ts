@@ -340,6 +340,28 @@ describe('session sets', () => {
   });
 });
 
+describe('where a session came from', () => {
+  /** The calendar logs a forgotten workout on its own day. ADR-0061. */
+  it('accepts a workout logged after it happened', async () => {
+    const user = await h.createUser('past@example.test');
+    await expect(
+      h.db.exec(`
+        insert into public.workout_sessions (user_id, source, started_at, ended_at)
+        values ('${user}', 'past', '2026-09-01T12:00:00Z', '2026-09-01T12:00:00Z');
+      `),
+    ).resolves.toBeDefined();
+  });
+
+  it('still refuses a source it does not know', async () => {
+    const user = await h.createUser('imported@example.test');
+    await expect(
+      h.db.exec(`
+        insert into public.workout_sessions (user_id, source) values ('${user}', 'imported');
+      `),
+    ).rejects.toThrow(/source_check/);
+  });
+});
+
 describe('composite foreign keys', () => {
   it('make it impossible for a child row to belong to a different user', async () => {
     const owner = await h.createUser('ivan@example.test');

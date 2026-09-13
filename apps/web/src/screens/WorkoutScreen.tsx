@@ -5,6 +5,7 @@ import {
   WEIGHT_FIELD_MEANING,
   bestsFrom,
   canAddWeight,
+  dateKey,
   describePreviousSet,
   formatRest,
   fromDisplayWeight,
@@ -42,6 +43,7 @@ import {
   shouldAskStillTraining,
 } from './workout-timer.js';
 import { addedExerciseId, exerciseAnchor, exerciseToReveal } from './added-exercise.js';
+import { dayTitle } from './calendar-view.js';
 
 /**
  * The logger.
@@ -167,6 +169,17 @@ export function WorkoutScreen() {
    */
   const workout = state.data;
   const ticking = workout !== null;
+
+  /**
+   * A workout logged after it happened, from the calendar.
+   *
+   * Nothing about it is live, so nothing live runs: no elapsed clock, no rest
+   * timer after a tick, no "still training?" — which would otherwise ask the
+   * moment it opened, the workout having started days ago — and no reason to
+   * hold the screen awake. Its sets are stamped on its own day by the
+   * repository. See ADR-0061.
+   */
+  const past = workout?.session.source === 'past';
   useEffect(() => {
     if (!ticking) return;
     const timer = setInterval(() => {
@@ -205,6 +218,7 @@ export function WorkoutScreen() {
           ),
         );
   const askStillTraining =
+    !past &&
     lastActivity !== null &&
     shouldAskStillTraining({
       lastActivityAt: lastActivity,
@@ -215,7 +229,7 @@ export function WorkoutScreen() {
 
   // Once it looks like the training has stopped, keeping the screen awake is
   // just a phone on a bench burning its battery until somebody comes back.
-  useWakeLock(ticking && !askStillTraining);
+  useWakeLock(ticking && !past && !askStillTraining);
 
   /**
    * Bring a newly added exercise into view.
@@ -323,11 +337,18 @@ export function WorkoutScreen() {
 
   const { session, profile, blocks } = workout;
 
+  /**
+   * Where to go once the workout is finished or thrown away: home after a live
+   * one, and back to its day on the calendar after one logged afterwards,
+   * which is where it was started from and where it now shows.
+   */
+  const afterwards = past ? `/calendar?day=${dateKey(session.startedAt)}` : '/';
+
   /** One way to finish, whether from the button or from "still training?". */
   const finishWorkout = (): void => {
     buzz('success');
     void write((r) => r.sessions.finish(session.id)).then(() => {
-      void navigate('/');
+      void navigate(afterwards);
     });
   };
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
@@ -348,14 +369,22 @@ export function WorkoutScreen() {
     <Shell>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <div>
-          <h1 className="text-2xl font-semibold text-primary">Workout</h1>
+          <h1 className="text-2xl font-semibold text-primary">
+            {past ? 'Past workout' : 'Workout'}
+          </h1>
           <p className="numeric mt-1 text-sm text-secondary">
-            {formatElapsed(session.startedAt, now)} elapsed
+            {past
+              ? dayTitle(session.startedAt)
+              : `${formatElapsed(session.startedAt, now)} elapsed`}
             {volume.countedSets > 0 &&
               ` · ${formatWeightExact(volume.volumeKg, unitSystem)} lifted`}
           </p>
         </div>
-        <HeaderLink to="/">Home</HeaderLink>
+        {past ? (
+          <HeaderLink to={afterwards}>Calendar</HeaderLink>
+        ) : (
+          <HeaderLink to="/">Home</HeaderLink>
+        )}
       </header>
 
       {writeError !== null && (
@@ -419,7 +448,8 @@ export function WorkoutScreen() {
             // Answers the finger already on the glass, so the tick does not
             // have to be watched to be believed.
             buzz('tick');
-            setRest({ startedAt: new Date(), seconds: block.restSeconds });
+            // Nothing to rest between when the sets happened days ago.
+            if (!past) setRest({ startedAt: new Date(), seconds: block.restSeconds });
           }}
           onUncomplete={(setId) => {
             void write((r) => r.sessions.uncompleteSet(setId));
@@ -480,7 +510,7 @@ export function WorkoutScreen() {
             // screen and it sits next to the one people mean to press.
             if (!globalThis.confirm('Discard this workout and everything logged in it?')) return;
             void write((r) => r.sessions.discard(session.id)).then(() => {
-              void navigate('/');
+              void navigate(afterwards);
             });
           }}
         >

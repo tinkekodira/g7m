@@ -115,6 +115,20 @@ describe('openSessionSummary', () => {
     expect(summary.stale).toBe(false);
   });
 
+  /** Measured like a live one, it read "open for 72 hours". ADR-0061. */
+  it('names the day of a workout being logged afterwards, and never calls it left open', () => {
+    const past = new Date(2026, 8, 3, 12);
+    const summary = openSessionSummary(
+      { startedAt: past, exerciseCount: 2, completedSets: 5, past: true },
+      new Date(2026, 8, 13, 9),
+    );
+    expect(summary).toEqual({
+      headline: 'Finish logging your past workout',
+      detail: 'Thursday 3 September · 2 exercises · 5 sets done',
+      stale: false,
+    });
+  });
+
   it('does not say "0 min in"', () => {
     expect(summarise(0).detail).toBe('just started');
     expect(summarise(0.5).detail).toBe('just started');
