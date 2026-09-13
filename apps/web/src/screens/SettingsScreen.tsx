@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { UnitSystem } from '@g7m/core';
-import { Button, SegmentedControl, Switch } from '@g7m/ui';
+import { Button, SegmentedControl, Switch, TextField } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
@@ -18,6 +18,7 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useThemeStore } from '../lib/use-theme.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
+import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
 import {
   DeviceIcon,
   DownloadIcon,
@@ -26,6 +27,7 @@ import {
   ProfileIcon,
   StorageIcon,
   SyncIcon,
+  TrashIcon,
 } from '../components/icons.js';
 
 /**
@@ -69,6 +71,7 @@ export function SettingsScreen() {
       <WhereThisIsRunning />
       <YourData />
       <SignOut />
+      <DeleteAccount />
 
       <footer className="py-4 text-xs text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
@@ -459,6 +462,135 @@ function SignOut() {
       </Button>
     </div>
   );
+}
+
+/**
+ * Deleting the account, last on the page and two deliberate steps away.
+ *
+ * The first tap only opens the panel; the second needs the word typed. Not to
+ * make leaving hard — it is one screen, with no email to send and nobody to
+ * ask — but because nothing about it can be undone, and a button a thumb can
+ * brush on the way to Sign out is not a decision.
+ *
+ * Offline it says what it needs rather than failing: the account lives on the
+ * server, and deleting only this phone's copy would be the one outcome nobody
+ * asked for. See ADR-0065.
+ */
+function DeleteAccount() {
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
+  const busy = useAuthStore((s) => s.busy);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [failure, setFailure] = useState<string | null>(null);
+  const online = useOnline();
+
+  const confirmed = confirmsDeletion(typed);
+
+  return (
+    <section className="rounded-card border border-danger/40 bg-surface p-4">
+      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-primary">
+        <span className="text-danger">
+          <TrashIcon className="size-5" />
+        </span>
+        Delete your account
+      </h2>
+      <p className="max-w-prose text-sm text-secondary">
+        Deletes your account and everything in it — every workout, set, record, weigh-in and goal —
+        from the server and from this phone. It cannot be undone. If you want a copy, download your
+        data first.
+      </p>
+
+      {!open ? (
+        // Not the shared Button: its secondary variant sets its own text
+        // colour, and two colour utilities on one element are decided by the
+        // stylesheet's order, not the class list's.
+        <button
+          type="button"
+          className={DANGER_OUTLINE}
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Delete my account…
+        </button>
+      ) : (
+        <form
+          className="mt-4 flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!confirmed || busy || !online) return;
+            setFailure(null);
+            void deleteAccount().then((message) => {
+              // On success this component is already gone — the session ended
+              // and the sign-in screen replaced the app — so only a failure
+              // comes back here.
+              if (message !== null) setFailure(message);
+            });
+          }}
+        >
+          <TextField
+            label={`Type ${DELETE_CONFIRMATION_WORD} to confirm`}
+            value={typed}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            disabled={busy}
+            onChange={(event) => {
+              setTyped(event.target.value);
+            }}
+          />
+          {!online && (
+            <p className="text-sm text-warning">
+              You need a connection. Your account is deleted on the server, not just on this phone.
+            </p>
+          )}
+          {failure !== null && (
+            <p role="alert" className="text-sm text-danger">
+              {failure}
+            </p>
+          )}
+          <Button type="submit" variant="danger" fullWidth disabled={!confirmed || busy || !online}>
+            {busy ? 'Deleting…' : 'Delete my account for good'}
+          </Button>
+          <Button
+            variant="ghost"
+            fullWidth
+            disabled={busy}
+            onClick={() => {
+              setOpen(false);
+              setTyped('');
+              setFailure(null);
+            }}
+          >
+            Keep my account
+          </Button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+const DANGER_OUTLINE =
+  'mt-3 inline-flex min-h-tap w-full items-center justify-center rounded-control border ' +
+  'border-danger/50 bg-elevated px-4 text-base font-medium text-danger transition-colors ' +
+  'duration-150 hover:border-danger active:bg-surface focus-visible:outline-2 ' +
+  'focus-visible:outline-offset-2 focus-visible:outline-accent';
+
+/** Whether the browser thinks there is a network. A hint, not a promise — the request is the test. */
+function useOnline(): boolean {
+  const [online, setOnline] = useState(() => globalThis.navigator.onLine);
+  useEffect(() => {
+    const update = () => {
+      setOnline(globalThis.navigator.onLine);
+    };
+    globalThis.addEventListener('online', update);
+    globalThis.addEventListener('offline', update);
+    return () => {
+      globalThis.removeEventListener('online', update);
+      globalThis.removeEventListener('offline', update);
+    };
+  }, []);
+  return online;
 }
 
 function Panel({

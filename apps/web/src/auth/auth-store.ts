@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.js';
 import { appBaseUrl } from '../lib/app-url.js';
-import { handOverDevice } from '../lib/powersync/database.js';
+import { forgetDeletedAccount, handOverDevice } from '../lib/powersync/database.js';
+import { ACCOUNT_DELETED_NOTICE, describeDeletionError } from '../lib/account-words.js';
 import {
   INITIAL_AUTH_STATE,
   friendlyAuthError,
@@ -39,6 +40,11 @@ interface AuthStore {
   signUp: (email: string, password: string, country?: string | null) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  /**
+   * Delete the account on the server, then everything of it on this device.
+   * Resolves to what went wrong, or null when it is gone.
+   */
+  deleteAccount: () => Promise<string | null>;
   /** Send a reset email. Says nothing about whether the address has an account. */
   requestPasswordReset: (email: string) => Promise<void>;
   /** Set a new password for the session a recovery link opened. */
@@ -175,6 +181,43 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       error: error === null ? null : friendlyAuthError(error.message),
       notice: unsent,
     });
+  },
+
+  /**
+   * Delete the account: the server first, then this device, then the session.
+   *
+   * The server first because it is the part that can fail — no connection, an
+   * expired token — and until it has succeeded nothing may be touched here:
+   * wiping the device of an account that still exists would only lose the
+   * unsent sets on it. Once the server has said yes, the account is gone and
+   * the rest cannot fail in a way that matters. The device is cleared without
+   * draining (`forgetDeletedAccount` says why), and the session is ended
+   * locally: a global sign-out would ask a server that no longer has the user
+   * to revoke tokens that the deletion already took with it.
+   *
+   * The result is returned rather than put in `error`, because it is shown in
+   * Settings, not on the sign-in screen that `error` belongs to. The notice
+   * afterwards is the other way round — it is for the sign-in screen, where
+   * the person lands.
+   */
+  deleteAccount: async () => {
+    set({ busy: true, error: null, notice: null });
+
+    const { error } = await supabase.rpc('delete_my_account');
+    if (error !== null) {
+      set({ busy: false });
+      return describeDeletionError(error.message);
+    }
+
+    await forgetDeletedAccount().catch((cause: unknown) => {
+      // The server copy is gone either way. What is left on the device is
+      // removed by the owner check the next time anyone signs in here.
+      console.error('The account was deleted, but this device could not be cleared.', cause);
+    });
+    await supabase.auth.signOut({ scope: 'local' });
+
+    set({ busy: false, error: null, notice: ACCOUNT_DELETED_NOTICE });
+    return null;
   },
 
   /**

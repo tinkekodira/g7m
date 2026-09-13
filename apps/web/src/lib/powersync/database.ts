@@ -185,6 +185,27 @@ export async function disconnectAndClear(): Promise<void> {
 }
 
 /**
+ * Wipe the device after its account has been deleted.
+ *
+ * The one place the queue is cleared without being drained first, and on
+ * purpose: `handOverDevice` drains because unsent writes belong to somebody
+ * who still has an account to send them to. Here nobody does. The server has
+ * just deleted everything, anything still queued would be refused for want of
+ * an owner, and the person asked for all of it to go — the copy on this
+ * device included. The owner record goes too, so the next account to sign in
+ * starts as if on a new phone. See ADR-0065.
+ */
+export async function forgetDeletedAccount(): Promise<void> {
+  if (database !== null) await database.disconnectAndClear();
+  try {
+    localStorage.removeItem(OWNER_KEY);
+  } catch {
+    // Storage switched off. The next sign-in finds no record and claims the
+    // (already empty) database, which is the same place this would have left it.
+  }
+}
+
+/**
  * Give the device up, ready for a different account.
  *
  * This is what a sign-out has to do, and for a long time it did neither half.
