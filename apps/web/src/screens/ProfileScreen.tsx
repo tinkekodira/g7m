@@ -12,6 +12,7 @@ import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { ChevronRightIcon, PencilIcon, TrophyIcon } from '../components/icons.js';
 import { useSculptedBody } from '../lib/anatomy-model.js';
+import { useStageColor } from '../lib/use-theme.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import {
   HEATMAP_WEEKS,
@@ -214,6 +215,7 @@ function TrainingBody({ now }: { readonly now: Date }) {
   const sculpted = useSculptedBody();
   const generated = useMemo(() => placeholderBodyParts(), []);
   const parts = sculpted.parts ?? generated;
+  const stage = useStageColor();
 
   // The viewer colours only what the taxonomy lets it select — anything else
   // is drawn as resting skin — so the heat needs the real list even though
@@ -235,7 +237,7 @@ function TrainingBody({ now }: { readonly now: Date }) {
 
       <div className="grid grid-cols-2 gap-px bg-subtle">
         {VIEWS.map(({ view, label }) => (
-          <figure key={view} className="m-0 bg-[#17161a]">
+          <figure key={view} className="m-0 bg-stage">
             {/* The same wait as Learn: nothing drawn until it is known which
                 body to draw, so the generated one never flashes before the
                 sculpt. */}
@@ -253,6 +255,7 @@ function TrainingBody({ now }: { readonly now: Date }) {
                   mode="heatmap"
                   view={view}
                   interactive={false}
+                  background={stage}
                   {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
                 />
               </Suspense>

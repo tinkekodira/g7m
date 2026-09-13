@@ -33,6 +33,7 @@ export const ONBOARDING_STEPS = [
   'dob',
   'sex',
   'height',
+  'weight',
   'activity',
   'country',
   'goal',
@@ -46,6 +47,7 @@ export interface OnboardingAnswers {
   readonly birthDate: Date | null;
   readonly sex: Sex | null;
   readonly heightCm: number | null;
+  readonly weightKg: number | null;
   readonly activityLevel: ActivityLevel | null;
   readonly country: string | null;
   readonly goal: TrainingGoal | null;
@@ -56,6 +58,7 @@ export const NO_ANSWERS: OnboardingAnswers = {
   birthDate: null,
   sex: null,
   heightCm: null,
+  weightKg: null,
   activityLevel: null,
   country: null,
   goal: null,
@@ -84,6 +87,8 @@ export function isAnswered(step: OnboardingStep, answers: OnboardingAnswers): bo
       return answers.sex !== null;
     case 'height':
       return answers.heightCm !== null;
+    case 'weight':
+      return answers.weightKg !== null;
     case 'activity':
       return answers.activityLevel !== null;
     case 'country':
@@ -121,7 +126,7 @@ export function previousStep(step: OnboardingStep): OnboardingStep | null {
   return index <= 0 ? null : (ONBOARDING_STEPS[index - 1] ?? null);
 }
 
-/** One-based position and the total, for "3 of 7". */
+/** One-based position and the total, for "3 of 8". */
 export function progressOf(step: OnboardingStep): { position: number; total: number } {
   return { position: ONBOARDING_STEPS.indexOf(step) + 1, total: ONBOARDING_STEPS.length };
 }
@@ -138,4 +143,26 @@ export function progressOf(step: OnboardingStep): { position: number; total: num
 export function isUsableBirthDate(birthDate: Date | null, now: Date): boolean {
   const age = ageFrom(birthDate, now);
   return age !== null && age >= MIN_AGE && age <= MAX_AGE;
+}
+
+/**
+ * The lightest and heaviest weights, in kilograms, this will take as a
+ * bodyweight.
+ *
+ * Wide on purpose. The point is to catch a slip — a missing digit, grams, a
+ * height typed into the weight box — without ever telling a real person their
+ * real weight is wrong. The column itself holds anything under a tonne.
+ */
+export const MIN_BODYWEIGHT_KG = 25;
+export const MAX_BODYWEIGHT_KG = 400;
+
+/**
+ * Whether a weight belongs to a person.
+ *
+ * Asked at signup because two things run on it from the first session: a
+ * pull-up or a dip is measured against it, and the weekly weigh-in needs a
+ * first reading to be a trend from. It was the one number the flow forgot.
+ */
+export function isUsableBodyweight(kg: number): boolean {
+  return Number.isFinite(kg) && kg >= MIN_BODYWEIGHT_KG && kg <= MAX_BODYWEIGHT_KG;
 }

@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { colorTokens, heatRamp, type ColorTokenName } from './tokens.js';
+import {
+  colorTokens,
+  heatRamp,
+  lightColorTokens,
+  type ColorTokenName,
+  type LightTokenName,
+} from './tokens.js';
 import { WCAG, contrastRatio } from './contrast.js';
 
 const cssPath = fileURLToPath(new URL('./tokens.css', import.meta.url));
@@ -146,5 +152,103 @@ describe('heat ramp', () => {
 
   it('has one colour per bucket: 0, <5, 5-9, 10-14, 15+', () => {
     expect(heatRamp).toHaveLength(5);
+  });
+});
+
+/** Pull the light theme's declarations out of tokens.css. */
+function parseLightTokens(source: string): Map<string, string> {
+  const block = /:root\[data-theme='light'\]\s*\{([\s\S]*?)\n\}/.exec(source);
+  if (block?.[1] === undefined) throw new Error('No light theme block found in tokens.css');
+  const declarations = new Map<string, string>();
+  const re = /--([\w-]+)\s*:\s*([^;]+);/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(block[1])) !== null) {
+    const name = match[1];
+    const value = match[2];
+    if (name !== undefined && value !== undefined) declarations.set(name, value.trim());
+  }
+  return declarations;
+}
+
+const lightCss = parseLightTokens(css);
+
+describe('the light theme', () => {
+  it('matches tokens.ts, both ways', () => {
+    for (const [name, value] of Object.entries(lightColorTokens)) {
+      expect(lightCss.get(name), `--${name} missing from the light block`).toBe(value);
+    }
+    for (const [name, value] of lightCss) {
+      if (!value.startsWith('#')) continue;
+      expect(name in lightColorTokens, `--${name} is in the light block but not tokens.ts`).toBe(
+        true,
+      );
+    }
+  });
+
+  /** Anything the light block leaves out would silently keep its dark value. */
+  it('redefines every surface, border and text token, not just some', () => {
+    for (const name of Object.keys(colorTokens)) {
+      if (name.startsWith('muscle-')) continue;
+      expect(name in lightColorTokens, `--${name} is not redefined for light`).toBe(true);
+    }
+  });
+
+  const light = lightColorTokens;
+  const surfaces: LightTokenName[] = ['bg-base', 'bg-surface', 'bg-elevated', 'bg-input'];
+
+  it('holds the same text contrast rules as the dark theme', () => {
+    for (const surface of surfaces) {
+      expect(contrastRatio(light['text-primary'], light[surface]), surface).toBeGreaterThanOrEqual(
+        WCAG.AAA_BODY,
+      );
+      expect(
+        contrastRatio(light['text-secondary'], light[surface]),
+        surface,
+      ).toBeGreaterThanOrEqual(WCAG.AA_BODY);
+      expect(contrastRatio(light['text-muted'], light[surface]), surface).toBeGreaterThanOrEqual(
+        WCAG.AA_BODY,
+      );
+    }
+    const surface = light['bg-surface'];
+    expect(
+      contrastRatio(light['text-secondary'], surface) - contrastRatio(light['text-muted'], surface),
+    ).toBeGreaterThan(2);
+  });
+
+  /**
+   * Stricter than the dark theme's rule, deliberately: the accent is used as
+   * small text — links, the lit tab — and on white the dark theme's orange
+   * managed barely 3:1.
+   */
+  it('reads the accent as text on every surface, and on its own tint', () => {
+    for (const surface of [...surfaces, 'accent-subtle'] as const) {
+      expect(contrastRatio(light.accent, light[surface]), surface).toBeGreaterThanOrEqual(
+        WCAG.AA_BODY,
+      );
+    }
+    expect(contrastRatio(colorTokens.accent, light['bg-surface'])).toBeLessThan(WCAG.AA_BODY);
+  });
+
+  it('gives every filled button readable ink, in every state', () => {
+    for (const fill of ['accent', 'accent-hover', 'accent-pressed'] as const) {
+      expect(contrastRatio(light['text-on-accent'], light[fill]), fill).toBeGreaterThanOrEqual(
+        WCAG.AA_BODY,
+      );
+    }
+    expect(contrastRatio(light['text-on-danger'], light.danger)).toBeGreaterThanOrEqual(
+      WCAG.AA_BODY,
+    );
+  });
+});
+
+describe('the danger button, in either theme', () => {
+  /** Its own token because the two themes need opposite ink on red. */
+  it('has readable ink on the danger fill', () => {
+    expect(contrastRatio(colorTokens['text-on-danger'], colorTokens.danger)).toBeGreaterThanOrEqual(
+      WCAG.AA_BODY,
+    );
+    expect(contrastRatio(lightColorTokens['text-primary'], lightColorTokens.danger)).toBeLessThan(
+      WCAG.AA_BODY,
+    );
   });
 });

@@ -30,6 +30,7 @@ import {
   readString,
   type RawRow,
 } from './rows.js';
+import { SESSION_SOURCES, type SessionSource } from './sessions.js';
 
 const SET_TYPE_VALUES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
 const LOAD_TYPE_VALUES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
@@ -51,6 +52,8 @@ export interface SessionSummary {
   readonly bodyweightKg: number | null;
   readonly exerciseCount: number;
   readonly setCount: number;
+  /** `past` for a workout logged afterwards, whose clock times mean nothing. */
+  readonly source: SessionSource;
   /**
    * When the first and last counted sets were ticked.
    *
@@ -212,7 +215,7 @@ export class HistoryRepository {
     // rather than two that could drift apart.
     const bound = limit === null ? -1 : Math.max(1, Math.trunc(limit));
     const rows = await this.db.getAll<RawRow>(
-      `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg,
+      `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg, ws.source,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
               counted.set_count, counted.first_set_at, counted.last_set_at
@@ -240,6 +243,7 @@ export class HistoryRepository {
       bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
       exerciseCount: readNumber(row, 'exercise_count', 0),
       setCount: readNumber(row, 'set_count', 0),
+      source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
     }));

@@ -23,6 +23,8 @@ export {
   MIN_TAP_TARGET_PX,
   colorTokens,
   heatRamp,
+  lightColorTokens,
+  type LightTokenName,
   radiusTokens,
   type ColorTokenName,
 } from './tokens.js';

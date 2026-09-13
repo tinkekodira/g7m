@@ -490,6 +490,62 @@ describe('adding weight to a bodyweight movement', () => {
   });
 });
 
+describe('a workout logged afterwards', () => {
+  const THURSDAY_NOON = new Date('2026-09-03T12:00:00.000Z');
+
+  it('starts on the day it happened', async () => {
+    const session = await sessions.start({ source: 'past', startedAt: THURSDAY_NOON });
+    expect(session.source).toBe('past');
+    expect(session.startedAt.toISOString()).toBe(THURSDAY_NOON.toISOString());
+  });
+
+  it('never starts in the future, which cannot have happened yet', async () => {
+    const session = await sessions.start({
+      source: 'past',
+      startedAt: new Date('2026-09-20T12:00:00.000Z'),
+    });
+    expect(session.startedAt.toISOString()).toBe(clock.toISOString());
+  });
+
+  /**
+   * The time of typing is the one time that is certainly wrong. Stamped on the
+   * day instead, every set shares one instant — so the duration reads as
+   * unknown rather than as however long the typing took.
+   */
+  it('stamps its sets on the day, not at the moment of typing', async () => {
+    const session = await sessions.start({ source: 'past', startedAt: THURSDAY_NOON });
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const first = await sessions.addSet(entry.id, template());
+    const second = await sessions.addSet(entry.id, template());
+
+    await sessions.completeSet(first.id);
+    clock = new Date('2026-09-06T10:04:00.000Z');
+    await sessions.completeSet(second.id);
+
+    expect((await rawSet(first.id)).completed_at).toBe(THURSDAY_NOON.toISOString());
+    expect((await rawSet(second.id)).completed_at).toBe(THURSDAY_NOON.toISOString());
+    // The pair the server insists on still moves together.
+    expect((await rawSet(second.id)).is_completed).toBe(1);
+  });
+
+  it('ends on the day it happened, not when its logging was finished', async () => {
+    const session = await sessions.start({ source: 'past', startedAt: THURSDAY_NOON });
+    await sessions.finish(session.id);
+    expect((await sessions.byId(session.id))?.endedAt?.toISOString()).toBe(
+      THURSDAY_NOON.toISOString(),
+    );
+  });
+
+  it('leaves a live workout’s clocks alone', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const set = await sessions.addSet(entry.id, template());
+    clock = new Date('2026-09-06T10:30:00.000Z');
+    await sessions.completeSet(set.id);
+    expect((await rawSet(set.id)).completed_at).toBe('2026-09-06T10:30:00.000Z');
+  });
+});
+
 describe('lastPerformance', () => {
   async function loggedSession(when: string, sets: readonly SetTemplate[]): Promise<string> {
     clock = new Date(when);

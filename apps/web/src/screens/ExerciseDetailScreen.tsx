@@ -1,8 +1,19 @@
-import type { ReactNode } from 'react';
-import { useParams } from 'react-router';
+import { useMemo, type ReactNode } from 'react';
+import { Link, useParams } from 'react-router';
+import {
+  CURRENT_STRENGTH_WEEKS,
+  strengthEstimate,
+  toDisplayWeight,
+  type OneRepMaxReading,
+  type StrengthEstimate,
+  type UnitSystem,
+} from '@g7m/core';
 import type { Exercise, MuscleRole } from '@g7m/db';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { ChevronRightIcon } from '../components/icons.js';
+import { monthName } from '../lib/date-words.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { describeMark } from './review-copy.js';
 
 /**
  * One exercise, in full.
@@ -14,21 +25,30 @@ import { useCatalogue } from '../lib/db/use-catalogue.js';
  */
 export function ExerciseDetailScreen() {
   const { slug = '' } = useParams();
+  const now = useMemo(() => new Date(), []);
 
   const detail = useCatalogue(`exercise:${slug}`, async (repositories) => {
     const exercise = await repositories.exercises.bySlug(slug);
     if (exercise === null) return null;
 
-    const [involvement, equipment, muscles] = await Promise.all([
+    const [involvement, equipment, muscles, sets, profile] = await Promise.all([
       repositories.exercises.musclesFor(exercise.id),
       repositories.exercises.equipmentFor(exercise.id),
       repositories.muscles.list(),
+      // Everything ever logged on it: the best-ever estimate needs all of it,
+      // and one exercise's history is a few hundred rows at the most.
+      repositories.history.completedSets({ exerciseId: exercise.id }),
+      repositories.profile.current(),
     ]);
 
     const nameById = new Map(muscles.map((muscle) => [muscle.id, muscle.commonName]));
+    const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
     return {
       exercise,
       equipment,
+      // A hold is timed, and seconds are not reps: no estimate for a plank.
+      strength: exercise.isTimeBased ? null : strengthEstimate(sets, now),
+      unitSystem,
       muscles: involvement.map((entry) => ({
         name: nameById.get(entry.muscleId) ?? 'Unknown muscle',
         role: entry.role,
@@ -59,6 +79,9 @@ export function ExerciseDetailScreen() {
           exercise={detail.data.exercise}
           muscles={detail.data.muscles}
           equipment={detail.data.equipment}
+          strength={detail.data.strength}
+          unitSystem={detail.data.unitSystem}
+          now={now}
         />
       )}
     </main>
@@ -81,10 +104,16 @@ function ExerciseDetail({
   exercise,
   muscles,
   equipment,
+  strength,
+  unitSystem,
+  now,
 }: {
   readonly exercise: Exercise;
   readonly muscles: readonly Involvement[];
   readonly equipment: readonly { readonly equipmentId: string; readonly name: string }[];
+  readonly strength: StrengthEstimate | null;
+  readonly unitSystem: UnitSystem;
+  readonly now: Date;
 }) {
   return (
     <>
@@ -100,6 +129,10 @@ function ExerciseDetail({
           {exercise.isTimeBased && <Badge>Held for time</Badge>}
         </div>
       </div>
+
+      {strength?.best != null && (
+        <OneRepMax exerciseId={exercise.id} strength={strength} unitSystem={unitSystem} now={now} />
+      )}
 
       {/* First, and never behind a tap. This is what the app is for when the
           phone has no signal and the barbell is already loaded. */}
@@ -221,6 +254,89 @@ function ExerciseDetail({
       </footer>
     </>
   );
+}
+
+/**
+ * Roughly how much could be lifted once, from what was lifted for reps.
+ *
+ * Above the cues, because it is the one thing on this page that is about the
+ * person reading it, and it is small. Only for an exercise somebody has
+ * logged sets on that the formula means something for (see `strengthEstimate`);
+ * for everything else there is no card, rather than an empty one.
+ *
+ * Called an estimate and treated as one. It is for choosing working weights
+ * from a percentage, not a number to go and test.
+ */
+function OneRepMax({
+  exerciseId,
+  strength,
+  unitSystem,
+  now,
+}: {
+  readonly exerciseId: string;
+  readonly strength: StrengthEstimate;
+  readonly unitSystem: UnitSystem;
+  readonly now: Date;
+}) {
+  const { current, best } = strength;
+  const show = (kg: number): string => {
+    const display = toDisplayWeight(Math.abs(kg), unitSystem);
+    return `${String(display.value)} ${display.unit}`;
+  };
+  // An estimate does not get hundredths: to the half kilo, or the whole pound.
+  const estimate = (kg: number): string => {
+    const display = toDisplayWeight(kg, unitSystem);
+    const rounded =
+      display.unit === 'kg' ? Math.round(display.value * 2) / 2 : Math.round(display.value);
+    return `${String(rounded)} ${display.unit}`;
+  };
+  const source = (reading: OneRepMaxReading): string =>
+    `${describeMark(reading, false, show)} on ${shortDate(reading.at, now)}`;
+  const shown = current ?? best;
+  // Worth a second line only when the best ever is actually higher.
+  const olderBest =
+    best !== null && current !== null && best.estimate.valueKg > current.estimate.valueKg
+      ? best
+      : null;
+
+  if (shown === null) return null;
+
+  return (
+    <section className="rounded-card border border-accent/30 bg-surface p-4">
+      <h2 className="text-sm font-medium text-secondary">Your estimated one-rep max</h2>
+      <p className="numeric mt-1 text-3xl font-bold text-primary">
+        {estimate(shown.estimate.valueKg)}
+      </p>
+      <p className="mt-1 text-sm text-secondary">
+        {current === null
+          ? `Nothing in the last ${String(CURRENT_STRENGTH_WEEKS)} weeks, so this is your best ever, from ${source(shown)}.`
+          : `From ${source(shown)}.`}
+        {shown.loadType === 'bodyweight_plus' && ' Your bodyweight is included.'}
+      </p>
+      {olderBest !== null && (
+        <p className="mt-1 text-sm text-muted">
+          Best ever: {estimate(olderBest.estimate.valueKg)}, from {source(olderBest)}.
+        </p>
+      )}
+      <p className="mt-3 text-xs text-muted">
+        Worked out with the Epley formula from your best set of 12 reps or fewer. An estimate to
+        pick working weights from, not a number to go and test.
+      </p>
+      <Link
+        to={`/progress/exercise/${exerciseId}`}
+        className="mt-2 inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
+      >
+        See the trend
+        <ChevronRightIcon className="size-4" />
+      </Link>
+    </section>
+  );
+}
+
+/** "3 September", with the year when it is not this one. */
+function shortDate(date: Date, now: Date): string {
+  const day = `${String(date.getDate())} ${monthName(date)}`;
+  return date.getFullYear() === now.getFullYear() ? day : `${day} ${String(date.getFullYear())}`;
 }
 
 function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {

@@ -185,6 +185,14 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="m14.5 6-6 6 6 6" />
+    </Glyph>
+  );
+}
+
 export function PlayIcon(props: IconProps) {
   return (
     <Glyph {...props}>

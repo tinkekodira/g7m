@@ -12,6 +12,8 @@
 
 export * from './units.js';
 export * from './one-rep-max.js';
+export * from './plates.js';
+export * from './strength.js';
 export * from './order-key.js';
 export * from './exercise-search.js';
 export * from './load.js';

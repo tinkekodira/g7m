@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   NO_ANSWERS,
   ONBOARDING_STEPS,
+  MAX_BODYWEIGHT_KG,
+  MIN_BODYWEIGHT_KG,
   isUsableBirthDate,
+  isUsableBodyweight,
   firstUnanswered,
   isAnswered,
   isOptional,
@@ -18,6 +21,7 @@ const EVERYTHING: OnboardingAnswers = {
   birthDate: new Date(Date.UTC(2000, 5, 15)),
   sex: 'male',
   heightCm: 183,
+  weightKg: 82.5,
   activityLevel: 'moderate',
   country: 'HR',
   goal: 'build_muscle',
@@ -39,7 +43,14 @@ describe('the order of the flow', () => {
     expect(nextStep('goal')).toBeNull();
   });
 
-  it('counts from one, so "1 of 7" is the first question', () => {
+  /** The number the flow forgot: bodyweight, asked straight after height. */
+  it('asks for a weight, after the height', () => {
+    expect(nextStep('height')).toBe('weight');
+    expect(nextStep('weight')).toBe('activity');
+    expect(ONBOARDING_STEPS).toHaveLength(8);
+  });
+
+  it('counts from one, so "1 of 8" is the first question', () => {
     expect(progressOf('name')).toEqual({ position: 1, total: ONBOARDING_STEPS.length });
     expect(progressOf('goal').position).toBe(ONBOARDING_STEPS.length);
   });
@@ -93,6 +104,10 @@ describe('firstUnanswered', () => {
     ).toBe('sex');
   });
 
+  it('stops at the weight for somebody who answered everything before it', () => {
+    expect(firstUnanswered({ ...EVERYTHING, weightKg: null })).toBe('weight');
+  });
+
   it('is null once every question that has to be answered has been', () => {
     expect(firstUnanswered(EVERYTHING)).toBeNull();
   });
@@ -139,5 +154,20 @@ describe('isUsableBirthDate', () => {
     const thirteenTomorrow = new Date(Date.UTC(2013, 8, 11));
     expect(isUsableBirthDate(thirteenTomorrow, now)).toBe(false);
     expect(isUsableBirthDate(new Date(Date.UTC(2013, 8, 10)), now)).toBe(true);
+  });
+});
+
+describe('isUsableBodyweight', () => {
+  it('accepts a person', () => {
+    for (const kg of [45, 82.5, 140]) expect(isUsableBodyweight(kg), String(kg)).toBe(true);
+    expect(isUsableBodyweight(MIN_BODYWEIGHT_KG)).toBe(true);
+    expect(isUsableBodyweight(MAX_BODYWEIGHT_KG)).toBe(true);
+  });
+
+  /** A missing digit, grams, or a height in the wrong box. */
+  it('catches a slip rather than a real weight', () => {
+    for (const kg of [0, 8.2, 825, 82_500, -80, Number.NaN]) {
+      expect(isUsableBodyweight(kg), String(kg)).toBe(false);
+    }
   });
 });

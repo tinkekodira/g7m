@@ -22,6 +22,7 @@ export const colorTokens = {
   'text-secondary': '#c2c0b6',
   'text-muted': '#99978f',
   'text-on-accent': '#1f1e1d',
+  'text-on-danger': '#faf9f5',
 
   accent: '#d97757',
   'accent-hover': '#e08a6e',
@@ -40,9 +41,45 @@ export const colorTokens = {
   'muscle-heat-2': '#6e5138',
   'muscle-heat-3': '#9a6144',
   'muscle-heat-4': '#d97757',
+
+  'bg-stage': '#17161a',
 } as const;
 
 export type ColorTokenName = keyof typeof colorTokens;
+
+/**
+ * The light theme's values — every token the light block in tokens.css
+ * redefines. The anatomy tokens are not among them: the body is painted by
+ * the viewer's own palette, and its backdrop is `bg-stage`, which is.
+ */
+export const lightColorTokens = {
+  'bg-base': '#f5f3ee',
+  'bg-surface': '#ffffff',
+  'bg-elevated': '#ece9e2',
+  'bg-input': '#f1efe9',
+
+  'border-subtle': '#e0dcd2',
+  'border-strong': '#c7c1b4',
+
+  'text-primary': '#1f1e1d',
+  'text-secondary': '#4a4843',
+  'text-muted': '#6a675f',
+  'text-on-accent': '#ffffff',
+  'text-on-danger': '#ffffff',
+
+  accent: '#a84a28',
+  'accent-hover': '#973f1f',
+  'accent-pressed': '#85361a',
+  'accent-subtle': '#f8e9e1',
+
+  success: '#3b7a43',
+  warning: '#8a5d0a',
+  danger: '#b23b28',
+
+  'bg-stage': '#e6e2d9',
+} as const satisfies Partial<Record<ColorTokenName, string>>;
+
+export type LightTokenName = keyof typeof lightColorTokens;
 
 /** Ordered heat ramp, indexed by the bucket returned from packages/core. */
 export const heatRamp = [

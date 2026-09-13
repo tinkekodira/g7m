@@ -237,6 +237,12 @@ describe('sessionSummaries', () => {
     expect(summaries[0]?.startedAt.toISOString()).toBe('2026-09-07T10:00:00.000Z');
   });
 
+  it('says where each workout came from', async () => {
+    await loggedSession('2026-09-01T10:00:00.000Z', 'bench', [{ weightKg: 90, reps: 5 }]);
+    const [summary] = await history.sessionSummaries();
+    expect(summary?.source).toBe('manual');
+  });
+
   it('honours the limit', async () => {
     for (const day of [1, 2, 3]) {
       await loggedSession(`2026-09-0${String(day)}T10:00:00.000Z`, 'bench', [

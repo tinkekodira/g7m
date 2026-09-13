@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
+import { useStageColor } from '../lib/use-theme.js';
 import { Chip } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -32,6 +33,7 @@ export function LearnScreen() {
 
   const generated = useMemo(() => placeholderBodyParts(), []);
   const sculpted = useSculptedBody();
+  const stage = useStageColor();
 
   // Falls back without comment. Most checkouts have no model — it is licensed
   // and the repository is public — and the generated body is a complete one.
@@ -196,7 +198,7 @@ export function LearnScreen() {
         </Chip>
       </div>
 
-      <div className="overflow-hidden rounded-card bg-elevated">
+      <div className="overflow-hidden rounded-card bg-stage">
         {/*
           Nothing is drawn until it is known *which* body to draw.
 
@@ -221,6 +223,7 @@ export function LearnScreen() {
               // A sculpted skin is closed, so the bones and the core underneath
               // it have nothing to show through and would sit on top instead.
               closedSurface={sculpted.parts !== null}
+              background={stage}
               selectableSlugs={selectableSlugs}
               selectedSlug={selected}
               onSelect={setSelected}

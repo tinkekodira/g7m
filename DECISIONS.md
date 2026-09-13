@@ -3459,3 +3459,100 @@ be asked about before it is built.
 
 Day and month names moved to `lib/date-words.ts`, shared with Progress, and
 `dateKey` to `week.ts`, shared with `periods.ts`.
+
+---
+
+## ADR-0061 — A workout logged after it happened
+
+**Status:** accepted · **Date:** 2026-09-13
+
+The calendar gained month arrows (a year back always, further when the history
+goes further), a summary line ("7 workouts · 4h 35m"), a count on a day with
+more than one workout, and "Log a workout for this day" on an empty day that
+has gone.
+
+### A past workout is a source, not a date
+
+A workout logged afterwards is a session like any other, except that nothing
+about it is live: no elapsed clock, no rest timer after a tick, no "still
+training?" (which would ask the moment it opened, the session having started
+days ago), no reason to hold the screen awake. The app has to know which
+sessions those are, and a date cannot say: a live workout begun at 23:50 would
+turn into a past one at midnight. So `workout_sessions.source` gains a fourth
+value, `past` — where the session came from — rather than a column, which
+would have meant new sync rules for one fact.
+
+**The migration must reach the database before the app does.** A `past`
+session uploaded to a database whose CHECK refuses it is classified as a
+permanent failure and discarded.
+
+### Its times are the day's, not the typing's
+
+`is_completed = (completed_at is not null)` is a CHECK, so a ticked set needs
+a time. For a past workout the repository stamps every set at the session's
+start and ends the session there too. The date is right, and every set sharing
+one instant makes the duration read as unknown (`trainingMinutes` needs a
+minute between first and last) instead of as the minutes spent typing. Progress
+therefore adds no time for these, and the calendar says "Logged afterwards"
+where a live workout shows its start time.
+
+It starts at noon on its day, which keeps it on that date whatever the time
+zone does on the way to the server, and it takes today's bodyweight as the
+best guess there is. Only one workout can be open, so a past one waits for a
+live one to finish and the other way round.
+
+---
+
+## ADR-0062 — The light theme is the same tokens, redefined
+
+**Status:** accepted · **Date:** 2026-09-13 · **Supersedes:** the placeholder
+switch in ADR-0058
+
+`tokens.css` said a light theme would be the `:root` block overridden under
+`[data-theme='light']`, and that is what it is. `applyTheme` sets the attribute
+on the root element, sets `color-scheme` so the browser's own controls follow,
+and updates the two meta tags the browser's chrome reads. Nothing that uses a
+token knows which theme it is drawn in.
+
+The palette is tested against the dark theme's rules, and one stricter: the
+accent is used as small text (links, the lit tab), and the dark theme's orange
+reaches barely 3:1 on white, so the light accent is a deeper #a84a28 that
+clears AA on every surface and on its own tint, with white ink on it. The
+danger button gets `--text-on-danger`, because the themes need opposite ink on
+red, and the switch knob is white in both, as knobs are.
+
+What cannot read a CSS variable gets a literal: the WebGL canvas takes the
+theme's `bg-stage` (a warm light grey in light), passed by the app. The saved
+theme is applied before the first render; `index.html` itself stays dark, which
+is what the default is.
+
+Kept on the device, not the profile: it is how a screen looks, not a fact
+about the lifter.
+
+---
+
+## ADR-0063 — Plates on the bar, an estimate on the page, a weight at signup
+
+**Status:** accepted · **Date:** 2026-09-13
+
+**Plates.** Under each set still to be lifted on a barbell, the logger shows
+what goes on each side, from the weight in the stepper as it changes. Standard
+kit only: a 20 kg bar with 25–1.25 kg plates, or a 45 lb bar with 45–2.5 lb
+plates for anybody logging in pounds. EZ and trap bars are left out because
+they vary too much between gyms to assume, and a loading worked out on the
+wrong bar is worse than none. Loading is greedy, heaviest first, which is how a
+bar is loaded; it reaches every weight the steppers can, and a weight typed
+between plates loads as close as it can from below and says what that makes.
+
+**Estimated one-rep max.** Each exercise's page shows the Epley estimate from
+the best set of twelve reps or fewer in the last eight weeks, the set it came
+from, and the best ever when that is higher. Weighted bodyweight work counts
+the bodyweight the belt hangs from; plain bodyweight and assisted work get no
+estimate, since a push-up is not a lift of the whole body. Shown to the half
+kilogram or the pound — an estimate does not get hundredths.
+
+**Weight at signup.** The welcome questions never asked for a bodyweight, the
+number pull-ups and dips are measured against and the first reading a weekly
+weigh-in needs. It now follows the height, and the height and weight questions
+each carry the units choice, since this is the first moment the app asks for a
+number and somebody who thinks in pounds has no good answer in kilograms.

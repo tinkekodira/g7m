@@ -15,7 +15,7 @@ import { describeSyncPhase, useSyncStore } from '../lib/powersync/sync-store.js'
 import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
-import { readTheme, writeTheme, type Theme } from '../lib/theme.js';
+import { useThemeStore } from '../lib/use-theme.js';
 import {
   DeviceIcon,
   KettlebellIcon,
@@ -74,31 +74,30 @@ export function SettingsScreen() {
 }
 
 /**
- * Dark mode, as a switch that moves and changes nothing — yet.
+ * Dark mode, on or off.
  *
- * v1 is dark only (Brief §10). The switch is here so the setting exists where
- * people look for it, and the choice is remembered for the day a light palette
- * lands; `appliedTheme` in `lib/theme.ts` is the one line that changes then.
- * The description says so, so nobody thinks the switch is broken.
+ * Dark is the default and the design's home; off is the light theme, which is
+ * easier to read in daylight. The whole app changes the moment it is flipped,
+ * because everything is drawn in tokens and the tokens are what change — see
+ * `lib/theme.ts` and ADR-0062.
  */
 function Appearance() {
-  const [theme, setTheme] = useState<Theme>(() => readTheme());
+  const theme = useThemeStore((state) => state.theme);
+  const setTheme = useThemeStore((state) => state.setTheme);
 
   return (
     <Panel title="Appearance">
       <Switch
         checked={theme === 'dark'}
         onChange={(dark) => {
-          const next: Theme = dark ? 'dark' : 'light';
-          setTheme(next);
-          writeTheme(next);
+          setTheme(dark ? 'dark' : 'light');
         }}
         icon={<IconChip tone="accent" icon={<MoonIcon className="size-5" />} />}
         label="Dark mode"
         description={
           theme === 'dark'
-            ? 'Light mode is on its way.'
-            : 'Light mode is on its way — the app stays dark until then.'
+            ? 'Turn it off for the light theme, easier to read in daylight.'
+            : 'Off — the app is in its light theme.'
         }
       />
     </Panel>
