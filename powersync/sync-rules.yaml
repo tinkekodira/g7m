@@ -50,7 +50,7 @@ bucket_definitions:
         SELECT id, slug, name, aliases, mechanic, force, joint_count, difficulty, is_unilateral,
         instructions, cues, common_mistakes, default_rep_low, default_rep_high, is_time_based,
         default_rest_seconds, video_provider, video_ref, thumbnail_url, popularity_rank,
-        is_active FROM exercises
+        is_active, cardio_kind FROM exercises
       - >-
         SELECT id, exercise_id, equipment_id, is_primary FROM exercise_equipment
       - >-
@@ -82,8 +82,9 @@ bucket_definitions:
         FROM session_exercises WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, session_exercise_id, order_key, set_type, load_type, weight_kg,
-        reps, rpe, is_completed, completed_at, created_at, updated_at FROM session_sets WHERE
-        user_id = bucket.user_id
+        reps, rpe, is_completed, completed_at, duration_seconds, distance_m, speed_kmh,
+        incline_percent, resistance_level, avg_watts, floors, calories_kcal, created_at,
+        updated_at FROM session_sets WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, exercise_id, record_type, value, formula, achieved_at,
         session_set_id, created_at, updated_at FROM personal_records WHERE user_id =

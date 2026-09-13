@@ -118,6 +118,12 @@ const exercises = new Table(
     thumbnail_url: column.text,
     popularity_rank: column.integer,
     is_active: column.integer,
+    /**
+     * Null for strength exercises; for a cardio machine, which family it is
+     * (`treadmill`, `bike`, `rower`, `ski_erg`, `stair_climber`). Decides the
+     * logger's bout fields and the calorie formula. ADR-0069.
+     */
+    cardio_kind: column.text,
   },
   { indexes: { by_rank: ['popularity_rank'] } },
 );
@@ -284,6 +290,20 @@ const sessionSets = new Table(
     rpe: column.real,
     is_completed: column.integer,
     completed_at: column.text,
+    /**
+     * A cardio bout's numbers, all optional and all null on a strength set.
+     * Which a machine offers is decided in @g7m/core (`cardio.ts`). See the
+     * cardio migration for units and ranges.
+     */
+    duration_seconds: column.integer,
+    distance_m: column.integer,
+    speed_kmh: column.real,
+    incline_percent: column.real,
+    resistance_level: column.real,
+    avg_watts: column.integer,
+    floors: column.integer,
+    /** The machine's own figure, replacing the estimate. Null means estimate. */
+    calories_kcal: column.integer,
     created_at: column.text,
     updated_at: column.text,
   },

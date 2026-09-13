@@ -10,7 +10,13 @@
  * app that falls back to the network for its own catalogue is one that stops
  * working exactly where it is needed.
  */
-import { searchExercises, type SearchableExercise, type SearchMatch } from '@g7m/core';
+import {
+  isCardioKind,
+  searchExercises,
+  type CardioKind,
+  type SearchableExercise,
+  type SearchMatch,
+} from '@g7m/core';
 import type { QueryableDatabase, SqlValue } from './database.js';
 import {
   readBoolean,
@@ -66,6 +72,12 @@ export interface Exercise extends SearchableExercise {
   readonly thumbnailUrl: string | null;
   readonly popularityRank: number;
   readonly isActive: boolean;
+  /**
+   * Null for a strength exercise. For a cardio machine, its family — which
+   * decides that the logger records bouts rather than sets, which fields it
+   * offers, and how calories are estimated. ADR-0069.
+   */
+  readonly cardioKind: CardioKind | null;
 }
 
 export interface MuscleInvolvement {
@@ -113,7 +125,14 @@ function toExercise(row: RawRow): Exercise {
     // not first, so an unranked exercise cannot displace the common lifts.
     popularityRank: readNumber(row, 'popularity_rank', 1000),
     isActive: readBoolean(row, 'is_active', true),
+    cardioKind: readCardioKind(row),
   };
+}
+
+/** Anything but a known kind reads as strength: a bout needs a machine it understands. */
+function readCardioKind(row: RawRow): CardioKind | null {
+  const value = readOptionalString(row, 'cardio_kind');
+  return isCardioKind(value) ? value : null;
 }
 
 /**
@@ -215,6 +234,8 @@ export interface ExerciseFilter {
   readonly kit?: EquipmentKit;
   readonly mechanic?: Mechanic;
   readonly difficulty?: Difficulty;
+  /** True for cardio machines only, false for strength only. */
+  readonly cardio?: boolean;
 }
 
 /**
@@ -326,6 +347,10 @@ export class ExerciseRepository {
     if (criteria.difficulty !== undefined) {
       conditions.push('e.difficulty = ?');
       parameters.push(criteria.difficulty);
+    }
+
+    if (criteria.cardio !== undefined) {
+      conditions.push(criteria.cardio ? 'e.cardio_kind IS NOT NULL' : 'e.cardio_kind IS NULL');
     }
 
     /**

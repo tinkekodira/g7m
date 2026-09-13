@@ -34,7 +34,22 @@ describe('reading filters from a URL', () => {
       muscleGroup: 'chest',
       equipment: ['barbell', 'flat-bench'],
       kit: 'gym',
+      cardio: false,
     });
+  });
+
+  it('reads the cardio machines, and nothing else as them', () => {
+    expect(readFilters(new URLSearchParams('cardio=1')).cardio).toBe(true);
+    expect(readFilters(new URLSearchParams('cardio=yes')).cardio).toBe(false);
+  });
+
+  it('writes cardio back only when it is on, and asks the repository for machines', () => {
+    const cardio = { ...NO_FILTERS, cardio: true };
+    expect(writeFilters(cardio).toString()).toBe('cardio=1');
+    expect(writeFilters(NO_FILTERS).toString()).toBe('');
+    expect(readFilters(writeFilters(cardio))).toEqual(cardio);
+    expect(hasFilters(cardio)).toBe(true);
+    expect(toExerciseFilter(cardio, new Map(), new Map())).toEqual({ cardio: true });
   });
 
   it('survives an empty or trailing-comma equipment list', () => {

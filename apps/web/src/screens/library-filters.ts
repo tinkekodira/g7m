@@ -20,6 +20,7 @@ export const PARAM_QUERY = 'q';
 export const PARAM_GROUP = 'muscle';
 export const PARAM_EQUIPMENT = 'gear';
 export const PARAM_KIT = 'kit';
+export const PARAM_CARDIO = 'cardio';
 
 export interface LibraryFilters {
   /** Free text. Ranked by the same code the server search uses. */
@@ -37,6 +38,12 @@ export interface LibraryFilters {
    * off* is.
    */
   readonly kit: EquipmentKit | null;
+  /**
+   * The cardio machines, and only them. Sits in the muscle-group row and is
+   * exclusive with a group: the machines have no muscles (ADR-0069), so
+   * "cardio and chest" would always be empty.
+   */
+  readonly cardio: boolean;
 }
 
 export const NO_FILTERS: LibraryFilters = {
@@ -44,6 +51,7 @@ export const NO_FILTERS: LibraryFilters = {
   muscleGroup: null,
   equipment: [],
   kit: null,
+  cardio: false,
 };
 
 export function readFilters(params: URLSearchParams): LibraryFilters {
@@ -58,6 +66,7 @@ export function readFilters(params: URLSearchParams): LibraryFilters {
     // An unrecognised value reads as "no preference" rather than filtering
     // everything away, the same way an unknown equipment slug is dropped.
     kit: readKit(params.get(PARAM_KIT)),
+    cardio: params.get(PARAM_CARDIO) === '1',
   };
 }
 
@@ -80,6 +89,7 @@ export function writeFilters(filters: LibraryFilters): URLSearchParams {
   if (filters.muscleGroup !== null) params.set(PARAM_GROUP, filters.muscleGroup);
   if (filters.equipment.length > 0) params.set(PARAM_EQUIPMENT, filters.equipment.join(','));
   if (filters.kit !== null) params.set(PARAM_KIT, filters.kit);
+  if (filters.cardio) params.set(PARAM_CARDIO, '1');
   return params;
 }
 
@@ -88,7 +98,8 @@ export function hasFilters(filters: LibraryFilters): boolean {
     filters.query.trim() !== '' ||
     filters.muscleGroup !== null ||
     filters.equipment.length > 0 ||
-    filters.kit !== null
+    filters.kit !== null ||
+    filters.cardio
   );
 }
 
@@ -123,6 +134,7 @@ export function toExerciseFilter(
     ...(groupId === undefined ? {} : { muscleGroupIds: [groupId] }),
     ...(equipmentIds.length === 0 ? {} : { equipmentIds }),
     ...(filters.kit === null ? {} : { kit: filters.kit }),
+    ...(filters.cardio ? { cardio: true } : {}),
   };
 }
 

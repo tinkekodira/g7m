@@ -3770,3 +3770,88 @@ either spelling, with a test pinning it to the service's behaviour.
 
 **Not changed:** reading a value out. `readDate` uses `new Date()`, which
 already reads both spellings.
+
+---
+
+## ADR-0069 — Cardio is gym machines, logged as bouts inside workouts
+
+**Status:** accepted · **Date:** 2026-09-14
+
+Decided with the user, question by question. The first version covers **gym
+machines only**:
+
+- treadmill;
+- upright, recumbent, spin and air bikes;
+- rowing machine;
+- ski erg;
+- stair climber.
+
+Outdoor work and sports can follow on the same model.
+
+**Inside workouts, not beside them.** A machine is an exercise, added like any
+other: as a warm-up, a finisher, or the whole session. A cardio-only day is a
+workout with only cardio in it, and it counts as a workout on the calendar and
+in Progress. One history, and no second logger to maintain.
+
+**A bout is a set.** It stores time, distance, speed, incline, level, watts,
+floors, and the machine's own calorie figure, in new nullable columns on
+`session_sets`. Its weight and reps stay at zero. Everything built for sets
+keeps working unchanged: sync, undo, ordering, workouts logged for a past day,
+and the export. Intervals are several bouts. Which fields a machine offers is
+`BOUT_FIELDS` in `@g7m/core`, keyed by `exercises.cardio_kind`, because a
+CHECK cannot see a set's exercise. The database ranges only refuse values no
+machine could produce. The repository turns anything outside them into "not
+recorded", so a typo loses one number rather than getting the whole bout
+refused on upload and discarded.
+
+**Kept away from strength, explicitly:**
+
+- Machines have no muscle rows, so they are off the body map and out of the
+  planner, which also excludes cardio by name.
+- The logger and the workout page leave cardio out of volume, set counts and
+  records by exercise kind, not by relying on the zeros.
+- Progress's lift trends skip it.
+- There is no one-rep max and no effort question.
+
+**Calories are estimated, and the machine's figure wins.** The estimate uses
+the best equation the bout's own numbers allow:
+
+- **Treadmill:** the ACSM walking or running equation, from speed and
+  incline. A decline is scored as flat.
+- **Bikes, rower and ski erg:** the ACSM leg-ergometry equation, from watts.
+  A rower or ski erg without watts gets them from its pace, by Concept2's
+  formula.
+- **Stair climber:** the ACSM stepping equation, from floors per minute.
+- **Anything else:** a Compendium MET value for the machine, marked rough.
+
+The estimate uses the session's bodyweight snapshot, so old bouts do not
+change when the scale does. Resistance level never feeds it, because it is not
+comparable between brands. A figure typed from the machine replaces the
+estimate; it is stored, while the estimate is always worked out fresh. Only
+cardio has calories; lifting has none.
+
+**Time from a timer, or typed.** The timer keeps its start time in storage, not
+component state, because the time on a machine is exactly when a phone sits
+locked in a pocket. Elapsed time is read from the clock, so a phone that wakes
+after twenty minutes shows twenty minutes. A workout logged for a past day has
+no timer.
+
+**Nothing in a bout disables during a save.** Leaving a box saves the bout.
+The first version disabled the fields and the tick while saving, as the
+strength row does. The browser test caught what that meant: typed digits were
+dropped from the next box, and the tick right after typing was swallowed.
+On an iPhone, tapping a button does not move focus first, so the tick would
+have been swallowed every time. The strength row never saves on blur, so it
+never met this.
+
+**Distance units** follow the kg/lb setting (km or miles), except on rowers
+and ski ergs, which are metres everywhere, as their monitors are.
+
+**Not yet (by decision):**
+
+- cardio in the generated plan;
+- cardio records;
+- the elliptical;
+- heart rate;
+- the Progress cards for minutes, distance and calories per week, which are
+  the next step.

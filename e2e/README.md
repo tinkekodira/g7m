@@ -34,6 +34,7 @@ The fake backend stands in for:
 - **No connection.** A whole workout is logged while every request fails. Nothing reaches the server until the connection returns, then all of it does.
 - **Download your data.** Covered twice: through the phone's share sheet, stood in for by one that keeps the file, and as a desktop download. Each time the file is opened and checked. It must hold the workout just logged, a weigh-in that only ever existed on the server (so sync brought it down) in the device's timestamp format, real booleans, and the exercise names.
 - **Delete your account.** The account and every row it owned are removed from the server while another account's rows stay. The phone forgets whose database it was, signing in again is refused, and the next account on the phone starts empty. With no connection nothing is deleted anywhere, and trying again once connected works.
+- **Cardio.** A treadmill is found under the Cardio chip and logged as two bouts. The calorie estimate matches the ACSM equation worked by hand, and the second bout carries the first one's settings plus the machine's own figure. On the server, both bouts hold the machine's numbers with zero weight and reps. The workout page shows each bout in a display's words and the cardio totals, with no lifting numbers.
 - **Settings.** Light mode survives a reload, and pounds are saved to the server.
 - **Every tab** opens without the crash screen.
 

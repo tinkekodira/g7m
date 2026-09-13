@@ -272,6 +272,8 @@ export class HistoryRepository {
          JOIN exercises e ON e.id = se.exercise_id
         WHERE se.user_id = ?
           AND ws.ended_at IS NOT NULL
+          -- Lifts only: a treadmill has no weight to trend and no best to stall.
+          AND e.cardio_kind IS NULL
           AND EXISTS (
             SELECT 1 FROM session_sets ss
              WHERE ss.session_exercise_id = se.id AND ss.is_completed = 1
