@@ -1,6 +1,7 @@
 import { useLayoutEffect } from 'react';
 import { NavigationType, Outlet, useLocation, useNavigationType } from 'react-router';
 import { TabBar } from './TabBar.js';
+import { RouteBoundary } from './ErrorBoundary.js';
 import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 
 /**
@@ -17,7 +18,11 @@ export function TabLayout() {
   return (
     <>
       <div className="pb-16">
-        <Outlet />
+        {/* Inside the layout, so a screen that throws takes itself down and
+            leaves the tab bar to get out by. */}
+        <RouteBoundary>
+          <Outlet />
+        </RouteBoundary>
       </div>
       <TabBar alert={isAlarming(alarm)} />
     </>

@@ -22,6 +22,7 @@ import { TabLayout } from './components/TabLayout.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
+import { RouteBoundary } from './components/ErrorBoundary.js';
 
 /**
  * The auth gate.
@@ -198,7 +199,14 @@ function AppRoutes() {
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>
-      <Route path="/workout" element={<WorkoutScreen />} />
+      <Route
+        path="/workout"
+        element={
+          <RouteBoundary>
+            <WorkoutScreen />
+          </RouteBoundary>
+        }
+      />
       {/* A leftover auth fragment, a bookmark from a build that named
             routes differently, a typo — and `/welcome/goal`, one render after
             the last question is answered. Home is a better answer than a blank
