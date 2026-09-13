@@ -264,6 +264,12 @@ pnpm sync-rules
 
 then paste and redeploy.
 
+The file starts with a `config:` block (`timestamps_iso8601`,
+`timestamp_max_precision: milliseconds`), which makes the service send
+timestamps the way the device writes them. Paste it with the rest; without it
+the service falls back to a format with a space in place of the `T`
+(ADR-0068). If the editor rejects either key, say so rather than deleting it.
+
 If the editor rejects `SELECT request.user_id() AS user_id`, the instance is on
 an older sync-rules dialect: replace that one line with
 `SELECT token_parameters.user_id AS user_id`, and say so, because the generator

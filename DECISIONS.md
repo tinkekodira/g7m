@@ -3719,3 +3719,54 @@ row can sort on the wrong side of a window, because a space sorts before `T`.
 It is narrow and has not been fixed here. The likely fix is opting the sync
 rules into `timestamps_iso8601`, which needs a redeploy in the PowerSync
 dashboard, so it is a separate decision.
+
+---
+
+## ADR-0068 — Timestamps are compared as time, and synced as the device writes them
+
+**Status:** accepted · **Date:** 2026-09-13 · **Settles:** the finding in ADR-0067
+
+A device held two spellings of the same instant:
+
+- the app writes `toISOString()`, i.e. `2026-09-13T10:00:00.123Z`;
+- the PowerSync service, under the sync rules' legacy edition, sent
+  `2026-09-13 10:00:00.123Z`, with a space instead of the `T` and no fraction
+  on a whole second.
+
+A row that had synced back held the second spelling, and a row not yet
+uploaded held the first. SQLite compares TEXT as text, and a space sorts before
+`T`, so:
+
+- A synced workout at 23:30 UTC was "before" a window starting at 22:00 UTC the
+  same day. That is Monday midnight in Central Europe, so the workout fell out
+  of the week it belonged to, and out of the planner's "since" counts and
+  weigh-in ranges.
+- `MAX(started_at)` and `ORDER BY started_at` could put a morning's unsynced
+  workout after the evening's synced one.
+
+Six repository tests reproduce these cases and failed on the old queries.
+
+**Two fixes, because either alone leaves a gap.**
+
+1. **The queries compare instants.** Every SQL comparison, ordering and
+   MIN/MAX on a timestamp goes through `julianday()` (`instants.ts`), which
+   reads both spellings and any number of fractional digits into one number.
+   This keeps them right on a phone that still holds old rows, and against any
+   future change of format. Aggregates that return a timestamp convert the
+   number back to the app's ISO text. The tables are one user's rows, small
+   enough that sorting on an expression rather than an index costs nothing
+   measurable.
+2. **The sync rules ask for the device's spelling.**
+   `timestamps_iso8601: true` with `timestamp_max_precision: milliseconds`
+   makes the service send `2026-09-13T10:00:00.123Z`: the fraction cut (not
+   rounded) or padded to three digits, character for character what
+   `toISOString()` produces. Once a device has re-synced, every row is spelt
+   one way, and code that compares timestamps as text is right again. This
+   takes a redeploy of the rules in the dashboard, and a changed rule set means
+   devices download their data again, which is how old rows get re-spelt.
+
+The end-to-end fake reads the `config` block from the same file and renders
+either spelling, with a test pinning it to the service's behaviour.
+
+**Not changed:** reading a value out. `readDate` uses `new Date()`, which
+already reads both spellings.

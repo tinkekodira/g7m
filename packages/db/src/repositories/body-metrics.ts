@@ -20,6 +20,7 @@ import {
   type SqlValue,
   type WritableDatabase,
 } from './database.js';
+import { INSTANT_PARAMETER, instant } from './instants.js';
 import {
   readEnum,
   readOptionalNumber,
@@ -228,7 +229,7 @@ export class BodyMetricsRepository {
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM body_metrics
         WHERE user_id = ? AND weight_kg IS NOT NULL
-        ORDER BY recorded_at DESC, id DESC
+        ORDER BY ${instant('recorded_at')} DESC, id DESC
         LIMIT 1`,
       [userId],
     );
@@ -248,7 +249,7 @@ export class BodyMetricsRepository {
     const { userId } = resolveContext(this.context);
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM body_metrics WHERE user_id = ?
-        ORDER BY recorded_at DESC, id DESC LIMIT 1`,
+        ORDER BY ${instant('recorded_at')} DESC, id DESC LIMIT 1`,
       [userId],
     );
     return row === null ? null : toMetric(row);
@@ -296,7 +297,7 @@ export class BodyMetricsRepository {
     const row = await this.db.getOptional<RawRow>(
       `SELECT * FROM body_metrics
         WHERE user_id = ? AND ${column} IS NOT NULL
-        ORDER BY recorded_at DESC, id DESC
+        ORDER BY ${instant('recorded_at')} DESC, id DESC
         LIMIT 1`,
       [userId],
     );
@@ -310,18 +311,18 @@ export class BodyMetricsRepository {
     const parameters: SqlValue[] = [userId];
 
     if (window.from !== undefined) {
-      conditions.push('recorded_at >= ?');
+      conditions.push(`${instant('recorded_at')} >= ${INSTANT_PARAMETER}`);
       parameters.push(toTimestamp(window.from));
     }
     if (window.to !== undefined) {
-      conditions.push('recorded_at < ?');
+      conditions.push(`${instant('recorded_at')} < ${INSTANT_PARAMETER}`);
       parameters.push(toTimestamp(window.to));
     }
 
     const rows = await this.db.getAll<RawRow>(
       `SELECT * FROM body_metrics
         WHERE ${conditions.join(' AND ')}
-        ORDER BY recorded_at ASC, id ASC`,
+        ORDER BY ${instant('recorded_at')} ASC, id ASC`,
       parameters,
     );
     return rows.map(toMetric);

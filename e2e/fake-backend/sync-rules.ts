@@ -18,7 +18,23 @@ export interface BucketQuery {
   readonly perUser: boolean;
 }
 
+/** How the service writes a `timestamptz`, from the rules' `config` block. */
+export interface TimestampFormat {
+  /** `2026-09-13T10:00:00.123Z` rather than the legacy `2026-09-13 10:00:00.123Z`. */
+  readonly iso8601: boolean;
+  /** Fractional digits, when `timestamp_max_precision` sets them; Postgres' six otherwise. */
+  readonly subSecondDigits: number;
+}
+
+const PRECISION_DIGITS: Readonly<Record<string, number>> = {
+  seconds: 0,
+  milliseconds: 3,
+  microseconds: 6,
+  nanoseconds: 9,
+};
+
 export interface SyncRules {
+  readonly timestamps: TimestampFormat;
   /** Buckets every signed-in user gets, by name. */
   readonly global: ReadonlyMap<string, readonly BucketQuery[]>;
   /** Buckets parameterised by the user id, by name. */
@@ -29,12 +45,22 @@ const RULES_FILE = new URL('../../powersync/sync-rules.yaml', import.meta.url);
 
 export function readSyncRules(text = readFileSync(RULES_FILE, 'utf8')): SyncRules {
   const buckets = new Map<string, string[]>();
+  const config = new Map<string, string>();
+  let inConfig = false;
   let bucket: string | null = null;
   let current: string[] | null = null;
 
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.replace(/#.*$/, '').trimEnd();
     if (line.trim() === '') continue;
+
+    // `config:` is a top-level block of `key: value` lines, before the buckets.
+    if (/^\S/.test(line)) inConfig = line === 'config:';
+    if (inConfig) {
+      const option = /^ {2}(\w+): (.+)$/.exec(line);
+      if (option !== null) config.set(option[1] ?? '', (option[2] ?? '').trim());
+      continue;
+    }
 
     const name = /^ {2}(\w+):$/.exec(line);
     if (name !== null) {
@@ -70,7 +96,20 @@ export function readSyncRules(text = readFileSync(RULES_FILE, 'utf8')): SyncRule
     }
     (userScoped ? perUser : global).set(name, queries);
   }
-  return { global, perUser };
+  return { timestamps: timestampFormat(config), global, perUser };
+}
+
+/** The two options this repository's rules set; anything else is not something the fake does. */
+function timestampFormat(config: ReadonlyMap<string, string>): TimestampFormat {
+  for (const key of config.keys()) {
+    if (key !== 'timestamps_iso8601' && key !== 'timestamp_max_precision') {
+      throw new Error(`The fake does not implement the sync-rules option ${key}.`);
+    }
+  }
+  const precision = config.get('timestamp_max_precision');
+  const digits = precision === undefined ? 6 : PRECISION_DIGITS[precision];
+  if (digits === undefined) throw new Error(`Unknown timestamp_max_precision ${String(precision)}`);
+  return { iso8601: config.get('timestamps_iso8601') === 'true', subSecondDigits: digits };
 }
 
 function parseQuery(sql: string): BucketQuery {

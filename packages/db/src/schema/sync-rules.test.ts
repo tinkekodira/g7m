@@ -54,6 +54,17 @@ describe('what the rules must say', () => {
     expect(yaml).toContain('  user_data:');
   });
 
+  /**
+   * The device writes `toISOString()`; the service must send the same
+   * spelling, or synced and unsynced rows sort differently as text (ADR-0068).
+   * Both keys, because the precision one is rejected without the other.
+   */
+  it('asks for timestamps spelt the way the device writes them', () => {
+    expect(yaml).toMatch(
+      /^config:\n {2}timestamps_iso8601: true\n {2}timestamp_max_precision: milliseconds\n/m,
+    );
+  });
+
   it('parameterises user data by the id in the JWT', () => {
     expect(yaml).toContain('parameters: SELECT request.user_id() AS user_id');
   });

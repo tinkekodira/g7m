@@ -13,8 +13,8 @@
  *
  *   · Buckets and columns come from `powersync/sync-rules.yaml` itself.
  *   · Values are rendered as the service renders them under these rules'
- *     edition — including timestamps with a space, not a `T`, between date
- *     and time (`2026-09-13 10:00:00.123Z`), which is what devices hold.
+ *     `config` — timestamps included, in either spelling (`renderTimestamp`),
+ *     so the device holds what a phone would.
  *   · Checksums add up, so the client's own validation runs and passes.
  *   · Write checkpoints, in the `requests` mode the SDK uses by default: an
  *     upload is not reflected on the device until a checkpoint carries an id
@@ -25,7 +25,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Database } from './database.js';
-import type { BucketQuery, SyncRules } from './sync-rules.js';
+import type { BucketQuery, SyncRules, TimestampFormat } from './sync-rules.js';
 
 type OpType = 'PUT' | 'REMOVE';
 
@@ -260,8 +260,7 @@ export class SyncService {
     const type = this.types.get(table)?.get(column);
     switch (type) {
       case 'timestamp with time zone':
-        // The service's legacy format: Postgres' own, with a Z for the zone.
-        return typeof value === 'string' ? value.replace(/\+00$/, 'Z') : value;
+        return typeof value === 'string' ? renderTimestamp(value, this.rules.timestamps) : value;
       case 'integer':
       case 'smallint':
       case 'bigint':
@@ -331,6 +330,25 @@ export class SyncService {
 
     write(stream, { checkpoint_complete: { last_op_id: String(lastOpId) } });
   }
+}
+
+/**
+ * A `timestamptz` as the service writes it, from Postgres' text in UTC
+ * (`2026-09-13 10:00:00.12345+00`).
+ *
+ * Legacy: Postgres' own text with a `Z` — a space, and a fraction only when
+ * there is one. ISO 8601: a `T`, and the fraction cut (not rounded) or padded
+ * to the configured digits, which is what the service's `renderSubseconds`
+ * does.
+ */
+export function renderTimestamp(postgres: string, format: TimestampFormat): string {
+  const match = /^(\d{4,}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})(?:\.(\d+))?\+00$/.exec(postgres);
+  if (match === null) return postgres;
+  const [, date = '', time = '', fraction = ''] = match;
+  if (!format.iso8601) return `${date} ${time}${fraction === '' ? '' : `.${fraction}`}Z`;
+  const digits = format.subSecondDigits;
+  const sub = fraction.slice(0, digits).padEnd(digits, '0');
+  return `${date}T${time}${digits === 0 ? '' : `.${sub}`}Z`;
 }
 
 /** `catalogue[]`: a bucket with no parameters, as the service names it. */
