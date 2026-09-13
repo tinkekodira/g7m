@@ -24,15 +24,19 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         # Version comes from the `packageManager` field in package.json, so it
         # can never drift from what developers run locally.
+        #
+        # v5, not v6: v5 is the Node 24 release; v6 bootstraps itself with
+        # pnpm 11 and changes how the lockfile is written, which is a pnpm
+        # upgrade, not a runner one, and belongs in its own change.
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -60,7 +64,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage/
@@ -72,7 +76,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # gitleaks scans history, not just the tip.
           fetch-depth: 0

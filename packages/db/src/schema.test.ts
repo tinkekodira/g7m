@@ -418,3 +418,103 @@ describe('the search_text generated column', () => {
     expect(rows[0]?.search_text).toBe('machine chest press flat press');
   });
 });
+
+describe('deleting your own account', () => {
+  /**
+   * One of everything a user can own, so the cascade is checked table by
+   * table rather than assumed from the migrations. Inserted as the superuser,
+   * which is only arranging the test; the deletion itself runs as the user.
+   */
+  async function fullAccount(email: string): Promise<string> {
+    const user = await h.createUser(email);
+    const bench = `(select id from public.exercises where slug = 'barbell-bench-press')`;
+    await h.db.exec(`
+      insert into public.user_equipment (user_id, equipment_id)
+      values ('${user}', (select id from public.equipment where slug = 'barbell'));
+      insert into public.body_metrics (user_id, weight_kg) values ('${user}', 80);
+      insert into public.training_goals (user_id, goal, days_per_week)
+      values ('${user}', 'get_stronger', 3);
+      with routine as (
+        insert into public.routines (user_id, name) values ('${user}', 'Push') returning id
+      )
+      insert into public.routine_exercises (user_id, routine_id, exercise_id, order_key)
+      select '${user}', id, ${bench}, 'a0' from routine;
+      with session as (
+        insert into public.workout_sessions (user_id) values ('${user}') returning id
+      ), exercise as (
+        insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+        select '${user}', id, ${bench}, 'a0' from session returning id
+      ), lifted as (
+        insert into public.session_sets
+          (user_id, session_exercise_id, order_key, weight_kg, reps, is_completed, completed_at)
+        select '${user}', id, 'a0', 100, 5, true, now() from exercise returning id
+      )
+      insert into public.personal_records (user_id, exercise_id, record_type, value, session_set_id)
+      select '${user}', ${bench}, 'max_weight', 100, id from lifted;
+    `);
+    return user;
+  }
+
+  async function rowsOwnedBy(user: string): Promise<Record<string, number>> {
+    const counts: Record<string, number> = {};
+    for (const table of USER_TABLES) {
+      const { rows } = await h.db.query<{ n: number }>(
+        `select count(*)::int as n from public.${table} where user_id = $1`,
+        [user],
+      );
+      counts[table] = rows[0]?.n ?? -1;
+    }
+    return counts;
+  }
+
+  it('deletes the account and every row it owns, and nobody else’s', async () => {
+    const leaving = await fullAccount('leaving@example.test');
+    const staying = await fullAccount('staying@example.test');
+
+    // A guard on the guard: every table really has a row to lose.
+    const before = await rowsOwnedBy(leaving);
+    for (const table of USER_TABLES) expect(before[table], table).toBeGreaterThan(0);
+
+    await h.actAs(leaving, () => h.db.query(`select public.delete_my_account()`));
+
+    const after = await rowsOwnedBy(leaving);
+    for (const table of USER_TABLES) expect(after[table], table).toBe(0);
+    const { rows } = await h.db.query(`select 1 from auth.users where id = $1`, [leaving]);
+    expect(rows).toHaveLength(0);
+
+    expect(await rowsOwnedBy(staying)).toEqual(before);
+  });
+
+  it('cannot be called by anyone signed out', async () => {
+    await h.db.exec(`set role anon`);
+    try {
+      await expect(h.db.query(`select public.delete_my_account()`)).rejects.toThrow(
+        /permission denied/i,
+      );
+    } finally {
+      await h.db.exec(`reset role`);
+    }
+  });
+
+  it('refuses a caller with no user in the token', async () => {
+    await h.db.exec(
+      `set role authenticated; select set_config('request.jwt.claims', '{}', false);`,
+    );
+    try {
+      await expect(h.db.query(`select public.delete_my_account()`)).rejects.toThrow(
+        /not signed in/,
+      );
+    } finally {
+      await h.db.exec(`reset role; select set_config('request.jwt.claims', '', false);`);
+    }
+  });
+
+  it('takes no argument, so there is nothing to point at somebody else', async () => {
+    const { rows } = await h.db.query<{ args: string; definer: boolean }>(
+      `select pg_get_function_arguments(p.oid) as args, p.prosecdef as definer
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = 'delete_my_account'`,
+    );
+    expect(rows).toEqual([{ args: '', definer: true }]);
+  });
+});

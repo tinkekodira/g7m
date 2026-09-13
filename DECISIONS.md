@@ -3559,6 +3559,114 @@ number and somebody who thinks in pounds has no good answer in kilograms.
 
 ---
 
+## ADR-0064 — "Download your data" is made from the device
+
+**Status:** accepted · **Date:** 2026-09-13
+
+GDPR gives everybody a copy of their data in a form another program can read
+(Article 20). Settings has "Your data": one JSON file with every row the
+account owns, table by table, labelled `g7m-export`, version 1.
+
+**From the device, not the server.** The sync rules send this user every row
+and every column the server holds for them — `UNSYNCED_TABLES` is empty and
+no user table has an unsynced column — so the local database is the server's
+copy plus whatever has not been uploaded yet. Reading it needs no connection
+and no new server code. The one case where it is less than the server's copy
+is a device that has not finished its first download, and the panel says so
+when `hasSynced` is false.
+
+**Readable without the app.** SQLite's `0`/`1` and JSON-as-text are turned back
+into booleans and JSON (`EXPORT_COLUMN_TYPES`, kept honest by a drift test
+against the migrations), and the exercises and equipment the rows refer to
+travel with them by name, so a workout does not point at an unexplained id.
+It is indented, so it can also be read in a text editor.
+
+**Saved through the share sheet on a phone.** In an iPhone Home Screen app a
+download link opens a full-screen viewer the app cannot navigate back from;
+the share sheet (Save to Files, Mail, AirDrop) is how iOS saves a file. A
+computer gets an ordinary download. The Capacitor Android build has neither
+in its WebView and would need a native plugin — it is an unused debug build,
+so that waits.
+
+---
+
+## ADR-0065 — Deleting an account is a database function
+
+**Status:** accepted · **Date:** 2026-09-13
+
+GDPR's right to erasure (Article 17) and both app stores require that someone
+can delete their account from inside the app.
+
+**Chosen:** `public.delete_my_account()`, `SECURITY DEFINER`, which deletes the
+caller's own `auth.users` row. Every user table references it `on delete
+cascade`, and so do GoTrue's identities and sessions, so everything goes in
+one transaction.
+
+**Rejected:** an Edge Function calling `auth.admin.deleteUser` with the
+service role key — the documented route. It works, but it is a second thing to
+deploy and a secret to hold, for an action the database can do on its own
+terms. The function takes no arguments; the id is `auth.uid()`, read from the
+verified JWT, so there is nothing a caller can pass to reach another account.
+`EXECUTE` is revoked from `PUBLIC` and `anon`. `search_path` is empty.
+
+It relies on the migration role being able to delete from `auth.users`, which
+Supabase allows. The migration checks that and refuses to install otherwise,
+so a platform change shows up as a failed `db push`, not as a button that
+fails in front of someone trying to leave.
+
+**On the device**, strictly after the server has succeeded: the local database
+is cleared *without* draining the upload queue — the opposite of sign-out
+(`handOverDevice`), and deliberately, since the queue belongs to an account
+that no longer exists — the owner record is removed, and the session ends
+with `scope: 'local'`, because the server has already dropped the tokens a
+global sign-out would revoke. Any failure before that point leaves everything,
+everywhere, as it was.
+
+**Two steps, not a hurdle.** One tap opens the panel and the word DELETE
+confirms it (any case: phone keyboards capitalise). No email, no waiting
+period. Nothing about it can be undone, which is the only reason for the
+second step.
+
+**Found on the way:** deleting a *routine* that has workouts fails. The
+foreign key `(routine_id, user_id) … on delete set null` would null `user_id`
+too, which is `not null`, and the source check forbids a `routine` session
+without a routine anyway. Deleting a user is unaffected — the sessions go in
+the same cascade — and nothing in the app deletes routines yet. It needs a
+decision when routines get a screen.
+
+---
+
+## ADR-0066 — A crash is a screen, not a blank page
+
+**Status:** accepted · **Date:** 2026-09-13
+
+React unmounts everything on an uncaught render error. On a Home Screen web
+app that is a white page with no address bar to reload from.
+
+**Where the boundaries are.** One inside the tab layout around each route,
+keyed by the path, so a broken screen costs only that screen: the tab bar
+stays, and leaving the route clears the error. The workout, which has no tab
+bar, gets its own. A last one at the root catches the auth gate and the
+router, and offers Reload, because there is nothing smaller to retry.
+
+**What it says.** That the training is safe — it is on the device the moment
+it is ticked, and mid-workout the screen says so about the workout — then Try
+again, Go to Home and Reload, then a folded-away report to copy into a message.
+The report has what, where (the hash route only, never the rest of the URL),
+when, the user agent and the stack, and nothing that identifies the person.
+
+**A stale build is not a bug.** A deploy renames the lazily loaded chunks, and
+a page still running the old build fails to import them. Each engine words
+that differently; they are matched, and the screen says the app has been
+updated and offers Reload, which is the whole fix.
+
+**Not caught, by React's design:** errors in event handlers and async code.
+Those unmount nothing, and the screens already report their own (`useWrite`,
+the sync alarm). There is no crash-reporting service — v1 costs nothing to
+run — so the console and the copied report are the record.
+
+---
+
 ## ADR-0067 — End-to-end tests run against a fake backend built on the real schema
 
 **Status:** accepted · **Date:** 2026-09-13
