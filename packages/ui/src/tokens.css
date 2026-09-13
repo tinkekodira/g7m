@@ -1,8 +1,9 @@
 /* ==========================================================================
    g7m design tokens — Brief §10
-   Dark mode only in v1. The structure below makes a light theme possible
-   later (override the `:root` block under a `[data-theme='light']` selector);
-   do not build one now.
+   Dark by default. The light theme is the same token names redefined under
+   `:root[data-theme='light']`, which `lib/theme.ts` sets on the root element
+   from the switch in Settings — so nothing that uses a token needs to know
+   which theme it is in. See ADR-0062.
 
    Raw tokens keep the names from the brief and are the source of truth.
    The `@theme inline` block below maps them into Tailwind's namespaces so
@@ -33,6 +34,10 @@
      reach for a background token. Filled --danger goes the other way and uses
      --text-primary. See ADR-0008. */
   --text-on-accent: #1f1e1d;
+  /* Foreground on a filled danger button. The same light ink as primary text
+     in this theme; its own token because the light theme needs white here
+     while its primary text is dark. */
+  --text-on-danger: #faf9f5;
 
   /* --- Accent --- */
   --accent: #d97757; /* primary actions, active states */
@@ -54,6 +59,51 @@
   --muscle-heat-2: #6e5138;
   --muscle-heat-3: #9a6144;
   --muscle-heat-4: #d97757; /* at or above weekly target */
+
+  /* The backdrop the 3D body stands on. A literal colour because the canvas
+     needs one; tokens.ts carries it for the viewer. */
+  --bg-stage: #17161a;
+
+  /* The one shadow, per theme: a light page needs far less of it. */
+  --shadow-floating-value: 0 8px 24px -4px rgb(0 0 0 / 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   The light theme. Every value here is checked by tokens.test.ts against the
+   same contrast rules as the dark one: AAA for primary text, AA for the rest,
+   AA for the accent used as text, and AA for the ink on every filled button.
+   The accent is a deeper orange than the dark theme's, because the dark
+   theme's is too light to read as text on white.
+   -------------------------------------------------------------------------- */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-base: #f5f3ee;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ece9e2;
+  --bg-input: #f1efe9;
+
+  --border-subtle: #e0dcd2;
+  --border-strong: #c7c1b4;
+
+  --text-primary: #1f1e1d;
+  --text-secondary: #4a4843;
+  --text-muted: #6a675f;
+  --text-on-accent: #ffffff;
+  --text-on-danger: #ffffff;
+
+  --accent: #a84a28;
+  --accent-hover: #973f1f;
+  --accent-pressed: #85361a;
+  --accent-subtle: #f8e9e1;
+
+  --success: #3b7a43;
+  --warning: #8a5d0a;
+  --danger: #b23b28;
+
+  --bg-stage: #e6e2d9;
+
+  --shadow-floating-value: 0 8px 24px -6px rgb(60 40 20 / 0.18);
 }
 
 @theme inline {
@@ -70,6 +120,8 @@
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
   --color-on-accent: var(--text-on-accent);
+  --color-on-danger: var(--text-on-danger);
+  --color-stage: var(--bg-stage);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
@@ -123,7 +175,7 @@
   --spacing-tap: 48px;
 
   /* --- One shadow token, for genuinely floating surfaces only ----------- */
-  --shadow-floating: 0 8px 24px -4px rgb(0 0 0 / 0.45);
+  --shadow-floating: var(--shadow-floating-value);
 }
 
 /* --------------------------------------------------------------------------

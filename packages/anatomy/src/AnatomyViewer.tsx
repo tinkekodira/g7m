@@ -71,6 +71,11 @@ export interface AnatomyViewerProps {
    * on demand rather than sixty times a second, since nothing moves.
    */
   readonly interactive?: boolean;
+  /**
+   * The colour behind the body. A literal, because the canvas is WebGL and
+   * cannot read a CSS variable; the app passes its theme's stage colour.
+   */
+  readonly background?: string;
   readonly className?: string;
 }
 
@@ -84,6 +89,7 @@ export function AnatomyViewer({
   closedSurface = false,
   view = 'front',
   interactive = true,
+  background = '#17161a',
   className,
 }: AnatomyViewerProps) {
   const selectable = useMemo(() => new Set(selectableSlugs), [selectableSlugs]);
@@ -110,7 +116,7 @@ export function AnatomyViewer({
           onSelect(null);
         }}
       >
-        <color attach="background" args={['#17161a']} />
+        <color attach="background" args={[background]} />
 
         {/*
           Three lights and a bounce, which is the whole difference between

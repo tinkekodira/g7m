@@ -1,17 +1,16 @@
 /**
- * Light or dark, as a preference the app keeps but does not act on yet.
+ * Light or dark: the choice, remembered, and put on the page.
  *
- * v1 is dark only — Brief §10, and the header of tokens.css, which says a
- * light theme is a later override of the `:root` block and not to build one
- * now. The Settings screen has the switch anyway, so the control exists where
- * people will look for it and the choice is remembered for the day a light
- * palette arrives. Until then `appliedTheme` answers dark whatever was chosen,
- * and it is the only thing that will need to change.
+ * Dark is the default and the design's home (Brief §10). Light is the same
+ * token names redefined under `:root[data-theme='light']` in tokens.css, so
+ * applying a theme is one attribute on the root element — nothing that uses a
+ * token needs to know which theme it is drawn in. The few things that cannot
+ * read a CSS variable (the 3D canvas, the browser's own chrome) are handed a
+ * literal colour from here. See ADR-0062.
  *
  * Kept on this device rather than on the profile. It is how this screen looks,
  * not a fact about the lifter — a phone in the gym and a laptop at home can
- * reasonably disagree — and a synced column would be a migration for a setting
- * that changes nothing yet.
+ * reasonably disagree.
  */
 
 export const THEMES = ['dark', 'light'] as const;
@@ -22,6 +21,16 @@ export const THEME_STORAGE_KEY = 'g7m.theme';
 /** Dark, until somebody says otherwise. */
 export const DEFAULT_THEME: Theme = 'dark';
 
+/**
+ * The browser's colour for its own chrome — the address bar, the status bar
+ * of an installed app — which reads `<meta name="theme-color">` and nothing
+ * in the stylesheet. Each theme's page background.
+ */
+export const BROWSER_CHROME: Record<Theme, string> = {
+  dark: '#1f1e1d',
+  light: '#f5f3ee',
+};
+
 /** The subset of `Storage` this needs, so the tests can hand it a map. */
 export type ThemeStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -30,8 +39,7 @@ export type ThemeStorage = Pick<Storage, 'getItem' | 'setItem'>;
  *
  * Anything unrecognised reads as the default rather than as itself, and a
  * storage that throws — private browsing on some engines, a WebView with
- * storage switched off — reads as the default rather than as a crash on the
- * settings screen.
+ * storage switched off — reads as the default rather than as a crash.
  */
 export function readTheme(storage: ThemeStorage | undefined = globalThis.localStorage): Theme {
   try {
@@ -44,7 +52,7 @@ export function readTheme(storage: ThemeStorage | undefined = globalThis.localSt
   }
 }
 
-/** Remember a choice. Failing to is not worth an error: the switch still moves. */
+/** Remember a choice. Failing to is not worth an error: the page still changes. */
 export function writeTheme(
   theme: Theme,
   storage: ThemeStorage | undefined = globalThis.localStorage,
@@ -52,16 +60,39 @@ export function writeTheme(
   try {
     storage?.setItem(THEME_STORAGE_KEY, theme);
   } catch {
-    // Storage full or switched off. The preference lasts until the page does.
+    // Storage full or switched off. The choice lasts until the page does.
   }
 }
 
+/** The parts of a document a theme touches. A real `document` satisfies it. */
+export interface ThemeDocument {
+  readonly documentElement: {
+    readonly dataset: Record<string, string | undefined>;
+    readonly style: { colorScheme: string };
+    readonly classList: { toggle: (token: string, force?: boolean) => unknown };
+  };
+  querySelector: (
+    selector: string,
+  ) => { setAttribute: (name: string, value: string) => void } | null;
+}
+
 /**
- * The theme actually drawn, given the one chosen.
+ * Put a theme on the page.
  *
- * Dark, always, until the light palette exists. This is the seam: when it
- * does, this returns `chosen` and the root element gets a `data-theme`.
+ * The attribute switches every token. `color-scheme` tells the browser too, so
+ * its own controls — a date picker, a scrollbar, the page behind an
+ * overscroll — come out in the same theme. And the two meta tags are what the
+ * browser's chrome reads, since it never looks at the stylesheet.
  */
-export function appliedTheme(_chosen: Theme): Theme {
-  return 'dark';
+export function applyTheme(
+  theme: Theme,
+  doc: ThemeDocument | undefined = globalThis.document,
+): void {
+  if (doc === undefined) return;
+  const root = doc.documentElement;
+  root.dataset['theme'] = theme;
+  root.style.colorScheme = theme;
+  root.classList.toggle('dark', theme === 'dark');
+  doc.querySelector('meta[name="theme-color"]')?.setAttribute('content', BROWSER_CHROME[theme]);
+  doc.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme);
 }

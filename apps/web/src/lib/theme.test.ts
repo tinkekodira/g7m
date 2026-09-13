@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BROWSER_CHROME,
   DEFAULT_THEME,
   THEME_STORAGE_KEY,
-  appliedTheme,
+  applyTheme,
   readTheme,
   writeTheme,
+  type ThemeDocument,
   type ThemeStorage,
 } from './theme.js';
 
@@ -29,6 +31,36 @@ const throwing: ThemeStorage = {
     throw new Error('QuotaExceededError');
   },
 };
+
+/** Just enough of a document to watch what a theme does to it. */
+function fakeDocument() {
+  const dataset: Record<string, string | undefined> = {};
+  const style = { colorScheme: '' };
+  const classes = new Set<string>(['dark']);
+  const meta: Record<string, string> = { 'theme-color': '', 'color-scheme': '' };
+  const doc: ThemeDocument = {
+    documentElement: {
+      dataset,
+      style,
+      classList: {
+        toggle: (token, force) => {
+          if (force === true) classes.add(token);
+          else classes.delete(token);
+        },
+      },
+    },
+    querySelector: (selector) => {
+      const name = /name="([^"]+)"/.exec(selector)?.[1];
+      if (name === undefined || !(name in meta)) return null;
+      return {
+        setAttribute: (_attribute, value) => {
+          meta[name] = value;
+        },
+      };
+    },
+  };
+  return { doc, dataset, style, classes, meta };
+}
 
 describe('readTheme', () => {
   it('is dark until somebody chooses', () => {
@@ -64,10 +96,30 @@ describe('writeTheme', () => {
   });
 });
 
-describe('appliedTheme', () => {
-  /** v1 is dark only. The switch is kept; its effect waits for a light palette. */
-  it('draws dark whatever was chosen', () => {
-    expect(appliedTheme('dark')).toBe('dark');
-    expect(appliedTheme('light')).toBe('dark');
+describe('applyTheme', () => {
+  it('switches every token by marking the root, and tells the browser', () => {
+    const { doc, dataset, style, classes, meta } = fakeDocument();
+    applyTheme('light', doc);
+    expect(dataset['theme']).toBe('light');
+    expect(style.colorScheme).toBe('light');
+    expect(classes.has('dark')).toBe(false);
+    expect(meta['theme-color']).toBe(BROWSER_CHROME.light);
+    expect(meta['color-scheme']).toBe('light');
+  });
+
+  it('goes back to dark just as completely', () => {
+    const { doc, dataset, style, classes, meta } = fakeDocument();
+    applyTheme('light', doc);
+    applyTheme('dark', doc);
+    expect(dataset['theme']).toBe('dark');
+    expect(style.colorScheme).toBe('dark');
+    expect(classes.has('dark')).toBe(true);
+    expect(meta['theme-color']).toBe(BROWSER_CHROME.dark);
+  });
+
+  it('does nothing where there is no document', () => {
+    expect(() => {
+      applyTheme('light', undefined);
+    }).not.toThrow();
   });
 });
