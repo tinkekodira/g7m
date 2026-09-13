@@ -5,8 +5,13 @@ import {
   toDisplayWeight,
   totalVolumeKg,
   trainingMinutes,
+  boutCalories,
+  formatDuration,
+  type Bout,
+  type CardioKind,
   type UnitSystem,
 } from '@g7m/core';
+import { boutSummary } from './bout-copy.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { formatWeightTotal } from '../components/chart-scale.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -82,7 +87,11 @@ export function SessionDetailScreen() {
 
 interface Block {
   readonly entry: { readonly id: string; readonly exerciseId: string };
-  readonly exercise: { readonly name: string; readonly slug: string } | null;
+  readonly exercise: {
+    readonly name: string;
+    readonly slug: string;
+    readonly cardioKind: CardioKind | null;
+  } | null;
   readonly sets: readonly {
     readonly id: string;
     readonly setType: string;
@@ -91,6 +100,7 @@ interface Block {
     readonly reps: number;
     readonly isCompleted: boolean;
     readonly completedAt: Date | null;
+    readonly bout: Bout;
   }[];
 }
 
@@ -105,15 +115,19 @@ function SessionBody({
   readonly unitSystem: UnitSystem;
   readonly blocks: readonly Block[];
 }) {
-  const allSets = blocks.flatMap((block) =>
-    block.sets.map((set) => ({
-      setType: set.setType as 'working',
-      loadType: set.loadType as 'external',
-      weightKg: set.weightKg,
-      reps: set.reps,
-      isCompleted: set.isCompleted,
-    })),
-  );
+  // Sets and volume are lifting numbers; a bout's zeros would only inflate
+  // the count and add nothing to the weight.
+  const allSets = blocks
+    .filter((block) => block.exercise?.cardioKind == null)
+    .flatMap((block) =>
+      block.sets.map((set) => ({
+        setType: set.setType as 'working',
+        loadType: set.loadType as 'external',
+        weightKg: set.weightKg,
+        reps: set.reps,
+        isCompleted: set.isCompleted,
+      })),
+    );
   const volume = totalVolumeKg(allSets, bodyweightKg);
   // From the first working set ticked to the last — the same clock the list on
   // the progress screen reads, so the two never disagree about one session.
@@ -126,14 +140,34 @@ function SessionBody({
   );
   const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
 
+  // What the cardio came to: time on the machines and calories, from the bouts
+  // that were done. The lifting numbers above say nothing about a treadmill.
+  const hasLifts = blocks.some((block) => block.exercise?.cardioKind == null);
+  const cardio = blocks.flatMap((block) => {
+    const kind = block.exercise?.cardioKind;
+    if (kind == null) return [];
+    return block.sets.filter((set) => set.isCompleted).map((set) => ({ kind, bout: set.bout }));
+  });
+  const cardioSeconds = cardio.reduce((sum, entry) => sum + (entry.bout.durationSeconds ?? 0), 0);
+  const cardioKcal = cardio.reduce(
+    (sum, entry) => sum + (boutCalories(entry.kind, entry.bout, bodyweightKg)?.kcal ?? 0),
+    0,
+  );
+
   return (
     <>
       <section className="rounded-card bg-surface p-4">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <Stat label="Date" value={startedAt.toLocaleDateString()} />
           {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
-          <Stat label="Sets" value={String(volume.countedSets)} />
-          <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
+          {hasLifts && <Stat label="Sets" value={String(volume.countedSets)} />}
+          {hasLifts && (
+            <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
+          )}
+          {cardioSeconds > 0 && <Stat label="Cardio" value={formatDuration(cardioSeconds)} />}
+          {cardioKcal > 0 && (
+            <Stat label="Calories" value={`${cardioKcal.toLocaleString('en-GB')} kcal`} />
+          )}
         </div>
         {volume.unknownSets > 0 && (
           <p className="mt-3 text-xs text-muted">
@@ -150,7 +184,13 @@ function SessionBody({
               'Unknown exercise'
             ) : (
               <Link
-                to={`/progress/exercise/${block.entry.exerciseId}`}
+                // A lift's trend chart, or a machine's page: a treadmill has
+                // no weight to chart.
+                to={
+                  block.exercise.cardioKind === null
+                    ? `/progress/exercise/${block.entry.exerciseId}`
+                    : `/exercises/${block.exercise.slug}`
+                }
                 className="underline-offset-4 hover:underline"
               >
                 {block.exercise.name}
@@ -158,7 +198,14 @@ function SessionBody({
             )}
           </h2>
 
-          {block.sets.length === 0 ? (
+          {block.exercise?.cardioKind != null ? (
+            <BoutList
+              kind={block.exercise.cardioKind}
+              sets={block.sets}
+              unitSystem={unitSystem}
+              bodyweightKg={bodyweightKg}
+            />
+          ) : block.sets.length === 0 ? (
             <p className="text-sm text-muted">No sets logged.</p>
           ) : (
             <ul className="flex flex-col">
@@ -188,6 +235,39 @@ function SessionBody({
         </section>
       ))}
     </>
+  );
+}
+
+/** A machine's bouts, one line each, in the words its display would use. */
+function BoutList({
+  kind,
+  sets,
+  unitSystem,
+  bodyweightKg,
+}: {
+  readonly kind: CardioKind;
+  readonly sets: Block['sets'];
+  readonly unitSystem: UnitSystem;
+  readonly bodyweightKg: number | null;
+}) {
+  if (sets.length === 0) return <p className="text-sm text-muted">No bouts logged.</p>;
+  return (
+    <ul className="flex flex-col">
+      {sets.map((set, index) => (
+        <li
+          key={set.id}
+          className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
+        >
+          <span className="shrink-0 text-sm text-secondary">
+            Bout {String(index + 1)}
+            {!set.isCompleted && <span className="text-muted"> · skipped</span>}
+          </span>
+          <span className="numeric text-right text-sm text-primary">
+            {boutSummary(kind, set.bout, unitSystem, bodyweightKg)}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

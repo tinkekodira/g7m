@@ -32,6 +32,7 @@ import { HeaderLink } from '../components/HeaderLink.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { formatWeightExact } from '../components/chart-scale.js';
 import { PlateLine } from '../components/PlateLine.js';
+import { CardioCard } from '../components/CardioCard.js';
 import { describeRecord, type RecordLine } from './record-copy.js';
 import {
   formatElapsed,
@@ -224,7 +225,12 @@ export function WorkoutScreen() {
       lastActivityAt: lastActivity,
       snoozedAt,
       now,
-      limitMinutes: idleLimitMinutes('strength'),
+      // A treadmill bout can be an hour without a tick; that is not idling.
+      limitMinutes: idleLimitMinutes(
+        (workout?.blocks ?? []).some((block) => block.exercise?.cardioKind != null)
+          ? 'cardio'
+          : 'strength',
+      ),
     });
 
   // Once it looks like the training has stopped, keeping the screen awake is
@@ -352,7 +358,9 @@ export function WorkoutScreen() {
     });
   };
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
-  const allSets = blocks.flatMap((block) =>
+  // Lifts only: a bout's weight and reps are zero by design, and counting it
+  // as a set would put "0 kg lifted" at the top of a treadmill session.
+  const allSets = liftBlocks(blocks).flatMap((block) =>
     block.sets.map((set) => ({
       setType: set.setType,
       loadType: set.loadType,
@@ -423,73 +431,137 @@ export function WorkoutScreen() {
         </p>
       )}
 
-      {blocks.map((block) => (
-        <ExerciseCard
-          key={block.entry.id}
-          block={block}
-          records={marks.bySet}
-          unitSystem={unitSystem}
-          busy={busy}
-          onAddSet={() => {
-            void write((r) =>
-              r.sessions.addSet(
-                block.entry.id,
-                nextSetTemplate({
-                  current: block.sets,
-                  previous: block.previous,
-                  repLow: block.exercise?.defaultRepLow ?? 8,
-                  loadType: block.loadType,
+      {blocks.map((block) =>
+        block.exercise?.cardioKind != null ? (
+          <CardioCard
+            key={block.entry.id}
+            name={block.exercise.name}
+            kind={block.exercise.cardioKind}
+            sets={block.sets}
+            anchorId={exerciseAnchor(block.entry.id)}
+            unitSystem={unitSystem}
+            bodyweightKg={session.bodyweightKg ?? profile?.bodyweightKg ?? null}
+            past={past}
+            busy={busy}
+            onAddBout={() => {
+              // The next interval usually repeats the last one's settings, so
+              // they carry over; its calories are its own.
+              const last = block.sets.at(-1)?.bout;
+              void write((r) =>
+                r.sessions.addSet(block.entry.id, {
+                  weightKg: 0,
+                  reps: 0,
+                  loadType: 'external',
+                  setType: 'working',
+                  bout: last === undefined ? {} : { ...last, caloriesKcal: null },
                 }),
-              ),
-            );
-          }}
-          onComplete={(setId, changes) => {
-            void write((r) => r.sessions.completeSet(setId, changes));
-            // Answers the finger already on the glass, so the tick does not
-            // have to be watched to be believed.
-            buzz('tick');
-            // Nothing to rest between when the sets happened days ago.
-            if (!past) setRest({ startedAt: new Date(), seconds: block.restSeconds });
-          }}
-          onUncomplete={(setId) => {
-            void write((r) => r.sessions.uncompleteSet(setId));
-          }}
-          onSave={(setId, changes) => {
-            void write((r) => r.sessions.updateSet(setId, changes));
-          }}
-          onRemoveSet={(setId) => {
-            void (async () => {
-              const removed = await write((r) => r.sessions.removeSet(setId));
-              if (removed === null) return;
-              setUndo({
-                token: ++undoToken.current,
-                message: 'Set removed.',
-                restore: () => {
-                  void write((r) => r.sessions.restoreSet(removed));
-                },
-              });
-            })();
-          }}
-          onRateEffort={(setId, repsInReserve) => {
-            void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
-          }}
-          onRemove={() => {
-            void (async () => {
-              const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
-              if (removed === null) return;
-              setUndo({
-                token: ++undoToken.current,
-                // The count is the part worth a second look: an exercise takes
-                // every set logged under it with it.
-                message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
-                restore: () => {
-                  void write((r) => r.sessions.restoreExercise(removed));
-                },
-              });
-            })();
-          }}
-        />
-      ))}
+              );
+            }}
+            onSave={(setId, bout) => {
+              void write((r) => r.sessions.updateSet(setId, { bout }));
+            }}
+            onComplete={(setId, bout) => {
+              void write((r) => r.sessions.completeSet(setId, { bout }));
+              buzz('tick');
+            }}
+            onUncomplete={(setId) => {
+              void write((r) => r.sessions.uncompleteSet(setId));
+            }}
+            onRemoveBout={(setId) => {
+              void (async () => {
+                const removed = await write((r) => r.sessions.removeSet(setId));
+                if (removed === null) return;
+                setUndo({
+                  token: ++undoToken.current,
+                  message: 'Bout removed.',
+                  restore: () => {
+                    void write((r) => r.sessions.restoreSet(removed));
+                  },
+                });
+              })();
+            }}
+            onRemove={() => {
+              void (async () => {
+                const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
+                if (removed === null) return;
+                setUndo({
+                  token: ++undoToken.current,
+                  message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
+                  restore: () => {
+                    void write((r) => r.sessions.restoreExercise(removed));
+                  },
+                });
+              })();
+            }}
+          />
+        ) : (
+          <ExerciseCard
+            key={block.entry.id}
+            block={block}
+            records={marks.bySet}
+            unitSystem={unitSystem}
+            busy={busy}
+            onAddSet={() => {
+              void write((r) =>
+                r.sessions.addSet(
+                  block.entry.id,
+                  nextSetTemplate({
+                    current: block.sets,
+                    previous: block.previous,
+                    repLow: block.exercise?.defaultRepLow ?? 8,
+                    loadType: block.loadType,
+                  }),
+                ),
+              );
+            }}
+            onComplete={(setId, changes) => {
+              void write((r) => r.sessions.completeSet(setId, changes));
+              // Answers the finger already on the glass, so the tick does not
+              // have to be watched to be believed.
+              buzz('tick');
+              // Nothing to rest between when the sets happened days ago.
+              if (!past) setRest({ startedAt: new Date(), seconds: block.restSeconds });
+            }}
+            onUncomplete={(setId) => {
+              void write((r) => r.sessions.uncompleteSet(setId));
+            }}
+            onSave={(setId, changes) => {
+              void write((r) => r.sessions.updateSet(setId, changes));
+            }}
+            onRemoveSet={(setId) => {
+              void (async () => {
+                const removed = await write((r) => r.sessions.removeSet(setId));
+                if (removed === null) return;
+                setUndo({
+                  token: ++undoToken.current,
+                  message: 'Set removed.',
+                  restore: () => {
+                    void write((r) => r.sessions.restoreSet(removed));
+                  },
+                });
+              })();
+            }}
+            onRateEffort={(setId, repsInReserve) => {
+              void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
+            }}
+            onRemove={() => {
+              void (async () => {
+                const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
+                if (removed === null) return;
+                setUndo({
+                  token: ++undoToken.current,
+                  // The count is the part worth a second look: an exercise takes
+                  // every set logged under it with it.
+                  message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
+                  restore: () => {
+                    void write((r) => r.sessions.restoreExercise(removed));
+                  },
+                });
+              })();
+            }}
+          />
+        ),
+      )}
 
       <Link
         to="/exercises?add=1"
@@ -1196,6 +1268,15 @@ interface LatestRecord {
  * history and nothing else. The map is what hangs a badge on the right row; the
  * latest is what decides whether anything is worth announcing.
  */
+/**
+ * The blocks that are lifts. Cardio is left out of everything measured in
+ * weight and reps — volume, records — explicitly rather than by its zeros,
+ * so no rule about zero can ever turn a first bout into a "record".
+ */
+function liftBlocks(blocks: readonly ExerciseBlock[]): ExerciseBlock[] {
+  return blocks.filter((block) => block.exercise?.cardioKind == null);
+}
+
 function markRecords(workout: Workout | null): {
   bySet: ReadonlyMap<string, SetRecord>;
   latest: LatestRecord | null;
@@ -1204,7 +1285,7 @@ function markRecords(workout: Workout | null): {
   let latest: LatestRecord | null = null;
   if (workout === null) return { bySet, latest };
 
-  for (const block of workout.blocks) {
+  for (const block of liftBlocks(workout.blocks)) {
     const records = recordsInSession({
       sets: block.sets,
       // The session's snapshot, so a pull-up logged at 80 kg is still measured

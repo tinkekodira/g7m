@@ -140,12 +140,23 @@ export function ExerciseLibraryScreen() {
           every group, and the list below never moves down as chips wrap. */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip
-          selected={filters.muscleGroup === null}
+          selected={filters.muscleGroup === null && !filters.cardio}
           onClick={() => {
-            update({ ...filters, muscleGroup: null });
+            update({ ...filters, muscleGroup: null, cardio: false });
           }}
         >
           All
+        </Chip>
+        {/* Second, straight after All: the row scrolls sideways past ten muscle
+            groups, and a chip at the far end is one nobody finds. The machines
+            train no muscle the map counts, so they are a kind, not a group. */}
+        <Chip
+          selected={filters.cardio}
+          onClick={() => {
+            update({ ...filters, muscleGroup: null, cardio: !filters.cardio });
+          }}
+        >
+          Cardio
         </Chip>
         {(taxonomy.data?.groups ?? []).map((group) => (
           <Chip
@@ -155,7 +166,7 @@ export function ExerciseLibraryScreen() {
               // Tapping the selected group again clears it, which is what a
               // single-select row of chips has to do to be usable at all.
               const next = filters.muscleGroup === group.slug ? null : group.slug;
-              update({ ...filters, muscleGroup: next });
+              update({ ...filters, muscleGroup: next, cardio: false });
             }}
           >
             {group.name}
@@ -264,7 +275,11 @@ function ExerciseRow({
   readonly onAdd: (() => void) | null;
   readonly busy: boolean;
 }) {
-  const detail = [muscle, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
+  const detail = (
+    exercise.cardioKind !== null
+      ? ['Cardio']
+      : [muscle, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
+  )
     .filter((part): part is string => part !== null)
     .join(' · ');
 

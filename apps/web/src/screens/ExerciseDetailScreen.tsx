@@ -1,9 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import {
+  BOUT_FIELDS,
   CURRENT_STRENGTH_WEEKS,
   strengthEstimate,
   toDisplayWeight,
+  type CardioKind,
   type OneRepMaxReading,
   type StrengthEstimate,
   type UnitSystem,
@@ -14,6 +16,7 @@ import { ChevronRightIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { describeMark } from './review-copy.js';
+import { fieldLabel } from './bout-copy.js';
 
 /**
  * One exercise, in full.
@@ -123,7 +126,13 @@ function ExerciseDetail({
           <p className="mt-1 text-sm text-secondary">Also called {exercise.aliases.join(', ')}</p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Badge>{exercise.mechanic === 'compound' ? 'Compound' : 'Isolation'}</Badge>
+          <Badge>
+            {exercise.cardioKind !== null
+              ? 'Cardio'
+              : exercise.mechanic === 'compound'
+                ? 'Compound'
+                : 'Isolation'}
+          </Badge>
           <Badge>{capitalise(exercise.difficulty)}</Badge>
           {exercise.isUnilateral && <Badge>One side at a time</Badge>}
           {exercise.isTimeBased && <Badge>Held for time</Badge>}
@@ -177,7 +186,12 @@ function ExerciseDetail({
       )}
 
       <Section title="Muscles worked">
-        {muscles.length === 0 ? (
+        {exercise.cardioKind !== null ? (
+          <p className="max-w-prose text-sm text-secondary">
+            Cardio works the heart and lungs more than any one muscle, so it is not counted on the
+            body map — twenty minutes on a machine is not twenty sets of anything.
+          </p>
+        ) : muscles.length === 0 ? (
           <p className="text-sm text-muted">Not recorded for this exercise.</p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -210,30 +224,39 @@ function ExerciseDetail({
         )}
       </Section>
 
-      <Section title="Starting point">
-        <div className="flex items-baseline justify-between gap-4 border-b border-subtle py-2">
-          <span className="text-sm text-secondary">
-            {exercise.isTimeBased ? 'Suggested hold' : 'Suggested reps'}
-          </span>
-          <span className="numeric text-base text-primary">
-            {exercise.defaultRepLow}–{exercise.defaultRepHigh}
-            {exercise.isTimeBased ? ' seconds' : ''}
-          </span>
-        </div>
-        <div className="flex items-baseline justify-between gap-4 py-2">
-          <span className="text-sm text-secondary">Rest between sets</span>
-          <span className="numeric text-base text-primary">
-            {exercise.defaultRestSeconds === null
-              ? // Null means "derive from mechanic", and the derivation lives in
-                // @g7m/core with the generator. Saying so beats printing a
-                // number this screen invented.
-                exercise.mechanic === 'compound'
-                ? 'Longer — it is a compound'
-                : 'Shorter — it is an isolation'
-              : `${String(exercise.defaultRestSeconds)} seconds`}
-          </span>
-        </div>
-      </Section>
+      {exercise.cardioKind !== null ? (
+        <Section title="What you log">
+          <p className="max-w-prose text-sm text-secondary">
+            {loggedFields(exercise.cardioKind, unitSystem)} Calories are estimated from those and
+            your bodyweight, or you can type the machine’s own figure.
+          </p>
+        </Section>
+      ) : (
+        <Section title="Starting point">
+          <div className="flex items-baseline justify-between gap-4 border-b border-subtle py-2">
+            <span className="text-sm text-secondary">
+              {exercise.isTimeBased ? 'Suggested hold' : 'Suggested reps'}
+            </span>
+            <span className="numeric text-base text-primary">
+              {exercise.defaultRepLow}–{exercise.defaultRepHigh}
+              {exercise.isTimeBased ? ' seconds' : ''}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-4 py-2">
+            <span className="text-sm text-secondary">Rest between sets</span>
+            <span className="numeric text-base text-primary">
+              {exercise.defaultRestSeconds === null
+                ? // Null means "derive from mechanic", and the derivation lives in
+                  // @g7m/core with the generator. Saying so beats printing a
+                  // number this screen invented.
+                  exercise.mechanic === 'compound'
+                  ? 'Longer — it is a compound'
+                  : 'Shorter — it is an isolation'
+                : `${String(exercise.defaultRestSeconds)} seconds`}
+            </span>
+          </div>
+        </Section>
+      )}
 
       {/*
         Every seeded row is `none` today, deliberately: a made-up YouTube id
@@ -361,4 +384,17 @@ function capitalise(value: string): string {
 /** Recruitment weight is meant to be 0–1, and nothing enforces that locally. */
 function clamp(value: number): number {
   return Math.min(1, Math.max(0, value));
+}
+
+/** "Each bout records its time, distance, speed and incline." */
+function loggedFields(kind: CardioKind, unitSystem: UnitSystem): string {
+  const names = BOUT_FIELDS[kind].map((field) =>
+    fieldLabel(field, kind, unitSystem)
+      .replace(/\s*\(.*\)$/, '')
+      .toLowerCase(),
+  );
+  const list = ['its time', ...names];
+  const spoken =
+    list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list.at(-1) ?? ''}`;
+  return `Each bout records ${spoken ?? ''}.`;
 }
