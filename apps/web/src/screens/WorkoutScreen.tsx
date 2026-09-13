@@ -30,6 +30,7 @@ import { buzz } from '../lib/haptics.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { formatWeightExact } from '../components/chart-scale.js';
+import { PlateLine } from '../components/PlateLine.js';
 import { describeRecord, type RecordLine } from './record-copy.js';
 import {
   formatElapsed,
@@ -61,6 +62,12 @@ interface ExerciseBlock {
   readonly restSeconds: number;
   /** From finished sessions only, so today cannot be its own baseline. */
   readonly bests: ExerciseBests;
+  /**
+   * Done on a standard barbell, so the set rows can say which plates to load.
+   * The Olympic bar only: EZ and trap bars vary too much between gyms to
+   * assume what they weigh.
+   */
+  readonly barbell: boolean;
 }
 
 interface Workout {
@@ -137,6 +144,7 @@ export function WorkoutScreen() {
           previous,
           bests: bestsFrom(history),
           loadType: naturalLoadType(equipment.map((item) => item.category)),
+          barbell: equipment.some((item) => item.slug === 'barbell'),
           restSeconds: restSecondsFor({
             exerciseSeconds: exercise?.defaultRestSeconds ?? null,
             profileSeconds: profile?.restSecondsDefault ?? null,
@@ -695,6 +703,7 @@ function ExerciseCard({
                 record={records.get(set.id) ?? null}
                 exerciseName={name}
                 previous={previousSetAt(block.previous, index)}
+                barbell={block.barbell}
                 unitSystem={unitSystem}
                 busy={busy}
                 onComplete={(changes) => {
@@ -827,6 +836,7 @@ function SetRow({
   record,
   exerciseName,
   previous,
+  barbell,
   unitSystem,
   busy,
   onComplete,
@@ -839,6 +849,7 @@ function SetRow({
   readonly record: SetRecord | null;
   readonly exerciseName: string;
   readonly previous: SetTemplate | null;
+  readonly barbell: boolean;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
   readonly onComplete: (changes: SetEdit) => void;
@@ -975,6 +986,12 @@ function SetRow({
             ✓
           </button>
         </div>
+
+        {/* The plates, for the set still to be lifted. A ticked set has been
+            loaded already, and a line under every finished row is clutter. */}
+        {barbell && loadType === 'external' && !set.isCompleted && (
+          <PlateLine weight={weight} unitSystem={unitSystem} />
+        )}
 
         <div className="mt-1 flex items-center gap-4">
           {/* On its own side of the row: it changes what is being logged,
