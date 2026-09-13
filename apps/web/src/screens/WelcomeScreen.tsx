@@ -11,20 +11,24 @@ import {
   SEX_LABELS,
   TRAINING_GOALS,
   fromDisplayHeight,
+  fromDisplayWeight,
   parseBirthDate,
   toDateOnly,
+  toDisplayHeight,
+  toDisplayWeight,
   type ActivityLevel,
   type Sex,
   type TrainingGoal,
   type UnitSystem,
 } from '@g7m/core';
-import { Button, Chip, TextField } from '@g7m/ui';
+import { Button, Chip, SegmentedControl, TextField } from '@g7m/ui';
 import { CountryPicker } from '../components/CountryPicker.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
   firstUnanswered,
   isOptional,
   isUsableBirthDate,
+  isUsableBodyweight,
   nextStep,
   previousStep,
   progressOf,
@@ -42,7 +46,7 @@ import {
  * somebody who does not exist. Asking at the start is the difference between a
  * program and a guess.
  *
- * One question per screen. A single form with seven fields is faster to build
+ * One question per screen. A single form with eight fields is faster to build
  * and worse to answer on a phone — it opens as a wall, and the first thing it
  * asks of somebody who has just signed up is to scroll.
  *
@@ -60,14 +64,24 @@ export function WelcomeScreen() {
   const metrics = useCatalogue('body-metrics-current', (r) => r.bodyMetrics.current());
   const goal = useCatalogue('goal', (r) => r.goals.current());
 
-  const unitSystem: UnitSystem = profile.data?.unitSystem ?? 'metric';
+  /**
+   * Kilograms or pounds, chosen on the height and weight questions.
+   *
+   * Held here as well as written to the profile, so the toggle moves the
+   * moment it is tapped rather than a re-read later — and so a height typed in
+   * one step is still read in the unit it was typed in on the next.
+   */
+  const [units, setUnits] = useState<UnitSystem | null>(null);
+  const unitSystem: UnitSystem = units ?? profile.data?.unitSystem ?? 'metric';
   const heightUnit = unitSystem === 'imperial' ? 'in' : 'cm';
+  const weightUnit = unitSystem === 'imperial' ? 'lb' : 'kg';
 
   const answers: OnboardingAnswers = {
     displayName: profile.data?.displayName ?? null,
     birthDate: profile.data?.birthDate ?? null,
     sex: profile.data?.sex ?? null,
     heightCm: metrics.data?.heightCm ?? null,
+    weightKg: metrics.data?.weightKg ?? null,
     activityLevel: metrics.data?.activityLevel ?? null,
     country: profile.data?.country ?? null,
     goal: goal.data?.goal ?? null,
@@ -78,6 +92,7 @@ export function WelcomeScreen() {
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
   const [sex, setSex] = useState<Sex | null>(null);
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
   const [country, setCountry] = useState<string | null>(null);
@@ -145,6 +160,22 @@ export function WelcomeScreen() {
         await write((r) => r.bodyMetrics.record({ heightCm: cm }));
         return true;
       }
+      case 'weight': {
+        const typed = Number(weight.replace(',', '.'));
+        const kg = Number.isFinite(typed) ? fromDisplayWeight(typed, unitSystem) : Number.NaN;
+        if (!isUsableBodyweight(kg)) {
+          setProblem(`Enter your weight in ${weightUnit}.`);
+          return false;
+        }
+        await write(async (r) => {
+          // The series the weekly weigh-in extends, and the current value a
+          // pull-up is measured against. The same two writes the You screen
+          // makes, so the first reading is no different from any later one.
+          await r.bodyMetrics.record({ weightKg: kg });
+          await r.profile.update({ bodyweightKg: kg });
+        });
+        return true;
+      }
       case 'activity': {
         if (activity === null) {
           setProblem('Pick the one that sounds most like your week.');
@@ -168,6 +199,25 @@ export function WelcomeScreen() {
         return true;
       }
     }
+  }
+
+  /**
+   * Switch units, and carry whatever has been typed across rather than
+   * reinterpreting it: 180 typed as centimetres becomes 71 inches, not 180.
+   */
+  function switchUnits(next: UnitSystem): void {
+    if (next === unitSystem) return;
+    const convert = (text: string, kind: 'height' | 'weight'): string => {
+      const typed = Number(text.replace(',', '.'));
+      if (text.trim() === '' || !Number.isFinite(typed)) return text;
+      return kind === 'height'
+        ? String(toDisplayHeight(fromDisplayHeight(typed, unitSystem), next).value)
+        : String(toDisplayWeight(fromDisplayWeight(typed, unitSystem), next).value);
+    };
+    setHeight((text) => convert(text, 'height'));
+    setWeight((text) => convert(text, 'weight'));
+    setUnits(next);
+    void write((r) => r.profile.update({ unitSystem: next }));
   }
 
   async function advance(): Promise<void> {
@@ -244,14 +294,49 @@ export function WelcomeScreen() {
         )}
 
         {step === 'height' && (
-          <TextField
-            label={`Height (${heightUnit})`}
-            inputMode="decimal"
-            value={height}
-            onChange={(event) => {
-              setHeight(event.target.value);
-            }}
-          />
+          <>
+            <TextField
+              label={`Height (${heightUnit})`}
+              inputMode="decimal"
+              value={height}
+              onChange={(event) => {
+                setHeight(event.target.value);
+              }}
+            />
+            <UnitToggle
+              label="Height unit"
+              options={[
+                { value: 'metric', label: 'Centimetres' },
+                { value: 'imperial', label: 'Inches' },
+              ]}
+              value={unitSystem}
+              disabled={busy}
+              onChange={switchUnits}
+            />
+          </>
+        )}
+
+        {step === 'weight' && (
+          <>
+            <TextField
+              label={`Weight (${weightUnit})`}
+              inputMode="decimal"
+              value={weight}
+              onChange={(event) => {
+                setWeight(event.target.value);
+              }}
+            />
+            <UnitToggle
+              label="Weight unit"
+              options={[
+                { value: 'metric', label: 'Kilograms' },
+                { value: 'imperial', label: 'Pounds' },
+              ]}
+              value={unitSystem}
+              disabled={busy}
+              onChange={switchUnits}
+            />
+          </>
         )}
 
         {step === 'activity' && (
@@ -349,6 +434,7 @@ const TITLES: Record<OnboardingStep, string> = {
   dob: 'When were you born?',
   sex: 'Your sex',
   height: 'How tall are you?',
+  weight: 'What do you weigh?',
   activity: 'How active is your week?',
   country: 'Where are you from?',
   goal: 'What are you training for?',
@@ -366,6 +452,8 @@ const BLURBS: Record<OnboardingStep, string> = {
   dob: 'Used to pick sensible starting weights.',
   sex: 'Used to quote realistic rates of gain and loss. It never changes how much training you are given, and it is the one answer you cannot change later.',
   height: 'Used with your weight to track what is changing.',
+  weight:
+    'Pull-ups and dips are measured against it, and your weekly weigh-in starts from here. Nobody else sees it.',
   activity: 'Everything outside the gym. It changes what your training has to fit around.',
   country: 'Only changes the language of the greeting. Skip it and you get English.',
   goal: 'This one decides what the app builds you. You can change it whenever it changes.',
@@ -399,6 +487,39 @@ function Choices<T extends string>({
         </Chip>
       ))}
     </div>
+  );
+}
+
+/**
+ * The unit a measurement is typed in, under the box it is typed into.
+ *
+ * The same setting as Settings' kilograms-or-pounds, asked here because this
+ * is the first time a number is: an American asked for their height in
+ * centimetres has no good answer. Height and weight share it, so choosing
+ * inches on one question already means pounds on the next.
+ */
+function UnitToggle({
+  label,
+  options,
+  value,
+  disabled,
+  onChange,
+}: {
+  readonly label: string;
+  readonly options: readonly { readonly value: UnitSystem; readonly label: string }[];
+  readonly value: UnitSystem;
+  readonly disabled: boolean;
+  readonly onChange: (next: UnitSystem) => void;
+}) {
+  return (
+    <SegmentedControl
+      className="mt-4"
+      label={label}
+      options={options}
+      value={value}
+      disabled={disabled}
+      onChange={onChange}
+    />
   );
 }
 
