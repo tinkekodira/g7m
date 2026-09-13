@@ -14,6 +14,8 @@ build/
 coverage/
 playwright-report/
 test-results/
+# The web app built against the end-to-end fake backend. See e2e/README.md.
+apps/web/dist-e2e/
 .vitest-cache/
 
 # --- OS / editor noise ---

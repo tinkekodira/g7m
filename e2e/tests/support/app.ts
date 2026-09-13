@@ -1,0 +1,72 @@
+/** Driving the app the way a person does: by what the screen says. */
+import { expect, type Page } from '@playwright/test';
+import type { TestUser } from './backend.js';
+
+/** Sign in from the sign-in screen and wait for the app behind it. */
+export async function signIn(page: Page, user: TestUser): Promise<void> {
+  await page.goto('/');
+  await page.getByLabel('Email').fill(user.email);
+  await page.getByLabel('Password').fill(user.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('navigation')).toBeVisible();
+}
+
+/** Go to a tab by the bar at the bottom of the screen. */
+export async function openTab(
+  page: Page,
+  tab: 'Learn' | 'Progress' | 'Home' | 'Profile' | 'Settings',
+): Promise<void> {
+  await page.getByRole('navigation').getByRole('link', { name: tab }).click();
+}
+
+/** Open the logger, start a workout and add one exercise from the library. */
+export async function startWith(page: Page, exercise: string): Promise<void> {
+  await page.getByRole('link', { name: /Start your own workout/ }).click();
+  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await page.getByRole('link', { name: '+ Add an exercise' }).click();
+  await page.getByLabel('Search').fill(exercise);
+  await page.getByRole('button', { name: new RegExp(`^${exercise}`) }).click();
+  await expect(page.getByRole('heading', { name: exercise })).toBeVisible();
+}
+
+/** Add the n-th set, fill its weight and reps, then tick it. */
+export async function logSet(page: Page, set: number, weight: string, reps: string): Promise<void> {
+  await page.getByRole('button', { name: 'Add set' }).click();
+  await page
+    .getByRole('textbox', { name: 'Weight' })
+    .nth(set - 1)
+    .fill(weight);
+  await page
+    .getByRole('textbox', { name: 'Reps' })
+    .nth(set - 1)
+    .fill(reps);
+  await page.getByRole('button', { name: `Complete set ${String(set)}` }).click();
+  await expect(page.getByRole('button', { name: `Undo set ${String(set)}` })).toBeVisible();
+}
+
+/** Finish the workout that is open, and wait to be back among the tabs. */
+export async function finishWorkout(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Finish workout' }).click();
+  await expect(page.getByRole('navigation')).toBeVisible();
+}
+
+/** Sign out from Settings, and wait for the sign-in screen. */
+export async function signOut(page: Page): Promise<void> {
+  await openTab(page, 'Settings');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+}
+
+/**
+ * Wait until the exercise catalogue is on the device.
+ *
+ * It arrives by sync after sign-in, not with the page. Anything that needs an
+ * exercise — or that takes the network away — has to wait for it, as a phone
+ * that has never been online would have no exercises either.
+ */
+export async function waitForCatalogue(page: Page): Promise<void> {
+  await page.goto('/#/exercises');
+  await expect(page.getByRole('link', { name: /^Barbell Bench Press/ })).toBeVisible();
+  await page.goto('/#/');
+  await expect(page.getByRole('navigation')).toBeVisible();
+}

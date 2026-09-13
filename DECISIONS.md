@@ -3556,3 +3556,58 @@ number pull-ups and dips are measured against and the first reading a weekly
 weigh-in needs. It now follows the height, and the height and weight questions
 each carry the units choice, since this is the first moment the app asks for a
 number and somebody who thinks in pounds has no good answer in kilograms.
+
+---
+
+## ADR-0067 — End-to-end tests run against a fake backend built on the real schema
+
+**Status:** accepted · **Date:** 2026-09-13
+
+The unit and schema tests cover the logic and the SQL. Nothing covered the
+app as it is used: a real build, in a real browser, signing in, syncing,
+logging a set and seeing it arrive. The bugs that hurt most here have lived in
+the gaps between the pieces — the handover between accounts, discarded
+uploads, a flow that never offered a weight — and only something that runs
+all of them together can see those.
+
+**Chosen:** Playwright, driving the production build (`vite build`, served by
+`vite preview`) as a phone, against a fake backend in Node that stands in for
+Supabase Auth, PostgREST and the PowerSync service over PGlite with every
+migration applied. The app is unchanged: its ordinary environment variables
+simply name the fake.
+
+**Rejected:**
+
+- **The real project, with test accounts.** It would put test data in
+  production, secrets in CI, and results at the mercy of the network.
+- **`supabase start` plus a self-hosted PowerSync in Docker.** It would be the
+  most faithful option, but it needs Docker, which the development machine
+  does not have. That would make the tests runnable only in CI, and every fix
+  a push-and-wait. Worth revisiting if Docker ever arrives.
+- **Mocking at the network layer in the browser.** It would test the app
+  against responses written to match it, which is what a unit test already
+  does.
+
+**What keeps the fake honest** is that it is built from the production files
+rather than a description of them:
+
+- The schema is the migrations, so RLS, triggers and constraints are real.
+- The buckets are `powersync/sync-rules.yaml`, read at start-up.
+- The wire formats come from the PowerSync core and service sources:
+  - NDJSON sync lines;
+  - checksums the client validates;
+  - `requests`-mode write checkpoints;
+  - legacy timestamp rendering.
+
+Anything it does not understand fails loudly rather than being approximated.
+`e2e/README.md` lists what it does not do.
+
+**Found on the way:** under these sync rules' edition, the service renders
+`timestamptz` as `2026-09-13 10:00:00.123Z`, with a space, while the device
+writes `2026-09-13T10:00:00.123Z`. Rows that have synced back therefore hold
+the space form. Three repository queries compare timestamps as strings
+(`planner.ts`, `history.ts`, `body-metrics.ts`). On the boundary day, a synced
+row can sort on the wrong side of a window, because a space sorts before `T`.
+It is narrow and has not been fixed here. The likely fix is opting the sync
+rules into `timestamps_iso8601`, which needs a redeploy in the PowerSync
+dashboard, so it is a separate decision.

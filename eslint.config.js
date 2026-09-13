@@ -9,6 +9,10 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      // The app built for the end-to-end tests (e2e/README.md).
+      'apps/web/dist-e2e/**',
+      '**/playwright-report/**',
+      '**/test-results/**',
       '**/build/**',
       '**/coverage/**',
       '**/node_modules/**',
