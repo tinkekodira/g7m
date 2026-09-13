@@ -283,3 +283,23 @@ export function AlertIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** An arrow into a tray — something coming to this device. */
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5" />
+      <path d="M4.5 15.5v2.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-2.5" />
+    </Glyph>
+  );
+}
+
+export function TrashIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 6.5h16M9.5 6.5V4.5h5v2" />
+      <path d="M6 6.5 7 20h10l1-13.5" />
+      <path d="M10 10.5v6M14 10.5v6" />
+    </Glyph>
+  );
+}

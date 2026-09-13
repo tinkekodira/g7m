@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startHarness, type Harness } from '../testing/pglite-harness.js';
 import { AppSchema, UNSYNCED_COLUMNS, UNSYNCED_TABLES } from './app-schema.js';
+import { EXPORT_COLUMN_TYPES, USER_TABLE_NAMES } from '../repositories/account.js';
 
 /**
  * Does the device's idea of the database still match the server's?
@@ -253,5 +254,32 @@ describe('what PowerSync requires of the Postgres schema', () => {
       if (!table.columns.some((c) => c.name === 'order_key')) missing.push(table.name);
     }
     expect(missing).toEqual([]);
+  });
+});
+
+describe('what the data export has to undo', () => {
+  /**
+   * SQLite flattens booleans to 0/1 and JSON to text. The export turns them
+   * back (`EXPORT_COLUMN_TYPES`), and a user table that gains either kind of
+   * column without an entry there would hand people a file with `1` where
+   * their data says `true`.
+   */
+  it('knows every boolean and JSON column in a user table, and nothing else', () => {
+    const needed: Record<string, 'boolean' | 'json'> = {};
+    for (const table of USER_TABLE_NAMES) {
+      for (const [name, column] of postgres.get(table) ?? []) {
+        if (column.data_type === 'boolean') needed[`${table}.${name}`] = 'boolean';
+        if (['json', 'jsonb', 'ARRAY'].includes(column.data_type)) {
+          needed[`${table}.${name}`] = 'json';
+        }
+      }
+    }
+
+    const declared: Record<string, 'boolean' | 'json'> = {};
+    for (const [table, columns] of Object.entries(EXPORT_COLUMN_TYPES)) {
+      for (const [name, type] of Object.entries(columns)) declared[`${table}.${name}`] = type;
+    }
+
+    expect(declared).toEqual(needed);
   });
 });
