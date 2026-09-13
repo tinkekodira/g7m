@@ -8,7 +8,7 @@ pnpm --filter @g7m/e2e exec playwright test tests/workout.spec.ts   # one file
 pnpm --filter @g7m/e2e exec playwright show-report                  # after a CI failure
 ```
 
-Locally the tests use the Chrome you already have installed. CI installs Playwright's Chromium.
+Locally the tests use the Chrome you already have installed; CI installs Playwright's Chromium. Every run builds the app first, even when something is already listening on the port, so a run always tests the code in front of it.
 
 ## What runs
 
@@ -32,6 +32,8 @@ The fake backend stands in for:
 - **A workout logged for a past day.** It is saved with `source = 'past'` at noon on that day.
 - **Two accounts on one phone.** Each sees only their own training. Signing back in restores the first account's workout from the server.
 - **No connection.** A whole workout is logged while every request fails. Nothing reaches the server until the connection returns, then all of it does.
+- **Download your data.** Covered twice: through the phone's share sheet, stood in for by one that keeps the file, and as a desktop download. Each time the file is opened and checked. It must hold the workout just logged, a weigh-in that only ever existed on the server (so sync brought it down) in the device's timestamp format, real booleans, and the exercise names.
+- **Delete your account.** The account and every row it owned are removed from the server while another account's rows stay. The phone forgets whose database it was, signing in again is refused, and the next account on the phone starts empty. With no connection nothing is deleted anywhere, and trying again once connected works.
 - **Settings.** Light mode survives a reload, and pounds are saved to the server.
 - **Every tab** opens without the crash screen.
 

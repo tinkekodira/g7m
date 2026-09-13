@@ -52,7 +52,11 @@ export default defineConfig({
       'npx vite build --outDir dist-e2e --emptyOutDir && ' +
       'npx vite preview --outDir dist-e2e --host 127.0.0.1 --port 4380 --strictPort',
     url: APP_URL,
-    reuseExistingServer: process.env['CI'] === undefined,
+    // Never reuse whatever is already on the port. Reusing saves the build, but
+    // a preview left over from an earlier session once kept serving a build
+    // from before the features under test, and local runs quietly tested that
+    // instead. A test run builds what it tests.
+    reuseExistingServer: false,
     timeout: 240_000,
     stdout: 'ignore',
     stderr: 'pipe',
