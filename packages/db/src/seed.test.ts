@@ -39,18 +39,20 @@ describe('volumes', () => {
   });
 
   it('seeds the equipment list', async () => {
-    // 28 from Brief §5, plus the back extension bench the §5 list omits.
-    expect(await count('select count(*) n from public.equipment')).toBe(29);
+    // 28 from Brief §5, plus the back extension bench the §5 list omits, plus
+    // the six cardio machines (ADR-0069).
+    expect(await count('select count(*) n from public.equipment')).toBe(35);
   });
 
   /**
-   * The 50 from the brief, plus the two added afterwards: the skull crusher
-   * and the dumbbell pullover. Counted rather than left open, because an
+   * The 50 from the brief, plus the two added afterwards — the skull crusher
+   * and the dumbbell pullover — and the eight cardio machines (ADR-0069).
+   * Counted rather than left open, because an
    * exercise that fails to insert — a bad slug in a join, a check constraint —
    * shows up nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(52);
+    expect(await count('select count(*) n from public.exercises')).toBe(60);
   });
 });
 
@@ -66,15 +68,42 @@ describe('every exercise is usable', () => {
     expect(broken, 'exercises without exactly one primary station').toEqual([]);
   });
 
-  it('has at least one primary mover', async () => {
+  it('has at least one primary mover, unless it is cardio', async () => {
     const broken = await slugs(`
       select e.slug from public.exercises e
         left join public.exercise_muscles em
           on em.exercise_id = e.id and em.role = 'primary'
+       where e.cardio_kind is null
        group by e.slug
       having count(em.id) = 0
     `);
     expect(broken, 'exercises with no primary muscle').toEqual([]);
+  });
+
+  /**
+   * The other way round for cardio: no muscle rows at all. The body map and
+   * the generator both work from them, and a bike with quads attached would
+   * count twenty minutes of pedalling as sets and get prescribed as leg day.
+   */
+  it('gives cardio machines no muscles, and a kind', async () => {
+    expect(
+      await slugs(`
+        select e.slug from public.exercises e
+          join public.exercise_muscles em on em.exercise_id = e.id
+         where e.cardio_kind is not null`),
+    ).toEqual([]);
+    expect(
+      await slugs(`select slug from public.exercises where cardio_kind is not null order by slug`),
+    ).toEqual([
+      'air-bike',
+      'recumbent-bike',
+      'rowing-machine',
+      'ski-erg',
+      'spin-bike',
+      'stair-climber',
+      'treadmill',
+      'upright-bike',
+    ]);
   });
 
   it('carries at least two coaching cues, the offline fallback', async () => {

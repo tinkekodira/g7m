@@ -84,6 +84,9 @@ export class PlannerRepository {
          LEFT JOIN exercise_equipment xq ON xq.exercise_id = e.id
          LEFT JOIN equipment eq ON eq.id = xq.equipment_id
         WHERE e.is_active = 1
+          -- Cardio has no muscle rows and so never reaches the join above, but
+          -- the plan is strength only by decision (ADR-0069), not by accident.
+          AND e.cardio_kind IS NULL
           AND NOT EXISTS (
                 SELECT 1 FROM exercise_equipment xe
                  WHERE xe.exercise_id = e.id

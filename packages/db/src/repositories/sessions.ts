@@ -23,8 +23,10 @@
  * rather than arriving split either side of a lost connection.
  */
 import {
+  EMPTY_BOUT,
   initialOrderKeys,
   orderKeyBetween,
+  type Bout,
   type LoadType,
   type SetTemplate,
   type SetType,
@@ -97,6 +99,12 @@ export interface SessionSet {
   readonly rpe: number | null;
   readonly isCompleted: boolean;
   readonly completedAt: Date | null;
+  /**
+   * A cardio bout's numbers, all null on a strength set. A bout is a set whose
+   * exercise has a `cardioKind`; its weight and reps stay at zero, which is
+   * what keeps it out of volume, records and the 1RM. ADR-0069.
+   */
+  readonly bout: Bout;
 }
 
 export interface StartSessionInput {
@@ -145,6 +153,8 @@ export interface SetChanges {
   readonly weightKg?: number;
   readonly reps?: number;
   readonly rpe?: number | null;
+  /** Merged into the bout: a field left out keeps its value, a null clears it. */
+  readonly bout?: Partial<Bout>;
 }
 
 function toSession(row: RawRow): WorkoutSession {
@@ -188,7 +198,21 @@ function toSessionSet(row: RawRow): SessionSet {
     rpe: readOptionalNumber(row, 'rpe'),
     isCompleted: readBoolean(row, 'is_completed'),
     completedAt: readDate(row, 'completed_at'),
+    bout: readBout(row),
   };
+}
+
+function readBout(row: RawRow): Bout {
+  return cleanBout({
+    durationSeconds: readOptionalNumber(row, 'duration_seconds'),
+    distanceM: readOptionalNumber(row, 'distance_m'),
+    speedKmh: readOptionalNumber(row, 'speed_kmh'),
+    inclinePercent: readOptionalNumber(row, 'incline_percent'),
+    resistanceLevel: readOptionalNumber(row, 'resistance_level'),
+    avgWatts: readOptionalNumber(row, 'avg_watts'),
+    floors: readOptionalNumber(row, 'floors'),
+    caloriesKcal: readOptionalNumber(row, 'calories_kcal'),
+  });
 }
 
 export class SessionRepository {
@@ -483,7 +507,10 @@ export class SessionRepository {
    * `is_completed = 0` and no `completed_at`, which is the only combination
    * the paired CHECK allows for an unfinished set.
    */
-  async addSet(sessionExerciseId: string, template: SetTemplate): Promise<SessionSet> {
+  async addSet(
+    sessionExerciseId: string,
+    template: SetTemplate & { readonly bout?: Partial<Bout> },
+  ): Promise<SessionSet> {
     const { userId, newId, now } = resolveContext(this.context);
     const existing = await this.setsFor(sessionExerciseId);
     const last = existing.at(-1);
@@ -502,6 +529,7 @@ export class SessionRepository {
       rpe: null,
       isCompleted: false,
       completedAt: null,
+      bout: cleanBout({ ...EMPTY_BOUT, ...template.bout }),
     };
 
     await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
@@ -523,10 +551,13 @@ export class SessionRepository {
 
     const loadType = changes.loadType ?? current.loadType;
     const weightKg = weightFor(loadType, changes.weightKg ?? current.weightKg);
+    const bout = cleanBout({ ...current.bout, ...changes.bout });
 
     await this.db.execute(
       `UPDATE session_sets
-          SET set_type = ?, load_type = ?, weight_kg = ?, reps = ?, rpe = ?, updated_at = ?
+          SET set_type = ?, load_type = ?, weight_kg = ?, reps = ?, rpe = ?,
+              ${BOUT_COLUMNS.map((column) => `${column} = ?`).join(', ')},
+              updated_at = ?
         WHERE id = ? AND user_id = ?`,
       [
         changes.setType ?? current.setType,
@@ -534,6 +565,7 @@ export class SessionRepository {
         weightKg,
         Math.max(0, Math.trunc(changes.reps ?? current.reps)),
         changes.rpe === undefined ? current.rpe : clampRpe(changes.rpe),
+        ...boutValues(bout),
         toTimestamp(now()),
         setId,
         userId,
@@ -692,10 +724,23 @@ function toRemovedSet(row: RawRow): RemovedSet {
  * Two copies of a thirteen-column insert is how one of them ends up missing
  * `load_type` and writing a bodyweight set as an external lift.
  */
+/** The bout's columns, in the order `boutValues` gives them. */
+const BOUT_COLUMNS = [
+  'duration_seconds',
+  'distance_m',
+  'speed_kmh',
+  'incline_percent',
+  'resistance_level',
+  'avg_watts',
+  'floors',
+  'calories_kcal',
+] as const;
+
 const INSERT_SET = `INSERT INTO session_sets
      (id, user_id, session_exercise_id, order_key, set_type, load_type,
-      weight_kg, reps, rpe, is_completed, completed_at, created_at, updated_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      weight_kg, reps, rpe, is_completed, completed_at, created_at, updated_at,
+      ${BOUT_COLUMNS.join(', ')})
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${BOUT_COLUMNS.map(() => '?').join(', ')})`;
 
 function setValues(removed: RemovedSet, userId: string, updatedAt: string): SqlValue[] {
   const { set } = removed;
@@ -714,7 +759,50 @@ function setValues(removed: RemovedSet, userId: string, updatedAt: string): SqlV
     set.completedAt === null ? null : toTimestamp(set.completedAt),
     toTimestamp(removed.createdAt),
     updatedAt,
+    ...boutValues(cleanBout(set.bout)),
   ];
+}
+
+function boutValues(bout: Bout): SqlValue[] {
+  return [
+    bout.durationSeconds,
+    bout.distanceM,
+    bout.speedKmh,
+    bout.inclinePercent,
+    bout.resistanceLevel,
+    bout.avgWatts,
+    bout.floors,
+    bout.caloriesKcal,
+  ];
+}
+
+/**
+ * A bout the server will accept.
+ *
+ * Every column has a range CHECK in Postgres, and a value outside it is
+ * refused on upload and then discarded — the bout gone from everywhere but
+ * this phone. So out of range reads as "not recorded", the same rule as RPE:
+ * a typo loses one number, not the whole bout.
+ */
+function cleanBout(bout: Bout): Bout {
+  return {
+    durationSeconds: within(bout.durationSeconds, 0, 86400, 0),
+    distanceM: within(bout.distanceM, 0, 1_000_000, 0),
+    speedKmh: within(bout.speedKmh, 0, 50, 1),
+    inclinePercent: within(bout.inclinePercent, -10, 40, 1),
+    resistanceLevel: within(bout.resistanceLevel, 0, 100, 1),
+    avgWatts: within(bout.avgWatts, 0, 3000, 0),
+    floors: within(bout.floors, 0, 10_000, 0),
+    caloriesKcal: within(bout.caloriesKcal, 0, 20_000, 0),
+  };
+}
+
+/** Rounded to `decimals`, or null when missing or outside `min`–`max`. */
+function within(value: number | null, min: number, max: number, decimals: number): number | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  const factor = 10 ** decimals;
+  const rounded = Math.round(value * factor) / factor;
+  return rounded < min || rounded > max ? null : rounded;
 }
 
 /** A pure bodyweight set carries no external load, by definition and by CHECK. */
