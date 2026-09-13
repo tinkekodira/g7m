@@ -1,0 +1,17 @@
+{
+  "name": "@g7m/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end tests: the production web build in a real browser, against a fake backend built on the real migrations.",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@g7m/db": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.15.3"
+  }
+}

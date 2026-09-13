@@ -5,7 +5,8 @@
   "type": "module",
   "description": "The local SQLite schema, sync rules, repository layer and PowerSync setup.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing/pglite": "./src/testing/pglite-harness.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"
