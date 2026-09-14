@@ -3855,3 +3855,40 @@ and ski ergs, which are metres everywhere, as their monitors are.
 - heart rate;
 - the Progress cards for minutes, distance and calories per week, which are
   the next step.
+
+---
+
+## ADR-0070 — Cardio on Progress: its own card, by the same columns
+
+**Status:** accepted · **Date:** 2026-09-14 · **Follows:** ADR-0069
+
+Progress gets a **Cardio** card under Volume, for the selected period:
+
+- minutes on the machines, one column a day, or a month for all time, over
+  exactly the columns the volume chart draws;
+- the total, compared with the previous period;
+- distance and calories for the period.
+
+It appears once there is any cardio, so a lifter who never uses a machine
+scrolls past nothing new.
+
+**A card of its own, not a second series on Volume.** Volume is weight times
+reps, and a treadmill has neither. The two can never share an axis, and
+putting minutes beside kilograms would make one of them unreadable.
+
+**Totals are sums of numbers already shown.** Calories are worked out per bout,
+from the machine's figure where one was typed and otherwise at the bodyweight
+the workout was logged at, the same figure the logger and the workout's page
+showed. A week's total is therefore never a number somebody has not seen the
+parts of. Distance adds every machine's distance in metres and shows it in km
+or miles, so a rower's 2,000 m counts as 2 km there.
+
+**A bout's time counts as training time.** Active time runs from a workout's
+first ticked set to its last, so a workout of one 30-minute bout, ticked once,
+read as zero minutes. A bout started its time before it was ticked, so the
+workout's first moment is now the earliest tick minus that bout's duration.
+Lifting workouts are unchanged, because their duration is empty.
+
+**Lists say bouts, not sets.** A treadmill session of one bout read "1 set",
+which sounds like a warm-up. Summaries count bouts separately, and the
+Progress list and the calendar say "1 bout" or "4 sets · 2 bouts".

@@ -14,6 +14,7 @@
  * Days are stepped with `setDate` rather than by adding milliseconds, so a week
  * that contains a clock change still has seven midnights in it.
  */
+import { boutCalories, type LoggedBout } from './cardio.js';
 import { countsTowardVolume, setVolumeKg } from './load.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
 import { DEFAULT_WEEK_START, dateKey, startOfWeek, type WeekStart } from './week.js';
@@ -182,6 +183,83 @@ export function volumeBuckets(
     inProgress: moment >= span.start.getTime() && moment < span.end.getTime(),
     future: span.start.getTime() > moment,
   }));
+}
+
+/** Time on the machines per bar: a day each, or a month each for all time. */
+export interface CardioBucket {
+  readonly key: string;
+  readonly start: Date;
+  readonly end: Date;
+  readonly minutes: number;
+  readonly inProgress: boolean;
+  readonly future: boolean;
+}
+
+/**
+ * Cardio minutes per bar, over exactly the bars the volume chart draws, so
+ * the two charts on one screen line up column for column.
+ */
+export function cardioBuckets(
+  window: PeriodWindow,
+  bouts: readonly LoggedBout[],
+  now: Date,
+): CardioBucket[] {
+  const monthly = window.period === 'all';
+  const spans = monthly ? monthsIn(window.chart) : daysIn(window.chart);
+  const seconds = spans.map(() => 0);
+
+  for (const logged of bouts) {
+    const at = logged.performedAt.getTime();
+    const index = spans.findIndex((span) => at >= span.start.getTime() && at < span.end.getTime());
+    if (index === -1) continue;
+    seconds[index] = (seconds[index] ?? 0) + (logged.bout.durationSeconds ?? 0);
+  }
+
+  const moment = now.getTime();
+  return spans.map((span, index) => ({
+    key: monthly ? monthKey(span.start) : dateKey(span.start),
+    start: span.start,
+    end: span.end,
+    minutes: Math.round((seconds[index] ?? 0) / 60),
+    inProgress: moment >= span.start.getTime() && moment < span.end.getTime(),
+    future: span.start.getTime() > moment,
+  }));
+}
+
+export interface CardioTotals {
+  readonly minutes: number;
+  /** Every machine's distance, in metres. A stair climber adds none. */
+  readonly distanceM: number;
+  /** The machine's own figure where one was typed, the estimate otherwise. */
+  readonly kcal: number;
+  readonly bouts: number;
+}
+
+/**
+ * Time, distance and calories on the machines inside a span.
+ *
+ * Calories are worked out per bout, at the bodyweight its workout was logged
+ * at — the same figure the logger and the workout's page showed for it, so
+ * the week's total is the sum of numbers somebody has already seen.
+ */
+export function cardioTotalsWithin(bouts: readonly LoggedBout[], span: Span): CardioTotals {
+  const start = span.start.getTime();
+  const end = span.end.getTime();
+  let seconds = 0;
+  let distanceM = 0;
+  let kcal = 0;
+  let count = 0;
+
+  for (const logged of bouts) {
+    const at = logged.performedAt.getTime();
+    if (Number.isNaN(at) || at < start || at >= end) continue;
+    count += 1;
+    seconds += logged.bout.durationSeconds ?? 0;
+    distanceM += logged.bout.distanceM ?? 0;
+    kcal += boutCalories(logged.kind, logged.bout, logged.bodyweightKg)?.kcal ?? 0;
+  }
+
+  return { minutes: Math.round(seconds / 60), distanceM, kcal, bouts: count };
 }
 
 /** What a session contributes to a period's headline numbers. */

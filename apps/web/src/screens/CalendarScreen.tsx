@@ -1,3 +1,4 @@
+import { describeWork } from './progress-view.js';
 import { useMemo, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
@@ -491,7 +492,7 @@ function DayWorkouts({
                 </span>
               </div>
               <p className="numeric mt-0.5 text-xs text-muted">
-                {workout.setCount} {workout.setCount === 1 ? 'set' : 'sets'}
+                {describeWork(workout.setCount, workout.boutCount)}
                 {minutes !== null && ` · ${String(minutes)} min`}
               </p>
 

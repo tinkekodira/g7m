@@ -6,7 +6,13 @@
  * the component so the edges can be tested — the caption that is blank on
  * purpose, the comparison that must not point downwards on a Tuesday.
  */
-import type { Comparison, Period, VolumeBucket } from '@g7m/core';
+import {
+  formatMinutes,
+  type CardioBucket,
+  type Comparison,
+  type Period,
+  type VolumeBucket,
+} from '@g7m/core';
 import { monthName, monthShort, weekdayName, weekdayShort } from '../lib/date-words.js';
 
 export const PERIOD_OPTIONS = [
@@ -53,7 +59,7 @@ export function previousPhrase(period: Period): string | null {
  *
  * English, like the rest of the app outside the greeting (see greeting.ts).
  */
-export function captionFor(bucket: VolumeBucket, period: Period): string {
+export function captionFor(bucket: Pick<VolumeBucket, 'start'>, period: Period): string {
   if (period === 'all') return monthShort(bucket.start);
   if (period === 'week') return weekdayShort(bucket.start);
   const day = bucket.start.getDate();
@@ -61,7 +67,7 @@ export function captionFor(bucket: VolumeBucket, period: Period): string {
 }
 
 /** A column read aloud: "Monday", "8 September", "September 2026". */
-export function bucketName(bucket: VolumeBucket, period: Period): string {
+export function bucketName(bucket: Pick<VolumeBucket, 'start'>, period: Period): string {
   const date = bucket.start;
   if (period === 'week') return weekdayName(date);
   if (period === 'month') return `${String(date.getDate())} ${monthName(date)}`;
@@ -92,6 +98,35 @@ export function chartSummary(
     .map((bucket) => `${bucketName(bucket, period)} ${format(bucket.volumeKg)}`)
     .join(', ');
   return `Volume ${scope}, ${periodPhrase(period)}: ${days}. ${format(total)} in total.`;
+}
+
+/**
+ * The cardio chart for somebody who cannot see it: the days on a machine, and
+ * the total. The same shape as the volume chart's summary, in minutes.
+ */
+export function cardioChartSummary(buckets: readonly CardioBucket[], period: Period): string {
+  const active = buckets.filter((bucket) => bucket.minutes > 0);
+  const scope = period === 'all' ? 'by month' : 'by day';
+  if (active.length === 0) return `Cardio minutes ${scope}, ${periodPhrase(period)}. None yet.`;
+  const total = buckets.reduce((sum, bucket) => sum + bucket.minutes, 0);
+  const days = active
+    .map((bucket) => `${bucketName(bucket, period)} ${formatMinutes(bucket.minutes)}`)
+    .join(', ');
+  return `Cardio minutes ${scope}, ${periodPhrase(period)}: ${days}. ${formatMinutes(total)} in total.`;
+}
+
+/**
+ * What a workout was made of, in a list: "5 sets", "1 bout", "4 sets · 2 bouts".
+ *
+ * Bouts are named apart from sets because a treadmill session of one
+ * 30-minute bout would otherwise read "1 set", which sounds like a warm-up.
+ */
+export function describeWork(setCount: number, boutCount: number): string {
+  const sets = Math.max(0, setCount - boutCount);
+  const parts: string[] = [];
+  if (sets > 0 || boutCount === 0) parts.push(`${String(sets)} ${sets === 1 ? 'set' : 'sets'}`);
+  if (boutCount > 0) parts.push(`${String(boutCount)} ${boutCount === 1 ? 'bout' : 'bouts'}`);
+  return parts.join(' · ');
 }
 
 export interface ComparisonLine {

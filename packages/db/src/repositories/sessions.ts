@@ -202,7 +202,8 @@ function toSessionSet(row: RawRow): SessionSet {
   };
 }
 
-function readBout(row: RawRow): Bout {
+/** A row's bout columns, cleaned the way every bout is. Shared with history. */
+export function readBout(row: RawRow): Bout {
   return cleanBout({
     durationSeconds: readOptionalNumber(row, 'duration_seconds'),
     distanceM: readOptionalNumber(row, 'distance_m'),

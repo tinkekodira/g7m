@@ -87,9 +87,16 @@ test('a treadmill workout is logged as bouts, with calories', async ({ page }) =
     { duration: 1800, distance: 5000, speed: 10, incline: 1, calories: 300, weight: 0, reps: 0 },
   ]);
 
+  // On Progress: this week's cardio — an hour on the treadmill, 10 km, and
+  // the two bouts' calories (the estimate and the machine's figure).
+  await openTab(page, 'Progress');
+  const cardio = page.locator('section', { has: page.getByRole('heading', { name: 'Cardio' }) });
+  await expect(cardio.getByText('1h', { exact: true })).toBeVisible();
+  await expect(cardio.getByText('10 km')).toBeVisible();
+  await expect(cardio.getByText('≈ 760 kcal')).toBeVisible();
+
   // On the workout's page: bouts in the display's words, cardio totals, and
   // no lifting numbers for a workout that had no lifting.
-  await openTab(page, 'Progress');
   await page
     .getByRole('link', { name: /Workout/ })
     .first()

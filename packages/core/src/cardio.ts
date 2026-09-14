@@ -77,6 +77,21 @@ export const EMPTY_BOUT: Bout = {
   caloriesKcal: null,
 };
 
+/**
+ * A finished bout as history reads it: which workout, when that workout
+ * began, on what machine, and the bodyweight the workout was logged at.
+ *
+ * Placed by its session's start, like every set in the progress charts, so a
+ * bout and the lifting after it land in the same day's column.
+ */
+export interface LoggedBout {
+  readonly sessionId: string;
+  readonly performedAt: Date;
+  readonly kind: CardioKind;
+  readonly bout: Bout;
+  readonly bodyweightKg: number | null;
+}
+
 export type CalorieMethod = 'machine' | 'treadmill' | 'power' | 'pace' | 'stairs' | 'met';
 
 export interface Calories {

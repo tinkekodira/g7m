@@ -4,9 +4,11 @@ import {
   PERIOD_OPTIONS,
   bucketName,
   captionFor,
+  cardioChartSummary,
   chartSummary,
   dateTile,
   describeComparison,
+  describeWork,
   periodFrom,
   periodPhrase,
   previousPhrase,
@@ -159,5 +161,46 @@ describe('sinceLine', () => {
 describe('dateTile', () => {
   it('is the day over a short month', () => {
     expect(dateTile(local(2026, 9, 12))).toEqual({ day: '12', month: 'SEP' });
+  });
+});
+
+describe('cardioChartSummary', () => {
+  const day = (date: Date, minutes: number) => ({
+    key: date.toISOString(),
+    start: date,
+    end: date,
+    minutes,
+    inProgress: false,
+    future: false,
+  });
+
+  it('reads out the days on a machine, and the total', () => {
+    const buckets = [
+      day(new Date(2026, 8, 14), 28),
+      day(new Date(2026, 8, 15), 0),
+      day(new Date(2026, 8, 16), 45),
+    ];
+    expect(cardioChartSummary(buckets, 'week')).toBe(
+      'Cardio minutes by day, this week: Monday 28m, Wednesday 45m. 1h 13m in total.',
+    );
+  });
+
+  it('says so when there has been none', () => {
+    expect(cardioChartSummary([day(new Date(2026, 8, 14), 0)], 'month')).toBe(
+      'Cardio minutes by day, this month. None yet.',
+    );
+  });
+});
+
+describe('describeWork', () => {
+  it('names sets and bouts apart', () => {
+    expect(describeWork(5, 0)).toBe('5 sets');
+    expect(describeWork(1, 0)).toBe('1 set');
+    expect(describeWork(1, 1)).toBe('1 bout');
+    expect(describeWork(6, 2)).toBe('4 sets · 2 bouts');
+  });
+
+  it('still says something for an empty workout', () => {
+    expect(describeWork(0, 0)).toBe('0 sets');
   });
 });

@@ -177,3 +177,48 @@ describe('a cardio machine', () => {
     expect(await new HistoryRepository(db, context()).trainedExercises()).toEqual([]);
   });
 });
+
+describe('cardio in history', () => {
+  const history = () => new HistoryRepository(db, context());
+
+  async function finishedRowerWorkout(tick: boolean) {
+    const bout = await rowerBout();
+    if (tick) await sessions.completeSet(bout.id);
+    const session = await sessions.active();
+    if (session !== null) await sessions.finish(session.id);
+    return bout;
+  }
+
+  it('hands Progress every finished bout, with its machine and bodyweight', async () => {
+    const bout = await finishedRowerWorkout(true);
+    expect(await history().completedBouts()).toEqual([
+      {
+        sessionId: expect.any(String) as string,
+        performedAt: new Date('2026-09-14T10:00:00.000Z'),
+        kind: 'rower',
+        bout: { ...EMPTY_BOUT, durationSeconds: 480, distanceM: 2000 },
+        bodyweightKg: 80,
+      },
+    ]);
+    expect(bout.id).toBeTruthy();
+  });
+
+  it('leaves out a bout that was never ticked', async () => {
+    await finishedRowerWorkout(false);
+    expect(await history().completedBouts()).toEqual([]);
+  });
+
+  it('starts a workout’s training time when its first bout began, not when it was ticked', async () => {
+    await finishedRowerWorkout(true);
+    const [summary] = await history().sessionSummaries();
+    // Ticked at 10:00 after eight minutes on the rower.
+    expect(summary?.firstSetAt?.toISOString()).toBe('2026-09-14T09:52:00.000Z');
+    expect(summary?.lastSetAt?.toISOString()).toBe('2026-09-14T10:00:00.000Z');
+  });
+
+  it('counts a workout’s bouts apart from its sets', async () => {
+    await finishedRowerWorkout(true);
+    const [summary] = await history().sessionSummaries();
+    expect(summary).toMatchObject({ setCount: 1, boutCount: 1 });
+  });
+});
