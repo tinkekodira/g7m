@@ -1,6 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import { finishWorkout, logSet, openTab, signIn, startWith } from './support/app.js';
+import {
+  finishWorkout,
+  logSet,
+  openTab,
+  signIn,
+  startWith,
+  waitForCatalogue,
+} from './support/app.js';
 
 /**
  * Achievements (ADR-0072): earned from the training log, announced once by a
@@ -27,6 +34,9 @@ test('a heavy set is celebrated at the bench, the workout on Finish, and each on
 }) => {
   const user = await createUser('badges', { onboarded: true });
   await signIn(page, user);
+  // The first sync, with the profile in it, before the workout starts: the
+  // workout takes its bodyweight from the profile, and Bench Your Body needs it.
+  await waitForCatalogue(page);
   await startWith(page, 'Barbell Bench Press');
 
   // 100 kg for a single: one plate a side, two, and more than the 80 kg the
