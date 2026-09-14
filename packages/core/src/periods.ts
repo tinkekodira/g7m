@@ -185,47 +185,6 @@ export function volumeBuckets(
   }));
 }
 
-/** Time on the machines per bar: a day each, or a month each for all time. */
-export interface CardioBucket {
-  readonly key: string;
-  readonly start: Date;
-  readonly end: Date;
-  readonly minutes: number;
-  readonly inProgress: boolean;
-  readonly future: boolean;
-}
-
-/**
- * Cardio minutes per bar, over exactly the bars the volume chart draws, so
- * the two charts on one screen line up column for column.
- */
-export function cardioBuckets(
-  window: PeriodWindow,
-  bouts: readonly LoggedBout[],
-  now: Date,
-): CardioBucket[] {
-  const monthly = window.period === 'all';
-  const spans = monthly ? monthsIn(window.chart) : daysIn(window.chart);
-  const seconds = spans.map(() => 0);
-
-  for (const logged of bouts) {
-    const at = logged.performedAt.getTime();
-    const index = spans.findIndex((span) => at >= span.start.getTime() && at < span.end.getTime());
-    if (index === -1) continue;
-    seconds[index] = (seconds[index] ?? 0) + (logged.bout.durationSeconds ?? 0);
-  }
-
-  const moment = now.getTime();
-  return spans.map((span, index) => ({
-    key: monthly ? monthKey(span.start) : dateKey(span.start),
-    start: span.start,
-    end: span.end,
-    minutes: Math.round((seconds[index] ?? 0) / 60),
-    inProgress: moment >= span.start.getTime() && moment < span.end.getTime(),
-    future: span.start.getTime() > moment,
-  }));
-}
-
 export interface CardioTotals {
   readonly minutes: number;
   /** Every machine's distance, in metres. A stair climber adds none. */
@@ -260,6 +219,110 @@ export function cardioTotalsWithin(bouts: readonly LoggedBout[], span: Span): Ca
   }
 
   return { minutes: Math.round(seconds / 60), distanceM, kcal, bouts: count };
+}
+
+/**
+ * What the progress chart can show. Weight lifted was the only view; the
+ * dropdown above the chart picks one of these (ADR-0071).
+ */
+export const CHART_METRICS = ['volume', 'workouts', 'time', 'sets', 'cardio', 'calories'] as const;
+export type ChartMetric = (typeof CHART_METRICS)[number];
+
+export function isChartMetric(value: unknown): value is ChartMetric {
+  return typeof value === 'string' && (CHART_METRICS as readonly string[]).includes(value);
+}
+
+/** One column of whichever view: the same spans as every other chart here. */
+export interface ChartBucket {
+  readonly key: string;
+  readonly start: Date;
+  readonly end: Date;
+  readonly value: number;
+  readonly inProgress: boolean;
+  readonly future: boolean;
+}
+
+/** Everything the views are worked out from, read once by the screen. */
+export interface ChartInput {
+  /** Completed lifting sets. Cardio bouts are not in here; they come as `bouts`. */
+  readonly sets: readonly HistoricalSet[];
+  /** Finished workouts, lifting or cardio. */
+  readonly sessions: readonly SessionTimes[];
+  readonly bouts: readonly LoggedBout[];
+}
+
+/**
+ * One column per day (per month for all time) of the chosen view.
+ *
+ *   volume    weight times reps over working sets, as the chart always drew
+ *   workouts  finished workouts started in the column
+ *   time      training minutes, first set to last — the Active time card's
+ *             own figure, per column
+ *   sets      working sets, warm-ups left out
+ *   cardio    minutes on the machines
+ *   calories  cardio calories: the machine's figure, or the estimate
+ *
+ * Every column comes back, empty or not, and everything is placed by its
+ * workout's start, so a view never splits one workout across two columns.
+ */
+export function chartBuckets(
+  metric: ChartMetric,
+  window: PeriodWindow,
+  input: ChartInput,
+  now: Date,
+): ChartBucket[] {
+  const monthly = window.period === 'all';
+  const spans = monthly ? monthsIn(window.chart) : daysIn(window.chart);
+  const values = spans.map(() => 0);
+  const add = (at: Date, amount: number): void => {
+    const time = at.getTime();
+    const index = spans.findIndex(
+      (span) => time >= span.start.getTime() && time < span.end.getTime(),
+    );
+    if (index !== -1) values[index] = (values[index] ?? 0) + amount;
+  };
+
+  switch (metric) {
+    case 'volume':
+    case 'sets':
+      for (const set of input.sets) {
+        if (!countsTowardVolume(set)) continue;
+        add(set.performedAt, metric === 'sets' ? 1 : (setVolumeKg(set, set.bodyweightKg) ?? 0));
+      }
+      break;
+    case 'workouts':
+    case 'time':
+      for (const session of input.sessions) {
+        add(
+          session.startedAt,
+          metric === 'workouts'
+            ? 1
+            : (trainingMinutes([session.firstSetAt, session.lastSetAt]) ?? 0),
+        );
+      }
+      break;
+    case 'cardio':
+    case 'calories':
+      for (const logged of input.bouts) {
+        add(
+          logged.performedAt,
+          metric === 'cardio'
+            ? (logged.bout.durationSeconds ?? 0) / 60
+            : (boutCalories(logged.kind, logged.bout, logged.bodyweightKg)?.kcal ?? 0),
+        );
+      }
+      break;
+  }
+
+  const moment = now.getTime();
+  return spans.map((span, index) => ({
+    key: monthly ? monthKey(span.start) : dateKey(span.start),
+    start: span.start,
+    end: span.end,
+    value: metric === 'volume' ? round2(values[index] ?? 0) : Math.round(values[index] ?? 0),
+    inProgress: moment >= span.start.getTime() && moment < span.end.getTime(),
+    future: span.start.getTime() > moment,
+  }));
 }
 
 /** What a session contributes to a period's headline numbers. */

@@ -1,12 +1,7 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { heatRampFor, placeholderBodyParts } from '@g7m/anatomy';
-import {
-  firstName,
-  personalRecords,
-  toDisplayWeight,
-  type UnitSystem,
-} from '@g7m/core';
+import { firstName, personalRecords, toDisplayWeight, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { ChevronRightIcon, PencilIcon, TargetIcon, TrophyIcon } from '../components/icons.js';

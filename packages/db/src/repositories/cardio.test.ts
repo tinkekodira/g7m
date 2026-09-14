@@ -216,6 +216,11 @@ describe('cardio in history', () => {
     expect(summary?.lastSetAt?.toISOString()).toBe('2026-09-14T10:00:00.000Z');
   });
 
+  it('keeps bouts out of the lifting history', async () => {
+    await finishedRowerWorkout(true);
+    expect(await history().completedSets()).toEqual([]);
+  });
+
   it('counts a workout’s bouts apart from its sets', async () => {
     await finishedRowerWorkout(true);
     const [summary] = await history().sessionSummaries();

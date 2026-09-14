@@ -4,11 +4,13 @@ import {
   PERIOD_OPTIONS,
   bucketName,
   captionFor,
-  cardioChartSummary,
-  chartSummary,
   dateTile,
   describeComparison,
   describeWork,
+  metricChartSummary,
+  metricFrom,
+  metricShort,
+  metricTotal,
   periodFrom,
   periodPhrase,
   previousPhrase,
@@ -23,18 +25,12 @@ const WEDNESDAY = local(2026, 9, 9, 15);
 const week = volumeBuckets(periodWindow('week', WEDNESDAY), [], WEDNESDAY);
 const month = volumeBuckets(periodWindow('month', WEDNESDAY), [], WEDNESDAY);
 
-function withVolume(bucket: VolumeBucket, volumeKg: number): VolumeBucket {
-  return { ...bucket, volumeKg, sessions: 1 };
-}
-
 /** The bucket at an index, or a failed test rather than an `undefined` passed along. */
 function at(buckets: readonly VolumeBucket[], index: number): VolumeBucket {
   const bucket = buckets[index];
   if (bucket === undefined) throw new Error(`no bucket at ${String(index)}`);
   return bucket;
 }
-
-const kg = (value: number): string => `${String(value)} kg`;
 
 describe('PERIOD_OPTIONS and periodFrom', () => {
   it('offers the three views, weekly first', () => {
@@ -97,21 +93,6 @@ describe('bucketName', () => {
   });
 });
 
-describe('chartSummary', () => {
-  it('reads out only the days with training in them, and the total', () => {
-    const buckets = week.map((bucket, index) =>
-      index === 0 ? withVolume(bucket, 1000) : index === 2 ? withVolume(bucket, 600) : bucket,
-    );
-    expect(chartSummary(buckets, 'week', kg)).toBe(
-      'Volume by day, this week: Monday 1000 kg, Wednesday 600 kg. 1600 kg in total.',
-    );
-  });
-
-  it('says plainly when there is nothing yet', () => {
-    expect(chartSummary(week, 'week', kg)).toBe('Volume by day, this week. Nothing logged yet.');
-  });
-});
-
 describe('describeComparison', () => {
   const count = (value: number): string => String(value);
 
@@ -164,34 +145,6 @@ describe('dateTile', () => {
   });
 });
 
-describe('cardioChartSummary', () => {
-  const day = (date: Date, minutes: number) => ({
-    key: date.toISOString(),
-    start: date,
-    end: date,
-    minutes,
-    inProgress: false,
-    future: false,
-  });
-
-  it('reads out the days on a machine, and the total', () => {
-    const buckets = [
-      day(new Date(2026, 8, 14), 28),
-      day(new Date(2026, 8, 15), 0),
-      day(new Date(2026, 8, 16), 45),
-    ];
-    expect(cardioChartSummary(buckets, 'week')).toBe(
-      'Cardio minutes by day, this week: Monday 28m, Wednesday 45m. 1h 13m in total.',
-    );
-  });
-
-  it('says so when there has been none', () => {
-    expect(cardioChartSummary([day(new Date(2026, 8, 14), 0)], 'month')).toBe(
-      'Cardio minutes by day, this month. None yet.',
-    );
-  });
-});
-
 describe('describeWork', () => {
   it('names sets and bouts apart', () => {
     expect(describeWork(5, 0)).toBe('5 sets');
@@ -202,5 +155,46 @@ describe('describeWork', () => {
 
   it('still says something for an empty workout', () => {
     expect(describeWork(0, 0)).toBe('0 sets');
+  });
+});
+
+describe('the chart views', () => {
+  it('reads the view from the URL, and falls back to weight lifted', () => {
+    expect(metricFrom('sets')).toBe('sets');
+    expect(metricFrom(null)).toBe('volume');
+    expect(metricFrom('reps')).toBe('volume');
+  });
+
+  it('writes a column short and a total with its unit', () => {
+    expect(metricShort('volume', 12400, 'metric')).toBe('12t');
+    expect(metricShort('time', 95, 'metric')).toBe('1h 35m');
+    expect(metricShort('calories', 1420, 'metric')).toBe('1.4k');
+    expect(metricTotal('volume', 12400, 'metric')).toBe('12 t');
+    expect(metricTotal('workouts', 1, 'metric')).toBe('1 workout');
+    expect(metricTotal('sets', 54, 'metric')).toBe('54 sets');
+    expect(metricTotal('calories', 1420, 'metric')).toBe('≈ 1,420 kcal');
+  });
+
+  it('reads the chart out in the chosen view’s own words', () => {
+    const monday = new Date(2026, 8, 14);
+    const tuesday = new Date(2026, 8, 15);
+    const wednesday = new Date(2026, 8, 16);
+    expect(
+      metricChartSummary(
+        [
+          { start: monday, value: 2 },
+          { start: tuesday, value: 0 },
+          { start: wednesday, value: 1 },
+        ],
+        'workouts',
+        'week',
+        'metric',
+      ),
+    ).toBe(
+      'Workouts by day, this week: Monday 2 workouts, Wednesday 1 workout. 3 workouts in total.',
+    );
+    expect(metricChartSummary([{ start: monday, value: 0 }], 'sets', 'month', 'metric')).toBe(
+      'Sets by day, this month. Nothing logged yet.',
+    );
   });
 });
