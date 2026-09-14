@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
   PERIODS,
-  cardioBuckets,
   cardioTotalsWithin,
+  chartBuckets,
   comparePeriods,
   formatDistance,
   describeWhen,
@@ -13,8 +13,7 @@ import {
   startOfDay,
   totalsWithin,
   trainingMinutes,
-  volumeBuckets,
-  type CardioBucket,
+  type ChartMetric,
   type Period,
   type UnitSystem,
   type WeekStart,
@@ -22,24 +21,53 @@ import {
 import type { SessionSummary } from '@g7m/db';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { ColumnChart } from '../components/Charts.js';
-import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
-import { ChevronRightIcon, ClockIcon, FlameIcon } from '../components/icons.js';
+import {
+  CalendarIcon,
+  ChevronRightIcon,
+  ClipboardIcon,
+  ClockIcon,
+  DumbbellIcon,
+  FlameIcon,
+  HeartIcon,
+} from '../components/icons.js';
+import { ViewPicker, type ViewOption } from '../components/ViewPicker.js';
 import { ReviewCard } from '../components/ReviewCard.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import {
   PERIOD_OPTIONS,
   captionFor,
-  cardioChartSummary,
-  chartSummary,
   dateTile,
   describeWork,
+  metricChartSummary,
+  metricFrom,
+  metricOption,
+  metricShort,
+  metricTotal,
+  METRIC_OPTIONS,
   describeComparison,
   periodFrom,
   periodPhrase,
   sinceLine,
   type ComparisonLine,
 } from './progress-view.js';
+
+/** The dropdown's items: the views, each with its icon. */
+const VIEW_ICONS: Readonly<Record<ChartMetric, ReactNode>> = {
+  volume: <DumbbellIcon className="size-5" />,
+  sets: <ClipboardIcon className="size-5" />,
+  workouts: <CalendarIcon className="size-5" />,
+  time: <ClockIcon className="size-5" />,
+  cardio: <HeartIcon className="size-5" />,
+  calories: <FlameIcon className="size-5" />,
+};
+
+const VIEW_OPTIONS: readonly ViewOption<ChartMetric>[] = METRIC_OPTIONS.map((option) => ({
+  value: option.value,
+  label: option.label,
+  description: option.description,
+  icon: VIEW_ICONS[option.value],
+}));
 
 /** Workouts listed before "Show all". Enough to see the last fortnight or so. */
 const RECENT_SHOWN = 5;
@@ -67,8 +95,22 @@ export function ProgressScreen() {
   // to the view that was showing rather than resetting to the week.
   const [params, setParams] = useSearchParams();
   const period = periodFrom(params.get('period'));
+  const metric = metricFrom(params.get('chart'));
+  // Defaults left out of the address, so an untouched screen has a clean one.
+  const writeParams = (nextPeriod: Period, nextMetric: ChartMetric): void => {
+    setParams(
+      {
+        ...(nextPeriod === 'week' ? {} : { period: nextPeriod }),
+        ...(nextMetric === 'volume' ? {} : { chart: nextMetric }),
+      },
+      { replace: true },
+    );
+  };
   const choose = (next: Period): void => {
-    setParams(next === 'week' ? {} : { period: next }, { replace: true });
+    writeParams(next, metric);
+  };
+  const chooseMetric = (next: ChartMetric): void => {
+    writeParams(period, next);
   };
 
   const state = useCatalogue(`progress-${startOfDay(now).toISOString()}`, async (r) => {
@@ -103,40 +145,35 @@ export function ProgressScreen() {
 
   const view = useMemo(() => {
     if (state.data === null) return null;
-    const { weekStartsOn, summaries, firstAt, sets } = state.data;
+    const { weekStartsOn, summaries, firstAt, sets, bouts } = state.data;
 
     const window = periodWindow(period, now, weekStartsOn, firstAt);
-    const buckets = volumeBuckets(window, sets, now);
     const current = totalsWithin(summaries, window.current);
     const previous = window.previous === null ? null : totalsWithin(summaries, window.previous);
 
-    const { bouts } = state.data;
+    // Whichever view the dropdown chose, over the period's columns.
+    const chart = chartBuckets(metric, window, { sets, sessions: summaries, bouts }, now);
+
     const cardioNow = cardioTotalsWithin(bouts, window.current);
     const cardioBefore =
       window.previous === null ? null : cardioTotalsWithin(bouts, window.previous);
-    const cardioColumns = cardioBuckets(window, bouts, now);
 
     return {
       window,
-      buckets,
       current,
       workouts: comparePeriods(current.workouts, previous?.workouts ?? null),
       minutes: comparePeriods(current.minutes, previous?.minutes ?? null),
-      volumeKg: buckets.reduce((sum, bucket) => sum + bucket.volumeKg, 0),
+      chart,
+      // What the chart draws — all time is the last twelve months of columns.
+      chartTotal: chart.reduce((sum, bucket) => sum + bucket.value, 0),
       cardio: {
-        columns: cardioColumns,
         totals: cardioNow,
-        // What the chart draws, like the volume total above it — all time is
-        // the last twelve months of columns.
-        chartMinutes: cardioColumns.reduce((sum, bucket) => sum + bucket.minutes, 0),
         minutes: comparePeriods(cardioNow.minutes, cardioBefore?.minutes ?? null),
       },
     };
-  }, [state.data, period, now]);
+  }, [state.data, period, metric, now]);
 
   const unitSystem = state.data?.unitSystem ?? 'metric';
-  const short = (kg: number): string => formatVolumeShort(kg, unitSystem);
-  const total = (kg: number): string => formatWeightTotal(kg, unitSystem);
   const since = period === 'all' ? sinceLine(state.data?.firstAt ?? null) : null;
 
   return (
@@ -178,25 +215,33 @@ export function ProgressScreen() {
           />
 
           <section className="rounded-card border border-subtle bg-surface p-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-lg font-semibold text-primary">Volume</h2>
-              <span className="numeric text-sm text-secondary">
-                {total(view.volumeKg)}{' '}
-                <span className="text-muted">
+            <h2 className="sr-only">Chart</h2>
+            <div className="flex items-center justify-between gap-3">
+              <ViewPicker
+                label="Chart view"
+                value={metric}
+                options={VIEW_OPTIONS}
+                onChange={chooseMetric}
+              />
+              <span className="text-right">
+                <span className="numeric block text-sm text-secondary">
+                  {metricTotal(metric, view.chartTotal, unitSystem)}
+                </span>
+                <span className="block text-xs text-muted">
                   {period === 'all' && view.window.clipped
                     ? 'in the last 12 months'
                     : periodPhrase(period)}
                 </span>
               </span>
             </div>
-            <p className="mt-1 mb-4 text-xs text-muted">
-              Weight times reps, over every working set.
+            <p className="mt-2 mb-4 text-xs text-muted">
+              {metricOption(metric).caption}
               {period === 'all' ? ' One column a month.' : ' One column a day.'}
             </p>
             <ColumnChart
-              data={view.buckets.map((bucket) => ({
+              data={view.chart.map((bucket) => ({
                 key: bucket.key,
-                value: bucket.volumeKg,
+                value: bucket.value,
                 caption: captionFor(bucket, period),
                 // A day is trained or it is not. A month in progress is
                 // partial, and drawn lighter so it does not read as a slump.
@@ -204,8 +249,8 @@ export function ProgressScreen() {
                 future: bucket.future,
                 highlight: period !== 'all' && bucket.inProgress,
               }))}
-              format={short}
-              summary={chartSummary(view.buckets, period, total)}
+              format={(value) => metricShort(metric, value, unitSystem)}
+              summary={metricChartSummary(view.chart, metric, period, unitSystem)}
             />
           </section>
 
@@ -214,10 +259,8 @@ export function ProgressScreen() {
           {state.data.bouts.length > 0 && (
             <CardioSection
               period={period}
-              clipped={period === 'all' && view.window.clipped}
               unitSystem={unitSystem}
-              columns={view.cardio.columns}
-              chartMinutes={view.cardio.chartMinutes}
+              minutes={view.cardio.totals.minutes}
               distanceM={view.cardio.totals.distanceM}
               kcal={view.cardio.totals.kcal}
               comparison={
@@ -244,27 +287,23 @@ export function ProgressScreen() {
 }
 
 /**
- * Cardio for the period: time on the machines by day (by month for all time),
- * with distance and calories under it. ADR-0069.
+ * Cardio for the period, in three numbers: time on the machines, distance and
+ * calories, with how the time compares. ADR-0069.
  *
- * Its own card rather than more lines on the volume one: volume is weight
- * times reps and a treadmill has neither, so the two can never share an axis.
+ * Its minutes and calories by day are views of the chart above (ADR-0071),
+ * so this card keeps the totals rather than drawing a second chart.
  */
 function CardioSection({
   period,
-  clipped,
   unitSystem,
-  columns,
-  chartMinutes,
+  minutes,
   distanceM,
   kcal,
   comparison,
 }: {
   readonly period: Period;
-  readonly clipped: boolean;
   readonly unitSystem: UnitSystem;
-  readonly columns: readonly CardioBucket[];
-  readonly chartMinutes: number;
+  readonly minutes: number;
   readonly distanceM: number;
   readonly kcal: number;
   readonly comparison: ComparisonLine | null;
@@ -273,76 +312,58 @@ function CardioSection({
   return (
     <section className="rounded-card border border-subtle bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold text-primary">Cardio</h2>
-        {/* The total and how it compares, stacked on the right, so the caption
-            below keeps a line of its own on a phone. */}
-        <div className="text-right">
-          <p className="numeric text-sm text-secondary">
-            {formatMinutes(chartMinutes)}{' '}
-            <span className="text-muted">
-              {clipped ? 'in the last 12 months' : periodPhrase(period)}
-            </span>
-          </p>
-          {comparison !== null && (
-            <p className="text-xs">
-              <span
-                className={cx(
-                  'numeric font-semibold',
-                  comparison.ahead ? 'text-success' : 'text-secondary',
-                )}
-              >
-                {comparison.headline}
-              </span>{' '}
-              <span className="text-muted">{comparison.detail}</span>
-            </p>
-          )}
+        <div>
+          <h2 className="text-lg font-semibold text-primary">Cardio</h2>
+          <p className="text-xs text-muted">{capitalised(periodPhrase(period))}</p>
         </div>
+        {comparison !== null && (
+          <p className="text-right text-xs">
+            <span
+              className={cx(
+                'numeric font-semibold',
+                comparison.ahead ? 'text-success' : 'text-secondary',
+              )}
+            >
+              {comparison.headline}
+            </span>{' '}
+            <span className="block text-muted">{comparison.detail}</span>
+          </p>
+        )}
       </div>
-      <p className="mt-1 mb-4 text-xs text-muted">
-        Time on the machines.{period === 'all' ? ' One column a month.' : ' One column a day.'}
-      </p>
-      <ColumnChart
-        data={columns.map((bucket) => ({
-          key: bucket.key,
-          value: bucket.minutes,
-          caption: captionFor(bucket, period),
-          inProgress: period === 'all' && bucket.inProgress,
-          future: bucket.future,
-          highlight: period !== 'all' && bucket.inProgress,
-        }))}
-        format={formatMinutes}
-        summary={cardioChartSummary(columns, period)}
-      />
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <CardioFigure label="Time" value={minutes > 0 ? formatMinutes(minutes) : '—'} />
         <CardioFigure
           label="Distance"
           value={distanceM > 0 ? formatDistance(distanceM, unit) : '—'}
-          caption={periodPhrase(period)}
         />
         <CardioFigure
           label="Calories"
-          value={kcal > 0 ? `≈ ${kcal.toLocaleString('en-GB')} kcal` : '—'}
-          caption={periodPhrase(period)}
+          value={kcal > 0 ? `≈ ${kcal.toLocaleString('en-GB')}` : '—'}
+          unit={kcal > 0 ? 'kcal' : undefined}
         />
       </div>
     </section>
   );
 }
 
+function capitalised(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function CardioFigure({
   label,
   value,
-  caption,
+  unit,
 }: {
   readonly label: string;
   readonly value: string;
-  readonly caption: string;
+  readonly unit?: string | undefined;
 }) {
   return (
-    <div className="rounded-control bg-elevated p-3">
+    <div className="min-w-0 rounded-control bg-elevated px-2.5 py-2">
       <p className="text-xs text-muted">{label}</p>
-      <p className="numeric text-lg font-semibold text-primary">{value}</p>
-      <p className="text-xs text-muted">{caption}</p>
+      <p className="numeric truncate text-base font-semibold text-primary">{value}</p>
+      {unit !== undefined && <p className="text-xs text-muted">{unit}</p>}
     </div>
   );
 }

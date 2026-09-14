@@ -103,7 +103,15 @@ export class HistoryRepository {
    */
   async completedSets(window: HistoryWindow = {}): Promise<HistoricalSet[]> {
     const { userId } = resolveContext(this.context);
-    const conditions = ['ss.user_id = ?', 'ss.is_completed = 1', 'ws.ended_at IS NOT NULL'];
+    // Lifting only. A cardio bout is stored as a set with zero weight and reps,
+    // and counting it here would add bouts to the Sets chart and nothing to
+    // anything else; bouts have `completedBouts` (ADR-0069).
+    const conditions = [
+      'ss.user_id = ?',
+      'ss.is_completed = 1',
+      'ws.ended_at IS NOT NULL',
+      'e.cardio_kind IS NULL',
+    ];
     const parameters: SqlValue[] = [userId];
 
     if (window.from !== undefined) {
@@ -126,6 +134,8 @@ export class HistoryRepository {
          FROM session_sets ss
          JOIN session_exercises se ON se.id = ss.session_exercise_id
          JOIN workout_sessions ws ON ws.id = se.session_id
+         -- LEFT: a set whose exercise has not synced yet is still a lift.
+         LEFT JOIN exercises e ON e.id = se.exercise_id
         WHERE ${conditions.join(' AND ')}
         ORDER BY ${instant('ws.started_at')} ASC, ss.order_key ASC`,
       parameters,

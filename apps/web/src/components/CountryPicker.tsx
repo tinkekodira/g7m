@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 import { GREETABLE_COUNTRIES, countryName } from '@g7m/core';
+import { flagEmoji, supportsFlagEmoji } from '../lib/flags.js';
 
 /**
  * Where you are from, for one word on the home screen.
@@ -32,6 +33,7 @@ export function CountryPicker({
 }) {
   const id = useId();
 
+  const flags = useMemo(() => supportsFlagEmoji(), []);
   const countries = useMemo(() => {
     const locale = typeof navigator === 'undefined' ? undefined : navigator.language;
     return GREETABLE_COUNTRIES.map((code) => ({ code, name: countryName(code, locale) })).sort(
@@ -59,7 +61,10 @@ export function CountryPicker({
         <option value="">Rather not say</option>
         {countries.map((country) => (
           <option key={country.code} value={country.code}>
-            {country.name}
+            {/* Plain text is all a native option can hold, and a flag emoji is
+                text — so the phone's own picker shows the flags too. Left out
+                where the device would draw it as two letters. */}
+            {flags ? `${flagEmoji(country.code) ?? ''} ${country.name}` : country.name}
           </option>
         ))}
       </select>

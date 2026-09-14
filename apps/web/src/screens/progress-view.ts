@@ -8,11 +8,14 @@
  */
 import {
   formatMinutes,
-  type CardioBucket,
+  isChartMetric,
+  type ChartMetric,
   type Comparison,
   type Period,
+  type UnitSystem,
   type VolumeBucket,
 } from '@g7m/core';
+import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
 import { monthName, monthShort, weekdayName, weekdayShort } from '../lib/date-words.js';
 
 export const PERIOD_OPTIONS = [
@@ -75,47 +78,6 @@ export function bucketName(bucket: Pick<VolumeBucket, 'start'>, period: Period):
 }
 
 /**
- * The chart for somebody who cannot see it.
- *
- * Only the columns with something in them are read out. Seven days of which
- * five are "nothing" is a sentence that buries the two that matter, and the
- * count of workouts already says how many there were.
- */
-export function chartSummary(
-  buckets: readonly VolumeBucket[],
-  period: Period,
-  format: (kg: number) => string,
-): string {
-  const trained = buckets.filter((bucket) => bucket.volumeKg > 0);
-  const scope = period === 'all' ? 'by month' : 'by day';
-
-  if (trained.length === 0) {
-    return `Volume ${scope}, ${periodPhrase(period)}. Nothing logged yet.`;
-  }
-
-  const total = buckets.reduce((sum, bucket) => sum + bucket.volumeKg, 0);
-  const days = trained
-    .map((bucket) => `${bucketName(bucket, period)} ${format(bucket.volumeKg)}`)
-    .join(', ');
-  return `Volume ${scope}, ${periodPhrase(period)}: ${days}. ${format(total)} in total.`;
-}
-
-/**
- * The cardio chart for somebody who cannot see it: the days on a machine, and
- * the total. The same shape as the volume chart's summary, in minutes.
- */
-export function cardioChartSummary(buckets: readonly CardioBucket[], period: Period): string {
-  const active = buckets.filter((bucket) => bucket.minutes > 0);
-  const scope = period === 'all' ? 'by month' : 'by day';
-  if (active.length === 0) return `Cardio minutes ${scope}, ${periodPhrase(period)}. None yet.`;
-  const total = buckets.reduce((sum, bucket) => sum + bucket.minutes, 0);
-  const days = active
-    .map((bucket) => `${bucketName(bucket, period)} ${formatMinutes(bucket.minutes)}`)
-    .join(', ');
-  return `Cardio minutes ${scope}, ${periodPhrase(period)}: ${days}. ${formatMinutes(total)} in total.`;
-}
-
-/**
  * What a workout was made of, in a list: "5 sets", "1 bout", "4 sets · 2 bouts".
  *
  * Bouts are named apart from sets because a treadmill session of one
@@ -127,6 +89,127 @@ export function describeWork(setCount: number, boutCount: number): string {
   if (sets > 0 || boutCount === 0) parts.push(`${String(sets)} ${sets === 1 ? 'set' : 'sets'}`);
   if (boutCount > 0) parts.push(`${String(boutCount)} ${boutCount === 1 ? 'bout' : 'bouts'}`);
   return parts.join(' · ');
+}
+
+/** A view the progress chart can show, as the dropdown lists it. */
+export interface MetricOption {
+  readonly value: ChartMetric;
+  /** The chart's title, and the menu's item. */
+  readonly label: string;
+  /** Under the item in the menu: what choosing it shows. */
+  readonly description: string;
+  /** Under the chart's title: how the numbers are counted. */
+  readonly caption: string;
+}
+
+/** In the menu's order: lifting, then showing up, then cardio. */
+export const METRIC_OPTIONS: readonly MetricOption[] = [
+  {
+    value: 'volume',
+    label: 'Weight lifted',
+    description: 'Weight times reps',
+    caption: 'Weight times reps, over every working set.',
+  },
+  {
+    value: 'sets',
+    label: 'Sets',
+    description: 'Working sets, warm-ups left out',
+    caption: 'Working sets, warm-ups left out.',
+  },
+  {
+    value: 'workouts',
+    label: 'Workouts',
+    description: 'How many you finished',
+    caption: 'Workouts finished.',
+  },
+  {
+    value: 'time',
+    label: 'Active time',
+    description: 'Training time, cardio included',
+    caption: 'Time training, first set to last, cardio included.',
+  },
+  {
+    value: 'cardio',
+    label: 'Cardio time',
+    description: 'Minutes on the machines',
+    caption: 'Time on the cardio machines.',
+  },
+  {
+    value: 'calories',
+    label: 'Calories',
+    description: 'Burned on cardio',
+    caption: 'From cardio: the machine’s figure, or the estimate.',
+  },
+];
+
+/** The view in the URL, or weight lifted — what the chart always showed. */
+export function metricFrom(value: string | null): ChartMetric {
+  return isChartMetric(value) ? value : 'volume';
+}
+
+export function metricOption(metric: ChartMetric): MetricOption {
+  const found = METRIC_OPTIONS.find((option) => option.value === metric);
+  if (found === undefined) throw new Error(`No chart view ${metric}`);
+  return found;
+}
+
+/** A column's number, short enough for a phone's axis: `1.2t`, `12`, `45m`. */
+export function metricShort(metric: ChartMetric, value: number, unitSystem: UnitSystem): string {
+  switch (metric) {
+    case 'volume':
+      return formatVolumeShort(value, unitSystem);
+    case 'time':
+    case 'cardio':
+      return formatMinutes(value);
+    case 'calories':
+      return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
+    case 'workouts':
+    case 'sets':
+      return String(Math.round(value));
+  }
+}
+
+/** A total with its unit: `12.4 t`, `3 workouts`, `2h 5m`, `54 sets`, `≈ 1,420 kcal`. */
+export function metricTotal(metric: ChartMetric, value: number, unitSystem: UnitSystem): string {
+  const count = (singular: string, plural: string) =>
+    `${Math.round(value).toLocaleString('en-GB')} ${Math.round(value) === 1 ? singular : plural}`;
+  switch (metric) {
+    case 'volume':
+      return formatWeightTotal(value, unitSystem);
+    case 'workouts':
+      return count('workout', 'workouts');
+    case 'sets':
+      return count('set', 'sets');
+    case 'time':
+    case 'cardio':
+      return formatMinutes(value);
+    case 'calories':
+      return `≈ ${Math.round(value).toLocaleString('en-GB')} kcal`;
+  }
+}
+
+/**
+ * The chart for somebody who cannot see it: the view, the columns with
+ * something in them, and the total. Seven days of which five are "nothing" is
+ * a sentence that buries the two that matter.
+ */
+export function metricChartSummary(
+  buckets: readonly { readonly start: Date; readonly value: number }[],
+  metric: ChartMetric,
+  period: Period,
+  unitSystem: UnitSystem,
+): string {
+  const { label } = metricOption(metric);
+  const scope = period === 'all' ? 'by month' : 'by day';
+  const active = buckets.filter((bucket) => bucket.value > 0);
+  if (active.length === 0) return `${label} ${scope}, ${periodPhrase(period)}. Nothing logged yet.`;
+  const total = buckets.reduce((sum, bucket) => sum + bucket.value, 0);
+  const columns = active
+    .map(
+      (bucket) => `${bucketName(bucket, period)} ${metricTotal(metric, bucket.value, unitSystem)}`,
+    )
+    .join(', ');
+  return `${label} ${scope}, ${periodPhrase(period)}: ${columns}. ${metricTotal(metric, total, unitSystem)} in total.`;
 }
 
 export interface ComparisonLine {

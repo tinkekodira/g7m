@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router';
 import {
   DEFAULT_DAYS_PER_WEEK,
   GOAL_DESCRIPTIONS,
@@ -35,6 +36,9 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 const TREND_WEEKS = 12;
 
 export function GoalScreen() {
+  const location = useLocation();
+  const cameFromProfile =
+    (location.state as { readonly from?: unknown } | null)?.from === '/profile';
   const now = useMemo(() => new Date(), []);
   const from = useMemo(() => {
     const start = startOfDay(now);
@@ -105,7 +109,13 @@ export function GoalScreen() {
             What the training is for. You can change it whenever you like.
           </p>
         </div>
-        <HeaderLink to="/you">You</HeaderLink>
+        {/* Back to wherever the goal was opened from: Profile's goal card
+            or the You screen. */}
+        {cameFromProfile ? (
+          <HeaderLink to="/profile">Profile</HeaderLink>
+        ) : (
+          <HeaderLink to="/you">You</HeaderLink>
+        )}
       </header>
 
       {(profile.error ?? goal.error ?? readings.error) !== null && (

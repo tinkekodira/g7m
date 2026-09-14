@@ -3892,3 +3892,59 @@ Lifting workouts are unchanged, because their duration is empty.
 **Lists say bouts, not sets.** A treadmill session of one bout read "1 set",
 which sounds like a warm-up. Summaries count bouts separately, and the
 Progress list and the calendar say "1 bout" or "4 sets · 2 bouts".
+
+---
+
+## ADR-0071 — Flags from the phone, the goal up front, and a chart you choose
+
+**Status:** accepted · **Date:** 2026-09-14
+
+**Flags are the phone's own emoji.** A country is stored as its two-letter
+code, and a flag emoji is two regional-indicator letters (`HR` → 🇭🇷) that iOS,
+Android and macOS draw as the flag. That means no images, no dependency, and
+nothing to fetch offline, and the flags match every other flag on the phone.
+Rejected: a bundled SVG set, which is a few hundred files to carry for a small
+decoration, with licences and sizes to keep track of. Windows draws the pair as
+two letters, so the app measures once on a canvas whether a pair renders as
+one glyph, and on Windows shows a small tag with the code instead. The flag is
+decorative and hidden from screen readers, since the country's name is always
+beside it. It appears beside the name on Profile, on the From tile, and in
+the country picker's options.
+
+**The goal gets a card at the top of Profile.** It was a grey line under the
+name, and changing it meant Edit, then a scroll past every measurement to a
+link at the end. It is the one setting that decides what Home builds, so it is
+now a card of its own:
+
+- the goal, the days a week and since when;
+- a Change button, or Choose when there is no goal;
+- the whole card is one tap target;
+- the goal screen returns to Profile when opened from there.
+
+The goal left the numbers tiles, where it was a third copy.
+
+**The progress chart shows the view you pick.** Weight lifted was the only
+view. The chart's title is now a dropdown offering six views, each placed by
+its workout's start over the same day or month columns:
+
+| View | What it counts |
+| --- | --- |
+| Weight lifted | Weight times reps, over working sets |
+| Sets | Working sets, warm-ups left out |
+| Workouts | Finished workouts |
+| Active time | The Active time card's figure, per column |
+| Cardio time | Minutes on the machines |
+| Calories | Cardio calories |
+
+- **One function** (`chartBuckets`) builds every view, so no two can disagree
+  about a column.
+- **The choice lives in the URL** as `?chart=`, beside `?period=`, so Back and
+  a reload keep it (ADR-0034).
+- **The menu is built, not a native `<select>`,** because a select cannot hold
+  the icons and one-line descriptions that make six options scannable. It
+  keeps what a select gives for free: listbox semantics, arrow keys, Home and
+  End, Escape and a tap outside to close, and focus back on the button.
+- **The Cardio card keeps only its totals** (time, distance, calories), now
+  that its minutes and calories by day are chart views.
+- **The lifting history leaves bouts out,** so the Sets view counts sets. A
+  bout is stored as a set, and would otherwise be counted as one.

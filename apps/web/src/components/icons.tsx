@@ -303,3 +303,40 @@ export function TrashIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** Rings and a centre: something aimed at. */
+export function TargetIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+    </Glyph>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M6 9.5 12 15.5 18 9.5" />
+    </Glyph>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M5 12.5 10 17.5 19 7" />
+    </Glyph>
+  );
+}
+
+/** A heart with a pulse through it: cardio. */
+export function HeartIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z" />
+      <path d="M7.5 12.5h2.5l1.2-2.2 1.8 4.2 1.2-2h2.3" />
+    </Glyph>
+  );
+}

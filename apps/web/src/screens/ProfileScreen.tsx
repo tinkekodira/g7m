@@ -1,17 +1,12 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { heatRampFor, placeholderBodyParts } from '@g7m/anatomy';
-import {
-  GOAL_LABELS,
-  firstName,
-  personalRecords,
-  toDisplayWeight,
-  type UnitSystem,
-} from '@g7m/core';
+import { firstName, personalRecords, toDisplayWeight, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
-import { ChevronRightIcon, PencilIcon, TrophyIcon } from '../components/icons.js';
+import { ChevronRightIcon, PencilIcon, TargetIcon, TrophyIcon } from '../components/icons.js';
 import { useSculptedBody } from '../lib/anatomy-model.js';
+import { Flag } from '../components/Flag.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import {
@@ -20,7 +15,8 @@ import {
   useNeglected,
   useTrainingHeat,
 } from '../lib/db/use-trained-body.js';
-import { bestLifts, profileStats, type BestLift } from './profile-view.js';
+import { bestLifts, goalCardLine, profileStats, type BestLift } from './profile-view.js';
+import type { Goal } from '@g7m/db';
 
 /**
  * Loaded on demand, as on Learn. three.js is the largest thing the app ships,
@@ -86,8 +82,6 @@ export function ProfileScreen() {
       birthDate: profile.data?.birthDate ?? null,
       sex: profile.data?.sex ?? null,
       activityLevel: metrics.data?.activityLevel ?? null,
-      goal:
-        goal.data === null ? null : { goal: goal.data.goal, daysPerWeek: goal.data.daysPerWeek },
       country: profile.data?.country ?? null,
     },
     now,
@@ -116,17 +110,17 @@ export function ProfileScreen() {
 
       <section className="flex items-center gap-4 rounded-card border border-subtle bg-surface p-4">
         <Avatar name={name} size="lg" />
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-xl font-semibold text-primary">
             {fullName ?? 'Add your name'}
           </p>
-          <p className="mt-0.5 text-sm text-secondary">
-            {goal.data === null
-              ? 'No goal chosen yet'
-              : `${GOAL_LABELS[goal.data.goal]} · ${String(goal.data.daysPerWeek)} days a week`}
-          </p>
+          {profile.data?.country != null && (
+            <Flag code={profile.data.country} className="shrink-0 text-xl" />
+          )}
         </div>
       </section>
+
+      <GoalCard goal={goal.data} loading={goal.loading} now={now} />
 
       <section aria-labelledby="profile-numbers">
         <h2 id="profile-numbers" className="mb-2 text-lg font-semibold text-primary">
@@ -151,8 +145,9 @@ export function ProfileScreen() {
                     Not set — add it
                   </Link>
                 ) : (
-                  <span className="numeric block text-base font-semibold text-primary">
-                    {tile.value}
+                  <span className="numeric flex items-center gap-1.5 text-base font-semibold text-primary">
+                    {tile.flag !== undefined && <Flag code={tile.flag} className="text-lg" />}
+                    <span className="min-w-0 truncate">{tile.value}</span>
                   </span>
                 )}
                 {tile.detail !== undefined && (
@@ -191,6 +186,60 @@ export function ProfileScreen() {
         Educational content, not medical advice. These numbers shape a training plan, nothing more.
       </p>
     </main>
+  );
+}
+
+/**
+ * What the training is for, where it can be seen and changed.
+ *
+ * It used to be one grey line under the name, and changing it meant Edit, then
+ * scrolling past every measurement to a link at the bottom. It is the one
+ * setting that decides what the app builds, so it gets a card of its own near
+ * the top, all of it one target, with the button saying what the tap does.
+ * Without a goal the card asks for one instead. ADR-0071.
+ */
+function GoalCard({
+  goal,
+  loading,
+  now,
+}: {
+  readonly goal: Goal | null;
+  readonly loading: boolean;
+  readonly now: Date;
+}) {
+  // Nothing rather than "choose a goal" while the row is still being read:
+  // flashing the invitation at somebody who has a goal reads as a lost goal.
+  if (loading && goal === null) return null;
+  const line = goal === null ? null : goalCardLine(goal, now);
+
+  return (
+    <Link
+      to="/goal"
+      state={{ from: '/profile' }}
+      viewTransition
+      className="rise flex items-center gap-4 rounded-card border border-accent/40 bg-surface p-4 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span
+        aria-hidden
+        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent"
+      >
+        <TargetIcon className="size-6" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-semibold tracking-wide text-accent uppercase">
+          Your goal
+        </span>
+        <span className="block text-lg font-semibold text-primary">
+          {line?.title ?? 'Choose what you are training for'}
+        </span>
+        <span className="block text-xs text-muted">
+          {line?.detail ?? 'It decides the workout Home writes for you.'}
+        </span>
+      </span>
+      <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-on-accent">
+        {goal === null ? 'Choose' : 'Change'}
+      </span>
+    </Link>
   );
 }
 

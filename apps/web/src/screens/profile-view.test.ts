@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PersonalRecord } from '@g7m/core';
-import { bestLifts, profileStats, type ProfileFacts } from './profile-view.js';
+import { bestLifts, goalCardLine, profileStats, type ProfileFacts } from './profile-view.js';
 
 const NOW = new Date(2026, 8, 12, 12);
 
@@ -12,7 +12,6 @@ const EMPTY: ProfileFacts = {
   birthDate: null,
   sex: null,
   activityLevel: null,
-  goal: null,
   country: null,
 };
 
@@ -28,7 +27,6 @@ describe('profileStats', () => {
       'weight',
       'height',
       'age',
-      'goal',
       'activity',
       'sex',
       'country',
@@ -46,7 +44,6 @@ describe('profileStats', () => {
       birthDate: new Date(Date.UTC(2000, 2, 14)),
       sex: 'male',
       activityLevel: 'moderate',
-      goal: { goal: 'build_muscle', daysPerWeek: 4 },
       country: 'HR',
     };
     const tiles = profileStats(facts, NOW);
@@ -55,10 +52,11 @@ describe('profileStats', () => {
     expect(byKey.get('weight')).toMatchObject({ value: '82.5 kg', detail: '3 days ago' });
     expect(byKey.get('height')?.value).toBe('182 cm');
     expect(byKey.get('age')?.value).toBe('26');
-    expect(byKey.get('goal')).toMatchObject({ value: 'Build muscle', detail: '4 days a week' });
     expect(byKey.get('activity')?.value).toBe('Moderately active');
     expect(byKey.get('sex')?.value).toBe('Male');
     expect(byKey.get('country')?.value).toBe('Croatia');
+    // With its code, for the flag beside the name.
+    expect(byKey.get('country')?.flag).toBe('HR');
   });
 
   it('converts for somebody who asked for pounds and inches', () => {
@@ -67,11 +65,23 @@ describe('profileStats', () => {
     expect(valueOf(facts, 'height')).toBe('71 in');
   });
 
-  it('says "day", not "days", for one a week', () => {
-    const facts: ProfileFacts = { ...EMPTY, goal: { goal: 'get_stronger', daysPerWeek: 1 } };
-    expect(profileStats(facts, NOW).find((tile) => tile.key === 'goal')?.detail).toBe(
-      '1 day a week',
-    );
+  it('leaves the goal to its own card', () => {
+    expect(profileStats(EMPTY, NOW).some((tile) => tile.key === 'goal')).toBe(false);
+  });
+});
+
+describe('goalCardLine', () => {
+  it('names the goal, the days and when it began', () => {
+    expect(
+      goalCardLine({ goal: 'build_muscle', daysPerWeek: 4, startedAt: new Date(2026, 8, 3) }, NOW),
+    ).toEqual({ title: 'Build muscle', detail: '4 days a week · since 3 September' });
+  });
+
+  it('says "day" for one, and the year when it is not this one', () => {
+    expect(
+      goalCardLine({ goal: 'get_stronger', daysPerWeek: 1, startedAt: new Date(2025, 10, 20) }, NOW)
+        .detail,
+    ).toBe('1 day a week · since 20 November 2025');
   });
 });
 

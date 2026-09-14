@@ -226,6 +226,23 @@ body {
   animation: g7m-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* A menu opening from its button: a quick fade and a grow from where it was
+   tapped, rather than appearing whole. The reduced-motion block flattens it. */
+@keyframes g7m-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility menu-in {
+  animation: g7m-menu-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* --------------------------------------------------------------------------
    Motion answers user actions only. Respect the OS setting everywhere —
    including any idle rotation on the 3D model (Brief §10).
