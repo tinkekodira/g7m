@@ -303,3 +303,14 @@ export function TrashIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** Rings and a centre: something aimed at. */
+export function TargetIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+    </Glyph>
+  );
+}

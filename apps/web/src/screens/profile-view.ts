@@ -7,6 +7,7 @@
  * blanks can be tested: a profile is mostly blanks for the first week, and
  * each one should say so rather than print "null cm".
  */
+import { monthName } from '../lib/date-words.js';
 import {
   ACTIVITY_LABELS,
   GOAL_LABELS,
@@ -30,6 +31,8 @@ export interface StatTile {
   readonly value: string | null;
   /** A line under the value — how old a weight is, how many days a week. */
   readonly detail?: string;
+  /** A country code, for a flag beside the value. */
+  readonly flag?: string;
 }
 
 export interface ProfileFacts {
@@ -40,7 +43,6 @@ export interface ProfileFacts {
   readonly birthDate: Date | null;
   readonly sex: Sex | null;
   readonly activityLevel: ActivityLevel | null;
-  readonly goal: { readonly goal: TrainingGoal; readonly daysPerWeek: number } | null;
   readonly country: string | null;
 }
 
@@ -67,16 +69,6 @@ export function profileStats(facts: ProfileFacts, now: Date): StatTile[] {
     },
     { key: 'age', label: 'Age', value: age === null ? null : String(age) },
     {
-      key: 'goal',
-      label: 'Goal',
-      value: facts.goal === null ? null : GOAL_LABELS[facts.goal.goal],
-      ...(facts.goal === null
-        ? {}
-        : {
-            detail: `${String(facts.goal.daysPerWeek)} ${facts.goal.daysPerWeek === 1 ? 'day' : 'days'} a week`,
-          }),
-    },
-    {
       key: 'activity',
       label: 'Outside the gym',
       value: facts.activityLevel === null ? null : ACTIVITY_LABELS[facts.activityLevel],
@@ -86,6 +78,7 @@ export function profileStats(facts: ProfileFacts, now: Date): StatTile[] {
       key: 'country',
       label: 'From',
       value: facts.country === null ? null : countryName(facts.country),
+      ...(facts.country === null ? {} : { flag: facts.country }),
     },
   ];
 }
@@ -120,4 +113,34 @@ export function bestLifts(
       achievedAt: record.achievedAt,
     }))
     .sort((a, b) => b.valueKg - a.valueKg || a.name.localeCompare(b.name, 'en'));
+}
+
+export interface GoalCardLine {
+  readonly title: string;
+  readonly detail: string;
+}
+
+/**
+ * The goal card on Profile: the goal, and how it is being kept — "3 days a
+ * week · since 3 September". The year only when it is not this one.
+ *
+ * Its own card rather than a tile among the numbers, because it is the one
+ * thing on the page that decides what the app builds, and the one most likely
+ * to be changed (ADR-0071).
+ */
+export function goalCardLine(
+  goal: {
+    readonly goal: TrainingGoal;
+    readonly daysPerWeek: number;
+    readonly startedAt: Date;
+  },
+  now: Date,
+): GoalCardLine {
+  const days = `${String(goal.daysPerWeek)} ${goal.daysPerWeek === 1 ? 'day' : 'days'} a week`;
+  const date = `${String(goal.startedAt.getDate())} ${monthName(goal.startedAt)}`;
+  const year =
+    goal.startedAt.getFullYear() === now.getFullYear()
+      ? ''
+      : ` ${String(goal.startedAt.getFullYear())}`;
+  return { title: GOAL_LABELS[goal.goal], detail: `${days} · since ${date}${year}` };
 }
