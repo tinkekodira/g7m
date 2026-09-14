@@ -61,8 +61,8 @@ bucket_definitions:
     data:
       - >-
         SELECT id, user_id, display_name, unit_system, experience_level, birth_date, sex,
-        country, bodyweight_kg, rest_seconds_default, week_starts_on, onboarded_at, created_at,
-        updated_at FROM profiles WHERE user_id = bucket.user_id
+        country, bodyweight_kg, rest_seconds_default, week_starts_on, onboarded_at,
+        achievements_seen, created_at, updated_at FROM profiles WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, equipment_id, created_at, updated_at FROM user_equipment WHERE
         user_id = bucket.user_id

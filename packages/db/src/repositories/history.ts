@@ -42,6 +42,17 @@ export interface HistoryWindow {
   /** Exclusive. Omit for up to now. */
   readonly to?: Date;
   readonly exerciseId?: string;
+  /**
+   * The workout in progress as well as finished ones. For achievements, which
+   * a set can earn while its workout is still open (ADR-0072). Everything
+   * else leaves it out, for the reason on `completedSets`.
+   */
+  readonly includeOpen?: boolean;
+}
+
+/** For the reads that take nothing but whether to count the open workout. */
+export interface OpenOption {
+  readonly includeOpen?: boolean;
 }
 
 /** A finished workout, with the totals a history list shows without drilling in. */
@@ -106,13 +117,9 @@ export class HistoryRepository {
     // Lifting only. A cardio bout is stored as a set with zero weight and reps,
     // and counting it here would add bouts to the Sets chart and nothing to
     // anything else; bouts have `completedBouts` (ADR-0069).
-    const conditions = [
-      'ss.user_id = ?',
-      'ss.is_completed = 1',
-      'ws.ended_at IS NOT NULL',
-      'e.cardio_kind IS NULL',
-    ];
+    const conditions = ['ss.user_id = ?', 'ss.is_completed = 1', 'e.cardio_kind IS NULL'];
     const parameters: SqlValue[] = [userId];
+    if (window.includeOpen !== true) conditions.push('ws.ended_at IS NOT NULL');
 
     if (window.from !== undefined) {
       conditions.push(`${instant('ws.started_at')} >= ${INSTANT_PARAMETER}`);
@@ -223,7 +230,10 @@ export class HistoryRepository {
    * progress screen has to count. A year of training is a couple of hundred of
    * these rows, and each is already one aggregated line.
    */
-  async sessionSummaries(limit: number | null = 50): Promise<SessionSummary[]> {
+  async sessionSummaries(
+    limit: number | null = 50,
+    options: OpenOption = {},
+  ): Promise<SessionSummary[]> {
     const { userId } = resolveContext(this.context);
     // A limit of -1 is SQLite for "no limit", which keeps this one statement
     // rather than two that could drift apart.
@@ -251,7 +261,7 @@ export class HistoryRepository {
                 WHERE ss.is_completed = 1
                   AND ss.set_type <> 'warmup'
                 GROUP BY se2.session_id) counted ON counted.session_id = ws.id
-        WHERE ws.user_id = ? AND ws.ended_at IS NOT NULL
+        WHERE ws.user_id = ? ${options.includeOpen === true ? '' : 'AND ws.ended_at IS NOT NULL'}
         ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT ?`,
       [userId, bound],
@@ -289,8 +299,9 @@ export class HistoryRepository {
    * cardio is a few hundred, and the three views each need a different span
    * of it. Only ticked bouts in finished workouts count, as for sets.
    */
-  async completedBouts(): Promise<LoggedBout[]> {
+  async completedBouts(options: OpenOption = {}): Promise<LoggedBout[]> {
     const { userId } = resolveContext(this.context);
+    const finished = options.includeOpen === true ? '' : 'AND ws.ended_at IS NOT NULL';
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.started_at, ws.bodyweight_kg, e.cardio_kind, ss.*
          FROM session_sets ss
@@ -299,7 +310,7 @@ export class HistoryRepository {
          JOIN exercises e ON e.id = se.exercise_id
         WHERE ss.user_id = ?
           AND ss.is_completed = 1
-          AND ws.ended_at IS NOT NULL
+          ${finished}
           AND e.cardio_kind IS NOT NULL
         ORDER BY ${instant('ws.started_at')} ASC, ss.order_key ASC`,
       [userId],

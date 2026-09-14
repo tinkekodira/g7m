@@ -20,9 +20,14 @@ What it does:
   Prefer to program your own? Do that; it will still tell you how it is going
   after a few sessions. See
   [ADR-0032](./DECISIONS.md#adr-0032--body-metrics-goals-and-the-coaching-loop-are-v1-scope).
-- **Progress.** This week, this month or all time: workouts, active time,
-  volume by day, cardio minutes, distance and calories, a calendar of the days
-  trained, and your best lifts and trained muscles on Your profile.
+- **Progress.** This week, this month or all time: a chart of weight lifted,
+  sets, workouts, active time, cardio minutes or calories, whichever you pick; a
+  calendar of the days trained; and your best lifts and trained muscles on Your
+  profile.
+- **Achievements.** 52 badges, from your first workout to a three-plate squat,
+  a week of five workouts or a rowed 2K — and one secret. Past training counts,
+  and a new one is celebrated with a banner the moment it is earned
+  ([ADR-0072](./DECISIONS.md#adr-0072--achievements-are-worked-out-from-the-log-and-celebrated-once)).
 - **Your data.** Light or dark, kilograms or pounds. Download everything as a
   file, or delete the account from Settings.
 

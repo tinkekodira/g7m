@@ -43,7 +43,14 @@ export function tabFor(pathname: string): TabId | null {
   if (path === '/' || under(path, '/plan') || under(path, '/calendar')) return 'home';
   if (under(path, '/learn') || under(path, '/exercises')) return 'learn';
   if (under(path, '/progress')) return 'progress';
-  if (under(path, '/profile') || under(path, '/you') || under(path, '/goal')) return 'profile';
+  if (
+    under(path, '/profile') ||
+    under(path, '/you') ||
+    under(path, '/goal') ||
+    under(path, '/achievements')
+  ) {
+    return 'profile';
+  }
   if (under(path, '/settings')) return 'settings';
   // Anything else is about to be sent home by the catch-all route.
   return 'home';

@@ -407,6 +407,20 @@ export class ExerciseRepository {
   }
 
   /**
+   * The ids of some exercises, by slug, for code that knows the catalogue by
+   * name: the achievements' "bench press" is `barbell-bench-press`. A slug not
+   * in the catalogue (or not synced yet) is simply absent from the map.
+   */
+  async idsBySlug(slugs: readonly string[]): Promise<Map<string, string>> {
+    if (slugs.length === 0) return new Map();
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT id, slug FROM exercises WHERE slug IN (${slugs.map(() => '?').join(', ')})`,
+      [...slugs],
+    );
+    return new Map(rows.map((row) => [readString(row, 'slug', ''), readString(row, 'id', '')]));
+  }
+
+  /**
    * Search, ranked identically to the server.
    *
    * Deliberately loads the catalogue and ranks in memory rather than pushing a

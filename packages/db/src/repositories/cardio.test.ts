@@ -226,4 +226,34 @@ describe('cardio in history', () => {
     const [summary] = await history().sessionSummaries();
     expect(summary).toMatchObject({ setCount: 1, boutCount: 1 });
   });
+  /**
+   * Achievements are earned mid-workout (ADR-0072), so they read the open
+   * workout too. Everything else still waits for Finish.
+   */
+  it('reads the workout in progress only when asked to', async () => {
+    const bout = await rowerBout();
+    await sessions.completeSet(bout.id);
+    const session = await sessions.active();
+    if (session === null) throw new Error('No workout in progress');
+    const lift = await sessions.addExercise(session.id, 'bench');
+    const set = await sessions.addSet(lift.id, {
+      weightKg: 100,
+      reps: 1,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.completeSet(set.id);
+
+    expect(await history().completedBouts()).toEqual([]);
+    expect(await history().completedSets()).toEqual([]);
+    expect(await history().sessionSummaries(null)).toEqual([]);
+
+    expect(await history().completedBouts({ includeOpen: true })).toHaveLength(1);
+    expect(await history().completedSets({ includeOpen: true })).toMatchObject([
+      { exerciseId: 'bench', weightKg: 100 },
+    ]);
+    expect(await history().sessionSummaries(null, { includeOpen: true })).toMatchObject([
+      { endedAt: null, setCount: 2, boutCount: 1 },
+    ]);
+  });
 });

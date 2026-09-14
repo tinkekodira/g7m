@@ -186,6 +186,11 @@ const profiles = new Table({
   rest_seconds_default: column.integer,
   week_starts_on: column.integer,
   onboarded_at: column.text,
+  /**
+   * Comma-separated keys of the achievements already celebrated, so the banner
+   * plays once per badge across devices. Earned is worked out, never stored.
+   */
+  achievements_seen: column.text,
   created_at: column.text,
   updated_at: column.text,
 });

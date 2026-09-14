@@ -199,6 +199,25 @@ export function boutCalories(
   };
 }
 
+/**
+ * How far up a bout went, in metres: a treadmill's incline over its distance,
+ * or a stair climber's floors. Nothing else on the list climbs. For Everest
+ * (ADR-0072).
+ *
+ * Distance times grade, which is the rise to within a percent at any incline
+ * a treadmill goes to. A decline climbs nothing rather than subtracting.
+ */
+export function boutClimbM(kind: CardioKind, bout: Bout): number {
+  if (kind === 'treadmill') {
+    const grade = Math.max(0, (bout.inclinePercent ?? 0) / 100);
+    return Math.max(0, bout.distanceM ?? 0) * grade;
+  }
+  if (kind === 'stair_climber') {
+    return Math.max(0, bout.floors ?? 0) * STEPS_PER_FLOOR * STEP_HEIGHT_M;
+  }
+  return 0;
+}
+
 /** Concept2's pace-to-power formula; pace in seconds per metre. */
 export function wattsFromPace(secondsPerMetre: number): number {
   if (!(secondsPerMetre > 0)) return 0;

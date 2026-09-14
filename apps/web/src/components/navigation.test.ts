@@ -35,6 +35,7 @@ describe('tabFor', () => {
     expect(tabFor('/exercises/barbell-bench-press')).toBe('learn');
     expect(tabFor('/you')).toBe('profile');
     expect(tabFor('/goal')).toBe('profile');
+    expect(tabFor('/achievements')).toBe('profile');
     expect(tabFor('/plan')).toBe('home');
     expect(tabFor('/calendar')).toBe('home');
   });

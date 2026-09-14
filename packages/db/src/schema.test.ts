@@ -182,6 +182,22 @@ describe('the profile trigger', () => {
   });
 });
 
+describe('achievements seen', () => {
+  it('takes a comma-separated list of keys, and nothing else', async () => {
+    const id = await h.createUser('hana@example.test');
+    const write = (value: string) =>
+      h.db.query(`update public.profiles set achievements_seen = $1 where user_id = $2`, [
+        value,
+        id,
+      ]);
+
+    await write('day-one,gym-rat,the-2k');
+    await expect(write('Day One')).rejects.toThrow(/achievements_seen_shape/);
+    await expect(write('day-one,')).rejects.toThrow(/achievements_seen_shape/);
+    await expect(write('')).rejects.toThrow(/achievements_seen_shape/);
+  });
+});
+
 describe('constraints that protect the domain', () => {
   async function insertExercise(overrides: Record<string, string>): Promise<void> {
     const base: Record<string, string> = {
