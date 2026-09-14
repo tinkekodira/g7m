@@ -18,6 +18,8 @@ import { WelcomeScreen } from './screens/WelcomeScreen.js';
 import { ProfileScreen } from './screens/ProfileScreen.js';
 import { SettingsScreen } from './screens/SettingsScreen.js';
 import { CalendarScreen } from './screens/CalendarScreen.js';
+import { AchievementsScreen } from './screens/AchievementsScreen.js';
+import { AchievementCelebrations } from './components/AchievementBanner.js';
 import { TabLayout } from './components/TabLayout.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
@@ -183,6 +185,17 @@ function WelcomeRoutes() {
  */
 function AppRoutes() {
   return (
+    <>
+      <AppScreens />
+      {/* Beside the routes rather than in one, so a badge earned mid-set is
+          announced on the workout screen, where it was earned. ADR-0072. */}
+      <AchievementCelebrations />
+    </>
+  );
+}
+
+function AppScreens() {
+  return (
     <Routes>
       <Route element={<TabLayout />}>
         <Route path="/" element={<HomeScreen />} />
@@ -196,6 +209,7 @@ function AppRoutes() {
         <Route path="/goal" element={<GoalScreen />} />
         <Route path="/plan" element={<PlanScreen />} />
         <Route path="/calendar" element={<CalendarScreen />} />
+        <Route path="/achievements" element={<AchievementsScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>

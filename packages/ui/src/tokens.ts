@@ -33,6 +33,9 @@ export const colorTokens = {
   warning: '#d9a441',
   danger: '#a34734',
 
+  'badge-cardio': '#6f9fd8',
+  'badge-secret': '#a88bd9',
+
   'muscle-idle': '#4a4844',
   'muscle-hover': '#d97757',
   'muscle-selected': '#e8a184',
@@ -75,6 +78,9 @@ export const lightColorTokens = {
   success: '#3b7a43',
   warning: '#8a5d0a',
   danger: '#b23b28',
+
+  'badge-cardio': '#2e6aa8',
+  'badge-secret': '#6b4aa5',
 
   'bg-stage': '#e6e2d9',
 } as const satisfies Partial<Record<ColorTokenName, string>>;

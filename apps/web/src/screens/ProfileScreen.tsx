@@ -9,6 +9,9 @@ import { useSculptedBody } from '../lib/anatomy-model.js';
 import { Flag } from '../components/Flag.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { useAchievements } from '../lib/db/use-achievements.js';
+import { AchievementMedal } from '../components/AchievementMedal.js';
+import { earnedCount, latestEarned } from './achievements-view.js';
 import {
   HEATMAP_WEEKS,
   SESSIONS_BEFORE_ADVICE,
@@ -46,9 +49,8 @@ const VIEWS = [
  * gets trained most, and by what stays grey, what does not — and the heaviest
  * thing lifted on each exercise.
  *
- * Achievements are a placeholder, on purpose and visibly so: the button is
- * here so the screen has its final shape, and it says it is coming rather
- * than opening onto nothing.
+ * Achievements sit between the numbers and the body: how many are earned,
+ * the latest few, and the way into the whole collection (ADR-0072).
  */
 export function ProfileScreen() {
   const now = useMemo(() => new Date(), []);
@@ -159,24 +161,7 @@ export function ProfileScreen() {
         </dl>
       </section>
 
-      {/* Not clickable yet, and it says so. A button that opened onto an empty
-          screen would be a promise broken on the first tap. */}
-      <button
-        type="button"
-        disabled
-        className="flex min-h-tap w-full cursor-not-allowed items-center gap-3 rounded-card border border-dashed border-strong bg-surface px-4 py-3 text-left"
-      >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
-          <TrophyIcon className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-base font-medium text-primary">Achievements</span>
-          <span className="block text-xs text-muted">Milestones from your training</span>
-        </span>
-        <span className="shrink-0 rounded-full bg-elevated px-3 py-1 text-xs font-medium text-secondary">
-          Coming soon
-        </span>
-      </button>
+      <AchievementsLink />
 
       <TrainingBody now={now} />
 
@@ -186,6 +171,56 @@ export function ProfileScreen() {
         Educational content, not medical advice. These numbers shape a training plan, nothing more.
       </p>
     </main>
+  );
+}
+
+/**
+ * The way into Achievements, with the count and the last three earned on it,
+ * so the collection is visible from Profile without opening it.
+ */
+function AchievementsLink() {
+  const state = useAchievements();
+  const list = state.data?.list ?? [];
+  const { earned, total } = earnedCount(list);
+  const latest = latestEarned(list);
+  const recent = list
+    .filter((each) => each.earnedAt !== null)
+    .sort((a, b) => (b.earnedAt?.getTime() ?? 0) - (a.earnedAt?.getTime() ?? 0))
+    .slice(0, 3);
+
+  return (
+    <Link
+      to="/achievements"
+      viewTransition
+      className="flex min-h-tap w-full items-center gap-3 rounded-card border border-subtle bg-surface px-4 py-3 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+        <TrophyIcon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-medium text-primary">Achievements</span>
+        <span className="block truncate text-xs text-muted">
+          {state.data === null
+            ? 'Milestones from your training'
+            : latest === null
+              ? `${String(total)} to earn. Your first workout is the first.`
+              : `${String(earned)} of ${String(total)} earned`}
+        </span>
+      </span>
+      {recent.length > 0 && (
+        <span className="flex shrink-0 -space-x-2" aria-hidden>
+          {recent.map((each) => (
+            <AchievementMedal
+              key={each.key}
+              achievement={each}
+              size="sm"
+              className="ring-2 ring-surface"
+            />
+          ))}
+        </span>
+      )}
+      <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
+    </Link>
   );
 }
 

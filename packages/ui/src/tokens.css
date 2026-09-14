@@ -50,6 +50,13 @@
   --warning: #d9a441;
   --danger: #a34734; /* destructive actions only. 5.68:1 with --text-primary */
 
+  /* --- Achievement badges ---
+     Each category's ring. Three reuse the status colours (milestones the
+     accent, strength clubs gold, consistency green); these are the two the
+     palette had no colour for. Decorative, never text. ADR-0072. */
+  --badge-cardio: #6f9fd8;
+  --badge-secret: #a88bd9;
+
   /* --- Anatomy model --- */
   --muscle-idle: #4a4844;
   --muscle-hover: #d97757;
@@ -101,6 +108,9 @@
   --warning: #8a5d0a;
   --danger: #b23b28;
 
+  --badge-cardio: #2e6aa8;
+  --badge-secret: #6b4aa5;
+
   --bg-stage: #e6e2d9;
 
   --shadow-floating-value: 0 8px 24px -6px rgb(60 40 20 / 0.18);
@@ -131,6 +141,9 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+
+  --color-badge-cardio: var(--badge-cardio);
+  --color-badge-secret: var(--badge-secret);
 
   --color-muscle-idle: var(--muscle-idle);
   --color-muscle-hover: var(--muscle-hover);
@@ -241,6 +254,126 @@ body {
 
 @utility menu-in {
   animation: g7m-menu-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* --------------------------------------------------------------------------
+   An achievement arriving (ADR-0072). The banner drops in from the top with a
+   small overshoot, the card wiggles once it has landed, confetti bursts out
+   from behind the medal, and the whole thing lifts away again. Each piece is
+   short; together they last about a second and a half of a banner that stays
+   four. The reduced-motion block below flattens all of it: the banner simply
+   appears, and the confetti ends where it ends anyway — invisible.
+   -------------------------------------------------------------------------- */
+@keyframes g7m-banner-in {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(-100% - 24px));
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(6px);
+  }
+  80% {
+    transform: translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes g7m-banner-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(-100% - 24px));
+  }
+}
+
+@keyframes g7m-wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: -2.5deg;
+  }
+  40% {
+    rotate: 2deg;
+  }
+  60% {
+    rotate: -1.5deg;
+  }
+  80% {
+    rotate: 1deg;
+  }
+}
+
+@keyframes g7m-medal-pop {
+  0% {
+    transform: scale(0.3) rotate(-20deg);
+  }
+  60% {
+    transform: scale(1.15) rotate(6deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Each piece of confetti flies to its own --dx/--dy, set inline. */
+@keyframes g7m-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--turn))
+      scale(1);
+  }
+}
+
+/* A badge somebody arrived at from its banner, pointed out once. */
+@keyframes g7m-spotlight {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  25%,
+  60% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+@utility banner-in {
+  animation: g7m-banner-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility banner-out {
+  animation: g7m-banner-out 320ms cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+@utility wiggle {
+  animation: g7m-wiggle 700ms ease-in-out 500ms both;
+}
+
+@utility medal-pop {
+  animation: g7m-medal-pop 520ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
+}
+
+@utility confetti {
+  animation: g7m-confetti 1100ms cubic-bezier(0.1, 0.7, 0.3, 1) 380ms both;
+}
+
+@utility spotlight {
+  animation: g7m-spotlight 1800ms ease-in-out 300ms both;
 }
 
 /* --------------------------------------------------------------------------

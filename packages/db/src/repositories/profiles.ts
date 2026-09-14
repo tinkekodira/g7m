@@ -70,6 +70,8 @@ export interface Profile {
   /** 1 = Monday, matching ISO 8601. */
   readonly weekStartsOn: number;
   readonly onboardedAt: Date | null;
+  /** Keys of the achievements already celebrated, on any device. ADR-0072. */
+  readonly achievementsSeen: readonly string[];
 }
 
 /**
@@ -112,7 +114,16 @@ function toProfile(row: RawRow): Profile {
     restSecondsDefault: readNumber(row, 'rest_seconds_default', 120),
     weekStartsOn: readNumber(row, 'week_starts_on', 1),
     onboardedAt: readDate(row, 'onboarded_at'),
+    achievementsSeen: parseKeys(readOptionalString(row, 'achievements_seen')),
   };
+}
+
+/** An achievement key as the column's CHECK allows it. */
+const KEY = /^[a-z0-9-]+$/;
+
+function parseKeys(value: string | null): string[] {
+  if (value === null) return [];
+  return value.split(',').filter((key) => KEY.test(key));
 }
 
 export class ProfileRepository {
@@ -205,6 +216,30 @@ export class ProfileRepository {
       parameters,
     );
     return this.current();
+  }
+
+  /**
+   * Remember that some achievements have been celebrated, adding to the list.
+   *
+   * Read and merged here rather than handed a whole list by the caller, so two
+   * screens marking different badges cannot each write back a list missing the
+   * other's. Keys the column would refuse are left out rather than written: a
+   * profile row rejected on upload is discarded, and would take the rest of
+   * the profile's changes with it.
+   */
+  async markAchievementsSeen(keys: readonly string[]): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    const current = await this.current();
+    if (current === null) return;
+
+    const merged = new Set(current.achievementsSeen);
+    for (const key of keys) if (KEY.test(key)) merged.add(key);
+    if (merged.size === current.achievementsSeen.length) return;
+
+    await this.db.execute(
+      'UPDATE profiles SET achievements_seen = ?, updated_at = ? WHERE user_id = ?',
+      [[...merged].sort().join(','), toTimestamp(now()), userId],
+    );
   }
 }
 

@@ -757,3 +757,12 @@ describe('ranking a filtered list', () => {
     expect(await names({})).toEqual(['Pull-Up', 'Barbell Row', 'Barbell Curl', 'Hammer Curl']);
   });
 });
+
+describe('idsBySlug', () => {
+  it('maps the slugs it knows and leaves out the rest', async () => {
+    await seedExercise({ id: 'squat-1', slug: 'back-squat' });
+    const ids = await exercises.idsBySlug(['back-squat', 'no-such-lift']);
+    expect(ids).toEqual(new Map([['back-squat', 'squat-1']]));
+    expect(await exercises.idsBySlug([])).toEqual(new Map());
+  });
+});

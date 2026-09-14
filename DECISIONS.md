@@ -3948,3 +3948,103 @@ its workout's start over the same day or month columns:
   that its minutes and calories by day are chart views.
 - **The lifting history leaves bouts out,** so the Sets view counts sets. A
   bout is stored as a set, and would otherwise be counted as one.
+
+## ADR-0072 — Achievements are worked out from the log, and celebrated once
+
+**Status:** accepted · **Date:** 2026-09-14
+
+**Fifty-two badges in four groups and one secret**, chosen with the user:
+
+- **Milestones (12):** workout counts from 1 to 500, personal records, and
+  total tonnage.
+- **Strength clubs (15):** plates on the bar for bench, squat, deadlift and
+  overhead press, the 500 kg / 1,000 lb total, three bodyweight multiples,
+  and ten unassisted pull-ups.
+- **Consistency (13):**
+  - Gym Rat and No Days Off;
+  - four week-streak badges;
+  - Comeback Kid;
+  - Early Bird and Night Owl;
+  - Weekend Warrior;
+  - New Year's Day, Christmas Day and 29 February.
+- **Cardio & variety (11):** the first bout, a 2,000 m row, a treadmill 5K,
+  distance totals, Everest, 500 kcal in a workout, all five machines, lifting
+  and cardio in one workout, 25 exercises, and every muscle group in a week.
+- **Secret (1):** training on your birthday, the only hidden badge.
+
+Each has a catchy name and one line on what it takes. The catalogue and every
+rule live in `@g7m/core` (`achievements`), tested without a database.
+
+**Earned is worked out, never stored.** Every read derives each badge from the
+training log, with the date of the workout that earned it. So:
+
+- past training counts, backdated;
+- a mistyped set that is deleted takes its badge with it;
+- nothing can fire twice or be missed, as with `recordsInSession`.
+
+Rejected: a table of earned badges written when something happens. It needs
+an event for every way a badge can be earned. It keeps a badge for a set that
+no longer exists. And it has to be backfilled for everything done before
+achievements existed.
+
+**The rules, where they needed deciding:**
+
+- **The workout in progress counts** for what happens inside one: a heavy set,
+  a record, a long row. The banner arrives at the bench. Counts of workouts
+  wait for Finish.
+- **Plate clubs are the round numbers of the lifter's units:** 60, 100, 140,
+  180 and 220 kg, or 135, 225, 315, 405 and 495 lb. The same holds for tonnage
+  (tonnes, or US tons of 2,000 lb) and the long distance (100 km, or 60
+  miles). They are close in difficulty but not identical; a round number on a
+  badge beats a converted one. 0.02 kg of tolerance lets a 225 lb bench
+  (stored as 102.06 kg) count.
+- **Barbell lifts only:** `barbell-bench-press`, `barbell-back-squat`,
+  `conventional-deadlift` and `overhead-press`. Pull-ups and chin-ups count
+  unless assisted.
+- **Bodyweight clubs use the bodyweight on the day** (the session's
+  snapshot). Progress towards one is measured against today's weight.
+- **Records follow the logger's rules.** The first workout on an exercise sets
+  the bar. A tie is not a record, and a set is at most one record.
+- **A streak week is held to the goal in force when it ended.** Goals are
+  append-only (ADR-0032), so a changed goal does not rewrite earlier weeks.
+  With no goal, three days. The week in progress never breaks a streak.
+- **Times of day come from the sets, not the workout's open time.** A workout
+  logged afterwards has no real clock, so it never earns Early Bird or Night
+  Owl.
+- **A birthday on 29 February counts on the 28th** in non-leap years.
+
+**Which badges have been celebrated is stored:** `profiles.achievements_seen`,
+comma-separated keys, merged on write. It syncs, so no device announces a
+badge another device already announced.
+
+- **Text, not `text[]` or `jsonb`:** the device writes through PowerSync as
+  SQLite text, and a JSON string would land in jsonb as a string.
+- **A CHECK holds the shape the app writes.**
+
+**The banner is loud for news and quiet for history.** A badge earned in the
+last day, or while the app was open, gets its own banner:
+
+- it drops in from the top with an overshoot;
+- it wiggles once, and confetti bursts from behind the medal;
+- it lifts away after about four seconds;
+- a tap opens the badge on the Achievements screen (`?badge=`), and a flick
+  up dismisses it.
+
+Anything older — a year of past workouts on the first launch, or a badge
+added in a later version — is gathered into one quiet line. More than three
+new at once become a summary, not a parade. A badge is marked celebrated as
+soon as it is queued. A banner lost to the app closing is a smaller mistake
+than one that replays every launch. Nothing is judged until the profile has
+synced, because it arrives in the same checkpoint as the log. Reduced motion
+flattens every animation.
+
+**The screen** is a badge grid in five sections:
+
+- **Earned badges** are in their category's colour, with the date earned.
+- **Locked badges** are greyed, with a progress bar in the lifter's units.
+  Badges only a date can give show when that date next comes round instead.
+- **The secret** shows as a question mark until it is earned.
+- **Profile** shows the count and the three latest badges, and opens the
+  screen.
+- **The plate clubs' medal** is a barbell drawn with that many plates a side.
+  The rest use emoji, which are colourful and need no artwork.

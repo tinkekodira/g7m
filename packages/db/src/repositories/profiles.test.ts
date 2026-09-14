@@ -272,3 +272,39 @@ describe('country', () => {
     expect((await profiles.current())?.country).toBeNull();
   });
 });
+
+describe('achievements seen', () => {
+  it('starts with none', async () => {
+    await seedProfile();
+    expect((await profiles.current())?.achievementsSeen).toEqual([]);
+  });
+
+  it('adds to the list rather than replacing it, sorted and without repeats', async () => {
+    await seedProfile({ achievements_seen: 'gym-rat' });
+    await profiles.markAchievementsSeen(['day-one', 'gym-rat']);
+    await profiles.markAchievementsSeen(['two-plate-bench']);
+
+    expect((await profiles.current())?.achievementsSeen).toEqual([
+      'day-one',
+      'gym-rat',
+      'two-plate-bench',
+    ]);
+    const row = await db.getOptional<{ achievements_seen: string; updated_at: string }>(
+      'SELECT achievements_seen, updated_at FROM profiles WHERE user_id = ?',
+      [USER],
+    );
+    expect(row?.achievements_seen).toBe('day-one,gym-rat,two-plate-bench');
+    expect(row?.updated_at).toBe(NOW.toISOString());
+  });
+
+  it('leaves out a key the column would refuse, and writes nothing for nothing new', async () => {
+    await seedProfile({ achievements_seen: 'day-one' });
+    await profiles.markAchievementsSeen(['Day One', 'a,b', 'day-one']);
+    const row = await db.getOptional<{ achievements_seen: string; updated_at: string }>(
+      'SELECT achievements_seen, updated_at FROM profiles WHERE user_id = ?',
+      [USER],
+    );
+    expect(row?.achievements_seen).toBe('day-one');
+    expect(row?.updated_at).toBe('2026-09-01T10:00:00.000Z');
+  });
+});
