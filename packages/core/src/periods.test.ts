@@ -4,6 +4,8 @@ import {
   comparePeriods,
   formatMinutes,
   periodWindow,
+  periodsBack,
+  shiftWindow,
   startOfMonth,
   totalsWithin,
   volumeBuckets,
@@ -301,5 +303,42 @@ describe('formatMinutes', () => {
     expect(formatMinutes(59.6)).toBe('1h');
     expect(formatMinutes(-5)).toBe('0m');
     expect(formatMinutes(Number.NaN)).toBe('0m');
+  });
+});
+
+describe('stepping back a period', () => {
+  it('moves a week back whole, comparison and all', () => {
+    const window = shiftWindow(periodWindow('week', WEDNESDAY), 2);
+    expect(window.current).toEqual({ start: local(2026, 8, 24, 0), end: local(2026, 8, 31, 0) });
+    expect(window.chart).toEqual(window.current);
+    expect(window.previous).toEqual({ start: local(2026, 8, 17, 0), end: local(2026, 8, 24, 0) });
+  });
+
+  it('moves a month back by calendar months, into last year', () => {
+    const window = shiftWindow(periodWindow('month', WEDNESDAY), 9);
+    expect(window.current).toEqual({ start: local(2025, 12, 1, 0), end: local(2026, 1, 1, 0) });
+  });
+
+  it('keeps Monday to Monday across the October clock change', () => {
+    // The week of 26 October 2026 has a 25-hour Sunday in Europe; stepping by
+    // days keeps the edges at midnight wherever the tests run.
+    const window = shiftWindow(periodWindow('week', local(2026, 11, 4)), 1);
+    expect(window.current.start).toEqual(local(2026, 10, 26, 0));
+    expect(window.current.end).toEqual(local(2026, 11, 2, 0));
+  });
+
+  it('leaves this period, and all time, as they were', () => {
+    const week = periodWindow('week', WEDNESDAY);
+    expect(shiftWindow(week, 0)).toBe(week);
+    const all = periodWindow('all', WEDNESDAY, 1, local(2026, 1, 1));
+    expect(shiftWindow(all, 3)).toBe(all);
+  });
+
+  it('goes back as far as the first workout, and no further', () => {
+    expect(periodsBack('week', WEDNESDAY, 1, local(2026, 8, 26))).toBe(2);
+    expect(periodsBack('week', WEDNESDAY, 1, local(2026, 9, 7, 8))).toBe(0);
+    expect(periodsBack('month', WEDNESDAY, 1, local(2025, 11, 30))).toBe(10);
+    expect(periodsBack('month', WEDNESDAY, 1, null)).toBe(0);
+    expect(periodsBack('all', WEDNESDAY, 1, local(2020, 1, 1))).toBe(0);
   });
 });

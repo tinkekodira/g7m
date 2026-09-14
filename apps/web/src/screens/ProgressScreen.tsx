@@ -1,8 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
-  PERIODS,
   cardioTotalsWithin,
   chartBuckets,
   comparePeriods,
@@ -10,6 +9,8 @@ import {
   describeWhen,
   formatMinutes,
   periodWindow,
+  periodsBack,
+  shiftWindow,
   startOfDay,
   totalsWithin,
   trainingMinutes,
@@ -23,6 +24,7 @@ import { SegmentedControl, cx } from '@g7m/ui';
 import { ColumnChart } from '../components/Charts.js';
 import {
   CalendarIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   ClipboardIcon,
   ClockIcon,
@@ -31,12 +33,16 @@ import {
   HeartIcon,
 } from '../components/icons.js';
 import { ViewPicker, type ViewOption } from '../components/ViewPicker.js';
+import { StepArrow } from '../components/StepArrow.js';
 import { ReviewCard } from '../components/ReviewCard.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import {
   PERIOD_OPTIONS,
+  backFrom,
   captionFor,
+  chartPeriodLabel,
+  chartPeriodPhrase,
   dateTile,
   describeWork,
   metricChartSummary,
@@ -96,21 +102,21 @@ export function ProgressScreen() {
   const [params, setParams] = useSearchParams();
   const period = periodFrom(params.get('period'));
   const metric = metricFrom(params.get('chart'));
+  const backParam = params.get('back');
   // Defaults left out of the address, so an untouched screen has a clean one.
-  const writeParams = (nextPeriod: Period, nextMetric: ChartMetric): void => {
+  const writeParams = (nextPeriod: Period, nextMetric: ChartMetric, nextBack: number): void => {
     setParams(
       {
         ...(nextPeriod === 'week' ? {} : { period: nextPeriod }),
         ...(nextMetric === 'volume' ? {} : { chart: nextMetric }),
+        ...(nextBack === 0 ? {} : { back: String(nextBack) }),
       },
       { replace: true },
     );
   };
+  // A new period starts from now: three weeks back is not three months back.
   const choose = (next: Period): void => {
-    writeParams(next, metric);
-  };
-  const chooseMetric = (next: ChartMetric): void => {
-    writeParams(period, next);
+    writeParams(next, metric, 0);
   };
 
   const state = useCatalogue(`progress-${startOfDay(now).toISOString()}`, async (r) => {
@@ -122,15 +128,10 @@ export function ProgressScreen() {
     const summaries = await r.history.sessionSummaries(null);
     const firstAt = summaries.at(-1)?.startedAt ?? null;
 
-    // Sets as far back as any of the three views reaches — the month before
-    // this one, or the start of the all-time chart — so no view needs a read
-    // of its own.
-    const earliest = PERIODS.map((each) => {
-      const window = periodWindow(each, now, weekStartsOn, firstAt);
-      return window.previous?.start ?? window.chart.start;
-    }).reduce((a, b) => (a < b ? a : b));
-
-    const sets = await r.history.completedSets({ from: earliest });
+    // Every set: the chart's arrows go back as far as the first workout, and
+    // stepping through weeks should be arithmetic, not a read per tap. A year
+    // of training is a few thousand small rows (ADR-0073).
+    const sets = await r.history.completedSets();
     // Every bout ever: small rows, and all time needs all of them (ADR-0069).
     const bouts = await r.history.completedBouts();
     return {
@@ -151,8 +152,12 @@ export function ProgressScreen() {
     const current = totalsWithin(summaries, window.current);
     const previous = window.previous === null ? null : totalsWithin(summaries, window.previous);
 
-    // Whichever view the dropdown chose, over the period's columns.
-    const chart = chartBuckets(metric, window, { sets, sessions: summaries, bouts }, now);
+    // Whichever view the dropdown chose, over the columns of whichever week or
+    // month the arrows are on. The cards above stay on this one.
+    const maxBack = periodsBack(period, now, weekStartsOn, firstAt);
+    const back = backFrom(backParam, maxBack);
+    const chartWindow = shiftWindow(window, back);
+    const chart = chartBuckets(metric, chartWindow, { sets, sessions: summaries, bouts }, now);
 
     const cardioNow = cardioTotalsWithin(bouts, window.current);
     const cardioBefore =
@@ -164,6 +169,10 @@ export function ProgressScreen() {
       workouts: comparePeriods(current.workouts, previous?.workouts ?? null),
       minutes: comparePeriods(current.minutes, previous?.minutes ?? null),
       chart,
+      back,
+      maxBack,
+      chartLabel: chartPeriodLabel(period, back, chartWindow.chart, now),
+      chartPhrase: chartPeriodPhrase(period, back, chartWindow.chart, now),
       // What the chart draws — all time is the last twelve months of columns.
       chartTotal: chart.reduce((sum, bucket) => sum + bucket.value, 0),
       cardio: {
@@ -171,7 +180,7 @@ export function ProgressScreen() {
         minutes: comparePeriods(cardioNow.minutes, cardioBefore?.minutes ?? null),
       },
     };
-  }, [state.data, period, metric, now]);
+  }, [state.data, period, metric, backParam, now]);
 
   const unitSystem = state.data?.unitSystem ?? 'metric';
   const since = period === 'all' ? sinceLine(state.data?.firstAt ?? null) : null;
@@ -221,37 +230,66 @@ export function ProgressScreen() {
                 label="Chart view"
                 value={metric}
                 options={VIEW_OPTIONS}
-                onChange={chooseMetric}
+                onChange={(next) => {
+                  writeParams(period, next, view.back);
+                }}
               />
               <span className="text-right">
                 <span className="numeric block text-sm text-secondary">
                   {metricTotal(metric, view.chartTotal, unitSystem)}
                 </span>
-                <span className="block text-xs text-muted">
-                  {period === 'all' && view.window.clipped
-                    ? 'in the last 12 months'
-                    : periodPhrase(period)}
-                </span>
+                {/* Which week or month is said once, between the arrows; all
+                    time has no arrows, so it is said here. */}
+                {period === 'all' && (
+                  <span className="block text-xs text-muted">
+                    {view.window.clipped ? 'in the last 12 months' : 'all time'}
+                  </span>
+                )}
               </span>
             </div>
+            {period !== 'all' && (
+              <PeriodStepper
+                period={period}
+                label={view.chartLabel}
+                back={view.back}
+                maxBack={view.maxBack}
+                onStep={(next) => {
+                  writeParams(period, metric, next);
+                }}
+              />
+            )}
             <p className="mt-2 mb-4 text-xs text-muted">
               {metricOption(metric).caption}
               {period === 'all' ? ' One column a month.' : ' One column a day.'}
             </p>
-            <ColumnChart
-              data={view.chart.map((bucket) => ({
-                key: bucket.key,
-                value: bucket.value,
-                caption: captionFor(bucket, period),
-                // A day is trained or it is not. A month in progress is
-                // partial, and drawn lighter so it does not read as a slump.
-                inProgress: period === 'all' && bucket.inProgress,
-                future: bucket.future,
-                highlight: period !== 'all' && bucket.inProgress,
-              }))}
-              format={(value) => metricShort(metric, value, unitSystem)}
-              summary={metricChartSummary(view.chart, metric, period, unitSystem)}
-            />
+            <SwipeToStep
+              enabled={period !== 'all'}
+              onStep={(direction) => {
+                const next = view.back + (direction === 'earlier' ? 1 : -1);
+                if (next >= 0 && next <= view.maxBack) writeParams(period, metric, next);
+              }}
+            >
+              <ColumnChart
+                data={view.chart.map((bucket) => ({
+                  key: bucket.key,
+                  value: bucket.value,
+                  caption: captionFor(bucket, period),
+                  // A day is trained or it is not. A month in progress is
+                  // partial, and drawn lighter so it does not read as a slump.
+                  inProgress: period === 'all' && bucket.inProgress,
+                  future: bucket.future,
+                  highlight: period !== 'all' && bucket.inProgress,
+                }))}
+                format={(value) => metricShort(metric, value, unitSystem)}
+                summary={metricChartSummary(
+                  view.chart,
+                  metric,
+                  period,
+                  unitSystem,
+                  period === 'all' ? undefined : view.chartPhrase,
+                )}
+              />
+            </SwipeToStep>
           </section>
 
           {/* Only once there is cardio to show: a lifter who never gets on a
@@ -283,6 +321,108 @@ export function ProgressScreen() {
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * The arrows either side of which week or month the chart is on, as the
+ * calendar steps through months. Back as far as the first workout, forward as
+ * far as now; "Back to this week" once it is more than a tap away. ADR-0073.
+ */
+function PeriodStepper({
+  period,
+  label,
+  back,
+  maxBack,
+  onStep,
+}: {
+  readonly period: Exclude<Period, 'all'>;
+  readonly label: string;
+  readonly back: number;
+  readonly maxBack: number;
+  readonly onStep: (back: number) => void;
+}) {
+  const unit = period === 'week' ? 'week' : 'month';
+  return (
+    <div className="mt-2 flex items-center gap-1">
+      <StepArrow
+        label={`Previous ${unit}`}
+        disabled={back >= maxBack}
+        onClick={() => {
+          onStep(back + 1);
+        }}
+      >
+        <ChevronLeftIcon className="size-5" />
+      </StepArrow>
+      <div className="min-w-0 flex-1 text-center">
+        <p aria-live="polite" className="numeric text-sm font-semibold text-primary">
+          {label}
+        </p>
+        {back > 1 && (
+          <button
+            type="button"
+            onClick={() => {
+              onStep(0);
+            }}
+            className="text-xs font-medium text-accent underline-offset-2 active:underline"
+          >
+            Back to this {unit}
+          </button>
+        )}
+      </div>
+      <StepArrow
+        label={`Next ${unit}`}
+        disabled={back <= 0}
+        onClick={() => {
+          onStep(back - 1);
+        }}
+      >
+        <ChevronRightIcon className="size-5" />
+      </StepArrow>
+    </div>
+  );
+}
+
+/**
+ * A sideways swipe across the chart steps it, as a thumb expects on a phone:
+ * right to left is later, left to right earlier, the way a page turns.
+ *
+ * Only a swipe that is mostly sideways and long enough to mean it, and only
+ * sideways: `touch-pan-y` leaves the page's own vertical scrolling to the
+ * browser and hands the horizontal movement here.
+ */
+function SwipeToStep({
+  enabled,
+  onStep,
+  children,
+}: {
+  readonly enabled: boolean;
+  readonly onStep: (direction: 'earlier' | 'later') => void;
+  readonly children: ReactNode;
+}) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  if (!enabled) return <>{children}</>;
+  return (
+    <div
+      className="touch-pan-y"
+      onPointerDown={(event) => {
+        start.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerUp={(event) => {
+        const from = start.current;
+        start.current = null;
+        if (from === null) return;
+        const dx = event.clientX - from.x;
+        const dy = event.clientY - from.y;
+        if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        onStep(dx > 0 ? 'earlier' : 'later');
+      }}
+      onPointerCancel={() => {
+        start.current = null;
+      }}
+    >
+      {children}
+    </div>
   );
 }
 

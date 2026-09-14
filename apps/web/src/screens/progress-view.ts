@@ -12,11 +12,18 @@ import {
   type ChartMetric,
   type Comparison,
   type Period,
+  type Span,
   type UnitSystem,
   type VolumeBucket,
 } from '@g7m/core';
 import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
-import { monthName, monthShort, weekdayName, weekdayShort } from '../lib/date-words.js';
+import {
+  MONTHS_SHORT,
+  monthName,
+  monthShort,
+  weekdayName,
+  weekdayShort,
+} from '../lib/date-words.js';
 
 export const PERIOD_OPTIONS = [
   { value: 'week', label: 'Weekly' },
@@ -27,6 +34,54 @@ export const PERIOD_OPTIONS = [
 /** The URL's `?period=`, if it names one. Anything else is the default week. */
 export function periodFrom(value: string | null): Period {
   return value === 'month' || value === 'all' ? value : 'week';
+}
+
+/**
+ * The URL's `?back=`: how many weeks or months the chart has been stepped
+ * back. Anything unreadable is now, and nothing goes past the first workout
+ * (`max`) or into the future.
+ */
+export function backFrom(value: string | null, max: number): number {
+  const steps = Number(value);
+  if (value === null || !Number.isInteger(steps) || steps <= 0) return 0;
+  return Math.min(steps, Math.max(0, max));
+}
+
+/**
+ * What the chart's arrows sit either side of: "This week", "Last week",
+ * "31 Aug – 6 Sep", "This month", "August", "December 2025".
+ *
+ * A week further back is named by its dates, because "three weeks ago" makes
+ * somebody count; a month by its name, with the year once it is another one.
+ */
+export function chartPeriodLabel(period: Period, back: number, span: Span, now: Date): string {
+  if (period === 'all') return 'All time';
+  if (period === 'week') {
+    if (back === 0) return 'This week';
+    if (back === 1) return 'Last week';
+    // The end is exclusive: the week's last day is the day before it.
+    const last = new Date(span.end);
+    last.setDate(last.getDate() - 1);
+    const sameYear =
+      span.start.getFullYear() === now.getFullYear() && last.getFullYear() === now.getFullYear();
+    const day = (date: Date) =>
+      `${String(date.getDate())} ${MONTHS_SHORT[date.getMonth()] ?? ''}${
+        sameYear ? '' : ` ${String(date.getFullYear())}`
+      }`;
+    return `${day(span.start)} – ${day(last)}`;
+  }
+  if (back === 0) return 'This month';
+  const name = monthName(span.start);
+  return span.start.getFullYear() === now.getFullYear()
+    ? name
+    : `${name} ${String(span.start.getFullYear())}`;
+}
+
+/** The same, mid-sentence: "last week", "31 Aug – 6 Sep", "in August". */
+export function chartPeriodPhrase(period: Period, back: number, span: Span, now: Date): string {
+  if (back === 0 || period === 'all') return periodPhrase(period);
+  const label = chartPeriodLabel(period, back, span, now);
+  return period === 'week' ? (back === 1 ? 'last week' : label) : `in ${label}`;
 }
 
 /** Under a headline number: "this week", "this month", "all time". */
@@ -198,18 +253,20 @@ export function metricChartSummary(
   metric: ChartMetric,
   period: Period,
   unitSystem: UnitSystem,
+  /** Which week or month, when it is not this one: "last week", "in August". */
+  when: string = periodPhrase(period),
 ): string {
   const { label } = metricOption(metric);
   const scope = period === 'all' ? 'by month' : 'by day';
   const active = buckets.filter((bucket) => bucket.value > 0);
-  if (active.length === 0) return `${label} ${scope}, ${periodPhrase(period)}. Nothing logged yet.`;
+  if (active.length === 0) return `${label} ${scope}, ${when}. Nothing logged.`;
   const total = buckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const columns = active
     .map(
       (bucket) => `${bucketName(bucket, period)} ${metricTotal(metric, bucket.value, unitSystem)}`,
     )
     .join(', ');
-  return `${label} ${scope}, ${periodPhrase(period)}: ${columns}. ${metricTotal(metric, total, unitSystem)} in total.`;
+  return `${label} ${scope}, ${when}: ${columns}. ${metricTotal(metric, total, unitSystem)} in total.`;
 }
 
 export interface ComparisonLine {

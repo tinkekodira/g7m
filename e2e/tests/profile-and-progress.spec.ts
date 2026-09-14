@@ -63,3 +63,66 @@ test('the Progress chart shows the view picked from its dropdown, and keeps it',
   await expect(page.getByRole('button', { name: /Chart view/ })).toContainText('Workouts');
   await expect(page.getByText('1 workout', { exact: true })).toBeVisible();
 });
+
+test('the chart steps back through weeks with its arrows, or a swipe, and stays there', async ({
+  page,
+}) => {
+  const user = await createUser('chart-back', { onboarded: true });
+  // A workout a week ago today, at midday: always last week, whatever the
+  // weekday, and far from midnight in any time zone the tests run in.
+  await sql(
+    `with s as (
+       insert into public.workout_sessions (user_id, started_at, ended_at)
+       values ($1, date_trunc('day', now()) - interval '7 days' + interval '12 hours',
+                   date_trunc('day', now()) - interval '7 days' + interval '13 hours')
+       returning id
+     ), se as (
+       insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+       select $1, s.id, e.id, 'a0' from s, public.exercises e
+        where e.slug = 'barbell-bench-press'
+       returning id
+     )
+     insert into public.session_sets
+       (user_id, session_exercise_id, order_key, set_type, load_type, weight_kg, reps,
+        is_completed, completed_at)
+     select $1, se.id, 'a0', 'working', 'external', 60, 8, true,
+            date_trunc('day', now()) - interval '7 days' + interval '12 hours 30 minutes'
+       from se`,
+    [user.id],
+  );
+  await signIn(page, user);
+  await openTab(page, 'Progress');
+
+  // This week: nothing yet, and nowhere later to go.
+  await expect(page.getByText('This week', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next week' })).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Previous week' }).click();
+  await expect(page.getByText('Last week', { exact: true })).toBeVisible();
+  await expect(page.getByText('480 kg')).toBeVisible();
+  await expect(page).toHaveURL(/back=1/);
+  // The first workout is last week, so the arrows stop there.
+  await expect(page.getByRole('button', { name: 'Previous week' })).toBeDisabled();
+
+  // Kept through a reload, like the period and the view.
+  await page.reload();
+  await expect(page.getByText('Last week', { exact: true })).toBeVisible();
+
+  // Back to now, then earlier again with a swipe across the chart.
+  await page.getByRole('button', { name: 'Next week' }).click();
+  await expect(page.getByText('This week', { exact: true })).toBeVisible();
+  const chart = page.getByRole('img', { name: /by day/ });
+  const box = await chart.boundingBox();
+  if (box === null) throw new Error('The chart has no box');
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + 40, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 40, y, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByText('Last week', { exact: true })).toBeVisible();
+
+  // A new period starts from now.
+  await page.getByRole('radio', { name: 'Monthly' }).click();
+  await expect(page.getByText('This month', { exact: true })).toBeVisible();
+  await expect(page).not.toHaveURL(/back=/);
+});

@@ -187,7 +187,7 @@ function describeTooSoon(observation: Extract<Observation, { kind: 'too_soon' }>
   const wait = Math.max(1, neededDays - days);
   return {
     heading: 'Enough sessions, not enough weeks',
-    detail: `${String(sessions)} sessions over ${String(days)} ${days === 1 ? 'day' : 'days'}. A weekly pattern needs about two weeks to mean anything, so this fills in ${wait === 1 ? 'tomorrow' : `in ${String(wait)} days`}.`,
+    detail: `${String(sessions)} sessions over ${String(days)} ${days === 1 ? 'day' : 'days'}. A weekly pattern needs about two weeks to mean anything, so check back ${wait === 1 ? 'tomorrow' : `in ${String(wait)} days`}.`,
   };
 }
 

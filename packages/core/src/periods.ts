@@ -125,6 +125,58 @@ export function periodWindow(
   };
 }
 
+/**
+ * The same period, `back` weeks or months earlier: last week, the week
+ * before, August. What the chart's arrows step through (ADR-0073).
+ *
+ * Every span moves together, so a week three back still compares with the
+ * week before it. Stepped by calendar days and months, never milliseconds, so
+ * a week across a clock change is still Monday to Monday. All time has no
+ * "before", and comes back as it went in.
+ */
+export function shiftWindow(window: PeriodWindow, back: number): PeriodWindow {
+  const steps = Math.max(0, Math.trunc(back));
+  if (window.period === 'all' || steps === 0) return window;
+  const move = (date: Date): Date =>
+    window.period === 'week' ? addDays(date, -7 * steps) : addMonths(date, -steps);
+  const span = (from: Span): Span => ({ start: move(from.start), end: move(from.end) });
+  return {
+    ...window,
+    current: span(window.current),
+    previous: window.previous === null ? null : span(window.previous),
+    chart: span(window.chart),
+  };
+}
+
+/**
+ * How many weeks or months back the first workout is: as far as the arrows
+ * go. Nothing before it has anything to draw. Zero with no workouts yet, a
+ * first workout this period, or all time.
+ */
+export function periodsBack(
+  period: Period,
+  now: Date,
+  weekStartsOn: WeekStart = DEFAULT_WEEK_START,
+  firstSessionAt: Date | null = null,
+): number {
+  if (period === 'all' || firstSessionAt === null || firstSessionAt > now) return 0;
+  if (period === 'week') {
+    const days = Math.round(
+      (startOfWeek(now, weekStartsOn).getTime() -
+        startOfWeek(firstSessionAt, weekStartsOn).getTime()) /
+        (24 * 60 * 60 * 1000),
+    );
+    // Rounded: a week across a clock change is an hour short or long.
+    return Math.max(0, Math.round(days / 7));
+  }
+  return Math.max(
+    0,
+    (now.getFullYear() - firstSessionAt.getFullYear()) * 12 +
+      now.getMonth() -
+      firstSessionAt.getMonth(),
+  );
+}
+
 export interface VolumeBucket {
   /** `2026-09-07` for a day, `2026-09` for a month. Stable and sortable. */
   readonly key: string;
