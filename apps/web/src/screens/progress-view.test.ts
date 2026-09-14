@@ -8,6 +8,9 @@ import {
   describeComparison,
   describeWork,
   metricChartSummary,
+  backFrom,
+  chartPeriodLabel,
+  chartPeriodPhrase,
   metricFrom,
   metricShort,
   metricTotal,
@@ -194,7 +197,57 @@ describe('the chart views', () => {
       'Workouts by day, this week: Monday 2 workouts, Wednesday 1 workout. 3 workouts in total.',
     );
     expect(metricChartSummary([{ start: monday, value: 0 }], 'sets', 'month', 'metric')).toBe(
-      'Sets by day, this month. Nothing logged yet.',
+      'Sets by day, this month. Nothing logged.',
     );
+  });
+});
+
+describe('stepping the chart back', () => {
+  const now = new Date(2026, 8, 16, 15);
+  const week = (start: Date) => {
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return { start, end };
+  };
+
+  it('reads how far back from the URL, never past the first workout or into the future', () => {
+    expect(backFrom(null, 5)).toBe(0);
+    expect(backFrom('2', 5)).toBe(2);
+    expect(backFrom('9', 5)).toBe(5);
+    expect(backFrom('-1', 5)).toBe(0);
+    expect(backFrom('1.5', 5)).toBe(0);
+    expect(backFrom('two', 5)).toBe(0);
+  });
+
+  it('names a week as people do: this, last, then its dates', () => {
+    expect(chartPeriodLabel('week', 0, week(new Date(2026, 8, 14)), now)).toBe('This week');
+    expect(chartPeriodLabel('week', 1, week(new Date(2026, 8, 7)), now)).toBe('Last week');
+    expect(chartPeriodLabel('week', 2, week(new Date(2026, 7, 31)), now)).toBe('31 Aug – 6 Sep');
+    expect(chartPeriodLabel('week', 37, week(new Date(2025, 11, 29)), now)).toBe(
+      '29 Dec 2025 – 4 Jan 2026',
+    );
+  });
+
+  it('names a month by its name, with the year once it is another one', () => {
+    const august = { start: new Date(2026, 7, 1), end: new Date(2026, 8, 1) };
+    const december = { start: new Date(2025, 11, 1), end: new Date(2026, 0, 1) };
+    expect(chartPeriodLabel('month', 0, august, now)).toBe('This month');
+    expect(chartPeriodLabel('month', 1, august, now)).toBe('August');
+    expect(chartPeriodLabel('month', 9, december, now)).toBe('December 2025');
+    expect(chartPeriodPhrase('month', 1, august, now)).toBe('in August');
+    expect(chartPeriodPhrase('week', 1, week(new Date(2026, 8, 7)), now)).toBe('last week');
+    expect(chartPeriodPhrase('week', 0, week(new Date(2026, 8, 14)), now)).toBe('this week');
+  });
+
+  it('says which week the chart is of when read aloud', () => {
+    expect(
+      metricChartSummary(
+        [{ start: new Date(2026, 8, 7), value: 1 }],
+        'workouts',
+        'week',
+        'metric',
+        'last week',
+      ),
+    ).toBe('Workouts by day, last week: Monday 1 workout. 1 workout in total.');
   });
 });

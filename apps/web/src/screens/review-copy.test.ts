@@ -321,6 +321,15 @@ describe('saying which threshold is short', () => {
     expect(describeObservation(early(10, 11), 'metric').detail).toContain('tomorrow');
   });
 
+  /** The reported bug: "so this fills in in 7 days". */
+  it('never says "in" twice in a row', () => {
+    for (const days of [5, 11]) {
+      const detail = describeObservation(early(10, days), 'metric').detail;
+      expect(detail).not.toMatch(/\bin in\b/);
+      expect(detail).toMatch(/check back (tomorrow|in \d+ days)\.$/);
+    }
+  });
+
   it('asks for sessions first when both are short', () => {
     // Four days and two sessions: "log a few more" is the one somebody can act
     // on today, and a date is not.

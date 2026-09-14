@@ -4048,3 +4048,42 @@ flattens every animation.
   screen.
 - **The plate clubs' medal** is a barbell drawn with that many plates a side.
   The rest use emoji, which are colourful and need no artwork.
+
+## ADR-0073 — The chart steps through weeks and months, and the phone comes first
+
+**Status:** accepted · **Date:** 2026-09-14
+
+**The progress chart steps back.** Weekly and Monthly get arrows either side
+of a label, like the calendar's month: "This week", "Last week", "31 Aug –
+6 Sep", "This month", "August", "December 2025". A sideways swipe across the
+chart does the same on a phone: left to right is earlier, as a page turns.
+
+- **Only the chart moves.** The workout and time cards above it stay on this
+  week or month, with their comparison. The chart is where somebody looks
+  back; the cards answer "how is this week going".
+- **Back as far as the first workout, forward as far as now.** Beyond either
+  end there is nothing to draw, and the arrow fades instead of disappearing,
+  so the header does not shift. "Back to this week" appears once it is more
+  than one tap away.
+- **In the URL** as `?back=`, beside `?period=` and `?chart=` (ADR-0034), so
+  Back and a reload keep it. A new period starts from now, since three weeks
+  back is not three months back. An unreadable or out-of-range value is now.
+- **One arithmetic.** `shiftWindow` moves a period's spans back by calendar
+  weeks or months, never by milliseconds, so a week across a clock change is
+  still Monday to Monday. `periodsBack` says how far the first workout is.
+- **Every set is read once** when the screen opens, not just the last two
+  months. Stepping should be arithmetic rather than a read per tap, and a
+  year of training is a few thousand small rows.
+- **The arrows are one component** (`StepArrow`), shared with the calendar.
+- **Swipes use `touch-action: pan-y`,** so the page still scrolls vertically.
+  Only a mostly sideways movement of more than 48 px counts.
+
+**All time has no arrows.** It already shows everything, and "the all time
+before this one" means nothing.
+
+**Mobile comes first; desktop polish (Phase 8) is parked.** The phone is where
+the app is used: at the rack, one-handed, offline. So the effort goes into
+finishing that version before tuning anything for a mouse. The Tauri builds
+keep building, and nothing is removed. Desktop is parked, not cancelled, and
+comes back when the phone version is done. Until then, layouts are judged at
+phone widths first, as the browser tests already are (a Pixel 7).

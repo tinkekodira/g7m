@@ -1,5 +1,5 @@
 import { describeWork } from './progress-view.js';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
@@ -18,6 +18,7 @@ import type { SessionSummary } from '@g7m/db';
 import { Button, cx } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons.js';
+import { StepArrow } from '../components/StepArrow.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
   dayLabel,
@@ -149,7 +150,7 @@ export function CalendarScreen() {
         className="rounded-card border border-subtle bg-surface px-2 pt-3 pb-3"
       >
         <div className="flex items-center gap-1">
-          <MonthArrow
+          <StepArrow
             label="Previous month"
             disabled={!canGoBack}
             onClick={() => {
@@ -157,14 +158,14 @@ export function CalendarScreen() {
             }}
           >
             <ChevronLeftIcon className="size-5" />
-          </MonthArrow>
+          </StepArrow>
           <div className="min-w-0 flex-1 text-center">
             <h2 id="calendar-month" className="text-lg font-semibold text-primary">
               {monthTitle(month)}
             </h2>
             <p className="numeric text-xs text-muted">{monthSummary(inMonth.totals, month, now)}</p>
           </div>
-          <MonthArrow
+          <StepArrow
             label="Next month"
             disabled={!canGoForward}
             onClick={() => {
@@ -172,7 +173,7 @@ export function CalendarScreen() {
             }}
           >
             <ChevronRightIcon className="size-5" />
-          </MonthArrow>
+          </StepArrow>
         </div>
 
         <div aria-hidden className="mt-3 grid grid-cols-7">
@@ -234,30 +235,6 @@ export function CalendarScreen() {
         />
       )}
     </main>
-  );
-}
-
-function MonthArrow({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  readonly label: string;
-  readonly disabled: boolean;
-  readonly onClick: () => void;
-  readonly children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="flex size-tap shrink-0 items-center justify-center rounded-full text-secondary select-none enabled:active:bg-elevated disabled:opacity-30 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
-    >
-      {children}
-    </button>
   );
 }
 

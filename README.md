@@ -38,8 +38,8 @@ decision log is where it has been interpreted.
 
 > **Status.** Everything above works, on a phone, offline, and ships as the
 > Home Screen web app on iPhone. Phases 0–7 of the plan are complete and Phase 9
-> is under way; desktop polish (Phase 8) has not started. See
-> [Build phases](#build-phases).
+> is under way. Desktop polish (Phase 8) is parked: the phone app is being
+> finished first. See [Build phases](#build-phases).
 
 ---
 
@@ -327,8 +327,8 @@ In **Settings → Branches**, protect `main`:
 | 4 | Logging — the hot path | **Complete** — plus plates, past workouts and cardio |
 | 5 | 3D anatomy — viewer, raycasting, exercise panel | **Complete** |
 | 6 | Generator — body metrics, goals, rules engine | **Complete** — the Claude layer is designed but off: v1 costs nothing to run |
-| 7 | Progress — history, trends, heat map, how your plan is going | **Complete** — plus the calendar and cardio |
-| 8 | Desktop polish | Not started — the Tauri builds run; nothing is tuned for a mouse yet |
+| 7 | Progress — history, trends, heat map, how your plan is going | **Complete** — plus the calendar, cardio, chart views and achievements |
+| 8 | Desktop polish | **Parked** — the phone app comes first ([ADR-0073](./DECISIONS.md#adr-0073--the-chart-steps-through-weeks-and-months-and-the-phone-comes-first)); the Tauri builds still run |
 | 9 | Hardening — errors, GDPR, accessibility, performance | **In progress** — crash screen, data export, account deletion and browser tests done; accessibility and performance passes to come |
 
 ---
