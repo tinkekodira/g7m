@@ -3,7 +3,10 @@ import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
   PERIODS,
+  cardioBuckets,
+  cardioTotalsWithin,
   comparePeriods,
+  formatDistance,
   describeWhen,
   formatMinutes,
   periodWindow,
@@ -11,7 +14,9 @@ import {
   totalsWithin,
   trainingMinutes,
   volumeBuckets,
+  type CardioBucket,
   type Period,
+  type UnitSystem,
   type WeekStart,
 } from '@g7m/core';
 import type { SessionSummary } from '@g7m/db';
@@ -25,8 +30,10 @@ import { useTrainingReview } from '../lib/db/use-review.js';
 import {
   PERIOD_OPTIONS,
   captionFor,
+  cardioChartSummary,
   chartSummary,
   dateTile,
+  describeWork,
   describeComparison,
   periodFrom,
   periodPhrase,
@@ -82,12 +89,15 @@ export function ProgressScreen() {
     }).reduce((a, b) => (a < b ? a : b));
 
     const sets = await r.history.completedSets({ from: earliest });
+    // Every bout ever: small rows, and all time needs all of them (ADR-0069).
+    const bouts = await r.history.completedBouts();
     return {
       weekStartsOn,
       unitSystem: profile?.unitSystem ?? 'metric',
       summaries,
       firstAt,
       sets,
+      bouts,
     };
   });
 
@@ -100,6 +110,12 @@ export function ProgressScreen() {
     const current = totalsWithin(summaries, window.current);
     const previous = window.previous === null ? null : totalsWithin(summaries, window.previous);
 
+    const { bouts } = state.data;
+    const cardioNow = cardioTotalsWithin(bouts, window.current);
+    const cardioBefore =
+      window.previous === null ? null : cardioTotalsWithin(bouts, window.previous);
+    const cardioColumns = cardioBuckets(window, bouts, now);
+
     return {
       window,
       buckets,
@@ -107,6 +123,14 @@ export function ProgressScreen() {
       workouts: comparePeriods(current.workouts, previous?.workouts ?? null),
       minutes: comparePeriods(current.minutes, previous?.minutes ?? null),
       volumeKg: buckets.reduce((sum, bucket) => sum + bucket.volumeKg, 0),
+      cardio: {
+        columns: cardioColumns,
+        totals: cardioNow,
+        // What the chart draws, like the volume total above it — all time is
+        // the last twelve months of columns.
+        chartMinutes: cardioColumns.reduce((sum, bucket) => sum + bucket.minutes, 0),
+        minutes: comparePeriods(cardioNow.minutes, cardioBefore?.minutes ?? null),
+      },
     };
   }, [state.data, period, now]);
 
@@ -185,6 +209,25 @@ export function ProgressScreen() {
             />
           </section>
 
+          {/* Only once there is cardio to show: a lifter who never gets on a
+              machine should not scroll past a card of zeros. */}
+          {state.data.bouts.length > 0 && (
+            <CardioSection
+              period={period}
+              clipped={period === 'all' && view.window.clipped}
+              unitSystem={unitSystem}
+              columns={view.cardio.columns}
+              chartMinutes={view.cardio.chartMinutes}
+              distanceM={view.cardio.totals.distanceM}
+              kcal={view.cardio.totals.kcal}
+              comparison={
+                period === 'all'
+                  ? null
+                  : describeComparison(view.cardio.minutes, period, formatMinutes)
+              }
+            />
+          )}
+
           {review.data?.review != null && (
             <ReviewCard
               observations={review.data.review.observations}
@@ -197,6 +240,110 @@ export function ProgressScreen() {
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * Cardio for the period: time on the machines by day (by month for all time),
+ * with distance and calories under it. ADR-0069.
+ *
+ * Its own card rather than more lines on the volume one: volume is weight
+ * times reps and a treadmill has neither, so the two can never share an axis.
+ */
+function CardioSection({
+  period,
+  clipped,
+  unitSystem,
+  columns,
+  chartMinutes,
+  distanceM,
+  kcal,
+  comparison,
+}: {
+  readonly period: Period;
+  readonly clipped: boolean;
+  readonly unitSystem: UnitSystem;
+  readonly columns: readonly CardioBucket[];
+  readonly chartMinutes: number;
+  readonly distanceM: number;
+  readonly kcal: number;
+  readonly comparison: ComparisonLine | null;
+}) {
+  const unit = unitSystem === 'imperial' ? 'mi' : 'km';
+  return (
+    <section className="rounded-card border border-subtle bg-surface p-4">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-lg font-semibold text-primary">Cardio</h2>
+        {/* The total and how it compares, stacked on the right, so the caption
+            below keeps a line of its own on a phone. */}
+        <div className="text-right">
+          <p className="numeric text-sm text-secondary">
+            {formatMinutes(chartMinutes)}{' '}
+            <span className="text-muted">
+              {clipped ? 'in the last 12 months' : periodPhrase(period)}
+            </span>
+          </p>
+          {comparison !== null && (
+            <p className="text-xs">
+              <span
+                className={cx(
+                  'numeric font-semibold',
+                  comparison.ahead ? 'text-success' : 'text-secondary',
+                )}
+              >
+                {comparison.headline}
+              </span>{' '}
+              <span className="text-muted">{comparison.detail}</span>
+            </p>
+          )}
+        </div>
+      </div>
+      <p className="mt-1 mb-4 text-xs text-muted">
+        Time on the machines.{period === 'all' ? ' One column a month.' : ' One column a day.'}
+      </p>
+      <ColumnChart
+        data={columns.map((bucket) => ({
+          key: bucket.key,
+          value: bucket.minutes,
+          caption: captionFor(bucket, period),
+          inProgress: period === 'all' && bucket.inProgress,
+          future: bucket.future,
+          highlight: period !== 'all' && bucket.inProgress,
+        }))}
+        format={formatMinutes}
+        summary={cardioChartSummary(columns, period)}
+      />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <CardioFigure
+          label="Distance"
+          value={distanceM > 0 ? formatDistance(distanceM, unit) : '—'}
+          caption={periodPhrase(period)}
+        />
+        <CardioFigure
+          label="Calories"
+          value={kcal > 0 ? `≈ ${kcal.toLocaleString('en-GB')} kcal` : '—'}
+          caption={periodPhrase(period)}
+        />
+      </div>
+    </section>
+  );
+}
+
+function CardioFigure({
+  label,
+  value,
+  caption,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly caption: string;
+}) {
+  return (
+    <div className="rounded-control bg-elevated p-3">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="numeric text-lg font-semibold text-primary">{value}</p>
+      <p className="text-xs text-muted">{caption}</p>
+    </div>
   );
 }
 
@@ -310,8 +457,8 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
           {summary.name ?? 'Workout'}
         </span>
         <span className="numeric block text-xs text-muted">
-          {describeWhen(summary.startedAt, now)} · {summary.setCount}{' '}
-          {summary.setCount === 1 ? 'set' : 'sets'}
+          {describeWhen(summary.startedAt, now)} ·{' '}
+          {describeWork(summary.setCount, summary.boutCount)}
           {minutes !== null && ` · ${String(minutes)} min`}
         </span>
       </span>

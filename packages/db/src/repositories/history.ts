@@ -12,7 +12,7 @@
  * that a year of training is a few thousand rows, and the alternative is the
  * same rules written twice in two languages, drifting.
  */
-import type { HistoricalSet, MuscleShare } from '@g7m/core';
+import { isCardioKind, type HistoricalSet, type LoggedBout, type MuscleShare } from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -31,7 +31,7 @@ import {
   readString,
   type RawRow,
 } from './rows.js';
-import { SESSION_SOURCES, type SessionSource } from './sessions.js';
+import { SESSION_SOURCES, readBout, type SessionSource } from './sessions.js';
 
 const SET_TYPE_VALUES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
 const LOAD_TYPE_VALUES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
@@ -52,7 +52,10 @@ export interface SessionSummary {
   readonly endedAt: Date | null;
   readonly bodyweightKg: number | null;
   readonly exerciseCount: number;
+  /** Every counted set, bouts included. */
   readonly setCount: number;
+  /** How many of those are cardio bouts, so a list can say "1 bout", not "1 set". */
+  readonly boutCount: number;
   /** `past` for a workout logged afterwards, whose clock times mean nothing. */
   readonly source: SessionSource;
   /**
@@ -219,14 +222,22 @@ export class HistoryRepository {
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg, ws.source,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
-              counted.set_count, counted.first_set_at, counted.last_set_at
+              counted.set_count, counted.bout_count, counted.first_set_at, counted.last_set_at
          FROM workout_sessions ws
          JOIN (SELECT se2.session_id,
                       COUNT(*) AS set_count,
-                      ${isoText(`MIN(${instant('ss.completed_at')})`)} AS first_set_at,
+                      SUM(CASE WHEN e2.cardio_kind IS NOT NULL THEN 1 ELSE 0 END) AS bout_count,
+                      -- A bout started its time before it was ticked, so
+                      -- the workout's training began then: a treadmill
+                      -- session of one 30-minute bout is 30 minutes, not 0.
+                      ${isoText(
+                        `MIN(${instant('ss.completed_at')} - COALESCE(ss.duration_seconds, 0) / 86400.0)`,
+                      )} AS first_set_at,
                       ${isoText(`MAX(${instant('ss.completed_at')})`)} AS last_set_at
                  FROM session_sets ss
                  JOIN session_exercises se2 ON se2.id = ss.session_exercise_id
+                 -- LEFT: a set whose exercise has not synced yet still counts.
+                 LEFT JOIN exercises e2 ON e2.id = se2.exercise_id
                 WHERE ss.is_completed = 1
                   AND ss.set_type <> 'warmup'
                 GROUP BY se2.session_id) counted ON counted.session_id = ws.id
@@ -244,6 +255,7 @@ export class HistoryRepository {
       bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
       exerciseCount: readNumber(row, 'exercise_count', 0),
       setCount: readNumber(row, 'set_count', 0),
+      boutCount: readNumber(row, 'bout_count', 0),
       source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
@@ -260,6 +272,45 @@ export class HistoryRepository {
    * `isTimeBased` rides along for the review, which describes a plank's best
    * as "60 s" rather than "60 reps".
    */
+  /**
+   * Every finished cardio bout, oldest first, for Progress.
+   *
+   * All of them rather than a window: a bout is one small row, a year of
+   * cardio is a few hundred, and the three views each need a different span
+   * of it. Only ticked bouts in finished workouts count, as for sets.
+   */
+  async completedBouts(): Promise<LoggedBout[]> {
+    const { userId } = resolveContext(this.context);
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT ws.id AS session_id, ws.started_at, ws.bodyweight_kg, e.cardio_kind, ss.*
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
+         JOIN exercises e ON e.id = se.exercise_id
+        WHERE ss.user_id = ?
+          AND ss.is_completed = 1
+          AND ws.ended_at IS NOT NULL
+          AND e.cardio_kind IS NOT NULL
+        ORDER BY ${instant('ws.started_at')} ASC, ss.order_key ASC`,
+      [userId],
+    );
+
+    return rows.flatMap((row): LoggedBout[] => {
+      const kind = readOptionalString(row, 'cardio_kind');
+      const performedAt = readDate(row, 'started_at');
+      if (!isCardioKind(kind) || performedAt === null) return [];
+      return [
+        {
+          sessionId: readString(row, 'session_id', ''),
+          performedAt,
+          kind,
+          bout: readBout(row),
+          bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
+        },
+      ];
+    });
+  }
+
   async trainedExercises(): Promise<
     { exerciseId: string; name: string; lastAt: Date; isTimeBased: boolean }[]
   > {
