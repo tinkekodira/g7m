@@ -3,7 +3,7 @@ import { createUser, eventually, sql } from './support/backend.js';
 import { openTab, signIn } from './support/app.js';
 
 /**
- * The two choices in Settings that change how everything else looks, and that
+ * The choices in Settings that change how everything else looks, and that
  * have to still be chosen the next time the app opens.
  */
 test('light mode stays light after the app is reopened', async ({ page }) => {
@@ -11,16 +11,101 @@ test('light mode stays light after the app is reopened', async ({ page }) => {
   await signIn(page, user);
   await openTab(page, 'Settings');
 
-  const darkMode = page.getByRole('switch', { name: /Dark mode/ });
-  await expect(darkMode).toBeChecked();
-  await darkMode.click();
-  await expect(darkMode).not.toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
+  await page.getByRole('radio', { name: 'Light' }).click();
+  await expect(page.getByRole('radio', { name: 'Light' })).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await openTab(page, 'Settings');
-  await expect(page.getByRole('switch', { name: /Dark mode/ })).not.toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Light' })).toBeChecked();
+});
+
+/**
+ * The third option, which is a standing instruction rather than a colour: the
+ * theme has to follow the device, and keep following it when the device
+ * changes its mind.
+ */
+test('the system theme follows the device, before and after it changes', async ({ page }) => {
+  const user = await createUser('system-theme', { onboarded: true });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await signIn(page, user);
+  await openTab(page, 'Settings');
+
+  await page.getByRole('radio', { name: 'System' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  // The phone switches itself at sunset. The app is supposed to come with it,
+  // with nobody touching the screen.
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  // And the instruction survives a reload rather than freezing at whatever it
+  // last resolved to.
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await openTab(page, 'Settings');
+  await expect(page.getByRole('radio', { name: 'System' })).toBeChecked();
+});
+
+/**
+ * The day a week starts on: a profile setting, so it syncs, and the calendar
+ * and every per-week badge are counted from it.
+ */
+test('the week can start on Sunday, and the server is told', async ({ page }) => {
+  const user = await createUser('week-start', { onboarded: true });
+  await signIn(page, user);
+  await openTab(page, 'Settings');
+
+  await expect(page.getByRole('radio', { name: 'Monday' })).toBeChecked();
+  await page.getByRole('radio', { name: 'Sunday' }).click();
+  await expect(page.getByRole('radio', { name: 'Sunday' })).toBeChecked();
+
+  await eventually(
+    () =>
+      sql<{ week_starts_on: number }>(
+        `select week_starts_on from public.profiles where user_id = $1`,
+        [user.id],
+      ),
+    (rows) => rows[0]?.week_starts_on === 0,
+  );
+
+  await page.reload();
+  await openTab(page, 'Settings');
+  await expect(page.getByRole('radio', { name: 'Sunday' })).toBeChecked();
+});
+
+/**
+ * Rest is a pace rather than a fixed time, so the panel says what the chosen
+ * one does to a compound and to an isolation — and the two have to stay
+ * different, which is the whole reason it scales instead of overriding.
+ */
+test('the rest pace is saved, and scales rather than flattens', async ({ page }) => {
+  const user = await createUser('rest-pace', { onboarded: true });
+  await signIn(page, user);
+  await openTab(page, 'Settings');
+
+  // 1:00 is half the 2:00 baseline, so a 3:00 squat becomes 1:30 and a 1:00
+  // curl becomes 0:30. Still different, which an override would not be.
+  await page.getByRole('button', { name: '1:00', exact: true }).click();
+  const pace = page.getByText(/a heavy squat rests/);
+  await expect(pace).toContainText('1:30');
+  await expect(pace).toContainText('0:30');
+
+  await eventually(
+    () =>
+      sql<{ rest_seconds_default: number }>(
+        `select rest_seconds_default from public.profiles where user_id = $1`,
+        [user.id],
+      ),
+    (rows) => rows[0]?.rest_seconds_default === 60,
+  );
+
+  await page.reload();
+  await openTab(page, 'Settings');
+  await expect(page.getByText(/a heavy squat rests/)).toContainText('1:30');
 });
 
 test('pounds are remembered, on this phone and on the server', async ({ page }) => {

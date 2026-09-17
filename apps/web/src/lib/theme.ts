@@ -13,13 +13,68 @@
  * reasonably disagree.
  */
 
+/**
+ * The two themes that can actually be drawn. Everything below the preference
+ * layer works in these: `applyTheme`, the browser chrome, the 3D stage.
+ */
 export const THEMES = ['dark', 'light'] as const;
 export type Theme = (typeof THEMES)[number];
 
+/**
+ * What the lifter chose, which is not the same thing.
+ *
+ * `system` is a standing instruction rather than a colour — it resolves to
+ * whichever theme the phone is in, and re-resolves when that changes. Keeping
+ * the two types apart is what stops `Record<Theme, string>` and the stage
+ * colour having to invent an answer for a value that is not a colour.
+ */
+export const THEME_PREFERENCES = ['dark', 'light', 'system'] as const;
+export type ThemePreference = (typeof THEME_PREFERENCES)[number];
+
 export const THEME_STORAGE_KEY = 'g7m.theme';
 
-/** Dark, until somebody says otherwise. */
+/**
+ * Dark, until somebody says otherwise — Brief §10, and still true.
+ *
+ * Not `system`. Dark is the design's home and the theme the app was drawn in;
+ * flipping every existing account to whatever their phone happens to be set to
+ * would be a redesign delivered by an update nobody asked for. `system` is
+ * offered, not assumed.
+ */
+export const DEFAULT_THEME_PREFERENCE: ThemePreference = 'dark';
+
+/** What `system` resolves to when there is nothing to ask. */
 export const DEFAULT_THEME: Theme = 'dark';
+
+/** The media query that answers "what is this phone set to". */
+export const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+/**
+ * Whether the device is currently in dark mode.
+ *
+ * False wherever there is no `matchMedia` — an old WebView, a test — which
+ * resolves `system` to light. That is only reachable when somebody has
+ * explicitly chosen `system` on a device that cannot answer, and light is the
+ * safer guess than pretending to know.
+ */
+export function prefersDark(mql: { matches: boolean } | undefined = safeMatch()): boolean {
+  return mql?.matches ?? DEFAULT_THEME === 'dark';
+}
+
+/** The theme to actually draw, given what was chosen and what the device says. */
+export function resolveTheme(preference: ThemePreference, deviceIsDark: boolean): Theme {
+  if (preference === 'system') return deviceIsDark ? 'dark' : 'light';
+  return preference;
+}
+
+function safeMatch(): { matches: boolean } | undefined {
+  try {
+    return globalThis.matchMedia?.(DARK_QUERY);
+  } catch {
+    // Some embedded WebViews declare matchMedia and throw on use.
+    return undefined;
+  }
+}
 
 /**
  * The browser's colour for its own chrome — the address bar, the status bar
@@ -40,25 +95,31 @@ export type ThemeStorage = Pick<Storage, 'getItem' | 'setItem'>;
  * Anything unrecognised reads as the default rather than as itself, and a
  * storage that throws — private browsing on some engines, a WebView with
  * storage switched off — reads as the default rather than as a crash.
+ *
+ * The key is the one it always was, and `dark` and `light` still mean what they
+ * meant, so an account that chose a theme before `system` existed reads back
+ * its own choice rather than being reset by the upgrade.
  */
-export function readTheme(storage: ThemeStorage | undefined = globalThis.localStorage): Theme {
+export function readThemePreference(
+  storage: ThemeStorage | undefined = globalThis.localStorage,
+): ThemePreference {
   try {
     const stored = storage?.getItem(THEME_STORAGE_KEY);
-    return (THEMES as readonly (string | null | undefined)[]).includes(stored)
-      ? (stored as Theme)
-      : DEFAULT_THEME;
+    return (THEME_PREFERENCES as readonly (string | null | undefined)[]).includes(stored)
+      ? (stored as ThemePreference)
+      : DEFAULT_THEME_PREFERENCE;
   } catch {
-    return DEFAULT_THEME;
+    return DEFAULT_THEME_PREFERENCE;
   }
 }
 
 /** Remember a choice. Failing to is not worth an error: the page still changes. */
-export function writeTheme(
-  theme: Theme,
+export function writeThemePreference(
+  preference: ThemePreference,
   storage: ThemeStorage | undefined = globalThis.localStorage,
 ): void {
   try {
-    storage?.setItem(THEME_STORAGE_KEY, theme);
+    storage?.setItem(THEME_STORAGE_KEY, preference);
   } catch {
     // Storage full or switched off. The choice lasts until the page does.
   }

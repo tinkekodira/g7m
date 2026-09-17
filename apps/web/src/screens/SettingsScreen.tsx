@@ -1,6 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { UnitSystem } from '@g7m/core';
-import { Button, SegmentedControl, Switch, TextField } from '@g7m/ui';
+import {
+  DEFAULT_WEEK_START,
+  REST_BASELINE_SECONDS,
+  clampRest,
+  formatRest,
+  type UnitSystem,
+  type WeekStart,
+} from '@g7m/core';
+import { Button, Chip, SegmentedControl, TextField } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
@@ -16,10 +23,12 @@ import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useThemeStore } from '../lib/use-theme.js';
+import type { ThemePreference } from '../lib/theme.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
 import {
+  ClockIcon,
   DeviceIcon,
   DownloadIcon,
   KettlebellIcon,
@@ -65,6 +74,7 @@ export function SettingsScreen() {
 
       <Appearance />
       <Units />
+      <Training />
       <Account />
       <SyncPanel />
       <OfflineStorage />
@@ -80,36 +90,180 @@ export function SettingsScreen() {
   );
 }
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+] as const satisfies readonly { value: ThemePreference; label: string }[];
+
 /**
- * Dark mode, on or off.
+ * Light, dark, or whatever the phone is doing.
  *
- * Dark is the default and the design's home; off is the light theme, which is
- * easier to read in daylight. The whole app changes the moment it is flipped,
- * because everything is drawn in tokens and the tokens are what change — see
- * `lib/theme.ts` and ADR-0062.
+ * Dark is still the default and the design's home; light is easier to read in
+ * daylight. The whole app changes the moment it is chosen, because everything
+ * is drawn in tokens and the tokens are what change — see `lib/theme.ts` and
+ * ADR-0062.
+ *
+ * **System** was the missing third option. A phone set to light opened a dark
+ * app until its owner went looking for this screen, and a phone that switches
+ * itself at sunset had no way to take the app with it. It is a standing
+ * instruction rather than a colour, so the store keeps the choice and the
+ * resolved theme apart, and follows the device for as long as it is chosen.
  */
 function Appearance() {
+  const preference = useThemeStore((state) => state.preference);
   const theme = useThemeStore((state) => state.theme);
-  const setTheme = useThemeStore((state) => state.setTheme);
+  const setPreference = useThemeStore((state) => state.setPreference);
 
   return (
     <Panel title="Appearance">
-      <Switch
-        checked={theme === 'dark'}
-        onChange={(dark) => {
-          setTheme(dark ? 'dark' : 'light');
-        }}
-        icon={<IconChip tone="accent" icon={<MoonIcon className="size-5" />} />}
-        label="Dark mode"
-        description={
-          theme === 'dark'
-            ? 'Turn it off for the light theme, easier to read in daylight.'
-            : 'Off — the app is in its light theme.'
-        }
+      <div className="flex items-center gap-3">
+        <IconChip tone="accent" icon={<MoonIcon className="size-5" />} />
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-medium text-primary">Theme</p>
+          <p className="text-sm text-muted">
+            {preference === 'system'
+              ? `Following your phone, which is in ${theme} mode.`
+              : 'Kept on this device, so your phone and your laptop can differ.'}
+          </p>
+        </div>
+      </div>
+      <SegmentedControl
+        className="mt-3"
+        label="Theme"
+        options={THEME_OPTIONS}
+        value={preference}
+        onChange={setPreference}
       />
     </Panel>
   );
 }
+
+/**
+ * The rest timer's pace, and the day a week starts on.
+ *
+ * Both of these have been columns on `profiles` since the first migration,
+ * both are read all over the app, and neither had a control anywhere — so
+ * every account was on 120 seconds and a Monday week whatever they wanted.
+ */
+function Training() {
+  const profile = useCatalogue('profile', (r) => r.profile.current());
+  const { write, busy, error } = useWrite();
+
+  // The same optimistic pattern as Units below: the choice moves on the tap,
+  // and falls back only if the write does not take.
+  const [pendingRest, setPendingRest] = useState<number | null>(null);
+  const [pendingWeek, setPendingWeek] = useState<WeekStart | null>(null);
+
+  const savedRest = profile.data?.restSecondsDefault ?? null;
+  const savedWeek = (profile.data?.weekStartsOn ?? null) as WeekStart | null;
+  const rest = pendingRest ?? savedRest ?? REST_BASELINE_SECONDS;
+  const week = pendingWeek ?? savedWeek ?? DEFAULT_WEEK_START;
+
+  useEffect(() => {
+    if (pendingRest !== null && savedRest === pendingRest) setPendingRest(null);
+  }, [pendingRest, savedRest]);
+  useEffect(() => {
+    if (pendingWeek !== null && savedWeek === pendingWeek) setPendingWeek(null);
+  }, [pendingWeek, savedWeek]);
+
+  const ready = profile.data !== null;
+
+  return (
+    <Panel title="Training" icon={<ClockIcon className="size-5" />}>
+      <p className="text-base font-medium text-primary">Rest between sets</p>
+      <p className="mt-0.5 mb-3 max-w-prose text-sm text-muted">
+        Your pace, not a fixed time. Every exercise still keeps its own shape — at{' '}
+        <span className="numeric text-secondary">{formatRest(rest)}</span> a heavy squat rests{' '}
+        <span className="numeric text-secondary">{formatRest(scaled(EXAMPLE_COMPOUND, rest))}</span>{' '}
+        and a curl{' '}
+        <span className="numeric text-secondary">
+          {formatRest(scaled(EXAMPLE_ISOLATION, rest))}
+        </span>
+        .
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {REST_CHOICES.map((seconds) => (
+          <Chip
+            key={seconds}
+            selected={rest === seconds}
+            disabled={busy || !ready}
+            onClick={() => {
+              if (rest === seconds) return;
+              setPendingRest(seconds);
+              void write((r) => r.profile.update({ restSecondsDefault: seconds })).then((saved) => {
+                if (saved === null) setPendingRest(null);
+              });
+            }}
+          >
+            {formatRest(seconds)}
+          </Chip>
+        ))}
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-medium text-primary">Weeks start on</p>
+          <p className="text-sm text-muted">
+            The calendar, the progress charts, and the badges counted per week.
+          </p>
+        </div>
+      </div>
+      <SegmentedControl
+        className="mt-3"
+        label="First day of the week"
+        options={WEEK_START_OPTIONS}
+        value={String(week) as `${WeekStart}`}
+        disabled={busy || !ready}
+        onChange={(next) => {
+          const day = Number(next) as WeekStart;
+          if (day === week) return;
+          setPendingWeek(day);
+          void write((r) => r.profile.update({ weekStartsOn: day })).then((saved) => {
+            if (saved === null) setPendingWeek(null);
+          });
+        }}
+      />
+
+      {error !== null && (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * The rests offered, in the range the column allows (15–900).
+ *
+ * Chips rather than a stepper: these are the paces people actually train at,
+ * and the exact second is not a decision worth a keyboard. `1:30` is the
+ * catalogue's own baseline and so the one that changes nothing.
+ */
+const REST_CHOICES = [45, 60, 90, 120, 180, 300] as const;
+
+/** Two catalogue rests, so the sentence above can show the scaling working. */
+const EXAMPLE_COMPOUND = 180;
+const EXAMPLE_ISOLATION = 60;
+
+/** The same arithmetic `restSecondsFor` does, for the example line only. */
+function scaled(exerciseSeconds: number, restDefault: number): number {
+  return clampRest(exerciseSeconds * (restDefault / REST_BASELINE_SECONDS));
+}
+
+/**
+ * The three days a week actually starts on somewhere.
+ *
+ * The column takes 0–6 and the other four are not week starts anywhere, so
+ * offering them would be a longer control that is harder to hit for no gain.
+ * Monday first, being ISO 8601's answer and the app's default.
+ */
+const WEEK_START_OPTIONS = [
+  { value: '1', label: 'Monday' },
+  { value: '0', label: 'Sunday' },
+  { value: '6', label: 'Saturday' },
+] as const satisfies readonly { value: `${WeekStart}`; label: string }[];
 
 /**
  * Kilograms or pounds.

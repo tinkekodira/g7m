@@ -3,12 +3,13 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CrashScreen } from './components/CrashScreen.js';
-import { applyTheme, readTheme } from './lib/theme.js';
+import { applyTheme, prefersDark, readThemePreference, resolveTheme } from './lib/theme.js';
 import './styles.css';
 
 // Before the first render, so a light-theme user never sees the page drawn
 // dark first. index.html is dark, which is what everyone else wants anyway.
-applyTheme(readTheme());
+// `system` is resolved here too, against whatever the device says right now.
+applyTheme(resolveTheme(readThemePreference(), prefersDark()));
 
 const container = document.getElementById('root');
 if (container === null) {

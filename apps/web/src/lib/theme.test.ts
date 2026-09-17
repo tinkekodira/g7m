@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   BROWSER_CHROME,
-  DEFAULT_THEME,
+  DEFAULT_THEME_PREFERENCE,
   THEME_STORAGE_KEY,
   applyTheme,
-  readTheme,
-  writeTheme,
+  prefersDark,
+  readThemePreference,
+  resolveTheme,
+  writeThemePreference,
   type ThemeDocument,
   type ThemeStorage,
 } from './theme.js';
@@ -62,37 +64,80 @@ function fakeDocument() {
   return { doc, dataset, style, classes, meta };
 }
 
-describe('readTheme', () => {
+describe('readThemePreference', () => {
   it('is dark until somebody chooses', () => {
-    expect(DEFAULT_THEME).toBe('dark');
-    expect(readTheme(memoryStorage())).toBe('dark');
+    expect(DEFAULT_THEME_PREFERENCE).toBe('dark');
+    expect(readThemePreference(memoryStorage())).toBe('dark');
   });
 
   it('reads back a choice that was made', () => {
-    expect(readTheme(memoryStorage({ [THEME_STORAGE_KEY]: 'light' }))).toBe('light');
+    expect(readThemePreference(memoryStorage({ [THEME_STORAGE_KEY]: 'light' }))).toBe('light');
+  });
+
+  /**
+   * The key and both old values are the ones they always were, so an account
+   * that picked a theme before `system` existed is not reset by the upgrade.
+   */
+  it('still reads a choice made before system existed', () => {
+    expect(readThemePreference(memoryStorage({ [THEME_STORAGE_KEY]: 'dark' }))).toBe('dark');
+    expect(readThemePreference(memoryStorage({ [THEME_STORAGE_KEY]: 'light' }))).toBe('light');
+  });
+
+  it('reads the new choice too', () => {
+    expect(readThemePreference(memoryStorage({ [THEME_STORAGE_KEY]: 'system' }))).toBe('system');
   });
 
   it('treats anything it does not recognise as the default', () => {
-    expect(readTheme(memoryStorage({ [THEME_STORAGE_KEY]: 'sepia' }))).toBe('dark');
+    expect(readThemePreference(memoryStorage({ [THEME_STORAGE_KEY]: 'sepia' }))).toBe('dark');
   });
 
   it('survives storage that refuses to be read', () => {
-    expect(readTheme(throwing)).toBe('dark');
+    expect(readThemePreference(throwing)).toBe('dark');
   });
 });
 
-describe('writeTheme', () => {
+describe('writeThemePreference', () => {
   it('remembers the choice', () => {
     const storage = memoryStorage();
-    writeTheme('light', storage);
+    writeThemePreference('light', storage);
     expect(storage.values.get(THEME_STORAGE_KEY)).toBe('light');
-    expect(readTheme(storage)).toBe('light');
+    expect(readThemePreference(storage)).toBe('light');
   });
 
   it('does not throw when storage is full or switched off', () => {
     expect(() => {
-      writeTheme('light', throwing);
+      writeThemePreference('light', throwing);
     }).not.toThrow();
+  });
+});
+
+describe('resolveTheme', () => {
+  it('draws exactly what was asked for, whatever the device says', () => {
+    expect(resolveTheme('dark', false)).toBe('dark');
+    expect(resolveTheme('dark', true)).toBe('dark');
+    expect(resolveTheme('light', true)).toBe('light');
+    expect(resolveTheme('light', false)).toBe('light');
+  });
+
+  it('follows the device only when asked to', () => {
+    expect(resolveTheme('system', true)).toBe('dark');
+    expect(resolveTheme('system', false)).toBe('light');
+  });
+});
+
+describe('prefersDark', () => {
+  it('reports what the query says', () => {
+    expect(prefersDark({ matches: true })).toBe(true);
+    expect(prefersDark({ matches: false })).toBe(false);
+  });
+
+  /**
+   * A WebView with no `matchMedia` cannot answer, and only somebody who chose
+   * `system` ever asks. Dark is the app's own default, so it is the honest
+   * fallback rather than a guess at the device.
+   */
+  it('falls back to the app default where there is nothing to ask', () => {
+    expect(prefersDark(undefined)).toBe(true);
   });
 });
 

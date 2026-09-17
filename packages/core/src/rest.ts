@@ -23,6 +23,17 @@ export const REST_SECONDS_ISOLATION = 90;
 export const MIN_REST_SECONDS = 5;
 export const MAX_REST_SECONDS = 60 * 15;
 
+/**
+ * The rest the catalogue is written around, and `profiles.rest_seconds_default`'s
+ * own column default.
+ *
+ * It is what makes the profile setting a *pace* rather than an override — see
+ * `restSecondsFor`. Because it is also the column's default, a lifter who has
+ * never opened the setting scales everything by exactly 1 and sees the
+ * catalogue's own numbers, unchanged.
+ */
+export const REST_BASELINE_SECONDS = 120;
+
 export interface RestInputs {
   /** `exercises.default_rest_seconds`. Null for most rows. */
   readonly exerciseSeconds: number | null;
@@ -34,24 +45,37 @@ export interface RestInputs {
 /**
  * The rest to start the timer at.
  *
- * **Precedence: the exercise, then the profile, then the mechanic.** The
- * exercise wins because rest is a property of the movement — a heavy squat and
- * a lateral raise genuinely differ, and one number on a profile cannot say so.
- * The profile value is what fills in for the many exercises with no opinion,
- * which is what "default" means on that column.
+ * **The exercise decides the shape; the profile decides the pace.** Rest is a
+ * property of the movement — a heavy squat and a lateral raise genuinely
+ * differ, and one number on a profile cannot say so. So the profile value does
+ * not replace the exercise's, it *scales* it, against the baseline the
+ * catalogue is written around: set 60 seconds and everything halves, and the
+ * squat still rests twice as long as the curl.
  *
- * The arguable case is a lifter who set 60 seconds because they are short of
- * time and then meets a squat that insists on 180. They can change the timer;
- * the alternative — a global setting silently flattening every movement to the
- * same rest — is the one that produces bad training with no visible cause.
+ * This is the correction to a precedence that could never fire. The original
+ * rule was exercise, then profile, then mechanic — and every one of the seeded
+ * exercises carries an explicit `default_rest_seconds`, so the profile value
+ * lost every time and the setting was inert. Overriding instead would have
+ * been the other failure: a global number silently flattening every movement
+ * to the same rest, which produces bad training with no visible cause.
+ *
+ * The profile still wins outright for an exercise with no opinion of its own,
+ * which is what "default" means on that column, and what a custom exercise
+ * would arrive with.
  */
 export function restSecondsFor(inputs: RestInputs): number {
-  const chosen =
-    usable(inputs.exerciseSeconds) ??
-    usable(inputs.profileSeconds) ??
-    (inputs.mechanic === 'compound' ? REST_SECONDS_COMPOUND : REST_SECONDS_ISOLATION);
+  const exercise = usable(inputs.exerciseSeconds);
+  const profile = usable(inputs.profileSeconds);
 
-  return clampRest(chosen);
+  if (exercise !== null) {
+    // Scaled, or left exactly as the catalogue wrote it when nobody has asked
+    // for a different pace.
+    return clampRest(profile === null ? exercise : exercise * (profile / REST_BASELINE_SECONDS));
+  }
+
+  return clampRest(
+    profile ?? (inputs.mechanic === 'compound' ? REST_SECONDS_COMPOUND : REST_SECONDS_ISOLATION),
+  );
 }
 
 export function clampRest(seconds: number): number {
