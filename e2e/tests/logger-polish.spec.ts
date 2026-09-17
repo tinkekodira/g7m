@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import { logSet, openTab, signIn, startWith, waitForCatalogue } from './support/app.js';
+import {
+  finishWorkout,
+  logSet,
+  openTab,
+  signIn,
+  startWith,
+  waitForCatalogue,
+} from './support/app.js';
 
 /**
  * The small things that make the logger bearable in a gym, and the one that
@@ -109,7 +116,7 @@ test('the chart view outlives the app being closed', async ({ page }) => {
   await signIn(page, user);
   await startWith(page, 'Barbell Bench Press');
   await logSet(page, 1, '60', '8');
-  await page.getByRole('button', { name: 'Finish workout' }).click();
+  await finishWorkout(page);
   await openTab(page, 'Progress');
 
   const picker = page.getByRole('button', { name: /Chart view/ });
@@ -133,8 +140,7 @@ test('earned achievements come first in their section', async ({ page }) => {
   await waitForCatalogue(page);
   await startWith(page, 'Barbell Bench Press');
   await logSet(page, 1, '100', '1');
-  await page.getByRole('button', { name: 'Finish workout' }).click();
-  await expect(page.getByRole('navigation')).toBeVisible();
+  await finishWorkout(page);
 
   await openTab(page, 'Profile');
   await page.getByRole('link', { name: /Achievements/ }).click();

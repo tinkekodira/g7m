@@ -9,9 +9,15 @@ What it does:
 - **Train.** Log a workout set by set — fast, one-handed, offline. Numbers are
   prefilled from last time, a rest timer runs between sets, a barbell set says
   which plates to load, and a new personal record is celebrated the moment it
-  happens. Cardio machines are logged as bouts, with a timer and a calorie
-  estimate ([ADR-0069](./DECISIONS.md#adr-0069--cardio-is-gym-machines-logged-as-bouts-inside-workouts)).
+  happens. One tap builds the warm-up ramp up to today's working weight, every
+  rung rounded to plates your gym actually has. Cardio machines are logged as
+  bouts, with a timer and a calorie estimate
+  ([ADR-0069](./DECISIONS.md#adr-0069--cardio-is-gym-machines-logged-as-bouts-inside-workouts)).
   A workout you forgot to log can be added to its day on the calendar.
+- **Repeat.** Keep a workout as a routine when you finish it, or save any past
+  one from its page, and start the same session again in a tap. A routine holds
+  the movements and the rep ranges and never the weights — those always come
+  from what you last lifted, so a routine cannot go stale.
 - **Learn.** An interactive 3D body. Tap a muscle to see every exercise that
   trains it. The exercise library has search, filters by muscle, equipment and
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.
@@ -328,7 +334,7 @@ In **Settings → Branches**, protect `main`:
 | 1 | Data — schema, RLS, seed, auth | **Complete** |
 | 2 | Offline — PowerSync, local SQLite, repositories | **Complete** — [spike resolved](./docs/spikes/powersync-ios.md), PowerSync stays |
 | 3 | Exercise library — search, filters, detail | **Complete** — videos are placeholders until each is checked ([ADR-0024](./DECISIONS.md#adr-0024--seed-data-ships-as-migrations-and-six-things-seeding-taught-us)) |
-| 4 | Logging — the hot path | **Complete** — plus plates, past workouts and cardio |
+| 4 | Logging — the hot path | **Complete** — plus plates, past workouts, cardio, warm-up ramps and routines |
 | 5 | 3D anatomy — viewer, raycasting, exercise panel | **Complete** |
 | 6 | Generator — body metrics, goals, rules engine | **Complete** — the Claude layer is designed but off: v1 costs nothing to run |
 | 7 | Progress — history, trends, heat map, how your plan is going | **Complete** — plus the calendar, cardio, chart views and achievements |

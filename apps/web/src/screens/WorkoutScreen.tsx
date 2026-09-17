@@ -17,6 +17,7 @@ import {
   rirToRpe,
   toDisplayWeight,
   totalVolumeKg,
+  warmupSets,
   weightAdvice,
   weightStepKg,
   type ExerciseBests,
@@ -118,6 +119,19 @@ export function WorkoutScreen() {
     addedExerciseId(location.state) !== null ? new Date() : null,
   );
   const [rest, setRest] = useState<{ startedAt: Date; seconds: number } | null>(null);
+  /**
+   * Set once the workout is finished and is worth keeping as a routine.
+   *
+   * Carries the session's id, its suggested name and where to go on skipping,
+   * rather than reading them when it renders: `sessions.active()` returns null
+   * the moment a workout is finished, so by the time this is on screen there
+   * is no open workout left to ask.
+   */
+  const [offerRoutine, setOfferRoutine] = useState<{
+    readonly sessionId: string;
+    readonly suggestion: string;
+    readonly afterwards: string;
+  } | null>(null);
   const [undo, setUndo] = useState<Undoable | null>(null);
   // Only ever increments, so removing the same thing twice still restarts the
   // toast's clock rather than reading as one event.
@@ -324,6 +338,40 @@ export function WorkoutScreen() {
     buzz('success');
   }, [fresh]);
 
+  /**
+   * The offer is checked before every other branch, and has to be.
+   *
+   * Finishing the workout is exactly what makes `active()` return null, so the
+   * "nothing in progress" branch would swallow this screen the instant it was
+   * earned — and the re-read that discovers it flips `loading` on the way,
+   * which unmounted this component mid-typing and threw away the name. It
+   * carries everything it needs, so it depends on no read at all.
+   *
+   * The training is saved either way. All that is left is whether to keep its
+   * shape.
+   */
+  if (offerRoutine !== null) {
+    const offer = offerRoutine;
+    return (
+      <Shell>
+        <SaveAsRoutine
+          suggestion={offer.suggestion}
+          busy={busy}
+          onSave={(name) => {
+            void write((r) =>
+              r.routines.createFromSession({ sessionId: offer.sessionId, name }),
+            ).then((saved) => {
+              if (saved !== null) void navigate('/routines');
+            });
+          }}
+          onSkip={() => {
+            void navigate(offer.afterwards);
+          }}
+        />
+      </Shell>
+    );
+  }
+
   if (state.error !== null) {
     return (
       <Shell>
@@ -370,13 +418,35 @@ export function WorkoutScreen() {
    */
   const afterwards = past ? `/calendar?day=${dateKey(session.startedAt)}` : '/';
 
-  /** One way to finish, whether from the button or from "still training?". */
+  /**
+   * One way to finish, whether from the button or from "still training?".
+   *
+   * A workout worth keeping is offered as a routine before the screen goes,
+   * because this is the only moment somebody has the whole session in mind.
+   * Nothing worth keeping — a past log, an empty session, or one already
+   * started from a routine — goes straight out as it always did.
+   */
   const finishWorkout = (): void => {
     buzz('success');
     void write((r) => r.sessions.finish(session.id)).then(() => {
-      void navigate(afterwards);
+      if (worthSaving) {
+        setOfferRoutine({ sessionId: session.id, suggestion: session.name ?? '', afterwards });
+      } else void navigate(afterwards);
     });
   };
+  /**
+   * Whether finishing this one is worth offering to keep.
+   *
+   * Something was actually done, it is a live session rather than a log of one,
+   * and it did not come from a routine already — saving a routine's own output
+   * back as a second routine is how somebody ends up with four copies of Push
+   * Day.
+   */
+  const worthSaving =
+    !past &&
+    session.routineId === null &&
+    blocks.some((block) => block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'));
+
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
   // Lifts only: a bout's weight and reps are zero by design, and counting it
   // as a set would put "0 kg lifted" at the top of a treadmill session.
@@ -533,6 +603,9 @@ export function WorkoutScreen() {
                   }),
                 ),
               );
+            }}
+            onWarmUp={(sets) => {
+              void write((r) => r.sessions.prependSets(block.entry.id, sets));
             }}
             onComplete={(setId, changes) => {
               void write((r) => r.sessions.completeSet(setId, changes));
@@ -707,6 +780,65 @@ function StartWorkout({ busy, onStart }: { readonly busy: boolean; readonly onSt
 }
 
 /**
+ * "Keep this as a routine?", asked once, after the workout is already saved.
+ *
+ * After rather than before, and on its own screen rather than in a dialog over
+ * the log: the training is recorded whatever happens here, and the question is
+ * about next week rather than about this session. Skipping is a button of
+ * equal weight, not a cross in a corner — most workouts are not worth keeping
+ * and saying so should not feel like a refusal.
+ */
+function SaveAsRoutine({
+  suggestion,
+  busy,
+  onSave,
+  onSkip,
+}: {
+  readonly suggestion: string;
+  readonly busy: boolean;
+  readonly onSave: (name: string) => void;
+  readonly onSkip: () => void;
+}) {
+  const [name, setName] = useState(suggestion);
+
+  return (
+    <>
+      <header className="pt-8 pb-2">
+        <h1 className="text-2xl font-semibold text-primary">Workout saved</h1>
+        <p className="mt-1 max-w-prose text-sm text-secondary">
+          Keep its shape as a routine and you can start the same session again in one tap. The
+          movements and rep ranges are saved; the weights always come from what you last lifted.
+        </p>
+      </header>
+
+      <section className="rounded-card border border-subtle bg-surface p-4">
+        <TextField
+          label="Routine name"
+          value={name}
+          placeholder="Push Day"
+          onChange={(event) => {
+            setName(event.target.value);
+          }}
+        />
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button
+            disabled={busy || name.trim() === ''}
+            onClick={() => {
+              onSave(name);
+            }}
+          >
+            Save as a routine
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={onSkip}>
+            Not this one
+          </Button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+/**
  * Asked once, inline, at the moment it first matters.
  *
  * Not at sign-up, where it is one more field between somebody and the app, and
@@ -765,6 +897,7 @@ function ExerciseCard({
   unitSystem,
   busy,
   onAddSet,
+  onWarmUp,
   onComplete,
   onUncomplete,
   onSave,
@@ -777,6 +910,7 @@ function ExerciseCard({
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
   readonly onAddSet: () => void;
+  readonly onWarmUp: (sets: readonly SetTemplate[]) => void;
   readonly onComplete: (setId: string, changes: SetEdit) => void;
   readonly onUncomplete: (setId: string) => void;
   readonly onSave: (setId: string, changes: SetEdit) => void;
@@ -786,6 +920,38 @@ function ExerciseCard({
 }) {
   const name = block.exercise?.name ?? 'Unknown exercise';
   const [skipped, setSkipped] = useState(false);
+
+  /**
+   * The ramp up to today's working weight.
+   *
+   * Read off the first working set — but off what is *in the field*, not off
+   * what has been written. A set is only saved on the tick, so a lifter who
+   * adds an exercise, types 100 and looks for the warm-up button would
+   * otherwise be offered a ramp up to zero, which is no ramp at all. That is
+   * the common case, not an edge one: the stored weight is only right when the
+   * plan or a routine put it there.
+   *
+   * Offered only when there is a ladder worth climbing and no warm-up already
+   * logged: two taps should not produce ten warm-up sets, and a lifter who
+   * wants a different ramp can delete these and add their own.
+   */
+  const firstWorking = block.sets.find((set) => set.setType !== 'warmup');
+  const hasWarmup = block.sets.some((set) => set.setType === 'warmup');
+  const [draftKg, setDraftKg] = useState<number | null>(null);
+  const workingKg = draftKg ?? firstWorking?.weightKg ?? 0;
+  const ramp = useMemo(
+    () =>
+      firstWorking === undefined
+        ? []
+        : warmupSets({
+            workingKg,
+            loadType: firstWorking.loadType,
+            barbell: block.barbell,
+            dumbbell: block.dumbbell,
+            unitSystem,
+          }),
+    [firstWorking, workingKg, block.barbell, block.dumbbell, unitSystem],
+  );
 
   // Asked once, at the end, about the last set only. Once per set would be
   // four questions for one exercise, which is three too many with a bar in
@@ -835,17 +1001,23 @@ function ExerciseCard({
         <p className="mb-3 text-sm text-muted">No sets yet.</p>
       ) : (
         <ul className="mb-3 flex flex-col gap-3">
-          {block.sets.map((set, index) => (
+          {numberSets(block.sets).map(({ set, number, isFirstWorking }) => (
             <li key={set.id}>
               <SetRow
                 // Remounting on id keeps the draft state below honest: a new
                 // set must not inherit the half-typed numbers of the last one.
                 key={set.id}
-                index={index}
+                number={number}
+                {...(isFirstWorking ? { onDraftWeight: setDraftKg } : {})}
                 set={set}
                 record={records.get(set.id) ?? null}
                 exerciseName={name}
-                previous={previousSetAt(block.previous, index)}
+                // Counted among working sets, so a ramp in front does not slide
+                // every "Last:" hint down by the number of warm-ups. A warm-up
+                // has no last time worth quoting.
+                previous={
+                  set.setType === 'warmup' ? null : previousSetAt(block.previous, number - 1)
+                }
                 barbell={block.barbell}
                 dumbbell={block.dumbbell}
                 unitSystem={unitSystem}
@@ -890,11 +1062,65 @@ function ExerciseCard({
         />
       )}
 
-      <Button variant="secondary" fullWidth disabled={busy} onClick={onAddSet}>
-        Add set
-      </Button>
+      <div className="flex gap-2">
+        {!hasWarmup && ramp.length > 0 && (
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => {
+              onWarmUp(ramp);
+            }}
+          >
+            Warm-up
+          </Button>
+        )}
+        <Button variant="secondary" fullWidth disabled={busy} onClick={onAddSet}>
+          Add set
+        </Button>
+      </div>
+
+      {/* What the button is about to do, before it is pressed. A ramp that
+          appears as four new rows with no warning reads as a mistake. */}
+      {!hasWarmup && ramp.length > 0 && (
+        <p className="numeric mt-2 text-xs text-muted">
+          Adds {ramp.length} warm-up {ramp.length === 1 ? 'set' : 'sets'}:{' '}
+          {ramp
+            .map((set) => `${showWeight(set.weightKg, unitSystem)} × ${String(set.reps)}`)
+            .join(', ')}
+        </p>
+      )}
     </section>
   );
+}
+
+/**
+ * Which number each set wears, counting warm-ups and working sets separately.
+ *
+ * A ramp put in front of a working set must not renumber it: adding four
+ * warm-ups to an exercise turned "Set 1" into "Set 5", which is the app
+ * disagreeing with every training program ever written. Warm-ups get their own
+ * count, and the tick's accessible name follows the same rule — "Complete
+ * warm-up 2" and "Complete set 1" are different things to be told.
+ *
+ * `isFirstWorking` marks the row whose weight the warm-up button ramps to.
+ */
+function numberSets(
+  sets: readonly SessionSet[],
+): { set: SessionSet; number: number; isFirstWorking: boolean }[] {
+  let warmups = 0;
+  let working = 0;
+  let seenWorking = false;
+
+  return sets.map((set) => {
+    if (set.setType === 'warmup') {
+      warmups += 1;
+      return { set, number: warmups, isFirstWorking: false };
+    }
+    working += 1;
+    const first = !seenWorking;
+    seenWorking = true;
+    return { set, number: working, isFirstWorking: first };
+  });
 }
 
 /** Whichever of two moments is later, either of which may be missing. */
@@ -997,7 +1223,7 @@ const EFFORT_ANSWERS = [
  * fighting the field for the value while somebody was still typing in it.
  */
 function SetRow({
-  index,
+  number,
   set,
   record,
   exerciseName,
@@ -1006,12 +1232,20 @@ function SetRow({
   dumbbell,
   unitSystem,
   busy,
+  onDraftWeight,
   onComplete,
   onUncomplete,
   onSave,
   onRemove,
 }: {
-  readonly index: number;
+  /** Its place among sets of its own kind — warm-ups counted apart. */
+  readonly number: number;
+  /**
+   * Told what is in the weight field, for the one row the warm-up ramp reads.
+   * A set is only written on the tick, so the card cannot see a typed weight
+   * any other way.
+   */
+  readonly onDraftWeight?: (kg: number) => void;
   readonly set: SessionSet;
   readonly record: SetRecord | null;
   readonly exerciseName: string;
@@ -1040,6 +1274,12 @@ function SetRow({
    * next set and to next week.
    */
   const [loadType, setLoadType] = useState<LoadType>(set.loadType);
+
+  // Reported after the render rather than during it: telling a parent to set
+  // state while it is rendering this child is the classic React loop.
+  useEffect(() => {
+    onDraftWeight?.(loadType === 'bodyweight' ? 0 : fromDisplayWeight(weight, unitSystem));
+  }, [onDraftWeight, weight, loadType, unitSystem]);
 
   const weightLabel = WEIGHT_FIELD_MEANING[loadType];
   // Read off the weight in the field, so the ladder follows what is in it: a
@@ -1088,7 +1328,7 @@ function SetRow({
       <div className={set.isCompleted ? 'opacity-60' : undefined}>
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-xs font-medium text-muted">
-            {set.setType === 'warmup' ? 'Warm-up' : `Set ${String(index + 1)}`}
+            {set.setType === 'warmup' ? `Warm-up ${String(number)}` : `Set ${String(number)}`}
           </span>
           {/* What you did last time, beside the row it belongs to. The whole
             reason the positional match in `previousSetAt` exists. */}
@@ -1144,11 +1384,9 @@ function SetRow({
 
           <button
             type="button"
-            aria-label={
-              set.isCompleted
-                ? `Undo set ${String(index + 1)}`
-                : `Complete set ${String(index + 1)}`
-            }
+            aria-label={`${set.isCompleted ? 'Undo' : 'Complete'} ${
+              set.setType === 'warmup' ? 'warm-up' : 'set'
+            } ${String(number)}`}
             aria-pressed={set.isCompleted}
             disabled={busy}
             onClick={() => {

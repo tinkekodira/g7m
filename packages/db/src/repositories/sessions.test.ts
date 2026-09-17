@@ -255,6 +255,47 @@ describe('logging sets', () => {
   });
 
   /**
+   * The warm-up case: a ramp is worked out after the working sets are already
+   * prefilled, and belongs in front of them. ADR-0079.
+   */
+  describe('prependSets', () => {
+    it('puts a run of sets in front of the ones already there, in order', async () => {
+      await sessions.addSet(exerciseId, template({ weightKg: 100, reps: 5 }));
+
+      await sessions.prependSets(exerciseId, [
+        { weightKg: 20, reps: 8, loadType: 'external', setType: 'warmup' },
+        { weightKg: 40, reps: 5, loadType: 'external', setType: 'warmup' },
+        { weightKg: 60, reps: 3, loadType: 'external', setType: 'warmup' },
+      ]);
+
+      const sets = await sessions.setsFor(exerciseId);
+      expect(sets.map((set) => set.weightKg)).toEqual([20, 40, 60, 100]);
+      expect(sets.map((set) => set.setType)).toEqual(['warmup', 'warmup', 'warmup', 'working']);
+    });
+
+    it('works on an exercise with nothing logged under it yet', async () => {
+      await sessions.prependSets(exerciseId, [
+        { weightKg: 20, reps: 8, loadType: 'external', setType: 'warmup' },
+      ]);
+      expect((await sessions.setsFor(exerciseId)).map((set) => set.weightKg)).toEqual([20]);
+    });
+
+    it('writes nothing for an empty ramp', async () => {
+      await sessions.addSet(exerciseId, template());
+      expect(await sessions.prependSets(exerciseId, [])).toEqual([]);
+      expect(await sessions.setsFor(exerciseId)).toHaveLength(1);
+    });
+
+    /** None of them is done yet: a ramp is offered, not performed. */
+    it('leaves every prepended set unticked', async () => {
+      const written = await sessions.prependSets(exerciseId, [
+        { weightKg: 20, reps: 8, loadType: 'external', setType: 'warmup' },
+      ]);
+      expect(written.every((set) => !set.isCompleted)).toBe(true);
+    });
+  });
+
+  /**
    * `is_completed = (completed_at is not null)` is a CHECK, and it is the one
    * that would hurt most: the set the lifter just did never reaches the
    * server, and nothing on the device says so.

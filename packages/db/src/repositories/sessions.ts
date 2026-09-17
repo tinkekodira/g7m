@@ -26,6 +26,7 @@ import {
   EMPTY_BOUT,
   initialOrderKeys,
   orderKeyBetween,
+  orderKeysBetween,
   type Bout,
   type LoadType,
   type SetTemplate,
@@ -549,6 +550,55 @@ export class SessionRepository {
 
     await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
     return set;
+  }
+
+  /**
+   * Put a run of sets in front of the ones already there.
+   *
+   * `addSet` appends, which is right for every set a lifter adds by hand and
+   * wrong for the one case that arrives as a block: a warm-up ramp is written
+   * after the working sets have been prefilled, and belongs before them. Doing
+   * it by appending and then rewriting every order key would be four writes to
+   * express one decision, and would collide with another device's reordering.
+   *
+   * One call rather than a loop of `addSet`, because the keys have to be
+   * bisected against each other as well as against the first working set —
+   * `orderKeysBetween` is exactly that, and a loop would put every warm-up at
+   * the same position.
+   */
+  async prependSets(
+    sessionExerciseId: string,
+    templates: readonly SetTemplate[],
+  ): Promise<SessionSet[]> {
+    if (templates.length === 0) return [];
+    const { userId, newId, now } = resolveContext(this.context);
+
+    const existing = await this.setsFor(sessionExerciseId);
+    const first = existing[0]?.orderKey ?? null;
+    const keys = orderKeysBetween(null, first, templates.length);
+
+    const at = toTimestamp(now());
+    const written: SessionSet[] = [];
+
+    for (const [index, template] of templates.entries()) {
+      const set: SessionSet = {
+        id: newId(),
+        sessionExerciseId,
+        orderKey: keys[index] ?? orderKeyBetween(null, first),
+        setType: template.setType,
+        loadType: template.loadType,
+        weightKg: weightFor(template.loadType, template.weightKg),
+        reps: Math.max(0, Math.trunc(template.reps)),
+        rpe: null,
+        isCompleted: false,
+        completedAt: null,
+        bout: cleanBout({ ...EMPTY_BOUT }),
+      };
+      await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
+      written.push(set);
+    }
+
+    return written;
   }
 
   /**

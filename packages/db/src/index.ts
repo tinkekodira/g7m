@@ -101,6 +101,15 @@ export {
 } from './repositories/account.js';
 export { PlannerRepository } from './repositories/planner.js';
 export {
+  MAX_TARGET_SETS,
+  MIN_TARGET_SETS,
+  RoutineRepository,
+  type Routine,
+  type RoutineDetail,
+  type RoutineExercise,
+  type RoutineExerciseInput,
+} from './repositories/routines.js';
+export {
   GoalRepository,
   TRAINING_GOALS,
   type Goal,

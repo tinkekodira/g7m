@@ -4,7 +4,13 @@ import { heatRampFor, placeholderBodyParts } from '@g7m/anatomy';
 import { firstName, personalRecords, toDisplayWeight, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
-import { ChevronRightIcon, PencilIcon, TargetIcon, TrophyIcon } from '../components/icons.js';
+import {
+  ChevronRightIcon,
+  ClipboardIcon,
+  PencilIcon,
+  TargetIcon,
+  TrophyIcon,
+} from '../components/icons.js';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { Flag } from '../components/Flag.js';
 import { useStageColor } from '../lib/use-theme.js';
@@ -163,6 +169,8 @@ export function ProfileScreen() {
 
       <AchievementsLink />
 
+      <RoutinesLink />
+
       <TrainingBody now={now} />
 
       <BestLifts lifts={bests.data} loading={bests.loading} unitSystem={unitSystem} />
@@ -218,6 +226,49 @@ function AchievementsLink() {
             />
           ))}
         </span>
+      )}
+      <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
+    </Link>
+  );
+}
+
+/**
+ * The way into the saved routines, from the screen that holds everything else
+ * somebody has accumulated.
+ *
+ * Home carries them too, in the quick access tiles, but only once one exists —
+ * that tile is the shortcut. This is the permanent address, so somebody who
+ * has just deleted their last routine still has somewhere to make another.
+ */
+function RoutinesLink() {
+  const state = useCatalogue('routines', (r) => r.routines.list());
+  const routines = state.data ?? [];
+  const names = routines
+    .slice(0, 3)
+    .map((routine) => routine.name)
+    .join(' · ');
+
+  return (
+    <Link
+      to="/routines"
+      viewTransition
+      className="flex min-h-tap w-full items-center gap-3 rounded-card border border-subtle bg-surface px-4 py-3 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+        <ClipboardIcon className="size-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-medium text-primary">Your routines</span>
+        <span className="block truncate text-xs text-muted">
+          {state.data === null
+            ? 'Workouts you have saved'
+            : routines.length === 0
+              ? 'Save a workout and it becomes one'
+              : names}
+        </span>
+      </span>
+      {routines.length > 0 && (
+        <span className="numeric shrink-0 text-sm text-secondary">{routines.length}</span>
       )}
       <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
     </Link>
