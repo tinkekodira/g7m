@@ -44,10 +44,17 @@ test('a ticked set is locked, a dumbbell steps by the rack, and 12 reps earns a 
   await page.getByRole('button', { name: 'Complete set 1' }).click();
   await expect(page.getByRole('button', { name: 'Undo set 1' })).toBeVisible();
 
-  // Ticked: the steppers are done being useful. Tapping one used to rewrite
-  // the draft of a set that was already saved.
-  await expect(page.getByRole('button', { name: 'Increase Weight' }).first()).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Decrease Reps' }).first()).toBeDisabled();
+  // Ticked: the row collapses to what was done and gives up its steppers
+  // entirely. They used to stay, dimmed and disabled — a control that still
+  // looks like one and does nothing is worse than no control at all.
+  await expect(page.getByRole('button', { name: 'Increase Weight' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Decrease Reps' })).toHaveCount(0);
+  await expect(page.getByText('15 kg × 20')).toBeVisible();
+
+  // Untick and the row opens back up, which is how a logged set is changed.
+  await page.getByRole('button', { name: 'Undo set 1' }).click();
+  await expect(page.getByRole('button', { name: 'Increase Weight' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Complete set 1' }).click();
 
   // The top of the range, so the app says what to try next — in rack steps.
   await expect(page.getByText(/20 reps at 15 kg — try 17.5 kg next time/)).toBeVisible();

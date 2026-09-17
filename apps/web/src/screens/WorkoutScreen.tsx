@@ -952,6 +952,7 @@ function ExerciseCard({
           }),
     [firstWorking, workingKg, block.barbell, block.dumbbell, unitSystem],
   );
+  const offersWarmup = !hasWarmup && ramp.length > 0;
 
   // Asked once, at the end, about the last set only. Once per set would be
   // four questions for one exercise, which is three too many with a bar in
@@ -1063,10 +1064,14 @@ function ExerciseCard({
       )}
 
       <div className="flex gap-2">
-        {!hasWarmup && ramp.length > 0 && (
+        {/* `shrink-0` and no wrapping: in a flex row beside a full-width
+            sibling this was allowed to narrow below its own text and broke
+            across two lines as "Warm-" / "up". */}
+        {offersWarmup && (
           <Button
             variant="secondary"
             disabled={busy}
+            className="shrink-0 whitespace-nowrap"
             onClick={() => {
               onWarmUp(ramp);
             }}
@@ -1079,14 +1084,15 @@ function ExerciseCard({
         </Button>
       </div>
 
-      {/* What the button is about to do, before it is pressed. A ramp that
-          appears as four new rows with no warning reads as a mistake. */}
-      {!hasWarmup && ramp.length > 0 && (
+      {/* What the button is about to do, before it is pressed — a ramp that
+          appears as five new rows with no warning reads as a mistake. The
+          whole ladder was spelled out here and ran to three lines; the count
+          and where it climbs to is the part worth reading. */}
+      {offersWarmup && (
         <p className="numeric mt-2 text-xs text-muted">
-          Adds {ramp.length} warm-up {ramp.length === 1 ? 'set' : 'sets'}:{' '}
-          {ramp
-            .map((set) => `${showWeight(set.weightKg, unitSystem)} × ${String(set.reps)}`)
-            .join(', ')}
+          Adds {ramp.length} {ramp.length === 1 ? 'set' : 'sets'} from{' '}
+          {showWeight(ramp[0]?.weightKg ?? 0, unitSystem)} up to{' '}
+          {showWeight(ramp[ramp.length - 1]?.weightKg ?? 0, unitSystem)}
         </p>
       )}
     </section>
@@ -1288,14 +1294,6 @@ function SetRow({
     weightStepKg({ dumbbell, currentKg: fromDisplayWeight(weight, unitSystem), unitSystem }),
     unitSystem,
   ).value;
-  /**
-   * A ticked set is a record of what happened, and nothing on it should move.
-   * The row dims to say so, and the steppers were still live underneath the
-   * dimming: two taps on a phone in a pocket rewrote a set that was already
-   * saved, silently, because the tick is what writes and the field only
-   * changes the draft. Untick it to change it.
-   */
-  const locked = busy || set.isCompleted;
   const changes: SetEdit = {
     // Plain bodyweight carries no weight. A stale number left in the field from
     // before "bodyweight only" was chosen must not be saved as added load.
@@ -1305,6 +1303,12 @@ function SetRow({
   };
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
+  const title = set.setType === 'warmup' ? `Warm-up ${String(number)}` : `Set ${String(number)}`;
+  const tickLabel = `${set.isCompleted ? 'Undo' : 'Complete'} ${
+    set.setType === 'warmup' ? 'warm-up' : 'set'
+  } ${String(number)}`;
+  /** A row that is a number to read rather than a number to type. */
+  const compact = set.isCompleted || set.setType === 'warmup';
 
   return (
     <div>
@@ -1325,23 +1329,87 @@ function SetRow({
         </p>
       )}
 
-      <div className={set.isCompleted ? 'opacity-60' : undefined}>
-        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
-          <span className="text-xs font-medium text-muted">
-            {set.setType === 'warmup' ? `Warm-up ${String(number)}` : `Set ${String(number)}`}
-          </span>
-          {/* What you did last time, beside the row it belongs to. The whole
-            reason the positional match in `previousSetAt` exists. */}
-          <span className="numeric text-xs text-muted">
-            {previous === null
-              ? 'First time'
-              : `Last: ${describePreviousSet(previous, (kg) =>
-                  String(toDisplayWeight(kg, unitSystem).value),
-                )}`}
-          </span>
-        </div>
+      {compact ? (
+        /*
+          Two kinds of row that are a number to read rather than a number to
+          type, and both collapse to one line.
 
-        {/*
+          **A done set is a record, not a control.** It used to keep its
+          steppers, dimmed and disabled — the worst of both: a control that
+          still looks like one, does nothing when pressed, and spends four rows
+          of a phone screen saying one fact. Untick to change it, which is also
+          how a logged set is deleted: the row opens back up and Delete is
+          there.
+
+          **A warm-up is a prescription to follow.** The ramp was worked out;
+          nobody retypes it, they load the bar and tick. Five generated rows as
+          full editors was the single worst thing on this screen. It keeps its
+          plate line, which is the part that is actually read at the rack, and
+          a Delete, since it cannot be opened up to find one.
+
+          Between them, the card now shrinks as the session goes rather than
+          growing.
+        */
+        <div className="rounded-control bg-elevated/60 px-3 py-2">
+          <div className="flex items-center gap-3">
+            <span className="w-16 shrink-0 text-xs font-medium text-muted">{title}</span>
+            <span className="numeric min-w-0 flex-1 truncate text-base font-medium text-primary">
+              {describePreviousSet(set, (kg) => showWeight(kg, unitSystem))}
+            </span>
+            {set.setType === 'warmup' && !set.isCompleted && (
+              <button
+                type="button"
+                aria-label={`Delete ${title.toLowerCase()}`}
+                disabled={busy}
+                onClick={onRemove}
+                className="min-h-tap shrink-0 px-1 text-xs text-muted underline-offset-4 hover:underline"
+              >
+                Delete
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label={tickLabel}
+              aria-pressed={set.isCompleted}
+              disabled={busy}
+              onClick={() => {
+                if (set.isCompleted) onUncomplete();
+                else onComplete(changes);
+              }}
+              className={
+                set.isCompleted
+                  ? 'flex size-tap shrink-0 items-center justify-center rounded-control bg-accent text-xl text-on-accent'
+                  : 'flex size-tap shrink-0 items-center justify-center rounded-control border border-strong text-xl text-secondary active:bg-elevated'
+              }
+            >
+              ✓
+            </button>
+          </div>
+          {/* What to put on the bar, for the rung still to be lifted. Inside
+              the row rather than under it: floated between two tiles it read
+              as a caption for the next one. */}
+          {!set.isCompleted && barbell && loadType === 'external' && (
+            <div className="-mt-1 pl-16">
+              <PlateLine weight={weight} unitSystem={unitSystem} />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
+            <span className="text-xs font-medium text-muted">{title}</span>
+            {/* What you did last time, beside the row it belongs to. The whole
+            reason the positional match in `previousSetAt` exists. */}
+            <span className="numeric text-xs text-muted">
+              {previous === null
+                ? 'First time'
+                : `Last: ${describePreviousSet(previous, (kg) =>
+                    String(toDisplayWeight(kg, unitSystem).value),
+                  )}`}
+            </span>
+          </div>
+
+          {/*
         Two steppers and a tick, and on a phone they do not fit in a row.
 
         Each stepper is two 48px buttons plus a field it has to be possible to
@@ -1355,106 +1423,97 @@ function SetRow({
         shrink: a flex item defaults to `min-width: auto`, so without it the
         row grows past its container instead of the contents narrowing.
       */}
-        <div className="flex items-stretch gap-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-            {weightLabel !== null && (
+          <div className="flex items-stretch gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+              {weightLabel !== null && (
+                <div className="min-w-0 flex-1">
+                  <Stepper
+                    label={weightLabel}
+                    suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
+                    value={weight}
+                    step={stepDisplay}
+                    decimals={1}
+                    disabled={busy}
+                    onChange={setWeight}
+                  />
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <Stepper
-                  label={weightLabel}
-                  suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
-                  value={weight}
-                  step={stepDisplay}
-                  decimals={1}
-                  disabled={locked}
-                  onChange={setWeight}
+                  label="Reps"
+                  value={reps}
+                  step={1}
+                  min={0}
+                  disabled={busy}
+                  onChange={setReps}
                 />
               </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <Stepper
-                label="Reps"
-                value={reps}
-                step={1}
-                min={0}
-                disabled={locked}
-                onChange={setReps}
-              />
             </div>
-          </div>
 
-          <button
-            type="button"
-            aria-label={`${set.isCompleted ? 'Undo' : 'Complete'} ${
-              set.setType === 'warmup' ? 'warm-up' : 'set'
-            } ${String(number)}`}
-            aria-pressed={set.isCompleted}
-            disabled={busy}
-            onClick={() => {
-              if (set.isCompleted) {
-                onUncomplete();
-                return;
-              }
-              onComplete(changes);
-            }}
-            className={
-              set.isCompleted
-                ? 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control bg-accent text-2xl text-on-accent'
-                : 'flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated'
-            }
-          >
-            ✓
-          </button>
-        </div>
-
-        {/* The plates, for the set still to be lifted. A ticked set has been
-            loaded already, and a line under every finished row is clutter. */}
-        {barbell && loadType === 'external' && !set.isCompleted && (
-          <PlateLine weight={weight} unitSystem={unitSystem} />
-        )}
-
-        <div className="mt-1 flex items-center gap-4">
-          {/* On its own side of the row: it changes what is being logged,
-              where the two on the right save it or throw it away. */}
-          {canAddWeight(loadType) && (
             <button
               type="button"
+              aria-label={tickLabel}
+              aria-pressed={false}
               disabled={busy}
               onClick={() => {
-                if (loadType === 'bodyweight') {
-                  setLoadType('bodyweight_plus');
-                  return;
-                }
-                setLoadType('bodyweight');
-                setWeight(0);
+                onComplete(changes);
               }}
-              className="text-xs font-medium text-secondary underline-offset-4 hover:underline"
+              className="flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated"
             >
-              {loadType === 'bodyweight' ? '+ Add weight' : 'Bodyweight only'}
+              ✓
             </button>
+          </div>
+
+          {/* The plates, for the set still to be lifted. A ticked set has been
+            loaded already, and its row has collapsed anyway. */}
+          {barbell && loadType === 'external' && (
+            <PlateLine weight={weight} unitSystem={unitSystem} />
           )}
-          <span className="flex-1" />
-          {!set.isCompleted && (
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-4">
+            {/* On its own side of the row: it changes what is being logged,
+              where the two on the right save it or throw it away. */}
+            {canAddWeight(loadType) && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (loadType === 'bodyweight') {
+                    setLoadType('bodyweight_plus');
+                    return;
+                  }
+                  setLoadType('bodyweight');
+                  setWeight(0);
+                }}
+                className="text-xs font-medium text-secondary underline-offset-4 hover:underline"
+              >
+                {loadType === 'bodyweight' ? '+ Add weight' : 'Bodyweight only'}
+              </button>
+            )}
+            <span className="flex-1" />
+            {/* Both clear the tap target now. They were the smallest things on
+              the screen and one of them destroys a set. */}
             <button
               type="button"
               disabled={busy}
               onClick={() => {
                 onSave(changes);
               }}
-              className="text-xs text-muted underline-offset-4 hover:underline"
+              className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
             >
-              Save without ticking
+              Save
             </button>
-          )}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onRemove}
-            className="text-xs text-muted underline-offset-4 hover:underline"
-          >
-            Delete set
-          </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onRemove}
+              className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

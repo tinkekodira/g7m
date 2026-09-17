@@ -4475,3 +4475,30 @@ is right for every set added by hand and wrong for the one case that arrives as
 a block after the working sets are already prefilled. `prependSets` bisects
 `orderKeysBetween(null, firstWorkingKey, n)` in one call — a loop of `addSet`
 would put every rung at the same position.
+
+### A row is either a number to type or a number to read, and never both
+
+The ramp made an existing problem impossible to ignore: five generated rows
+arrived as five full editors, each two steppers and a plate line tall, on a
+screen that was already dense. And a ticked set kept its steppers too — dimmed
+and disabled, which is the worst of both, because a control that still looks
+like a control and does nothing when pressed reads as a broken app rather than
+as a locked one. It was reported as "I can still press the buttons", which is
+exactly what a dead control invites somebody to try.
+
+So two kinds of row collapse to a single line — the set number, what was done,
+and the tick:
+
+- **A finished set is a record.** Untick to change it, which is also how it is
+  deleted: the row opens back up and Delete is there. One extra tap for
+  something that should be rare.
+- **A warm-up is a prescription.** The ramp was worked out; nobody retypes it,
+  they load the bar and tick. It keeps its plate line, which is the part
+  actually read at the rack, and a Delete, since it cannot be opened up to find
+  one.
+
+The card now *shrinks* as a session goes rather than growing, which is the right
+direction: the rows that still need attention are the ones that stay big.
+
+The plate line moved inside the row's own tile. Floated between two of them it
+read as a caption for the next set rather than a description of this one.

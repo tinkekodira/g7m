@@ -20,18 +20,21 @@ test('one tap ramps a heavy lift from the empty bar', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Weight' }).first().fill('100');
 
   // What it is about to do, before it is pressed.
-  await expect(page.getByText(/Adds 5 warm-up sets/)).toBeVisible();
+  await expect(page.getByText(/Adds 5 sets from 20 kg up to 85 kg/)).toBeVisible();
   await page.getByRole('button', { name: 'Warm-up', exact: true }).click();
 
-  // The empty bar and four rungs, in front of the working set.
-  const weights = page.getByRole('textbox', { name: 'Weight' });
-  await expect(weights.nth(0)).toHaveValue('20.0');
-  await expect(weights.nth(1)).toHaveValue('40.0');
-  await expect(weights.nth(2)).toHaveValue('55.0');
-  await expect(weights.nth(3)).toHaveValue('70.0');
-  await expect(weights.nth(4)).toHaveValue('85.0');
-  // The working set is still last, still 100, and still called Set 1.
-  await expect(weights.nth(5)).toHaveValue('100.0');
+  // The empty bar and four rungs, in front of the working set. A warm-up is a
+  // prescription rather than a number to type, so it is a line to read.
+  for (const rung of ['20 kg × 8', '40 kg × 8', '55 kg × 5', '70 kg × 3', '85 kg × 2']) {
+    await expect(page.getByText(rung)).toBeVisible();
+  }
+  // Each rung says what to put on the bar, which is the part read at the rack.
+  await expect(page.getByText('Just the 20 kg bar')).toBeVisible();
+
+  // The working set keeps its steppers, is still 100, and is still Set 1 —
+  // a ramp in front of it must not renumber it.
+  await expect(page.getByRole('textbox', { name: 'Weight' })).toHaveCount(1);
+  await expect(page.getByRole('textbox', { name: 'Weight' })).toHaveValue('100.0');
   await expect(page.getByRole('button', { name: 'Complete set 1' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Complete warm-up 1' })).toBeVisible();
 
@@ -51,7 +54,7 @@ test('a light lift gets a short ramp, and a near-bar one gets none', async ({ pa
   await startWith(page, 'Barbell Back Squat');
   await page.getByRole('button', { name: 'Add set' }).click();
   await page.getByRole('textbox', { name: 'Weight' }).first().fill('40');
-  await expect(page.getByText(/Adds 2 warm-up sets/)).toBeVisible();
+  await expect(page.getByText(/Adds 2 sets from 20 kg up to 27.5 kg/)).toBeVisible();
 
   // Barely more than the empty bar: there is nothing to ramp through.
   await page.getByRole('textbox', { name: 'Weight' }).first().fill('22.5');
