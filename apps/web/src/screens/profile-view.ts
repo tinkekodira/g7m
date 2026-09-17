@@ -13,11 +13,13 @@ import {
   GOAL_LABELS,
   SEX_LABELS,
   ageFrom,
-  countryName,
+  bodyIndex,
   describeWhen,
   toDisplayHeight,
   toDisplayWeight,
   type ActivityLevel,
+  type BodyBand,
+  type BodyIndex,
   type PersonalRecord,
   type Sex,
   type TrainingGoal,
@@ -31,8 +33,8 @@ export interface StatTile {
   readonly value: string | null;
   /** A line under the value — how old a weight is, how many days a week. */
   readonly detail?: string;
-  /** A country code, for a flag beside the value. */
-  readonly flag?: string;
+  /** Colour for the detail line, where the detail is a verdict rather than a fact. */
+  readonly tone?: 'good' | 'caution';
 }
 
 export interface ProfileFacts {
@@ -43,12 +45,29 @@ export interface ProfileFacts {
   readonly birthDate: Date | null;
   readonly sex: Sex | null;
   readonly activityLevel: ActivityLevel | null;
-  readonly country: string | null;
+  /** From the goal, so the band knows this is somebody who lifts. */
+  readonly trainingDaysPerWeek: number | null;
+  /**
+   * Whether the goal row has been read yet, as opposed to read and empty.
+   *
+   * Without this the tile computes a band from a goal that has not arrived,
+   * and the first frame tells a lifter they are above their range before
+   * correcting itself a moment later. A blank that fills in is fine; a verdict
+   * that changes its mind is not. The goal card guards itself the same way.
+   */
+  readonly goalRead?: boolean;
 }
 
 /**
- * The tiles, in the order somebody scans for them: body first, then what they
- * are training for, then the rest.
+ * The tiles, in the order somebody scans for them.
+ *
+ * BMI comes last on purpose, after the five facts it is worked out from. The
+ * reader meets weight, height, age, activity and sex, and then the thing they
+ * add up to — which is also the order in which the last tile becomes
+ * trustworthy, because each blank above it widens the band it is judged against.
+ *
+ * Where somebody is from used to have a tile here. The flag beside their name
+ * says it already, and a country is not one of somebody's numbers (ADR-0080).
  */
 export function profileStats(facts: ProfileFacts, now: Date): StatTile[] {
   const weight = facts.weightKg === null ? null : toDisplayWeight(facts.weightKg, facts.unitSystem);
@@ -74,13 +93,73 @@ export function profileStats(facts: ProfileFacts, now: Date): StatTile[] {
       value: facts.activityLevel === null ? null : ACTIVITY_LABELS[facts.activityLevel],
     },
     { key: 'sex', label: 'Sex', value: facts.sex === null ? null : SEX_LABELS[facts.sex] },
-    {
-      key: 'country',
-      label: 'From',
-      value: facts.country === null ? null : countryName(facts.country),
-      ...(facts.country === null ? {} : { flag: facts.country }),
-    },
+    bmiTile(indexFor(facts, now)),
   ];
+}
+
+/** The body index for these facts, or null while anything it needs is missing. */
+export function indexFor(facts: ProfileFacts, now: Date): BodyIndex | null {
+  if (facts.goalRead === false) return null;
+  return bodyIndex({
+    weightKg: facts.weightKg,
+    heightCm: facts.heightCm,
+    age: ageFrom(facts.birthDate, now),
+    sex: facts.sex,
+    activityLevel: facts.activityLevel,
+    trainingDaysPerWeek: facts.trainingDaysPerWeek,
+  });
+}
+
+/** How each band reads on a tile. Short, because the range sits beside it. */
+const BAND_WORDS: Record<BodyBand, string> = {
+  below: 'Below range',
+  healthy: 'Healthy',
+  above: 'Above range',
+  well_above: 'Well above',
+};
+
+/**
+ * BMI, and the band it was judged against — never the textbook one unquoted.
+ *
+ * The range is printed next to the verdict rather than left implicit, because
+ * "Healthy" against an invisible band is the app asking to be trusted, and
+ * "Healthy · 18.5–27.5" is the app showing its working. It is also the only way
+ * somebody notices the band widening as they fill the rest of the screen in.
+ */
+function bmiTile(index: BodyIndex | null): StatTile {
+  if (index === null) return { key: 'bmi', label: 'BMI', value: null };
+  return {
+    key: 'bmi',
+    label: 'BMI',
+    value: index.bmi.toFixed(1),
+    detail: `${BAND_WORDS[index.band]} · ${trim(index.healthyLow)}–${trim(index.healthyHigh)}`,
+    tone: index.band === 'healthy' ? 'good' : 'caution',
+  };
+}
+
+/** 27.5 stays 27.5; 25.0 becomes 25, because a band is not a measurement. */
+function trim(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
+/**
+ * The line under the numbers, explaining why the band is not 18.5–25.
+ *
+ * Two versions, and which one shows is the point. A profile with nothing on it
+ * gets the standard band and an invitation to make it fit; a profile that has
+ * been filled in gets told what moved it. Without this the widened range looks
+ * like the app being loose with the arithmetic, and ADR-0035's objection would
+ * be answered in the code and nowhere the user can see.
+ */
+export function bmiNote(index: BodyIndex | null): string | null {
+  if (index === null) return null;
+  if (index.adjustedFor.length === 0) {
+    return 'That is the standard range. Fill in your age and how many days a week you train and it is set for your body instead.';
+  }
+  // "Moves with" rather than "is set from", which would claim a sex nobody has
+  // given. All three shift the band; which of them have been answered is the
+  // reader's business, and the band beside the verdict already shows the result.
+  return 'Your range moves with your age, your sex and how much you train. Plain BMI counts muscle as excess weight, so 18.5–25 is the wrong band for somebody who lifts.';
 }
 
 export interface BestLift {

@@ -1,7 +1,13 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { heatRampFor, placeholderBodyParts } from '@g7m/anatomy';
-import { firstName, personalRecords, toDisplayWeight, type UnitSystem } from '@g7m/core';
+import {
+  countryName,
+  firstName,
+  personalRecords,
+  toDisplayWeight,
+  type UnitSystem,
+} from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import {
@@ -24,7 +30,14 @@ import {
   useNeglected,
   useTrainingHeat,
 } from '../lib/db/use-trained-body.js';
-import { bestLifts, goalCardLine, profileStats, type BestLift } from './profile-view.js';
+import {
+  bestLifts,
+  bmiNote,
+  goalCardLine,
+  indexFor,
+  profileStats,
+  type BestLift,
+} from './profile-view.js';
 import type { Goal } from '@g7m/db';
 
 /**
@@ -38,6 +51,20 @@ const AnatomyViewer = lazy(() =>
 
 /** Lifts listed before "Show all". */
 const BESTS_SHOWN = 6;
+
+/**
+ * How a tile's second line is coloured.
+ *
+ * Only the BMI tile carries a verdict rather than a fact, and it is the one
+ * line on the page worth reading at a glance. Everything else stays grey —
+ * colouring every detail line would leave the one that means something with
+ * nothing to stand out against.
+ */
+const TONES = {
+  plain: 'text-muted',
+  good: 'text-success',
+  caution: 'text-warning',
+} as const;
 
 /** Nothing is selected here — the figures are pictures, not controls. */
 const ignore = (): void => undefined;
@@ -81,19 +108,21 @@ export function ProfileScreen() {
   const name = firstName(profile.data?.displayName ?? null);
   const fullName = profile.data?.displayName ?? null;
 
-  const tiles = profileStats(
-    {
-      unitSystem,
-      weightKg: metrics.data?.weightKg ?? null,
-      weightAt: metrics.data?.weightAt ?? null,
-      heightCm: metrics.data?.heightCm ?? null,
-      birthDate: profile.data?.birthDate ?? null,
-      sex: profile.data?.sex ?? null,
-      activityLevel: metrics.data?.activityLevel ?? null,
-      country: profile.data?.country ?? null,
-    },
-    now,
-  );
+  const facts = {
+    unitSystem,
+    weightKg: metrics.data?.weightKg ?? null,
+    weightAt: metrics.data?.weightAt ?? null,
+    heightCm: metrics.data?.heightCm ?? null,
+    birthDate: profile.data?.birthDate ?? null,
+    sex: profile.data?.sex ?? null,
+    activityLevel: metrics.data?.activityLevel ?? null,
+    // The band widens for somebody who trains, so it waits for the goal rather
+    // than judging them against the untrained one for a frame first.
+    trainingDaysPerWeek: goal.data?.daysPerWeek ?? null,
+    goalRead: !(goal.loading && goal.data === null),
+  };
+  const tiles = profileStats(facts, now);
+  const note = bmiNote(indexFor(facts, now));
 
   const error = profile.error ?? metrics.error ?? goal.error;
 
@@ -123,7 +152,13 @@ export function ProfileScreen() {
             {fullName ?? 'Add your name'}
           </p>
           {profile.data?.country != null && (
-            <Flag code={profile.data.country} className="shrink-0 text-xl" />
+            <>
+              <Flag code={profile.data.country} className="shrink-0 text-xl" />
+              {/* The flag is decorative and hidden, and it is now the only place
+                  the country appears — so the name of it has to be said
+                  somewhere a screen reader will reach. */}
+              <span className="sr-only">{countryName(profile.data.country)}</span>
+            </>
           )}
         </div>
       </section>
@@ -153,18 +188,23 @@ export function ProfileScreen() {
                     Not set — add it
                   </Link>
                 ) : (
-                  <span className="numeric flex items-center gap-1.5 text-base font-semibold text-primary">
-                    {tile.flag !== undefined && <Flag code={tile.flag} className="text-lg" />}
-                    <span className="min-w-0 truncate">{tile.value}</span>
+                  <span className="numeric block truncate text-base font-semibold text-primary">
+                    {tile.value}
                   </span>
                 )}
                 {tile.detail !== undefined && (
-                  <span className="block text-xs text-muted">{tile.detail}</span>
+                  <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
+                    {tile.detail}
+                  </span>
                 )}
               </dd>
             </div>
           ))}
         </dl>
+
+        {/* Why the band under BMI is not the 18.5–25 everybody has seen. Left
+            unsaid, a widened range reads as loose arithmetic. */}
+        {note !== null && <p className="mt-2 text-xs text-muted">{note}</p>}
       </section>
 
       <AchievementsLink />

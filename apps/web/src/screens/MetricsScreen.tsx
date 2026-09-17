@@ -27,6 +27,7 @@ import type { BodyMetric } from '@g7m/db';
 import { Button, Chip, TextField } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { CountryPicker } from '../components/CountryPicker.js';
+import { Flag } from '../components/Flag.js';
 import { TrendChart } from '../components/Charts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { describeChange, weighInPrompt } from './metrics-prompt.js';
@@ -84,7 +85,12 @@ export function MetricsScreen() {
             What the plan gets built from. Nothing here is shared anywhere.
           </p>
         </div>
-        <HeaderLink to="/">Home</HeaderLink>
+        {/* Back to Profile, which is the only way in here — Profile's Edit
+            button, and the goal screen, which is itself reached from Profile.
+            This used to say Home, which was a way out of the app's own
+            settings rather than a way back to the screen being edited; Home is
+            one tap away in the tab bar regardless. */}
+        <HeaderLink to="/profile">Back</HeaderLink>
       </header>
 
       {(profile.error ?? current.error ?? history.error) !== null && (
@@ -417,18 +423,39 @@ function AboutYou({
         </p>
       )}
 
-      {/* Answered at signup, changeable here — somebody who skipped it then,
-          or who has moved, should not have to make a new account. */}
-      <div className="mt-4">
-        <CountryPicker
-          value={country}
-          disabled={busy}
-          label="Where you are from"
-          hint="Only changes the greeting on the home screen."
-          onChange={(next) => {
-            void write((r) => r.profile.update({ country: next }));
-          }}
-        />
+      {/*
+        Answered at signup, changeable here — somebody who skipped it then, or
+        who has moved, should not have to make a new account.
+
+        Given a block of its own, with the flag it produces shown at the size it
+        is actually worn. It used to be one bare select wedged between three
+        text fields, reading as the least important thing on the screen, and it
+        is now the only place a country can be set *or seen* — Profile dropped
+        its "From" tile, because the flag beside somebody's name already says it
+        (ADR-0080).
+      */}
+      <div className="mt-5 rounded-control border border-accent/40 bg-elevated p-3">
+        <div className="flex items-center gap-3">
+          {country !== null && (
+            <span
+              aria-hidden
+              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-surface text-3xl"
+            >
+              <Flag code={country} />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <CountryPicker
+              value={country}
+              disabled={busy}
+              label="Where you are from"
+              hint="Puts your flag beside your name on your profile, and greets you in your own language on the home screen."
+              onChange={(next) => {
+                void write((r) => r.profile.update({ country: next }));
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/*
