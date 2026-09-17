@@ -94,7 +94,7 @@ importers:
         specifier: ^7.4.3
         version: 7.6.9
       sharp:
-        specifier: 0.34.4
+        specifier: ^0.34.4
         version: 0.34.4
 
   apps/web:
