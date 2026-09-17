@@ -4315,3 +4315,80 @@ gone on to close a workout that had just been answered for.
 nothing reaches a locked phone. That needs the native build's local
 notifications, which is a plugin and a permission prompt, and belongs with the
 rest of the native work rather than in front of it.
+
+## ADR-0078: Screens load on demand, and Zod leaves the entry chunk
+
+**Status:** Accepted · 2026-09-17
+
+The entry chunk is what a phone downloads, parses and evaluates before it can
+draw anything at all. It had reached 980 KB (295 KB gzipped), and the budget in
+`service-worker/budget.ts` had been raised twice to let it. This is the pass
+that brings it down: 980 KB to 700 KB, 295 KB to 213 KB over the wire, and the
+budget to 780,000 bytes.
+
+Three changes did it, and the measurements came first — from the build's own
+sourcemaps, attributing every byte of the entry to the module it came from,
+because guessing at this is how the 627 KB `three` regression shipped in the
+first place.
+
+**Every screen but Home is now behind `React.lazy`.** Fifteen screens were in
+the entry so that somebody could look at one of them. Home is the exception
+because it is where the app opens, and a fetch between the splash screen and
+the first thing anybody sees would be a worse trade than the bytes.
+
+**The screens behind the tab bar are fetched back during the first idle
+moment.** Splitting alone makes the first paint cheaper and the first tap on a
+tab more expensive, which is a bad bargain for a bar that is meant to feel
+instant. `preloadWhenIdle` warms Learn, Progress, Profile, Settings and the
+workout once the app is up and the database is open — after the things
+somebody is actually waiting on, and long before a thumb reaches them. On a
+phone with the app installed none of this is a network request at all: the
+service worker precaches every built file, so what is being deferred is the
+parsing, which is the part a slow phone feels.
+
+**The fallback says nothing for 250 ms.** The chunk is nearly always cached and
+the gap is a frame or two; a spinner would be a flash, and a flash between
+tapping a tab and arriving at it reads as the app stumbling. It is inside the
+tab layout, so the bar never blinks and the tab you tapped is already lit while
+its screen arrives.
+
+**A chunk that fails to load was already handled.** `crashKind` has read a
+failed dynamic import as `stale-build` since the anatomy model was split out,
+and the crash screen offers Reload, which is the whole fix. Splitting more
+screens widens that path rather than opening a new one.
+
+**The achievements catalogue is a chunk of its own.** Rollup puts a module
+shared by two or more lazy chunks into their nearest common ancestor, which
+for screens loaded from the router is the entry. That is the right default —
+one request rather than two, for code needed either way — and wrong for this
+one module: 15 KB of badge definitions, shared by the celebration watcher,
+the achievements grid and Profile, parsed before the first paint by everyone
+including the launches that never look at a badge, and growing with every
+badge added. It is named explicitly in `manualChunks` rather than caught by a
+pattern, because a rule broad enough to catch shared code in general would
+put the parts of `core` that Home needs into a second request in front of the
+first paint, which is the opposite of the point.
+
+**Zod is gone from the web app.** It was 76 KB of the entry, and its whole job
+was checking four environment strings that Vite bakes into the bundle at build
+time and that never change afterwards. `env-check.ts` checks exactly what the
+schema checked, reports every problem rather than the first, produces the same
+message — and, being a pure function over a plain object, is covered by tests,
+which the schema never was. Brief §3 asks for Zod at every boundary and that
+still holds: when a boundary arrives that is untrusted, variable and
+complicated — a response from the Claude generator — Zod belongs there,
+imported by the screen that parses it rather than by the app's first line.
+
+**What was left on the table, deliberately.** About 82 KB of the entry is
+Supabase clients this app never calls: `createClient` builds a realtime client
+in its constructor and statically imports the storage and functions clients.
+Removing them means wiring `GoTrueClient` and `PostgrestClient` together by
+hand, which means owning the auth storage key and the token refresh. Getting
+that wrong signs every user out, and a Supabase patch release could break sign-
+in on a phone with no way to debug it. That is a bad trade for 25 KB gzipped.
+
+The next lever, if one is wanted, is `packages/db`: 46 KB of repositories are in
+the entry because `useCatalogue` hands every screen the whole set, so the
+bundler cannot tell which screen needs which. That is a refactor across every
+screen rather than a chunking tweak, and it should wait for a reason better
+than bytes.

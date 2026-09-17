@@ -15,20 +15,27 @@
  */
 
 /**
- * Roughly 10% above where the entry sits today.
+ * Roughly 9% above where the entry sits today.
  *
- * Raised once, from 1,000,000, when four features in one change — achievements
- * ordering, the chart's memory, the logger's nudge and the watcher that closes
- * abandoned workouts — took the entry from 972 KB to 980 KB and tripped this.
- * The growth was the app's own code arriving, not a dependency landing in the
- * wrong chunk, which is what this guard is for.
+ * Lowered from 1,100,000 by the performance pass (ADR-0078), which took the
+ * entry from 980 KB to 700 KB — 295 KB to 213 KB over the wire. Every screen
+ * but Home now loads on demand; the achievements catalogue is a chunk of its
+ * own; and Zod, which was 76 KB to validate four environment strings that are
+ * fixed at build time, was replaced by `env-check.ts`.
  *
- * It is not permission to keep growing. The entry is heavy for a phone, and
- * splitting the screens nobody opens first — Settings, the calendar, the
- * achievements grid — is the performance pass's job, after which this number
- * should come down rather than up.
+ * What is left is mostly unavoidable, and worth naming so that whoever trips
+ * this next knows what they are looking at: React and its DOM renderer
+ * (186 KB), the Supabase client (208 KB), PowerSync and wa-sqlite (107 KB),
+ * the router (37 KB), and this app's own `db` and `core` packages (71 KB).
+ *
+ * The largest remaining *waste* is about 82 KB of Supabase: `createClient`
+ * builds a realtime client in its constructor and statically imports the
+ * storage and functions clients, none of which this app ever calls. Dropping
+ * them means wiring `GoTrueClient` and `PostgrestClient` together by hand,
+ * which means owning the auth storage key and the token refresh — a bad trade
+ * for 25 KB gzipped, given that getting it wrong signs everybody out.
  */
-export const ENTRY_BUDGET_BYTES = 1_100_000;
+export const ENTRY_BUDGET_BYTES = 780_000;
 
 /**
  * The module entry from a built `index.html`.
