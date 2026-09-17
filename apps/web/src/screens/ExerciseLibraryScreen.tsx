@@ -39,6 +39,16 @@ export function ExerciseLibraryScreen() {
   const adding = params.get('add') === '1';
 
   /**
+   * The other thing a picked exercise can be added to: a saved routine.
+   *
+   * The same screen again, for the same reason add mode reuses it — search and
+   * the filters are what make this list usable, and a third copy of them would
+   * be a third place to fix every bug.
+   */
+  const routineId = params.get('routine');
+  const picking = adding || routineId !== null;
+
+  /**
    * Replace rather than push.
    *
    * Typing into the search box would otherwise write one history entry per
@@ -51,6 +61,7 @@ export function ExerciseLibraryScreen() {
     // into the search box drops you out of add mode and back into browsing,
     // which is a maddening thing to have happen mid-workout.
     if (adding) written.set('add', '1');
+    if (routineId !== null) written.set('routine', routineId);
     setParams(written, { replace: true });
   };
 
@@ -63,6 +74,24 @@ export function ExerciseLibraryScreen() {
       // It used to be discarded here, and the workout reopened at the top — on
       // the first exercise, four away from the one just chosen.
       await navigate('/workout', entry === null ? undefined : { state: addedState(entry.id) });
+    })();
+  };
+
+  /**
+   * Add to a routine, with the rep range the catalogue already recommends for
+   * this lift rather than the column's generic 8–12.
+   */
+  const addToRoutine = (exercise: Exercise): void => {
+    if (routineId === null) return;
+    void (async () => {
+      await write((r) =>
+        r.routines.addExercise(routineId, {
+          exerciseId: exercise.id,
+          targetRepLow: exercise.defaultRepLow,
+          targetRepHigh: exercise.defaultRepHigh,
+        }),
+      );
+      await navigate(`/routines/${routineId}`);
     })();
   };
 
@@ -109,9 +138,11 @@ export function ExerciseLibraryScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <h1 className="text-2xl font-semibold text-primary">
-          {adding ? 'Add an exercise' : 'Exercises'}
+          {picking ? 'Add an exercise' : 'Exercises'}
         </h1>
-        <HeaderLink to={adding ? '/workout' : '/'}>{adding ? 'Back' : 'Home'}</HeaderLink>
+        <HeaderLink to={adding ? '/workout' : routineId !== null ? `/routines/${routineId}` : '/'}>
+          {picking ? 'Back' : 'Home'}
+        </HeaderLink>
       </header>
 
       <TextField
@@ -249,7 +280,11 @@ export function ExerciseLibraryScreen() {
                         ? () => {
                             addToWorkout(exercise);
                           }
-                        : null
+                        : routineId !== null
+                          ? () => {
+                              addToRoutine(exercise);
+                            }
+                          : null
                     }
                     busy={busy}
                   />

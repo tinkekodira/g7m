@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import { logSet, openTab, signIn, startWith } from './support/app.js';
+import { finishWorkout, logSet, openTab, signIn, startWith } from './support/app.js';
 
 /**
  * The hot path: a workout, logged set by set, arriving on the server.
@@ -19,8 +19,7 @@ test('a logged workout reaches the server and shows up in Progress', async ({ pa
   await logSet(page, 1, '60', '8');
   await logSet(page, 2, '62.5', '6');
 
-  await page.getByRole('button', { name: 'Finish workout' }).click();
-  await expect(page.getByRole('navigation')).toBeVisible();
+  await finishWorkout(page);
 
   // On the device: the finished workout is in Progress.
   await openTab(page, 'Progress');
@@ -73,7 +72,7 @@ test('a workout logged for a day that has gone lands on that day', async ({ page
   await page.getByLabel('Search').fill('Barbell Bench Press');
   await page.getByRole('button', { name: /^Barbell Bench Press/ }).click();
   await logSet(page, 1, '70', '5');
-  await page.getByRole('button', { name: 'Finish workout' }).click();
+  await finishWorkout(page);
 
   // Back on the calendar, on that day, marked as logged afterwards.
   await expect(page.getByText('Logged afterwards')).toBeVisible();

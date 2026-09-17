@@ -55,6 +55,11 @@ const AchievementsScreen = lazyScreen(
   () => import('./screens/AchievementsScreen.js'),
   'AchievementsScreen',
 );
+const RoutinesScreen = lazyScreen(() => import('./screens/RoutinesScreen.js'), 'RoutinesScreen');
+const RoutineDetailScreen = lazyScreen(
+  () => import('./screens/RoutineDetailScreen.js'),
+  'RoutineDetailScreen',
+);
 
 /**
  * The screens worth having ready before they are asked for: the four other
@@ -290,6 +295,8 @@ function AppScreens() {
         <Route path="/plan" element={<PlanScreen />} />
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/achievements" element={<AchievementsScreen />} />
+        <Route path="/routines" element={<RoutinesScreen />} />
+        <Route path="/routines/:routineId" element={<RoutineDetailScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>

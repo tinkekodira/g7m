@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Link, useParams } from 'react-router';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   describeWhen,
   toDisplayWeight,
@@ -14,7 +14,8 @@ import {
 import { boutSummary } from './bout-copy.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { formatWeightTotal } from '../components/chart-scale.js';
-import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { Button, TextField } from '@g7m/ui';
+import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
 /**
  * One workout, as it was logged.
@@ -74,12 +75,22 @@ export function SessionDetailScreen() {
           discarded.
         </p>
       ) : (
-        <SessionBody
-          startedAt={data.session.startedAt}
-          bodyweightKg={data.session.bodyweightKg}
-          unitSystem={data.profile?.unitSystem ?? 'metric'}
-          blocks={data.blocks}
-        />
+        <>
+          <SessionBody
+            startedAt={data.session.startedAt}
+            bodyweightKg={data.session.bodyweightKg}
+            unitSystem={data.profile?.unitSystem ?? 'metric'}
+            blocks={data.blocks}
+          />
+          <KeepAsRoutine
+            sessionId={sessionId}
+            suggestion={data.session.name ?? ''}
+            /* Nothing to template from a session with nothing ticked in it. */
+            enabled={data.blocks.some((block) =>
+              block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
+            )}
+          />
+        </>
       )}
     </main>
   );
@@ -235,6 +246,92 @@ function SessionBody({
         </section>
       ))}
     </>
+  );
+}
+
+/**
+ * Turn a workout that already happened into a routine.
+ *
+ * The other half of the offer made when a workout is finished, for the session
+ * somebody said "not this one" to and then trained twice more. Opens closed:
+ * this screen is read to see what was done, and a name box on it by default
+ * would be a form in the way of that.
+ */
+function KeepAsRoutine({
+  sessionId,
+  suggestion,
+  enabled,
+}: {
+  readonly sessionId: string;
+  readonly suggestion: string;
+  readonly enabled: boolean;
+}) {
+  const navigate = useNavigate();
+  const { write, busy, error } = useWrite();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(suggestion);
+
+  if (!enabled) return null;
+
+  return (
+    <section className="rounded-card border border-subtle bg-surface p-4">
+      {open ? (
+        <>
+          <h2 className="mb-3 text-base font-semibold text-primary">Name the routine</h2>
+          <TextField
+            label="Routine name"
+            value={name}
+            placeholder="Push Day"
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+          />
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Button
+              disabled={busy || name.trim() === ''}
+              onClick={() => {
+                void write((r) => r.routines.createFromSession({ sessionId, name })).then(
+                  (saved) => {
+                    if (saved !== null) void navigate('/routines');
+                  },
+                );
+              }}
+            >
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          {error !== null && (
+            <p role="alert" className="mt-2 text-sm text-danger">
+              {error}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => {
+              setOpen(true);
+            }}
+          >
+            Save as a routine
+          </Button>
+          <p className="mt-2 text-xs text-muted">
+            Keeps the movements and rep ranges, so you can start this session again in one tap.
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 

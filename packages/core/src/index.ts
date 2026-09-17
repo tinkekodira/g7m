@@ -19,6 +19,7 @@ export * from './order-key.js';
 export * from './exercise-search.js';
 export * from './load.js';
 export * from './rest.js';
+export * from './warmup.js';
 export * from './prefill.js';
 export * from './week.js';
 export * from './explain.js';

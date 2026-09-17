@@ -28,8 +28,9 @@ export type TabId = Tab['id'];
  * A screen deeper than a tab lights the tab it belongs under: one workout's
  * detail is part of Progress, the exercise library is part of Learn, and the
  * metrics and goal screens are part of Profile, which is where their numbers
- * are shown. Today's plan and the calendar are opened from Home and light
- * Home.
+ * are shown. Today's plan, the calendar and the routines are opened from Home
+ * and light Home — a routine is a workout waiting to be started, which is what
+ * Home is for, even though Profile links to them too.
  *
  * Null for the workout itself. The logger is a place you are *in* rather than
  * one you pass through, it pins its own bars to the bottom of the screen, and a
@@ -40,7 +41,14 @@ export function tabFor(pathname: string): TabId | null {
   const path = pathname.replace(/\/+$/, '') || '/';
 
   if (under(path, '/workout')) return null;
-  if (path === '/' || under(path, '/plan') || under(path, '/calendar')) return 'home';
+  if (
+    path === '/' ||
+    under(path, '/plan') ||
+    under(path, '/calendar') ||
+    under(path, '/routines')
+  ) {
+    return 'home';
+  }
   if (under(path, '/learn') || under(path, '/exercises')) return 'learn';
   if (under(path, '/progress')) return 'progress';
   if (

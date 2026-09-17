@@ -4392,3 +4392,86 @@ the entry because `useCatalogue` hands every screen the whole set, so the
 bundler cannot tell which screen needs which. That is a refactor across every
 screen rather than a chunking tweak, and it should wait for a reason better
 than bytes.
+
+---
+
+## ADR-0079 — Routines hold shape, and the warm-up ramp is worked out rather than typed
+
+Two features that were most of the way built before either was started, and one
+decision each that is worth writing down.
+
+### A routine holds movements and rep ranges, and never weights
+
+`routines` and `routine_exercises` have been in the schema since the first
+migration, with policies, a composite foreign key, `last_performed_at`, a
+`routine_id` on `workout_sessions` and a CHECK tying it to `source = 'routine'`.
+Nothing ever wrote to them. The shape of the tables had already made the
+decision that matters: `routine_exercises` carries `target_sets`,
+`target_rep_low` and `target_rep_high`, and **no weight column**.
+
+That is the whole difference between a routine and a snapshot. A routine that
+stored 80 kg would still offer 80 kg a year later, and the lifter would either
+edit it every week or stop trusting it. Starting a routine therefore writes the
+sets out through `nextSetTemplate` — the same prefill the logger and the
+generator use — so the weights are whatever was last actually lifted. A routine
+cannot go stale, because it never knew a weight to be stale about.
+
+**`target_sets` counts working sets only.** A warm-up is preparation, not part
+of the shape of a session; a routine built from a workout with four warm-ups in
+it that then asked for four warm-ups next time would be wrong in a way nobody
+would report. Same rule as the partial index in Postgres.
+
+**Deleting a routine keeps the workouts it produced.** They happened. The
+sessions are re-pointed to `source = 'manual'` with a null `routine_id`, because
+`(source = 'routine') = (routine_id is not null)` is a CHECK and a stranded
+session would be refused on upload and discarded.
+
+**The children are deleted explicitly.** Postgres cascades; the local SQLite
+through PowerSync does not enforce the foreign key, so leaving them would strand
+rows pointing at a parent that no longer exists.
+
+### The quick-access tile trades the 3D model for the routines
+
+Home has room for four tiles and five things worth putting in them. The model
+loses, once there is a routine to take its place, because the model has a tab of
+its own in the bar at the bottom and a saved routine has nothing. Nothing is
+lost and the more useful of the two is in front. Before the first routine is
+saved the model keeps the slot, so the tile is never empty or explaining itself.
+
+### The warm-up ramp scales with the load
+
+`set_type` has allowed `warmup` since the first schema. The partial index
+excludes it from counted volume, `prefill.ts` has a branch for staying in a
+warm-up, `planner.ts` and `add-weight.ts` both filter it and three screens
+render it. No UI could ever create one, so `prefill.ts:62` was unreachable in
+production and every bar-only ramp set anybody logged counted as working volume.
+
+The arguable part is the scheme, and the choice was between a fixed percentage
+ladder and one whose length depends on the weight. **Fixed is wrong at the
+bottom of the range**: 40% of a 40 kg squat is 16 kg, which is lighter than the
+20 kg bar it would be loaded onto — a rung nobody can lift, offered
+confidently. So the number of rungs comes from how many times the floor the
+working weight is, where the floor is the empty bar for a barbell and the
+smallest rack step otherwise. Five plates a side gets four rungs; a weight
+barely above the bar gets none, and the button does not appear.
+
+**Every rung is rounded down to a loading that exists** — pairs of the smallest
+plate on a bar, the rack's own ladder for dumbbells. Down rather than to the
+nearest, because a warm-up rounded up lands heavier than intended and the whole
+point is arriving at the working weight fresh.
+
+**The arithmetic happens in display units.** A plate kit is expressed in its own
+unit: `LB_KIT.bar` is 45 *pounds*. Working in kilograms ramped an imperial
+lifter to a 45 kg bar — more than twice the weight, silently, and only caught
+because a test asserted the first rung. `warmupSets` converts once at the end.
+
+**Only `external` load gets a ramp.** A percentage of "your own bodyweight" is
+not a weight anybody can load. The honest warm-up for a pull-up is bands or a
+lighter movement, which is a different feature rather than this one with a bad
+answer in it.
+
+**Warm-ups are prepended, not appended.** `addSet` puts a set at the end, which
+is right for every set added by hand and wrong for the one case that arrives as
+a block after the working sets are already prefilled. `prependSets` bisects
+`orderKeysBetween(null, firstWorkingKey, n)` in one call — a loop of `addSet`
+would put every rung at the same position.

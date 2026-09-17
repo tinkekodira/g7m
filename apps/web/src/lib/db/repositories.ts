@@ -20,6 +20,7 @@ import {
   MuscleRepository,
   PlannerRepository,
   ProfileRepository,
+  RoutineRepository,
   SessionRepository,
 } from '@g7m/db';
 import type { AbstractPowerSyncDatabase } from '@powersync/web';
@@ -47,6 +48,8 @@ export interface Repositories {
   readonly goals: GoalRepository;
   /** The reads the session generator runs on. See ADR-0037. */
   readonly planner: PlannerRepository;
+  /** Saved workouts: movements and rep ranges, never weights. */
+  readonly routines: RoutineRepository;
   /** Everything this user owns, for "Download your data". See ADR-0064. */
   readonly account: AccountRepository;
 }
@@ -81,6 +84,7 @@ export async function getRepositories(userId: string): Promise<Repositories> {
     bodyMetrics: new BodyMetricsRepository(db, context),
     goals: new GoalRepository(db, context),
     planner: new PlannerRepository(db, context),
+    routines: new RoutineRepository(db, context),
     account: new AccountRepository(db, context),
   };
 }
