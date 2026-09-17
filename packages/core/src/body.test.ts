@@ -3,13 +3,17 @@ import {
   ACTIVITY_DESCRIPTIONS,
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
+  BASE_HEALTHY_HIGH,
+  BASE_HEALTHY_LOW,
   MIN_TREND_DAYS,
   ageFrom,
   ageOn,
+  bodyIndex,
   parseBirthDate,
   toDateOnly,
   weighInStatus,
   weightTrend,
+  type BodyIndexInput,
   type WeighIn,
 } from './body.js';
 
@@ -285,5 +289,145 @@ describe('ageFrom', () => {
   it('rejects a date that would make somebody impossible', () => {
     expect(ageFrom(parseBirthDate('1850-01-01'), new Date('2026-01-01T00:00:00.000Z'))).toBeNull();
     expect(ageFrom(parseBirthDate('2030-01-01'), new Date('2026-01-01T00:00:00.000Z'))).toBeNull();
+  });
+});
+
+const UNKNOWN: BodyIndexInput = {
+  weightKg: null,
+  heightCm: null,
+  age: null,
+  sex: null,
+  activityLevel: null,
+  trainingDaysPerWeek: null,
+};
+
+/** 180 cm, which makes every ratio below divisible by 3.24. */
+function body(weightKg: number, rest: Partial<BodyIndexInput> = {}): BodyIndexInput {
+  return { ...UNKNOWN, weightKg, heightCm: 180, ...rest };
+}
+
+describe('bodyIndex', () => {
+  it('has no answer without a weight and a height', () => {
+    expect(bodyIndex(UNKNOWN)).toBeNull();
+    expect(bodyIndex({ ...UNKNOWN, weightKg: 80 })).toBeNull();
+    expect(bodyIndex({ ...UNKNOWN, heightCm: 180 })).toBeNull();
+  });
+
+  /**
+   * The textbook band is what somebody who has answered nothing else gets, and
+   * it is the harshest verdict this can give. Every optional answer widens it.
+   */
+  it('judges a body it knows nothing else about against the textbook band', () => {
+    const index = bodyIndex(body(80));
+    expect(index).toMatchObject({
+      bmi: 24.7,
+      band: 'healthy',
+      healthyLow: BASE_HEALTHY_LOW,
+      healthyHigh: BASE_HEALTHY_HIGH,
+      adjustedFor: [],
+    });
+  });
+
+  /**
+   * ADR-0035's objection, and the case this exists to get right: 86 kg at
+   * 180 cm is "overweight" on the textbook band and healthy for somebody who
+   * trains five days a week and is on their feet all day.
+   */
+  it('calls a lifter healthy where the textbook band would not', () => {
+    const lifter = bodyIndex(
+      body(86, { age: 30, sex: 'male', activityLevel: 'active', trainingDaysPerWeek: 5 }),
+    );
+
+    expect(lifter?.bmi).toBe(26.5);
+    expect(lifter?.bmi).toBeGreaterThan(BASE_HEALTHY_HIGH);
+    expect(lifter?.healthyHigh).toBe(27.5);
+    expect(lifter?.band).toBe('healthy');
+    expect(lifter?.adjustedFor).toEqual(['training', 'activity']);
+
+    // The same body, with nothing on file about how it is used.
+    expect(bodyIndex(body(86))?.band).toBe('above');
+  });
+
+  /** Still above is still reported. The range moves; it does not absolve. */
+  it('does not widen the band far enough to excuse anything', () => {
+    const index = bodyIndex(
+      body(105, { age: 30, sex: 'male', activityLevel: 'very_active', trainingDaysPerWeek: 6 }),
+    );
+    expect(index?.bmi).toBe(32.4);
+    expect(index?.band).toBe('above');
+  });
+
+  /**
+   * Both ends, because being light is its own risk later in life — the half of
+   * the published adjustment that gets left out.
+   */
+  it('raises the whole band with age', () => {
+    const old = bodyIndex({ ...body(80), heightCm: 170, age: 70 });
+    expect(old).toMatchObject({ bmi: 27.7, healthyLow: 22.5, healthyHigh: 29, band: 'healthy' });
+    expect(old?.adjustedFor).toEqual(['age']);
+
+    // The same ratio at 25 is above the band.
+    expect(bodyIndex({ ...body(80), heightCm: 170, age: 25 })?.band).toBe('above');
+
+    // And the lower end bites: 20.8 is healthy at 25 and light at 70.
+    expect(bodyIndex({ ...body(60), heightCm: 170, age: 25 })?.band).toBe('healthy');
+    expect(bodyIndex({ ...body(60), heightCm: 170, age: 70 })?.band).toBe('below');
+  });
+
+  /**
+   * The allowance is for lean tissue, and a female body carries less of it at
+   * the same training. It widens her range too — just by less. Nobody's range
+   * is ever narrowed for their sex.
+   */
+  it('credits a female body with a smaller share of the lean allowance', () => {
+    const shared = { age: 30, activityLevel: 'active', trainingDaysPerWeek: 5 } as const;
+    const male = bodyIndex(body(86, { ...shared, sex: 'male' }));
+    const female = bodyIndex(body(86, { ...shared, sex: 'female' }));
+
+    expect(female?.healthyHigh).toBe(26.5);
+    expect(female?.healthyHigh).toBeLessThan(male?.healthyHigh ?? 0);
+    expect(female?.healthyHigh).toBeGreaterThan(BASE_HEALTHY_HIGH);
+    // Same body, same ratio. Only what counts as healthy for it differs.
+    expect(female?.bmi).toBe(male?.bmi);
+  });
+
+  it('stops calling anything healthy past 30, however the adjustments stack', () => {
+    const index = bodyIndex(
+      body(100, { age: 100, sex: 'male', activityLevel: 'very_active', trainingDaysPerWeek: 7 }),
+    );
+    expect(index?.healthyHigh).toBe(30);
+  });
+
+  /** A goal row claiming nine training days a week buys nothing over seven. */
+  it('clamps the training days to a week', () => {
+    const seven = bodyIndex(body(86, { trainingDaysPerWeek: 7 }));
+    expect(bodyIndex(body(86, { trainingDaysPerWeek: 99 }))?.healthyHigh).toBe(seven?.healthyHigh);
+  });
+
+  /**
+   * The ratio is the ratio. A "muscle-corrected BMI" would agree with no
+   * doctor, chart or other app, and would be a guess wearing a measurement's
+   * clothes.
+   */
+  it('never adjusts the number itself', () => {
+    const plain = bodyIndex(body(90))?.bmi;
+    const known = bodyIndex(
+      body(90, { age: 65, sex: 'male', activityLevel: 'very_active', trainingDaysPerWeek: 6 }),
+    )?.bmi;
+    expect(known).toBe(plain);
+  });
+
+  it('separates a little above from a long way above', () => {
+    // The band tops out at 25 here, so 30.0 is the last thing called "above".
+    expect(bodyIndex({ ...body(86.7), heightCm: 170 })?.band).toBe('above');
+    expect(bodyIndex({ ...body(87), heightCm: 170 })?.band).toBe('well_above');
+  });
+
+  it('refuses a measurement that is a typo rather than a body', () => {
+    // A height in metres, typed into a box asking for centimetres.
+    expect(bodyIndex({ ...body(80), heightCm: 1.8 })).toBeNull();
+    expect(bodyIndex({ ...body(80), heightCm: 300 })).toBeNull();
+    expect(bodyIndex(body(0))).toBeNull();
+    expect(bodyIndex(body(Number.NaN))).toBeNull();
   });
 });

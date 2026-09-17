@@ -1,19 +1,40 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { finishWorkout, logSet, openTab, signIn, startWith } from './support/app.js';
 
+/** The BMI tile on Profile, found by its label rather than its contents. */
+function bmiTile(page: Page): Locator {
+  return page.locator('dl > div').filter({ hasText: /^BMI/ });
+}
+
 /**
- * Profile's front page and Progress's chart views (ADR-0071): where you are
- * from, with its flag; your goal, findable and changeable from the top; and a
- * chart that shows whichever view you pick, remembered like the period.
+ * The top of the band the tile says it judged the ratio against.
+ *
+ * Read out of the text rather than asserted against a literal, because the band
+ * moves with the lifter's age and a hard-coded 25.1 would quietly become wrong
+ * on a birthday nobody is watching. What the test cares about is that it moves.
  */
-test('Profile shows where you are from and a goal card that opens the goal', async ({ page }) => {
+async function bandTop(tile: Locator): Promise<number> {
+  const text = (await tile.textContent()) ?? '';
+  const match = /–(\d+(?:\.\d)?)/.exec(text);
+  if (match === null) throw new Error(`No band to read in "${text}"`);
+  return Number(match[1]);
+}
+
+/**
+ * Profile's front page and Progress's chart views (ADR-0071): your goal,
+ * findable and changeable from the top, and a chart that shows whichever view
+ * you pick, remembered like the period.
+ */
+test('Profile has a goal card that opens the goal and comes back', async ({ page }) => {
   const user = await createUser('profile', { onboarded: true, displayName: 'Ana' });
   await sql(`update public.profiles set country = 'HR' where user_id = $1`, [user.id]);
   await signIn(page, user);
   await openTab(page, 'Profile');
 
-  await expect(page.getByText('Croatia')).toBeVisible();
+  // Where somebody is from is no longer one of their numbers. The flag beside
+  // their name says it, and setting it is the Edit screen's job (ADR-0080).
+  await expect(page.getByText('From', { exact: true })).toHaveCount(0);
 
   // No goal yet, so the card asks for one — and is right at the top.
   const card = page.getByRole('link', { name: /Your goal/ });
@@ -24,6 +45,66 @@ test('Profile shows where you are from and a goal card that opens the goal', asy
   // Back where it was opened from, not to the You screen.
   await page.getByRole('link', { name: 'Profile' }).first().click();
   await expect(page.getByRole('heading', { name: 'Your profile' })).toBeVisible();
+});
+
+/**
+ * BMI, and the reason ADR-0035 let it in: the ratio is measured against a band
+ * built for this body, so the same 25.5 that reads "above range" for somebody
+ * the app knows nothing about reads healthy once it knows they are on their
+ * feet all day.
+ *
+ * The same test carries the way out of the Edit screen, because that is where
+ * the measurements it needs are typed.
+ */
+test('BMI is judged against a band that widens as the app learns about you', async ({ page }) => {
+  const user = await createUser('bmi', { onboarded: true, displayName: 'Ana' });
+  await sql(`update public.profiles set country = 'HR' where user_id = $1`, [user.id]);
+  await signIn(page, user);
+  await openTab(page, 'Profile');
+
+  // No height on file, so it asks rather than inventing a ratio from a default.
+  await expect(bmiTile(page)).toContainText('Not set');
+
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await expect(page.getByRole('heading', { name: 'You', level: 1 })).toBeVisible();
+
+  // The way out is Back, to the profile it was opened from. It used to say
+  // Home — scoped to the header, since the tab bar has a Home link regardless,
+  // which is half the reason the header no longer needs one.
+  const header = page.locator('header').filter({ has: page.getByRole('heading', { level: 1 }) });
+  await expect(header.getByRole('link', { name: 'Back' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Home' })).toHaveCount(0);
+
+  // Where you are from, findable, and holding the answer given at signup.
+  await expect(page.getByLabel('Where you are from')).toHaveValue('HR');
+
+  // 82.6 kg at 180 cm is a BMI of 25.5 — over the textbook 25.
+  const save = page.locator('button:enabled').filter({ hasText: /^Save$/ });
+  await page.getByLabel('Height (cm)').fill('180');
+  await save.click();
+  await page.getByLabel(/weight \(kg\)/i).fill('82.6');
+  await save.click();
+
+  await page.getByRole('link', { name: 'Back' }).click();
+  await expect(page.getByRole('heading', { name: 'Your profile' })).toBeVisible();
+
+  const tile = bmiTile(page);
+  await expect(tile).toContainText('25.5');
+  await expect(tile).toContainText('Above range');
+  const narrow = await bandTop(tile);
+  expect(narrow).toBeGreaterThanOrEqual(25);
+  // And the screen says why the band is not the 18.5–25 everybody has seen.
+  await expect(page.getByText(/counts muscle as excess weight/)).toBeVisible();
+
+  // Now tell it about the other twenty-three hours.
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Very active' }).click();
+  await page.getByRole('link', { name: 'Back' }).click();
+
+  // The same ratio, a wider band, and no longer a verdict against them.
+  await expect(tile).toContainText('25.5');
+  await expect(tile).toContainText('Healthy');
+  expect(await bandTop(tile)).toBeGreaterThan(narrow);
 });
 
 test('the Progress chart shows the view picked from its dropdown, and keeps it', async ({

@@ -4502,3 +4502,112 @@ direction: the rows that still need attention are the ones that stay big.
 
 The plate line moved inside the row's own tile. Floated between two of them it
 read as a caption for the next set rather than a description of this one.
+
+---
+
+## ADR-0080 — BMI, against a band built for the body holding it
+
+**Status:** accepted · **Date:** 2026-09-17 · **Phase:** 7
+
+**Amends ADR-0035**, which refused BMI outright.
+
+### Context
+
+ADR-0035 kept BMI out of the app, and the reasoning was sound: two lines of
+arithmetic that count muscle as excess mass misread exactly the person g7m
+exists for. Somebody six months into a successful lean bulk would be moved from
+"normal" to "overweight" by the same app that coached them there.
+
+What that argument actually indicts is the **verdict**, not the ratio. The
+ratio is a fact about a body. "18.5–25 is healthy" is a population average
+quoted at an individual, and it is the half that libels lifters.
+
+So the refusal was answered rather than repeated. The one thing that made BMI
+unusable — one band for everybody — is the thing that is now computed per
+person.
+
+### Decision
+
+**`bodyIndex` never quotes the textbook band at anybody.** It works out the
+range 18.5–25 was meant to approximate for *this* body and reports the ratio
+against that:
+
+- **Age moves both ends.** The published age-adjusted ranges (Andres) run
+  20–25 in your late twenties and 24–29 past 65 — about a tenth of a point a
+  year, interpolated here rather than stepped, because a band that jumps on a
+  birthday tells somebody their body changed overnight. Both ends, because
+  being light is its own risk later in life, which is the half of that
+  adjustment people leave out.
+- **Training and activity move the top.** 0.35 per day a week trained, plus up
+  to a point for a physical job, capped at 3. A trained man carries roughly two
+  to three points more BMI than an untrained one at the same body fat, which is
+  the entire reason the textbook band is wrong for this app's users.
+- **Sex scales the lean allowance, not the ratio.** 0.6 for a female body, from
+  the same fact `SEXES` is already documented with. It widens her range; it
+  never narrows anybody's, and it never touches the number.
+- **Nothing above 30 is ever called healthy**, however the adjustments stack.
+
+**The number itself is never adjusted.** A "muscle-corrected BMI" would agree
+with no doctor, no chart and no other app — a guess wearing a measurement's
+clothes. The ratio is the ratio; what age, sex and training change is what
+counts as healthy for the person holding it.
+
+**Training days come from the goal, not from `activity_level`.** That column is
+explicitly about the *other* twenty-three hours, and a desk-job powerlifter
+answers "sedentary" to it truthfully. An allowance built from activity alone
+would hand the least to the person who needs it most.
+
+**Blanks make the band narrower, never wider.** Somebody who has answered only
+weight and height gets the textbook range — the harshest verdict this can give,
+and the right default for a body the app knows nothing about. Every further
+answer widens it, and the tile prints the band beside the verdict so that
+widening is visible rather than asserted.
+
+### Still refused: an estimated body-fat percentage
+
+The obvious formula (Deurenberg) is BMI with age and sex folded in — the same
+measurement wearing a disguise. It inherits the muscle problem whole and then
+hides it behind a decimal place that looks like it came from calipers: a trained
+90 kg lifter at 180 cm comes out near 30% fat, which is not merely wrong but the
+precise wrong ADR-0035 was written about. A range that admits it is a range is
+the honest shape for this.
+
+### Where the country went
+
+The "From" tile left `Your numbers` to make room. A country is not one of
+somebody's numbers, and the flag beside their name on the same screen already
+says it — so the tile was a second copy of a fact, sitting in the one place on
+Profile reserved for measurements.
+
+It moved to where it is actually set. On the Edit screen it was a bare `select`
+wedged between three text fields, reading as the least important thing there;
+it now has a block of its own with the flag shown at the size it is worn, and a
+hint that says what it does — the greeting is in that country's language.
+
+The flag is decorative and `aria-hidden`, so with the tile gone the country had
+no accessible name anywhere on Profile. There is now an `sr-only` country name
+beside it.
+
+### The way out of the Edit screen
+
+It said **Home**. From a screen reached only from Profile — by Profile's own
+Edit button — that is a way out of the app's settings rather than a way back to
+what was being edited, and Home is one tap away in the tab bar regardless. It
+says **Back**, and goes to Profile.
+
+### Consequences
+
+The tile carries the one verdict on the page, so it is the one detail line that
+gets colour; everything else stays grey, or there would be nothing for it to
+stand out against.
+
+It waits for the goal row to be read before judging anything. Computed from a
+goal that has not arrived, the first frame tells a lifter they are above their
+range and then corrects itself — a blank that fills in is fine, a verdict that
+changes its mind is not. The goal card already guards itself the same way.
+
+The band is now time-dependent in a way nothing else on the screen is: the same
+body drifts into a wider range as it ages. The browser test reads the band's
+upper bound out of the text and asserts it *moved* rather than asserting a
+literal, because a hard-coded 25.1 would quietly become wrong on a birthday
+nobody is watching.
