@@ -33,8 +33,10 @@ describe('entryScript', () => {
 });
 
 describe('describeOverBudget', () => {
+  // Said against the constant rather than a literal, so that moving the budget
+  // deliberately does not break a test about the comparison.
   it('says nothing while the entry fits', () => {
-    expect(describeOverBudget('assets/index.js', 820_000)).toBeNull();
+    expect(describeOverBudget('assets/index.js', ENTRY_BUDGET_BYTES - 1)).toBeNull();
     expect(describeOverBudget('assets/index.js', ENTRY_BUDGET_BYTES)).toBeNull();
   });
 

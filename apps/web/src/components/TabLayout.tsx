@@ -1,7 +1,8 @@
-import { useLayoutEffect } from 'react';
+import { Suspense, useLayoutEffect } from 'react';
 import { NavigationType, Outlet, useLocation, useNavigationType } from 'react-router';
 import { TabBar } from './TabBar.js';
 import { RouteBoundary } from './ErrorBoundary.js';
+import { ScreenFallback } from './ScreenFallback.js';
 import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 
 /**
@@ -19,9 +20,14 @@ export function TabLayout() {
     <>
       <div className="pb-16">
         {/* Inside the layout, so a screen that throws takes itself down and
-            leaves the tab bar to get out by. */}
+            leaves the tab bar to get out by. The same goes for a screen still
+            being loaded: with the boundary and the fallback both in here, the
+            bar never blinks, and the tab you tapped is already lit while its
+            screen arrives. ADR-0078. */}
         <RouteBoundary>
-          <Outlet />
+          <Suspense fallback={<ScreenFallback />}>
+            <Outlet />
+          </Suspense>
         </RouteBoundary>
       </div>
       <TabBar alert={isAlarming(alarm)} />

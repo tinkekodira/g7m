@@ -94,5 +94,36 @@ export default defineConfig({
     // four and avoids shipping transpiled async/await to modern engines.
     target: 'es2022',
     sourcemap: true,
+
+    rollupOptions: {
+      output: {
+        /**
+         * One exception to Rollup's chunking, for one module.
+         *
+         * When a module is imported by two or more lazily-loaded chunks,
+         * Rollup puts it in their nearest common ancestor — which, for screens
+         * loaded from the router, is the entry. That is the right default:
+         * it means one request instead of two, for code that is going to be
+         * needed either way.
+         *
+         * The achievements catalogue is the case where it is wrong. It is
+         * 15 KB of badge definitions shared by three lazy chunks — the
+         * celebration watcher, the achievements grid and Profile — so it lands
+         * in the entry and is downloaded and parsed before the first paint by
+         * everybody, including the many launches that never look at a badge.
+         * It also grows with every badge added, so this gets worse on its own.
+         *
+         * Named rather than pattern-matched. A rule broad enough to catch
+         * "shared code" in general would split the parts of `core` that Home
+         * needs into a second request in front of the first paint, which is
+         * the opposite of the point. See ADR-0078.
+         */
+        manualChunks(id: string) {
+          return id.replace(/\\/g, '/').endsWith('packages/core/src/achievements.ts')
+            ? 'achievements'
+            : undefined;
+        },
+      },
+    },
   },
 });

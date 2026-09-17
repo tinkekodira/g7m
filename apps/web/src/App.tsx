@@ -1,32 +1,90 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
 import { ResetPasswordScreen } from './auth/ResetPasswordScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
-import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen.js';
-import { ExerciseDetailScreen } from './screens/ExerciseDetailScreen.js';
-import { WorkoutScreen } from './screens/WorkoutScreen.js';
-import { LearnScreen } from './screens/LearnScreen.js';
-import { ProgressScreen } from './screens/ProgressScreen.js';
-import { MetricsScreen } from './screens/MetricsScreen.js';
-import { GoalScreen } from './screens/GoalScreen.js';
-import { PlanScreen } from './screens/PlanScreen.js';
-import { SessionDetailScreen } from './screens/SessionDetailScreen.js';
-import { ExerciseTrendScreen } from './screens/ExerciseTrendScreen.js';
-import { WelcomeScreen } from './screens/WelcomeScreen.js';
-import { ProfileScreen } from './screens/ProfileScreen.js';
-import { SettingsScreen } from './screens/SettingsScreen.js';
-import { CalendarScreen } from './screens/CalendarScreen.js';
-import { AchievementsScreen } from './screens/AchievementsScreen.js';
-import { AchievementCelebrations } from './components/AchievementBanner.js';
-import { AbandonedWorkoutWatcher } from './components/AbandonedWorkout.js';
 import { TabLayout } from './components/TabLayout.js';
+import { ScreenFallback } from './components/ScreenFallback.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
 import { RouteBoundary } from './components/ErrorBoundary.js';
 import { useNativeShell } from './lib/native/use-native-shell.js';
+import { lazyScreen, preloadWhenIdle } from './lib/lazy-screen.js';
+
+/**
+ * Every screen but Home, in a file of its own. ADR-0078.
+ *
+ * Home is the exception because it is where the app opens: loading it on
+ * demand would put a fetch between the splash screen and the first thing
+ * anybody sees, to save bytes on the one screen that always needs them.
+ *
+ * Everything else is deferred and then quietly fetched back — see
+ * `preloadWhenIdle` below and the note in `lazy-screen.ts`. The point is not to
+ * download less over a phone's life; it is to download and *parse* less before
+ * the first paint.
+ */
+const ExerciseLibraryScreen = lazyScreen(
+  () => import('./screens/ExerciseLibraryScreen.js'),
+  'ExerciseLibraryScreen',
+);
+const ExerciseDetailScreen = lazyScreen(
+  () => import('./screens/ExerciseDetailScreen.js'),
+  'ExerciseDetailScreen',
+);
+const WorkoutScreen = lazyScreen(() => import('./screens/WorkoutScreen.js'), 'WorkoutScreen');
+const LearnScreen = lazyScreen(() => import('./screens/LearnScreen.js'), 'LearnScreen');
+const ProgressScreen = lazyScreen(() => import('./screens/ProgressScreen.js'), 'ProgressScreen');
+const MetricsScreen = lazyScreen(() => import('./screens/MetricsScreen.js'), 'MetricsScreen');
+const GoalScreen = lazyScreen(() => import('./screens/GoalScreen.js'), 'GoalScreen');
+const PlanScreen = lazyScreen(() => import('./screens/PlanScreen.js'), 'PlanScreen');
+const SessionDetailScreen = lazyScreen(
+  () => import('./screens/SessionDetailScreen.js'),
+  'SessionDetailScreen',
+);
+const ExerciseTrendScreen = lazyScreen(
+  () => import('./screens/ExerciseTrendScreen.js'),
+  'ExerciseTrendScreen',
+);
+const WelcomeScreen = lazyScreen(() => import('./screens/WelcomeScreen.js'), 'WelcomeScreen');
+const ProfileScreen = lazyScreen(() => import('./screens/ProfileScreen.js'), 'ProfileScreen');
+const SettingsScreen = lazyScreen(() => import('./screens/SettingsScreen.js'), 'SettingsScreen');
+const CalendarScreen = lazyScreen(() => import('./screens/CalendarScreen.js'), 'CalendarScreen');
+const AchievementsScreen = lazyScreen(
+  () => import('./screens/AchievementsScreen.js'),
+  'AchievementsScreen',
+);
+
+/**
+ * The screens worth having ready before they are asked for: the four other
+ * tabs, and the workout.
+ *
+ * The workout is in the list despite not being a tab because it is what the
+ * app is for, and because the tap that opens it is usually made standing at a
+ * rack. The rest — the calendar, a single exercise, the achievements grid —
+ * are opened deliberately, from a screen that is already up, and load fast
+ * enough on demand.
+ */
+const WARM = [LearnScreen, ProgressScreen, ProfileScreen, SettingsScreen, WorkoutScreen];
+
+/**
+ * The two watchers that run everywhere, also loaded on demand.
+ *
+ * Neither draws anything most of the time, and neither is urgent: a badge
+ * announced a quarter of a second into the app's life is a badge announced on
+ * time, and a workout abandoned an hour ago can be closed a moment after
+ * launch as easily as during it. What they cost in the entry chunk is real,
+ * though — the achievements catalogue alone is 15 KB and grows with every
+ * badge added, which is exactly the kind of weight that should not sit in
+ * front of the first paint.
+ */
+const AchievementCelebrations = lazy(async () => ({
+  default: (await import('./components/AchievementBanner.js')).AchievementCelebrations,
+}));
+const AbandonedWorkoutWatcher = lazy(async () => ({
+  default: (await import('./components/AbandonedWorkout.js')).AbandonedWorkoutWatcher,
+}));
 
 /**
  * The auth gate.
@@ -174,10 +232,12 @@ function Gate() {
  */
 function WelcomeRoutes() {
   return (
-    <Routes>
-      <Route path="/welcome/:step" element={<WelcomeScreen />} />
-      <Route path="*" element={<WelcomeScreen />} />
-    </Routes>
+    <Suspense fallback={<ScreenFallback />}>
+      <Routes>
+        <Route path="/welcome/:step" element={<WelcomeScreen />} />
+        <Route path="*" element={<WelcomeScreen />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -191,16 +251,25 @@ function WelcomeRoutes() {
  * link and Finish are the ways out.
  */
 function AppRoutes() {
+  // The other tabs and the workout, fetched during the first quiet moment so
+  // that the bar at the bottom stays as instant as it looks. ADR-0078.
+  useEffect(() => preloadWhenIdle(WARM), []);
+
   return (
     <>
       <AppScreens />
-      {/* Beside the routes rather than in one, so a badge earned mid-set is
-          announced on the workout screen, where it was earned. ADR-0072. */}
-      <AchievementCelebrations />
-      {/* Likewise: the commonest way a workout is abandoned is the app being
-          closed with it open, and then nothing on the workout screen is
-          running to notice. ADR-0077. */}
-      <AbandonedWorkoutWatcher />
+      {/* No fallback: there is nothing to show while these load, and a
+          placeholder would be a placeholder for a banner that usually never
+          appears. */}
+      <Suspense fallback={null}>
+        {/* Beside the routes rather than in one, so a badge earned mid-set is
+            announced on the workout screen, where it was earned. ADR-0072. */}
+        <AchievementCelebrations />
+        {/* Likewise: the commonest way a workout is abandoned is the app being
+            closed with it open, and then nothing on the workout screen is
+            running to notice. ADR-0077. */}
+        <AbandonedWorkoutWatcher />
+      </Suspense>
     </>
   );
 }
@@ -224,11 +293,16 @@ function AppScreens() {
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>
+      {/* Its own boundary and its own fallback: the workout is the one screen
+          outside the tab layout, so there is no shell around it to put either
+          in. */}
       <Route
         path="/workout"
         element={
           <RouteBoundary>
-            <WorkoutScreen />
+            <Suspense fallback={<ScreenFallback />}>
+              <WorkoutScreen />
+            </Suspense>
           </RouteBoundary>
         }
       />
