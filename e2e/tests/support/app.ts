@@ -32,14 +32,11 @@ export async function startWith(page: Page, exercise: string): Promise<void> {
 /** Add the n-th set, fill its weight and reps, then tick it. */
 export async function logSet(page: Page, set: number, weight: string, reps: string): Promise<void> {
   await page.getByRole('button', { name: 'Add set' }).click();
-  await page
-    .getByRole('textbox', { name: 'Weight' })
-    .nth(set - 1)
-    .fill(weight);
-  await page
-    .getByRole('textbox', { name: 'Reps' })
-    .nth(set - 1)
-    .fill(reps);
+  // The last fields on the card belong to the set just added. Indexing by set
+  // number stopped working when a ticked set collapsed to a single line and
+  // gave up its steppers — the second set's boxes are the only ones left.
+  await page.getByRole('textbox', { name: 'Weight' }).last().fill(weight);
+  await page.getByRole('textbox', { name: 'Reps' }).last().fill(reps);
   await page.getByRole('button', { name: `Complete set ${String(set)}` }).click();
   await expect(page.getByRole('button', { name: `Undo set ${String(set)}` })).toBeVisible();
 }
