@@ -6,6 +6,7 @@ import {
   nativeHaptic,
   statusBarBackground,
   statusBarStyle,
+  wakeLockBackend,
 } from './shell-rules.js';
 
 describe('haptics on a phone', () => {
@@ -61,5 +62,15 @@ describe('the sign-in coming back', () => {
     expect(authCodeFrom('g7m://auth-callback', 'g7m')).toBeNull();
     expect(authCodeFrom('g7m://auth-callback?error=access_denied', 'g7m')).toBeNull();
     expect(authCodeFrom('not a url at all', 'g7m')).toBeNull();
+  });
+});
+
+describe('keeping the screen awake', () => {
+  /** The whole reason the plugin is there: iOS has no web API to fall back on. */
+  it('asks the phone on a phone, and the browser only when it can', () => {
+    expect(wakeLockBackend({ native: true, hasWebApi: false })).toBe('native');
+    expect(wakeLockBackend({ native: true, hasWebApi: true })).toBe('native');
+    expect(wakeLockBackend({ native: false, hasWebApi: true })).toBe('web');
+    expect(wakeLockBackend({ native: false, hasWebApi: false })).toBe('none');
   });
 });

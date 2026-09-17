@@ -1,6 +1,10 @@
 require_relative '../../../../node_modules/.pnpm/@capacitor+ios@7.6.9_@capacitor+core@7.6.9/node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+# iOS 17, not Capacitor's 14: the offline database is WebKit's OPFS, and the
+# spike that kept PowerSync tested it from 17 up (docs/spikes/powersync-ios.md).
+# An install on an older phone would open onto a database that cannot be
+# created, which is worse than not offering the app at all.
+platform :ios, '17.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires

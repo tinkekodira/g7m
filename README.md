@@ -37,8 +37,10 @@ specification, `CLAUDE_CODE_BRIEF.md`, is kept outside this repository; the
 decision log is where it has been interpreted.
 
 > **Status.** Everything above works, on a phone, offline. It ships as the
-> Home Screen web app on iPhone, and as a real Android app: every push builds
-> an installable debug APK ([ADR-0074](./DECISIONS.md#adr-0074--the-native-shell-what-the-phone-does-that-a-browser-cannot)).
+> Home Screen web app on iPhone, and as real apps for both phones: every push
+> builds an Android APK and an iPhone build that installs with an ordinary
+> Apple ID ([ADR-0074](./DECISIONS.md#adr-0074--the-native-shell-what-the-phone-does-that-a-browser-cannot),
+> [ADR-0075](./DECISIONS.md#adr-0075--an-iphone-build-from-a-windows-machine)).
 > Phases 0–7 of the plan are complete and Phase 9 is under way. Desktop polish
 > (Phase 8) is parked: the phone app is being finished first. See
 > [Build phases](#build-phases).
