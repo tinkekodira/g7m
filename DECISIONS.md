@@ -4087,3 +4087,89 @@ finishing that version before tuning anything for a mouse. The Tauri builds
 keep building, and nothing is removed. Desktop is parked, not cancelled, and
 comes back when the phone version is done. Until then, layouts are judged at
 phone widths first, as the browser tests already are (a Pixel 7).
+
+## ADR-0074 — The native shell: what the phone does that a browser cannot
+
+**Status:** accepted · **Date:** 2026-09-17
+
+The app is one web build. iOS and Android run it inside Capacitor, and this is
+what the shell adds — the short list of things a browser genuinely cannot do,
+and nothing else.
+
+**Haptics, which is the one that matters.** `navigator.vibrate` does not exist
+on iOS, in Safari or in a WebView, so on the phone the app is mostly used on,
+every buzz did nothing: the rest timer, the ticked set, the personal record.
+`@capacitor/haptics` asks the phone directly — a light tap for a set, the
+system's own "that worked" for a finished workout, and a plain 400 ms buzz
+when rest is over, which is the one that has to carry through a pocket.
+
+**The status bar follows the theme.** Light text on the dark theme, dark on
+the light one, and on Android the bar is painted `--bg-base` so the app does
+not end in a black band.
+
+**The splash screen leaves when the app is ready**, not on a timer:
+`launchAutoHide` is off, and the app hides it once the session is known. A
+timed splash is either too short — a blank screen while the database opens —
+or too long, which makes a fast start look slow.
+
+**Android's back gesture** goes back through the app's own history, puts the
+app in the background at the top level (not exit: killing the process would
+drop a queued upload), and does nothing at all inside a workout, for the same
+reason the tab bar is hidden there.
+
+**The keyboard shrinks the view** rather than covering the set being typed.
+
+**Both apps are portrait only**, as the web manifest already asked: every
+screen is built for a thumb on a phone held upright.
+
+### Sign-in leaves the app
+
+Google refuses to serve its consent screen inside an app's own WebView
+(`disallowed_useragent`), and it is right to. So on native the app asks
+Supabase for the URL without following it (`skipBrowserRedirect`), opens it in
+the system browser, and registers `g7m://auth-callback` in both native
+projects. The browser comes back to that URL, the system hands it to the app
+as an event, and the code on it is exchanged for a session by hand — which is
+what `detectSessionInUrl` does by itself in a browser, where the redirect
+arrives as a page load. The URL is in `supabase/config.toml`'s redirect
+allow-list; an unlisted value is not an error to Supabase, it is a silent
+substitution of `site_url`.
+
+### How it is put together
+
+- **The web app does not import Capacitor at startup.** Every plugin is a
+  dynamic import behind a platform check, so a browser tab downloads none of
+  it. `platform.ts` already detected the shell for this purpose.
+- **Nothing native is allowed to fail loudly.** A plugin missing from a build
+  or an old WebView is a warning in the console, not a crash in a gym.
+- **The decisions are separate from the calls.** `shell-rules.ts` — which
+  haptic a buzz is, what back means on this screen, what colour the bar is,
+  what a sign-in URL looks like — is pure and tested. `shell.ts` is the part
+  that needs a phone and is therefore the part with no tests.
+
+### The builds
+
+A new workflow builds both on every push, apart from CI so that Gradle never
+holds up a lint result:
+
+- **Android** produces a **debug APK as an artifact**, installable on any
+  phone without a toolchain. That is the app on a real device, today.
+- **iOS compiles for the simulator** with signing off. It catches a broken
+  `Info.plist`, a missing pod or a plugin that will not link. It cannot hand
+  out an install — that needs an Apple Developer account, a certificate and a
+  provisioning profile — so the Home Screen web app (ADR-0026) stays the way
+  the app reaches an iPhone until that account exists.
+
+**Rejected: a second codebase, or native screens for the hot path.** The whole
+architecture is one build in five wrappers (Brief §4.1), and nothing found so
+far needs more than a plugin.
+
+### The artwork
+
+Five SVGs in `apps/mobile/assets` — the icon, its Android foreground and
+background, and a splash screen per theme — rasterised by `@capacitor/assets`
+into both native projects and into `apps/web/public`, so the Home Screen icon
+and the app icon are one mark rather than two that drift. `sharp` is pinned
+newer than `@capacitor/assets` asks for, because its own version has no
+prebuilt binary for the Node this repo runs; only the generator uses it and
+nothing ships it.

@@ -22,6 +22,20 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Where Google sends the browser back to at the end of a sign-in:
+	     g7m://auth-callback. The system hands the URL to the app, which takes
+	     the code off it. See DECISIONS.md ADR-0074. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.g7m.trainer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>g7m</string>
+			</array>
+		</dict>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -30,11 +44,12 @@
 	<array>
 		<string>armv7</string>
 	</array>
+	<!-- Portrait only, as the manifest already says for the web app: every
+	     screen is built for a thumb on a phone held upright, and a rack is no
+	     place to be turning a phone sideways. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

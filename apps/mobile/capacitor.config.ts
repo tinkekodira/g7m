@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 /**
  * Capacitor shell config. Brief §4.1: this app stays thin — native
@@ -21,6 +22,30 @@ const config: CapacitorConfig = {
     // The app owns its own scrolling; the WebView bouncing over it feels wrong.
     scrollEnabled: true,
     contentInset: 'never',
+  },
+
+  plugins: {
+    /**
+     * The splash stays until the app takes it away (`hideSplash`, ADR-0074).
+     * A timed splash is either too short — a blank screen while the database
+     * opens — or too long, which makes a fast start look slow.
+     */
+    SplashScreen: {
+      launchAutoHide: false,
+      backgroundColor: '#1F1E1D',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+    },
+
+    /**
+     * The WebView shrinks when the keyboard opens, so the set being typed
+     * stays above it rather than under it. `native` is the smoothest of the
+     * iOS modes; on Android the same is done with the full-screen flag.
+     */
+    Keyboard: {
+      resize: KeyboardResize.Native,
+      resizeOnFullScreen: true,
+    },
   },
 
   android: {

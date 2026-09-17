@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    The Home Screen icon: the mark on the app's own background.
+
+    iOS rounds the corners itself and allows no transparency, so this one is
+    full-bleed. The bar is a little wider than the adaptive icon's, because
+    nothing here is going to be cropped to a circle.
+  -->
+  <rect width="1024" height="1024" fill="#1F1E1D" />
+  <g fill="#D97757">
+    <rect x="168" y="482" width="688" height="60" rx="30" />
+    <rect x="330" y="312" width="92" height="400" rx="36" />
+    <rect x="602" y="312" width="92" height="400" rx="36" />
+    <rect x="222" y="382" width="76" height="260" rx="32" />
+    <rect x="726" y="382" width="76" height="260" rx="32" />
+  </g>
+</svg>

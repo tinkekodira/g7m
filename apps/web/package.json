@@ -12,6 +12,13 @@
     "anatomy:install": "node scripts/install-anatomy-model.mjs"
   },
   "dependencies": {
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.9",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/keyboard": "^7.0.6",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
     "@g7m/anatomy": "workspace:*",
     "@g7m/core": "workspace:*",
     "@g7m/db": "workspace:*",

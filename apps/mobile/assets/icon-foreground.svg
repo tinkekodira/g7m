@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    The mark: a loaded barbell, the app's own icon drawn heavier.
+
+    Android's adaptive icon crops this to a circle and animates it, so
+    everything that matters stays inside the middle 66%: the bar ends at
+    x=212 and x=812, well inside the 174px margin the safe zone asks for.
+  -->
+  <g fill="#D97757">
+    <!-- The bar. -->
+    <rect x="212" y="482" width="600" height="60" rx="30" />
+    <!-- Inner plates, tall. -->
+    <rect x="356" y="332" width="84" height="360" rx="34" />
+    <rect x="584" y="332" width="84" height="360" rx="34" />
+    <!-- Outer plates, shorter, so the shape reads as loaded rather than as a bar. -->
+    <rect x="256" y="392" width="72" height="240" rx="30" />
+    <rect x="696" y="392" width="72" height="240" rx="30" />
+  </g>
+</svg>

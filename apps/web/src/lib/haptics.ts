@@ -13,13 +13,17 @@
  * about it. Adding a switch in Settings would mean a profile column, a
  * migration and a second source of truth that can disagree with the first.
  *
- * ## Where it does nothing
+ * ## iOS, where the web has nothing to offer
  *
- * `navigator.vibrate` does not exist on iOS — not in Safari, not in WKWebView,
- * so not in the Capacitor build either. Feature-detected and skipped. Closing
- * that needs `@capacitor/haptics`, which is a native dependency and a rebuild
- * rather than a line of code; `fireHaptic` is the seam it would slot into.
+ * `navigator.vibrate` does not exist on iOS — not in Safari, not in WKWebView.
+ * The native build asks the phone directly instead, through
+ * `@capacitor/haptics`, which is also a better buzz than the motor: a light
+ * tap for a ticked set, the system's own "that worked" for a finished
+ * workout. See `lib/native/shell.ts` and ADR-0074. A browser still gets
+ * `navigator.vibrate`, and anything with neither stays silent.
  */
+
+import { isNative, nativeBuzz } from './native/shell.js';
 
 export type Haptic = 'tick' | 'success' | 'alert';
 
@@ -59,8 +63,18 @@ export function fireHaptic(vibrate: Vibrator | undefined, kind: Haptic): boolean
   }
 }
 
-/** Buzz, if this device can. Safe to call anywhere, including on iOS. */
+/**
+ * Buzz, if this device can. Safe to call anywhere, including on iOS.
+ *
+ * The native haptics are asked first and answer asynchronously; the web
+ * fallback is only used when there is no native shell, so the two can never
+ * both fire for one buzz.
+ */
 export function buzz(kind: Haptic): void {
+  if (isNative()) {
+    void nativeBuzz(kind);
+    return;
+  }
   if (typeof navigator === 'undefined') return;
   // `lib.dom` says this is always there. iOS says otherwise, and reading it
   // off the prototype through `bind` would be the crash rather than the
