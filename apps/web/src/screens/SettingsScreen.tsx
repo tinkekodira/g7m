@@ -27,6 +27,7 @@ import type { ThemePreference } from '../lib/theme.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
+import { WEEKDAYS, WEEKDAYS_SHORT } from '../lib/date-words.js';
 import {
   ClockIcon,
   DeviceIcon,
@@ -201,29 +202,40 @@ function Training() {
         ))}
       </div>
 
-      <div className="mt-5 flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-base font-medium text-primary">Weeks start on</p>
-          <p className="text-sm text-muted">
-            The calendar, the progress charts, and the badges counted per week.
-          </p>
-        </div>
+      <p className="mt-5 text-base font-medium text-primary">Your training week starts on</p>
+      <p className="mt-0.5 mb-3 max-w-prose text-sm text-muted">
+        Any day, not just Monday — a split that runs {WEEKDAYS[week]} to {WEEKDAYS[(week + 6) % 7]}{' '}
+        is a week like any other. It sets where the calendar’s columns begin, what “this week” means
+        on Progress, and when the badges counted per week reset.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {WEEK_START_CHOICES.map((day) => (
+          <Chip
+            key={day}
+            selected={day === week}
+            disabled={busy || !ready}
+            onClick={() => {
+              if (day === week) return;
+              setPendingWeek(day);
+              void write((r) => r.profile.update({ weekStartsOn: day })).then((saved) => {
+                if (saved === null) setPendingWeek(null);
+              });
+            }}
+          >
+            <span aria-hidden>{WEEKDAYS_SHORT[day]}</span>
+            <span className="sr-only">{WEEKDAYS[day]}</span>
+          </Chip>
+        ))}
       </div>
-      <SegmentedControl
-        className="mt-3"
-        label="First day of the week"
-        options={WEEK_START_OPTIONS}
-        value={String(week) as `${WeekStart}`}
-        disabled={busy || !ready}
-        onChange={(next) => {
-          const day = Number(next) as WeekStart;
-          if (day === week) return;
-          setPendingWeek(day);
-          void write((r) => r.profile.update({ weekStartsOn: day })).then((saved) => {
-            if (saved === null) setPendingWeek(null);
-          });
-        }}
-      />
+      {/* The thing somebody is most likely to worry about on reading the
+          above, answered where they are reading it. Today's workout is built
+          from a rolling seven days and never looked at this setting — see
+          TRAILING_DAYS in use-todays-plan.ts — so a week that started on the
+          wrong day was never getting the wrong session. */}
+      <p className="mt-2 max-w-prose text-xs text-muted">
+        Today’s workout is not affected. It is worked out from the last seven days wherever they
+        fall, so a week that starts late still gets the right session.
+      </p>
 
       {error !== null && (
         <p role="alert" className="mt-3 text-sm text-danger">
@@ -253,17 +265,19 @@ function scaled(exerciseSeconds: number, restDefault: number): number {
 }
 
 /**
- * The three days a week actually starts on somewhere.
+ * All seven, and the seven is the point.
  *
- * The column takes 0–6 and the other four are not week starts anywhere, so
- * offering them would be a longer control that is harder to hit for no gain.
- * Monday first, being ISO 8601's answer and the app's default.
+ * This is not the locale question of whether a calendar starts on Monday or
+ * Sunday — it is which day a *training* week starts on, and a split that runs
+ * Wednesday to Tuesday is as real as one that runs Monday to Sunday. Somebody
+ * whose last week went sideways and who is restarting on a Thursday should be
+ * able to say so rather than having their sets split across two weeks by a
+ * calendar convention they never chose.
+ *
+ * Offered from Monday round to Sunday rather than in `Date`'s own order, so
+ * the row reads as a week rather than as an array index.
  */
-const WEEK_START_OPTIONS = [
-  { value: '1', label: 'Monday' },
-  { value: '0', label: 'Sunday' },
-  { value: '6', label: 'Saturday' },
-] as const satisfies readonly { value: `${WeekStart}`; label: string }[];
+const WEEK_START_CHOICES = [1, 2, 3, 4, 5, 6, 0] as const satisfies readonly WeekStart[];
 
 /**
  * Kilograms or pounds.

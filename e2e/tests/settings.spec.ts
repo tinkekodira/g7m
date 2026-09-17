@@ -51,17 +51,28 @@ test('the system theme follows the device, before and after it changes', async (
 });
 
 /**
- * The day a week starts on: a profile setting, so it syncs, and the calendar
- * and every per-week badge are counted from it.
+ * A training week starts on whatever day the training starts on.
+ *
+ * Wednesday rather than Sunday on purpose: the locale question has two
+ * answers and this one has seven, and a midweek start is the case the setting
+ * exists for — somebody whose last week went sideways and who is restarting
+ * on a Wednesday. It has to reach the server, and it has to lay the calendar
+ * out that way.
  */
-test('the week can start on Sunday, and the server is told', async ({ page }) => {
+test('a training week can start midweek, and the calendar follows', async ({ page }) => {
   const user = await createUser('week-start', { onboarded: true });
   await signIn(page, user);
   await openTab(page, 'Settings');
 
-  await expect(page.getByRole('radio', { name: 'Monday' })).toBeChecked();
-  await page.getByRole('radio', { name: 'Sunday' }).click();
-  await expect(page.getByRole('radio', { name: 'Sunday' })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Monday' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Wednesday' }).click();
+  await expect(page.getByRole('button', { name: 'Wednesday' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 
   await eventually(
     () =>
@@ -69,12 +80,20 @@ test('the week can start on Sunday, and the server is told', async ({ page }) =>
         `select week_starts_on from public.profiles where user_id = $1`,
         [user.id],
       ),
-    (rows) => rows[0]?.week_starts_on === 0,
+    (rows) => rows[0]?.week_starts_on === 3,
   );
+
+  // The calendar is the visible half of the setting: its first column is the
+  // day the week now starts on.
+  await page.goto(`${page.url().split('#')[0] ?? ''}#/calendar`);
+  await expect(page.getByText('Wed', { exact: true }).first()).toBeVisible();
 
   await page.reload();
   await openTab(page, 'Settings');
-  await expect(page.getByRole('radio', { name: 'Sunday' })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Wednesday' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });
 
 /**
