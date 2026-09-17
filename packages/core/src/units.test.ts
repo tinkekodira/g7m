@@ -10,6 +10,8 @@ import {
   roundToIncrement,
   toDisplayHeight,
   toDisplayWeight,
+  dumbbellIncrementKg,
+  weightStepKg,
 } from './units.js';
 
 describe('KG_PER_LB', () => {
@@ -135,5 +137,39 @@ describe('height', () => {
   it('survives a round trip to within an inch', () => {
     const shown = toDisplayHeight(183, 'imperial');
     expect(fromDisplayHeight(shown.value, 'imperial')).toBeCloseTo(183, 0);
+  });
+});
+
+describe('dumbbell steps', () => {
+  /** 14 → 16, not 16.5: no rack has a 16.5. */
+  it('follows the whole-number ladder from a whole-number dumbbell', () => {
+    expect(dumbbellIncrementKg(14)).toBe(2);
+    expect(dumbbellIncrementKg(8)).toBe(2);
+    expect(dumbbellIncrementKg(0)).toBe(2);
+    expect(dumbbellIncrementKg(30)).toBe(2);
+  });
+
+  /** 12.5 → 15 → 17.5, which is how the top half of a rack is numbered. */
+  it('follows the half-kilo ladder from a half-kilo dumbbell', () => {
+    expect(dumbbellIncrementKg(12.5)).toBe(2.5);
+    expect(dumbbellIncrementKg(17.5)).toBe(2.5);
+    // 15 is a rung of that ladder too: a rack counting in twos never has one.
+    expect(dumbbellIncrementKg(15)).toBe(2.5);
+    expect(dumbbellIncrementKg(25)).toBe(2.5);
+  });
+
+  it('treats a typed-in oddity as the whole-number ladder', () => {
+    expect(dumbbellIncrementKg(12.3)).toBe(2);
+    expect(dumbbellIncrementKg(Number.NaN)).toBe(2);
+  });
+
+  it('leaves barbells and machines on the plate-sized step', () => {
+    expect(weightStepKg({ dumbbell: false, currentKg: 14, unitSystem: 'metric' })).toBe(2.5);
+    expect(weightStepKg({ dumbbell: true, currentKg: 14, unitSystem: 'metric' })).toBe(2);
+    expect(weightStepKg({ dumbbell: true, currentKg: 12.5, unitSystem: 'metric' })).toBe(2.5);
+    // Pounds have one ladder, and it is the one the stepper already used.
+    expect(weightStepKg({ dumbbell: true, currentKg: 14, unitSystem: 'imperial' })).toBe(
+      incrementKgFor('imperial'),
+    );
   });
 });

@@ -198,7 +198,88 @@ export function shouldAskStillTraining(input: {
   return input.now.getTime() - since >= input.limitMinutes * 60_000;
 }
 
+/**
+ * How many idle limits pass before the app stops asking and finishes it.
+ *
+ * Two: one to ask, one to wait. A workout nobody has touched for an hour is
+ * over, whatever the phone thinks — and the alternative is what used to happen,
+ * a session left open until the next one starts, taking its sets with it.
+ */
+export const AUTO_FINISH_LIMITS = 2;
+
+/**
+ * Whether to finish a workout that nobody is coming back to.
+ *
+ * The same clock as `shouldAskStillTraining`, twice over: answering "keep
+ * going" buys another full interval before the question is asked again, and
+ * another before this. Nothing is thrown away when it fires — every ticked set
+ * is already saved; the workout is closed at its last set, which is the only
+ * honest end time for it. ADR-0077.
+ */
+export function shouldAutoFinish(input: {
+  readonly lastActivityAt: Date;
+  readonly snoozedAt: Date | null;
+  readonly now: Date;
+  readonly limitMinutes: number;
+}): boolean {
+  const since = Math.max(input.lastActivityAt.getTime(), input.snoozedAt?.getTime() ?? 0);
+  return input.now.getTime() - since >= input.limitMinutes * AUTO_FINISH_LIMITS * 60_000;
+}
+
 /** Whole minutes since the last sign of training, for the prompt's wording. */
 export function idleMinutes(lastActivity: Date, now: Date): number {
   return Math.max(0, Math.floor((now.getTime() - lastActivity.getTime()) / 60_000));
+}
+
+/** What the workout the app closed by itself amounted to. ADR-0077. */
+export interface AutoFinishNotice {
+  readonly title: string;
+  /** Why it was closed, and when. */
+  readonly reason: string;
+  /** What was saved: `5 exercises · 18 sets · 52 min`. */
+  readonly detail: string;
+}
+
+/**
+ * The popup that owns up to it, the next time the app is opened.
+ *
+ * Said plainly and in that order — what happened, why, what was kept — because
+ * the one thing somebody wants to know on reading "we finished your workout"
+ * is whether their sets are still there. They are; nothing was ever unsaved.
+ */
+export function autoFinishNotice(input: {
+  readonly startedAt: Date;
+  readonly endedAt: Date | null;
+  readonly exerciseCount: number;
+  /** Counted sets, bouts included, as the history counts them. */
+  readonly setCount: number;
+  readonly boutCount: number;
+  readonly minutes: number | null;
+  readonly now: Date;
+}): AutoFinishNotice {
+  // "Thursday 17 September", as the calendar writes it. Not lower-cased: a
+  // weekday and a month are names wherever they land in a sentence.
+  const when = dayTitle(input.startedAt);
+  const at = input.endedAt === null ? null : clockTime(input.endedAt);
+
+  const parts: string[] = [];
+  if (input.exerciseCount > 0) parts.push(plural(input.exerciseCount, 'exercise'));
+  const sets = input.setCount - input.boutCount;
+  if (sets > 0) parts.push(plural(sets, 'set'));
+  if (input.boutCount > 0) parts.push(plural(input.boutCount, 'bout'));
+  if (input.minutes !== null && input.minutes > 0) parts.push(`${String(input.minutes)} min`);
+
+  return {
+    title: 'We finished your workout',
+    reason:
+      at === null
+        ? `Nothing was ticked for a while, so your workout from ${when} was closed for you.`
+        : `Nothing was ticked for a while, so your workout from ${when} was closed at your last set, ${at}.`,
+    // Never empty: a workout with nothing in it is never closed this way.
+    detail: parts.length === 0 ? 'Everything you logged is saved.' : `Saved: ${parts.join(' · ')}.`,
+  };
+}
+
+function clockTime(at: Date): string {
+  return `${String(at.getHours())}:${String(at.getMinutes()).padStart(2, '0')}`;
 }

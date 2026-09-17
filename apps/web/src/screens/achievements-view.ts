@@ -119,6 +119,31 @@ export function nextChanceWords(date: Date, now: Date): string {
   return `Next chance: ${shortDate(date, now)}`;
 }
 
+/**
+ * A category's badges in the order they are worth looking at: earned first,
+ * then whatever is closest to being earned, then the rest.
+ *
+ * The catalogue's own order is a ladder — one plate, two plates, three — which
+ * reads well on a shelf and badly on a screen where the earned ones are
+ * scattered through it. Sorting by how close each is puts the next one to go
+ * for near the top, and the five-hundredth workout at the bottom where it
+ * belongs.
+ *
+ * Badges with nothing to measure (a date, a first cardio session) sort after
+ * the ones with a bar, and ties keep the catalogue's order, so a ladder still
+ * reads bottom rung up.
+ */
+export function inDisplayOrder(list: readonly Achievement[]): Achievement[] {
+  // One number to sort on: earned above everything, then how full the bar is,
+  // then the unmeasurable ones. Array.prototype.sort is stable, so equal
+  // scores keep the catalogue's order.
+  const score = (each: Achievement): number => {
+    if (each.earnedAt !== null) return 2;
+    return each.progress === null ? 0 : progressFraction(each.progress);
+  };
+  return [...list].sort((a, b) => score(b) - score(a));
+}
+
 /** `14 of 52 earned`. */
 export function earnedCount(list: readonly Achievement[]): { earned: number; total: number } {
   return { earned: list.filter((each) => each.earnedAt !== null).length, total: list.length };

@@ -5,6 +5,7 @@ import {
   celebrationsFor,
   earnedCount,
   earnedWords,
+  inDisplayOrder,
   latestEarned,
   nextChanceWords,
   progressFraction,
@@ -143,6 +144,43 @@ describe('celebrationsFor', () => {
     });
     expect(loud.map((each) => each.key)).toEqual(['a', 'b', 'c']);
     expect(quiet.map((each) => each.key)).toEqual(['d']);
+  });
+});
+
+describe('inDisplayOrder', () => {
+  const withProgress = (key: string, current: number, target: number): Achievement => ({
+    ...achievement(key, null),
+    progress: { current, target, unit: 'workouts' },
+  });
+
+  it('puts the earned first, then whatever is closest', () => {
+    const list = [
+      withProgress('far', 1, 100),
+      achievement('earned-late', new Date(2026, 8, 1)),
+      withProgress('close', 8, 10),
+      achievement('no-measure', null),
+      achievement('earned-early', new Date(2026, 1, 1)),
+      withProgress('middling', 5, 25),
+    ];
+    expect(inDisplayOrder(list).map((each) => each.key)).toEqual([
+      'earned-late',
+      'earned-early',
+      'close',
+      'middling',
+      'far',
+      'no-measure',
+    ]);
+  });
+
+  it('leaves the catalogue’s order alone where nothing separates two badges', () => {
+    const list = [withProgress('one-plate', 0, 60), withProgress('two-plate', 0, 100)];
+    expect(inDisplayOrder(list).map((each) => each.key)).toEqual(['one-plate', 'two-plate']);
+  });
+
+  it('does not change the list it was given', () => {
+    const list = [withProgress('far', 0, 10), achievement('done', new Date(2026, 8, 1))];
+    inDisplayOrder(list);
+    expect(list.map((each) => each.key)).toEqual(['far', 'done']);
   });
 });
 

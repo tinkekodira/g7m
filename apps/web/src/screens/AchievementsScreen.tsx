@@ -16,6 +16,7 @@ import {
   CATEGORY_TITLES,
   earnedCount,
   earnedWords,
+  inDisplayOrder,
   latestEarned,
   nextChanceWords,
   shortDate,
@@ -163,7 +164,7 @@ function Category({
         </p>
       </div>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {list.map((each) => (
+        {inDisplayOrder(list).map((each) => (
           <Badge
             key={each.key}
             achievement={each}

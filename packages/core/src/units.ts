@@ -115,3 +115,47 @@ export function fromDisplayHeight(value: number, unitSystem: UnitSystem): number
 export function incrementKgFor(unitSystem: UnitSystem): number {
   return unitSystem === 'imperial' ? round(lbToKg(DEFAULT_INCREMENT_LB), 4) : DEFAULT_INCREMENT_KG;
 }
+
+/**
+ * How much a dumbbell goes up by, in kilograms. Two ladders, not one.
+ *
+ * A rack is not a continuum. Most metric racks run 2, 4, 6, 8 … and then, from
+ * the teens up, half-kilo sizes appear: 12.5, 15, 17.5, 20. Whichever ladder a
+ * lifter is on, the next dumbbell along is the one they want — so 14 steps to
+ * 16, and 12.5 steps to 15. A fixed 2.5 would offer 16.5 kg, which no rack has.
+ *
+ * Pounds have one ladder, in fives, which is `DEFAULT_INCREMENT_LB` already.
+ */
+export const DUMBBELL_INCREMENT_KG = 2;
+export const DUMBBELL_HALF_INCREMENT_KG = 2.5;
+
+export function dumbbellIncrementKg(currentKg: number): number {
+  if (!Number.isFinite(currentKg)) return DUMBBELL_INCREMENT_KG;
+
+  // Which ladder is this weight on? Only the even whole numbers belong to the
+  // 2 / 4 / 6 one. A half — 12.5, 17.5 — is plainly the other, and so is an
+  // odd whole number: 15 is a rung of 12.5 / 15 / 17.5 and appears nowhere on
+  // a rack counting in twos. Anything else typed in (12.3) steps by two.
+  const half = Math.abs(currentKg * 2 - Math.round(currentKg * 2)) < 1e-9;
+  if (!half) return DUMBBELL_INCREMENT_KG;
+
+  const whole = Math.abs(currentKg - Math.round(currentKg)) < 1e-9;
+  if (!whole) return DUMBBELL_HALF_INCREMENT_KG;
+  return Math.round(currentKg) % 2 === 0 ? DUMBBELL_INCREMENT_KG : DUMBBELL_HALF_INCREMENT_KG;
+}
+
+/**
+ * The step for one exercise's weight field, in kilograms.
+ *
+ * Everything that is not a dumbbell keeps the plate-sized step it had: a
+ * barbell goes up by the smallest pair of plates, and a machine's stack is its
+ * own business.
+ */
+export function weightStepKg(input: {
+  readonly dumbbell: boolean;
+  readonly currentKg: number;
+  readonly unitSystem: UnitSystem;
+}): number {
+  if (!input.dumbbell || input.unitSystem === 'imperial') return incrementKgFor(input.unitSystem);
+  return dumbbellIncrementKg(input.currentKg);
+}

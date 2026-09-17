@@ -323,6 +323,16 @@ export function ChevronDownIcon(props: IconProps) {
   );
 }
 
+/** Up and to the point: "more weight next time". */
+export function ArrowUpIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </Glyph>
+  );
+}
+
 export function CheckIcon(props: IconProps) {
   return (
     <Glyph {...props}>

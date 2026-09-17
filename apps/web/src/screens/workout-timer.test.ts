@@ -10,6 +10,8 @@ import {
   idleMinutes,
   lastActivityAt,
   shouldAskStillTraining,
+  shouldAutoFinish,
+  autoFinishNotice,
 } from './workout-timer.js';
 
 const START = new Date('2026-09-06T10:00:00.000Z');
@@ -278,5 +280,74 @@ describe('still training?', () => {
   it('counts idle minutes down to the whole minute', () => {
     expect(idleMinutes(at(0), new Date(at(34).getTime() + 50_000))).toBe(34);
     expect(idleMinutes(at(10), at(5))).toBe(0);
+  });
+});
+
+describe('finishing a workout nobody came back to', () => {
+  const lastActivityAt = new Date('2026-09-17T10:00:00.000Z');
+  const after = (minutes: number) => new Date(lastActivityAt.getTime() + minutes * 60_000);
+
+  it('waits for two idle limits, not one', () => {
+    const ask = { lastActivityAt, snoozedAt: null, limitMinutes: 30 };
+    expect(shouldAskStillTraining({ ...ask, now: after(30) })).toBe(true);
+    expect(shouldAutoFinish({ ...ask, now: after(30) })).toBe(false);
+    expect(shouldAutoFinish({ ...ask, now: after(59) })).toBe(false);
+    expect(shouldAutoFinish({ ...ask, now: after(60) })).toBe(true);
+  });
+
+  it('gives another full interval to somebody who answered', () => {
+    const snoozedAt = after(30);
+    expect(shouldAutoFinish({ lastActivityAt, snoozedAt, now: after(60), limitMinutes: 30 })).toBe(
+      false,
+    );
+    expect(shouldAutoFinish({ lastActivityAt, snoozedAt, now: after(90), limitMinutes: 30 })).toBe(
+      true,
+    );
+  });
+
+  /** A treadmill hour is not idling, so cardio waits four. */
+  it('follows whichever limit the workout is held to', () => {
+    const cardio = { lastActivityAt, snoozedAt: null, limitMinutes: idleLimitMinutes('cardio') };
+    expect(shouldAutoFinish({ ...cardio, now: after(120) })).toBe(false);
+    expect(shouldAutoFinish({ ...cardio, now: after(240) })).toBe(true);
+  });
+});
+
+describe('owning up to a workout the app finished', () => {
+  const base = {
+    startedAt: new Date(2026, 8, 15, 9, 30),
+    endedAt: new Date(2026, 8, 15, 10, 48),
+    exerciseCount: 5,
+    setCount: 18,
+    boutCount: 0,
+    minutes: 52,
+    now: new Date(2026, 8, 16, 8, 0),
+  };
+
+  it('says what happened, when, and what was kept', () => {
+    const notice = autoFinishNotice(base);
+    expect(notice.title).toBe('We finished your workout');
+    expect(notice.reason).toContain('your workout from Tuesday 15 September');
+    expect(notice.reason).toContain('closed at your last set, 10:48');
+    expect(notice.detail).toBe('Saved: 5 exercises · 18 sets · 52 min.');
+  });
+
+  it('counts bouts apart from sets, as the rest of the app does', () => {
+    expect(autoFinishNotice({ ...base, setCount: 6, boutCount: 1 }).detail).toBe(
+      'Saved: 5 exercises · 5 sets · 1 bout · 52 min.',
+    );
+  });
+
+  it('leaves out what it cannot say', () => {
+    const notice = autoFinishNotice({
+      ...base,
+      endedAt: null,
+      exerciseCount: 0,
+      setCount: 0,
+      boutCount: 0,
+      minutes: null,
+    });
+    expect(notice.reason).not.toContain('last set');
+    expect(notice.detail).toBe('Everything you logged is saved.');
   });
 });

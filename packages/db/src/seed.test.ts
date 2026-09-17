@@ -39,20 +39,20 @@ describe('volumes', () => {
   });
 
   it('seeds the equipment list', async () => {
-    // 28 from Brief §5, plus the back extension bench the §5 list omits, plus
-    // the six cardio machines (ADR-0069).
-    expect(await count('select count(*) n from public.equipment')).toBe(35);
+    // 28 from Brief §5, plus the back extension bench the §5 list omits, the
+    // six cardio machines (ADR-0069), and the two hip machines.
+    expect(await count('select count(*) n from public.equipment')).toBe(37);
   });
 
   /**
-   * The 50 from the brief, plus the two added afterwards — the skull crusher
-   * and the dumbbell pullover — and the eight cardio machines (ADR-0069).
-   * Counted rather than left open, because an
-   * exercise that fails to insert — a bad slug in a join, a check constraint —
-   * shows up nowhere else. The catalogue simply comes up one short.
+   * The 50 from the brief, plus the four added afterwards — the skull crusher,
+   * the dumbbell pullover and the two hip machines — and the eight cardio
+   * machines (ADR-0069). Counted rather than left open, because an exercise
+   * that fails to insert — a bad slug in a join, a check constraint — shows up
+   * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(60);
+    expect(await count('select count(*) n from public.exercises')).toBe(62);
   });
 });
 
@@ -352,5 +352,48 @@ describe('search over the real catalogue', () => {
     ['pullup', 'pull-up'],
   ])('finds %s', async (term, expected) => {
     expect(await search(term)).toBe(expected);
+  });
+});
+
+describe('the exercises asked for after the first fifty', () => {
+  it('trains the adductors and the side glutes directly, which nothing else did', async () => {
+    const adductors = await slugs(
+      `select e.slug from public.exercises e
+         join public.exercise_muscles em on em.exercise_id = e.id
+         join public.muscles m on m.id = em.muscle_id
+        where m.slug = 'hip-adductors' and em.role = 'primary'`,
+    );
+    expect(adductors).toContain('hip-adduction-machine');
+
+    const sideGlutes = await slugs(
+      `select e.slug from public.exercises e
+         join public.exercise_muscles em on em.exercise_id = e.id
+         join public.muscles m on m.id = em.muscle_id
+        where m.slug = 'gluteus-medius' and em.role = 'primary'`,
+    );
+    expect(sideGlutes).toContain('hip-abduction-machine');
+  });
+
+  it('puts each hip machine on its own station', async () => {
+    const stations = await slugs(
+      `select q.slug from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id
+         join public.equipment q on q.id = ee.equipment_id
+        where e.slug in ('hip-adduction-machine','hip-abduction-machine') and ee.is_primary
+        order by q.slug`,
+    );
+    expect(stations).toEqual(['abductor-machine', 'adductor-machine']);
+  });
+
+  /**
+   * Asked for by name, and already here: the cable lat pullover is this row,
+   * which is why it must stay findable by that name rather than be added twice.
+   */
+  it('finds the cable lat pullover under the name it already has', async () => {
+    const found = await slugs(
+      `select slug from public.exercises
+        where 'cable lat pullover' = any(aliases) or lower(name) = 'cable lat pullover'`,
+    );
+    expect(found).toEqual(['straight-arm-pulldown']);
   });
 });
