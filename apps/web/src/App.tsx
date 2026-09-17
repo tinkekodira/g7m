@@ -25,6 +25,7 @@ import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
 import { RouteBoundary } from './components/ErrorBoundary.js';
+import { useNativeShell } from './lib/native/use-native-shell.js';
 
 /**
  * The auth gate.
@@ -42,6 +43,11 @@ export function App() {
   // Returning the unsubscribe matters: StrictMode runs this twice in
   // development, and a leaked listener means every auth event handled twice.
   useEffect(() => initialize(), [initialize]);
+
+  // The status bar, the splash screen and Android's back button, in the native
+  // builds only (ADR-0074). The splash goes once the session is known, which is
+  // the first moment there is a screen worth showing.
+  useNativeShell(status !== 'loading');
 
   /**
    * Sync follows the session, not the screen.

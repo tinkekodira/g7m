@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.js';
 import { appBaseUrl } from '../lib/app-url.js';
+import {
+  APP_SCHEME,
+  AUTH_CALLBACK_URL,
+  closeExternal,
+  isNative,
+  listenForAppUrl,
+  openExternal,
+} from '../lib/native/shell.js';
+import { authCodeFrom } from '../lib/native/shell-rules.js';
 import { forgetDeletedAccount, handOverDevice } from '../lib/powersync/database.js';
 import { ACCOUNT_DELETED_NOTICE, describeDeletionError } from '../lib/account-words.js';
 import {
@@ -74,8 +83,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         nextAuthState({ status: state.status, session: state.session }, event, session),
       );
     });
+
+    /**
+     * The other way a session can arrive: the system handing the app the URL
+     * Google sent the browser back to (ADR-0074).
+     *
+     * In a browser this is what `detectSessionInUrl` does by itself. A native
+     * app never gets that URL as a page load — it gets it as an event — so the
+     * code is taken off it here and exchanged by hand. Nothing happens in a
+     * browser, where the listener is never attached.
+     */
+    const stopListening = listenForAppUrl((url) => {
+      const code = authCodeFrom(url, APP_SCHEME);
+      if (code === null) return;
+      void closeExternal();
+      void supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error !== null) set({ busy: false, error: friendlyAuthError(error.message) });
+      });
+    });
+
     return () => {
       data.subscription.unsubscribe();
+      stopListening();
     };
   },
 
@@ -119,9 +148,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   signInWithGoogle: async () => {
     set({ busy: true, error: null });
-    const { error } = await supabase.auth.signInWithOAuth({
+    /**
+     * In the app, the sign-in happens in the system browser and comes back
+     * through `g7m://auth-callback`. Google refuses to serve its consent
+     * screen inside an app's own WebView, and it is the right shape anyway:
+     * the password is typed into the browser rather than into us.
+     */
+    const native = isNative();
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
+        ...(native ? { skipBrowserRedirect: true } : {}),
         /**
          * Where Google sends the browser back to. NOT `location.origin` —
          * that drops the `/g7m/` subpath the app is served from on Pages.
@@ -131,7 +168,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
          * error on an unlisted value; it silently substitutes `site_url`, which
          * once sent an iPhone to a dev server it could never reach.
          */
-        redirectTo: appBaseUrl(),
+        redirectTo: native ? AUTH_CALLBACK_URL : appBaseUrl(),
         queryParams: {
           // Ask for a refresh token every time rather than only on first
           // consent, so re-authenticating after a revoke actually works.
@@ -140,8 +177,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         },
       },
     });
-    // A successful call navigates away, so `busy` is only cleared on failure.
-    if (error !== null) set({ busy: false, error: friendlyAuthError(error.message) });
+    if (error !== null) {
+      set({ busy: false, error: friendlyAuthError(error.message) });
+      return;
+    }
+    // In a browser the call above has already navigated away, so `busy` is
+    // left standing. In the app it returns the URL to open instead, and the
+    // session arrives later through `appUrlOpen`.
+    if (native && data.url !== null) {
+      const opened = await openExternal(data.url);
+      if (!opened) set({ busy: false, error: 'Could not open the sign-in page.' });
+    }
   },
 
   /**

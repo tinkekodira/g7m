@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <!--
+    The launch screen, light theme: the same mark on the light theme's own
+    ground, in the light theme's deeper accent, which is the one that holds up
+    against white.
+  -->
+  <rect width="2732" height="2732" fill="#F5F3EE" />
+  <g fill="#A84A28" transform="translate(1366 1366) scale(1.15) translate(-512 -512)">
+    <rect x="168" y="482" width="688" height="60" rx="30" />
+    <rect x="330" y="312" width="92" height="400" rx="36" />
+    <rect x="602" y="312" width="92" height="400" rx="36" />
+    <rect x="222" y="382" width="76" height="260" rx="32" />
+    <rect x="726" y="382" width="76" height="260" rx="32" />
+  </g>
+</svg>

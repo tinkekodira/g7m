@@ -167,6 +167,12 @@ additional_redirect_urls = [
   "https://tinkekodira.github.io/g7m/**",
   "http://localhost:5173",
   "http://localhost:5173/**",
+  # The native apps. A Google sign-in there happens in the system browser and
+  # comes back to the app through its own URL scheme (ADR-0074). An unlisted
+  # value is not an error to Supabase: it silently substitutes site_url, and
+  # the app never hears back.
+  "g7m://auth-callback",
+  "g7m://auth-callback/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

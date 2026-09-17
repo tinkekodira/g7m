@@ -1,0 +1,163 @@
+name: Native apps
+
+# Builds the iOS and Android apps from the same web bundle Pages gets.
+#
+# Its own workflow, and not part of CI, for two reasons: it needs a JDK, an
+# Android SDK and a Mac with Xcode, and it takes minutes rather than seconds.
+# A lint result should never wait behind Gradle.
+#
+# What it is for: proof that the native projects still build, and a debug APK
+# anyone can install on an Android phone without a toolchain. iOS cannot be
+# handed out this way — an install needs signing and a provisioning profile —
+# so that job compiles the app for the simulator and stops there, which is
+# enough to catch a broken Info.plist, a missing pod or a plugin that will not
+# link. See DECISIONS.md ADR-0074.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/native.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android (debug APK)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # Capacitor 7 builds against JDK 21. The runner ships several; this
+      # pins the one Gradle uses rather than inheriting whatever is default.
+      - name: Install Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Same as Pages: a signed, expiring link to the licensed model, skipped
+      # when the secret is absent (every fork). The app treats a missing model
+      # as normal and draws the generated body instead. ADR-0009.
+      - name: Anatomy model
+        working-directory: apps/web
+        env:
+          ANATOMY_MODEL_URL: ${{ secrets.ANATOMY_MODEL_URL }}
+        run: |
+          if [ -z "$ANATOMY_MODEL_URL" ]; then
+            echo "No ANATOMY_MODEL_URL secret; building with the generated body."
+            exit 0
+          fi
+          node scripts/install-anatomy-model.mjs "$ANATOMY_MODEL_URL"
+
+      # Public by design: compiled into every bundle, and RLS is what protects
+      # the data. Repository variables, not secrets, for that reason.
+      - name: Build the web app
+        working-directory: apps/web
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_POWERSYNC_URL: ${{ vars.VITE_POWERSYNC_URL }}
+        run: pnpm exec vite build
+
+      - name: Copy it into the Android project
+        working-directory: apps/mobile
+        run: pnpm exec cap sync android
+
+      - name: Build the APK
+        working-directory: apps/mobile/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      # Installable straight from the artifact: Android allows a debug build
+      # from an unknown source once the phone is told to.
+      - name: Upload the APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: g7m-android-debug
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  ios:
+    name: iOS (compiles)
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Anatomy model
+        working-directory: apps/web
+        env:
+          ANATOMY_MODEL_URL: ${{ secrets.ANATOMY_MODEL_URL }}
+        run: |
+          if [ -z "$ANATOMY_MODEL_URL" ]; then
+            echo "No ANATOMY_MODEL_URL secret; building with the generated body."
+            exit 0
+          fi
+          node scripts/install-anatomy-model.mjs "$ANATOMY_MODEL_URL"
+
+      - name: Build the web app
+        working-directory: apps/web
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_POWERSYNC_URL: ${{ vars.VITE_POWERSYNC_URL }}
+        run: pnpm exec vite build
+
+      # `cap sync` runs `pod install` itself, which is where a plugin added to
+      # package.json becomes a pod in the workspace.
+      - name: Copy it into the iOS project
+        working-directory: apps/mobile
+        run: pnpm exec cap sync ios
+
+      # Simulator, and no signing: this proves the app compiles and links.
+      # A device build needs a certificate and a provisioning profile, which
+      # are an Apple Developer account away — see apps/mobile/README.md.
+      - name: Build for the simulator
+        working-directory: apps/mobile/ios/App
+        run: |
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
