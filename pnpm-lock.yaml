@@ -59,6 +59,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@capacitor-community/keep-awake':
+        specifier: ^7.1.0
+        version: 7.1.0(@capacitor/core@7.6.9)
       '@capacitor/android':
         specifier: ^7.4.3
         version: 7.6.9(@capacitor/core@7.6.9)
@@ -99,6 +102,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@capacitor-community/keep-awake':
+        specifier: ^7.1.0
+        version: 7.1.0(@capacitor/core@7.6.9)
       '@capacitor/app':
         specifier: ^7.1.2
         version: 7.1.2(@capacitor/core@7.6.9)
@@ -339,6 +345,11 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
+
+  '@capacitor-community/keep-awake@7.1.0':
+    resolution: {integrity: sha512-4Hj6OKnBd/DAOeiMnqBy74tg1rwC+qLYWQbWJmysMZm2e2nptz43hxaKu22Xlyyw5O71CwwskLCM0skDFMPpQQ==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
 
   '@capacitor/android@7.6.9':
     resolution: {integrity: sha512-jvfU42aOuj92/KJqRscfDm+5612WzJainFL09xjJgD9oI3OMXN4PBfccn8Ig9i8x7bkVqZv/XNwFshiIRqmggg==}
@@ -3077,6 +3088,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@bcoe/v8-coverage@1.0.2': {}
+
+  '@capacitor-community/keep-awake@7.1.0(@capacitor/core@7.6.9)':
+    dependencies:
+      '@capacitor/core': 7.6.9
 
   '@capacitor/android@7.6.9(@capacitor/core@7.6.9)':
     dependencies:

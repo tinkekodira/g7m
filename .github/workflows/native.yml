@@ -6,12 +6,11 @@ name: Native apps
 # Android SDK and a Mac with Xcode, and it takes minutes rather than seconds.
 # A lint result should never wait behind Gradle.
 #
-# What it is for: proof that the native projects still build, and a debug APK
-# anyone can install on an Android phone without a toolchain. iOS cannot be
-# handed out this way — an install needs signing and a provisioning profile —
-# so that job compiles the app for the simulator and stops there, which is
-# enough to catch a broken Info.plist, a missing pod or a plugin that will not
-# link. See DECISIONS.md ADR-0074.
+# What it is for: a build of the app for each phone, from a machine that has
+# neither. Android uploads a debug APK, installable as it is. iOS uploads an
+# unsigned IPA, which a tool on the owner's computer signs with their own Apple
+# ID before putting it on their phone — no Apple Developer account, no Mac.
+# See DECISIONS.md ADR-0074 and ADR-0075.
 
 on:
   pull_request:
@@ -103,7 +102,7 @@ jobs:
           retention-days: 14
 
   ios:
-    name: iOS (compiles)
+    name: iOS (unsigned IPA)
     runs-on: macos-15
     timeout-minutes: 35
 
@@ -147,17 +146,29 @@ jobs:
         working-directory: apps/mobile
         run: pnpm exec cap sync ios
 
-      # Simulator, and no signing: this proves the app compiles and links.
-      # A device build needs a certificate and a provisioning profile, which
-      # are an Apple Developer account away — see apps/mobile/README.md.
-      - name: Build for the simulator
+      # A real device build, with signing switched off. Signing needs a
+      # certificate and a provisioning profile, which need an Apple Developer
+      # account; an unsigned build is still the whole app, and the tools that
+      # install one on a phone sign it themselves with the owner's Apple ID.
+      # See apps/mobile/README.md and ADR-0075.
+      - name: Build for a device, unsigned
         working-directory: apps/mobile/ios/App
         run: |
-          xcodebuild \
-            -workspace App.xcworkspace \
-            -scheme App \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+          xcodebuild             -workspace App.xcworkspace             -scheme App             -configuration Release             -sdk iphoneos             -destination 'generic/platform=iOS'             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             CODE_SIGNING_REQUIRED=NO             CODE_SIGN_IDENTITY=""             build
+
+      # An .ipa is a zip with the app inside a folder called Payload. Nothing
+      # more: this is the format Sideloadly, AltStore and Xcode all read.
+      - name: Package the IPA
+        working-directory: apps/mobile/ios/App
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/App.app
+          zip -qry g7m-unsigned.ipa Payload
+          ls -lh g7m-unsigned.ipa
+
+      - name: Upload the IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: g7m-ios-unsigned
+          path: apps/mobile/ios/App/g7m-unsigned.ipa
+          retention-days: 14
