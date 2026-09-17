@@ -323,7 +323,20 @@ export class SessionRepository {
    * CHECK and a device clock that stepped backwards mid-session would
    * otherwise produce a row the server refuses for ever.
    */
-  async finish(sessionId: string): Promise<void> {
+  async finish(
+    sessionId: string,
+    options: {
+      /**
+       * When it actually ended, for a workout nobody tapped Finish on.
+       *
+       * The app closes an abandoned session at its last ticked set rather than
+       * at the moment it noticed (ADR-0077), so an hour of a phone on a bench
+       * does not become an hour of training. Clamped to the start, like the
+       * clock is, because the CHECK in Postgres refuses anything earlier.
+       */
+      readonly endedAt?: Date;
+    } = {},
+  ): Promise<void> {
     const { userId, now } = resolveContext(this.context);
     const session = await this.byId(sessionId);
     if (session === null) throw new Error(`No session ${sessionId} on this device.`);
@@ -331,10 +344,11 @@ export class SessionRepository {
 
     // A past workout ends on the day it happened, not days later when its
     // logging is finished: an end date is a claim about the workout.
+    const asked = options.endedAt ?? now();
     const endedAt =
       session.source === 'past'
         ? session.startedAt
-        : new Date(Math.max(now().getTime(), session.startedAt.getTime()));
+        : new Date(Math.max(asked.getTime(), session.startedAt.getTime()));
     const at = toTimestamp(endedAt);
     await this.db.execute(
       'UPDATE workout_sessions SET ended_at = ?, updated_at = ? WHERE id = ? AND user_id = ?',

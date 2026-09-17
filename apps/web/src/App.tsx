@@ -20,6 +20,7 @@ import { SettingsScreen } from './screens/SettingsScreen.js';
 import { CalendarScreen } from './screens/CalendarScreen.js';
 import { AchievementsScreen } from './screens/AchievementsScreen.js';
 import { AchievementCelebrations } from './components/AchievementBanner.js';
+import { AbandonedWorkoutWatcher } from './components/AbandonedWorkout.js';
 import { TabLayout } from './components/TabLayout.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
@@ -196,6 +197,10 @@ function AppRoutes() {
       {/* Beside the routes rather than in one, so a badge earned mid-set is
           announced on the workout screen, where it was earned. ADR-0072. */}
       <AchievementCelebrations />
+      {/* Likewise: the commonest way a workout is abandoned is the app being
+          closed with it open, and then nothing on the workout screen is
+          running to notice. ADR-0077. */}
+      <AbandonedWorkoutWatcher />
     </>
   );
 }

@@ -46,7 +46,8 @@ describe('describeOverBudget', () => {
   it('names the size, the limit and the usual cause when it does not', () => {
     const message = describeOverBudget('assets/index.js', 1_542_000);
     expect(message).toContain('1506 KB');
-    expect(message).toContain('977 KB');
+    // Whatever the budget is set to today, said in the same units.
+    expect(message).toContain(`${String(Math.round(ENTRY_BUDGET_BYTES / 1024))} KB`);
     expect(message).toContain('dynamic import');
   });
 

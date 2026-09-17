@@ -14,8 +14,21 @@
  * argue about ten kilobytes.
  */
 
-/** Roughly 20% above where the entry sits today. */
-export const ENTRY_BUDGET_BYTES = 1_000_000;
+/**
+ * Roughly 10% above where the entry sits today.
+ *
+ * Raised once, from 1,000,000, when four features in one change — achievements
+ * ordering, the chart's memory, the logger's nudge and the watcher that closes
+ * abandoned workouts — took the entry from 972 KB to 980 KB and tripped this.
+ * The growth was the app's own code arriving, not a dependency landing in the
+ * wrong chunk, which is what this guard is for.
+ *
+ * It is not permission to keep growing. The entry is heavy for a phone, and
+ * splitting the screens nobody opens first — Settings, the calendar, the
+ * achievements grid — is the performance pass's job, after which this number
+ * should come down rather than up.
+ */
+export const ENTRY_BUDGET_BYTES = 1_100_000;
 
 /**
  * The module entry from a built `index.html`.

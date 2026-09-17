@@ -4173,3 +4173,99 @@ and the app icon are one mark rather than two that drift. `sharp` is pinned
 newer than `@capacitor/assets` asks for, because its own version has no
 prebuilt binary for the Node this repo runs; only the generator uses it and
 nothing ships it.
+
+## ADR-0076 — Three things the logger owed a lifter mid-set
+
+**Status:** accepted · **Date:** 2026-09-17
+
+**A ticked set is locked.** The row dims when it is ticked, and the steppers
+under the dimming were still live: two taps rewrote the draft of a set that
+was already saved, silently, because the tick is what writes and the field
+only changes what the next tick would write. The steppers are disabled once a
+set is ticked. Untick it to change it — which is the same gesture that already
+undoes one.
+
+**Dumbbells step by the rack, not by plates.** A rack is not a continuum. Most
+metric racks run 2, 4, 6, 8 … and then, from the teens up, in halves: 12.5,
+15, 17.5, 20. A fixed 2.5 kg offered 16.5 kg, which no gym has. So the step
+depends on the weight in the field:
+
+- an **even whole number** is on the twos ladder, and steps by 2;
+- a **half** (12.5, 17.5) steps by 2.5;
+- an **odd whole number** steps by 2.5 as well — 15 is a rung of 12.5 / 15 /
+  17.5 and appears nowhere on a rack counting in twos.
+
+Pounds keep their one ladder of fives. Barbells and machines keep the
+plate-sized step they had; only exercises whose station is the dumbbell rack
+are treated this way.
+
+**The app says when a weight has become too easy.** Double progression is the
+rule nearly every programme runs on — stay at a weight until the top of the
+rep range, then add — and the logger was watching it happen and saying
+nothing. Once every set of an exercise is ticked, if the **last working set**
+reached the top of that exercise's rep range, a line appears under it in the
+accent colour: *20 reps at 14 kg — try 16 kg next time*, with the next weight
+worked out from the same rack ladder.
+
+- **Never below ten reps**, whatever the exercise's range says. A triple at
+  the top of a three-to-five range is a good set, not an invitation.
+- **The last set only.** A first set of twelve and a third of six is somebody
+  who found the weight, not somebody who beat it.
+- **Not for plain bodyweight or assisted sets**: there is no weight to add to
+  a push-up, and on an assisted machine more weight is less work.
+- **A nudge, not a prescription.** Nothing is written, nothing is prefilled
+  differently, and the lifter decides. It is one line, it arrives with a short
+  animation and two slow pulses, and then it sits still.
+
+Also in the catalogue: the **adductor and abductor machines**, which every
+commercial gym has and which were the only direct work the adductors and the
+side glutes could get — `hip-adductors` had no primary exercise at all, which
+means a muscle group the generator could never prescribe and the body map
+could never colour. The cable lat pullover was asked for too, and is already
+there as `straight-arm-pulldown`, under that alias since the migration that
+made it findable; a second row would be the same movement twice.
+
+## ADR-0077 — A workout nobody came back to closes itself
+
+**Status:** accepted · **Date:** 2026-09-17
+
+A workout is opened, some sets are ticked, and then the phone goes in a bag.
+The session stays open — through the evening, through the night, until the
+next workout starts and finds one already running. The sets were never at
+risk, but the workout had no end, so its duration was nonsense and the app
+went on believing somebody was mid-session.
+
+**After two idle limits, the app closes it.** The first limit is the one that
+already asks "still training?" — thirty minutes without a ticked set, two
+hours for cardio, where a treadmill hour is not idling. The second is the same
+again. Answering "keep going" buys a full interval before the question, and
+another before this.
+
+**It is closed at its last ticked set**, not at the moment the app noticed. An
+hour of a phone on a bench is not an hour of training, and every number the
+app shows about a workout is read from its sets.
+
+**The watcher lives beside the routes, not on the workout screen.** The
+commonest way a workout is abandoned is the app being closed with it open, and
+then nothing on that screen is running to notice. Wherever the app is next
+opened, it finds the open workout, sees how long ago the last set was, and
+acts. A session with nothing ticked in it is not touched: that is Home's
+"you left a workout open" card, and closing an empty workout would announce
+something that never happened.
+
+**And it owns up to it.** The next launch shows a dialog in the middle of the
+screen — what happened, why, and what was saved — with Okay, and a way
+straight to the workout. Middle rather than a banner at the top, because this
+is the one thing in the app that reports something done *to* somebody's data
+without being asked. It is said once: the workout's id is kept on the device
+until the dialog is agreed to.
+
+**The "still training?" answer is written down** for the same reason. It used
+to live only in the workout screen's state, which meant a reload asked again
+immediately — and the watcher, which is not part of that screen, would have
+gone on to close a workout that had just been answered for.
+
+**What this is not.** Neither the question nor the closing is a notification:
+nothing reaches a locked phone. That needs the native build's local
+notifications, which is a plugin and a permission prompt, and belongs with the
+rest of the native work rather than in front of it.

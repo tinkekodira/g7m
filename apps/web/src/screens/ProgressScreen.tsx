@@ -36,6 +36,7 @@ import { ViewPicker, type ViewOption } from '../components/ViewPicker.js';
 import { StepArrow } from '../components/StepArrow.js';
 import { ReviewCard } from '../components/ReviewCard.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { readChartMetric, writeChartMetric } from '../lib/chart-preference.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import {
   PERIOD_OPTIONS,
@@ -101,10 +102,14 @@ export function ProgressScreen() {
   // to the view that was showing rather than resetting to the week.
   const [params, setParams] = useSearchParams();
   const period = periodFrom(params.get('period'));
-  const metric = metricFrom(params.get('chart'));
+  // The address first, then what was chosen last time the app was open: a
+  // Home Screen app swiped out of the switcher comes back to `/` with no
+  // query on it, and used to land on weight lifted whatever was picked.
+  const metric = metricFrom(params.get('chart') ?? readChartMetric());
   const backParam = params.get('back');
   // Defaults left out of the address, so an untouched screen has a clean one.
   const writeParams = (nextPeriod: Period, nextMetric: ChartMetric, nextBack: number): void => {
+    writeChartMetric(nextMetric);
     setParams(
       {
         ...(nextPeriod === 'week' ? {} : { period: nextPeriod }),

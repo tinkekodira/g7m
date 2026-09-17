@@ -35,3 +35,4 @@ export * from './lift-progress.js';
 export * from './review.js';
 export * from './greeting.js';
 export * from './achievements.js';
+export * from './add-weight.js';

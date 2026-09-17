@@ -9,7 +9,6 @@ import {
   describePreviousSet,
   formatRest,
   fromDisplayWeight,
-  incrementKgFor,
   naturalLoadType,
   nextSetTemplate,
   previousSetAt,
@@ -18,6 +17,8 @@ import {
   rirToRpe,
   toDisplayWeight,
   totalVolumeKg,
+  weightAdvice,
+  weightStepKg,
   type ExerciseBests,
   type LoadType,
   type SetRecord,
@@ -28,7 +29,9 @@ import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } f
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
 import { buzz } from '../lib/haptics.js';
+import { readSnoozedAt, writeSnoozedAt } from '../lib/workout-notice.js';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { ArrowUpIcon } from '../components/icons.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { formatWeightExact } from '../components/chart-scale.js';
 import { PlateLine } from '../components/PlateLine.js';
@@ -62,6 +65,11 @@ interface ExerciseBlock {
   readonly sets: readonly SessionSet[];
   readonly previous: readonly SetTemplate[];
   readonly loadType: LoadType;
+  /**
+   * Loaded with dumbbells, so the weight field steps by the rack rather than
+   * by plates: 14 kg goes to 16, and 12.5 kg to 15. See `weightStepKg`.
+   */
+  readonly dumbbell: boolean;
   readonly restSeconds: number;
   /** From finished sessions only, so today cannot be its own baseline. */
   readonly bests: ExerciseBests;
@@ -148,6 +156,7 @@ export function WorkoutScreen() {
           bests: bestsFrom(history),
           loadType: naturalLoadType(equipment.map((item) => item.category)),
           barbell: equipment.some((item) => item.slug === 'barbell'),
+          dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
           restSeconds: restSecondsFor({
             exerciseSeconds: exercise?.defaultRestSeconds ?? null,
             profileSeconds: profile?.restSecondsDefault ?? null,
@@ -218,12 +227,23 @@ export function WorkoutScreen() {
             block.sets.filter((set) => set.isCompleted).map((set) => set.completedAt),
           ),
         );
+  /**
+   * The answer, whether it was given on this screen or before a reload.
+   *
+   * Without the stored half, closing the app and coming back asked again
+   * immediately — and the watcher outside this screen would have gone on to
+   * close the workout as if nothing had been answered.
+   */
+  const answeredAt =
+    workout === null
+      ? snoozedAt
+      : laterOf(snoozedAt, readSnoozedAt(workout.session.id, globalThis.localStorage));
   const askStillTraining =
     !past &&
     lastActivity !== null &&
     shouldAskStillTraining({
       lastActivityAt: lastActivity,
-      snoozedAt,
+      snoozedAt: answeredAt,
       now,
       // A treadmill bout can be an hour without a tick; that is not idling.
       limitMinutes: idleLimitMinutes(
@@ -618,7 +638,12 @@ export function WorkoutScreen() {
               busy={busy}
               onFinish={finishWorkout}
               onKeepGoing={() => {
-                setSnoozedAt(new Date());
+                const at = new Date();
+                setSnoozedAt(at);
+                // Written down as well as held in state: the watcher that
+                // closes abandoned workouts runs outside this screen and has
+                // no other way to know the question was answered (ADR-0077).
+                if (workout !== null) writeSnoozedAt(workout.session.id, at);
               }}
             />
           )}
@@ -767,6 +792,22 @@ function ExerciseCard({
   // your hands — and it is the last set that decides whether to add weight.
   const awaiting = skipped ? null : unratedFinalSet(block.sets);
 
+  /**
+   * "That was too easy": the top of the rep range, on the last set, once the
+   * exercise is done (ADR-0076). Shown here rather than as a toast because it
+   * is about this exercise, and it is read on the way to the next one.
+   */
+  const lastWorking = [...block.sets].reverse().find((set) => set.setType !== 'warmup');
+  const advice = weightAdvice({
+    sets: block.sets,
+    repHigh: block.exercise?.defaultRepHigh ?? null,
+    stepKg: weightStepKg({
+      dumbbell: block.dumbbell,
+      currentKg: lastWorking?.weightKg ?? 0,
+      unitSystem,
+    }),
+  });
+
   return (
     // Found by id to be scrolled to once it has just been added; the margin
     // stops it landing flush against the top edge of the screen.
@@ -806,6 +847,7 @@ function ExerciseCard({
                 exerciseName={name}
                 previous={previousSetAt(block.previous, index)}
                 barbell={block.barbell}
+                dumbbell={block.dumbbell}
                 unitSystem={unitSystem}
                 busy={busy}
                 onComplete={(changes) => {
@@ -826,6 +868,16 @@ function ExerciseCard({
         </ul>
       )}
 
+      {advice !== null && (
+        <p className="advice mb-3 flex items-center gap-2 rounded-control border border-accent/50 bg-accent-subtle px-3 py-2 text-sm font-semibold text-accent">
+          <ArrowUpIcon aria-hidden className="size-5 shrink-0" />
+          <span className="numeric">
+            {String(advice.reps)} reps at {showWeight(advice.weightKg, unitSystem)} — try{' '}
+            {showWeight(advice.nextKg, unitSystem)} next time
+          </span>
+        </p>
+      )}
+
       {awaiting !== null && (
         <EffortPrompt
           busy={busy}
@@ -843,6 +895,18 @@ function ExerciseCard({
       </Button>
     </section>
   );
+}
+
+/** Whichever of two moments is later, either of which may be missing. */
+function laterOf(a: Date | null, b: Date | null): Date | null {
+  if (a === null) return b;
+  if (b === null) return a;
+  return a > b ? a : b;
+}
+
+/** `16 kg`, `35 lb`: a weight with its unit, for a sentence rather than a field. */
+function showWeight(kg: number, unitSystem: UnitSystem): string {
+  return `${String(toDisplayWeight(kg, unitSystem).value)} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
 }
 
 /**
@@ -939,6 +1003,7 @@ function SetRow({
   exerciseName,
   previous,
   barbell,
+  dumbbell,
   unitSystem,
   busy,
   onComplete,
@@ -952,6 +1017,7 @@ function SetRow({
   readonly exerciseName: string;
   readonly previous: SetTemplate | null;
   readonly barbell: boolean;
+  readonly dumbbell: boolean;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
   readonly onComplete: (changes: SetEdit) => void;
@@ -976,7 +1042,20 @@ function SetRow({
   const [loadType, setLoadType] = useState<LoadType>(set.loadType);
 
   const weightLabel = WEIGHT_FIELD_MEANING[loadType];
-  const stepDisplay = toDisplayWeight(incrementKgFor(unitSystem), unitSystem).value;
+  // Read off the weight in the field, so the ladder follows what is in it: a
+  // dumbbell at 12.5 steps by 2.5, one at 14 by 2.
+  const stepDisplay = toDisplayWeight(
+    weightStepKg({ dumbbell, currentKg: fromDisplayWeight(weight, unitSystem), unitSystem }),
+    unitSystem,
+  ).value;
+  /**
+   * A ticked set is a record of what happened, and nothing on it should move.
+   * The row dims to say so, and the steppers were still live underneath the
+   * dimming: two taps on a phone in a pocket rewrote a set that was already
+   * saved, silently, because the tick is what writes and the field only
+   * changes the draft. Untick it to change it.
+   */
+  const locked = busy || set.isCompleted;
   const changes: SetEdit = {
     // Plain bodyweight carries no weight. A stale number left in the field from
     // before "bodyweight only" was chosen must not be saved as added load.
@@ -1046,7 +1125,7 @@ function SetRow({
                   value={weight}
                   step={stepDisplay}
                   decimals={1}
-                  disabled={busy}
+                  disabled={locked}
                   onChange={setWeight}
                 />
               </div>
@@ -1057,7 +1136,7 @@ function SetRow({
                 value={reps}
                 step={1}
                 min={0}
-                disabled={busy}
+                disabled={locked}
                 onChange={setReps}
               />
             </div>
