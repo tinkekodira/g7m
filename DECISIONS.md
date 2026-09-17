@@ -4174,6 +4174,52 @@ newer than `@capacitor/assets` asks for, because its own version has no
 prebuilt binary for the Node this repo runs; only the generator uses it and
 nothing ships it.
 
+## ADR-0075 — An iPhone build, from a Windows machine
+
+**Status:** accepted · **Date:** 2026-09-17
+
+The app's author has an iPhone and a Windows PC. Xcode runs on neither, and
+the Android APK from ADR-0074 is no use to a phone he does not own. So the
+question is how the iOS app reaches the one device that matters.
+
+**CI builds an unsigned IPA on every push.** The macOS runner does a real
+device build with signing switched off and packages `App.app` into an `.ipa`
+— which is a zip with the app inside a folder called `Payload`, and nothing
+more. That is the format every installer reads.
+
+**Signing happens at install time, on the owner's computer.** Sideloadly or
+AltStore on Windows signs the app with the user's own Apple ID and puts it on
+the phone over a cable. It costs nothing, needs no Apple Developer account and
+needs no Mac — the trade is that a free Apple ID's signature lasts **seven
+days**, allows three sideloaded apps at once, and has to be refreshed by
+running the installer again (the app's data survives).
+
+**Rejected, for now: signing in CI.** Archiving and exporting a signed IPA
+needs a distribution certificate, a provisioning profile and an App Store
+Connect API key in the repository's secrets, and all three need the Apple
+Developer Program at $99 a year. The day that account exists this becomes a
+TestFlight upload — installs with no cable, builds that last ninety days, and
+updates that arrive by themselves — and it is a small addition to the same
+workflow rather than a different approach.
+
+**Rejected: shipping only the Home Screen web app.** It still exists, it still
+never expires, and it is still what ADR-0026 says. But it cannot buzz: iOS has
+no `navigator.vibrate`, so the rest timer and every ticked set are silent
+there, and it cannot keep the screen awake either. Those are the reasons the
+native build is worth having on that phone, so it has to be installable.
+
+**iOS 17 is the floor.** The offline database is WebKit's OPFS, tested from
+iOS 17 up by the spike behind ADR-0026, so the deployment target says so
+rather than letting an older phone install an app whose database will not
+open. Capacitor's own floor is 14.
+
+**The screen stays awake on iOS**, at last. The Screen Wake Lock API is
+missing from every iOS WebView, so the web app could not hold the screen on
+and a phone set down on a bench locked thirty seconds later.
+`@capacitor-community/keep-awake` asks the system instead, and which of the
+three implementations is used — the system flag, the web API, or nothing — is
+one tested function.
+
 ## ADR-0076 — Three things the logger owed a lifter mid-set
 
 **Status:** accepted · **Date:** 2026-09-17

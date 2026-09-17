@@ -208,6 +208,24 @@ export async function openExternal(url: string): Promise<boolean> {
   return opened === true;
 }
 
+/**
+ * Keep the screen on, or let it sleep again.
+ *
+ * The workout screen asks for this while it is open. On a phone it is the
+ * system's own "this app is doing something" flag, which is the only thing
+ * that works on iOS — the web API does not exist there at all.
+ */
+export async function keepScreenAwake(on: boolean): Promise<boolean> {
+  if (!isNative()) return false;
+  const done = await tryNative('keep awake', async () => {
+    const { KeepAwake } = await import('@capacitor-community/keep-awake');
+    if (on) await KeepAwake.keepAwake();
+    else await KeepAwake.allowSleep();
+    return true;
+  });
+  return done === true;
+}
+
 /** Close the in-app browser, once the sign-in that opened it has come back. */
 export async function closeExternal(): Promise<void> {
   if (!isNative()) return;

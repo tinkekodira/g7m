@@ -74,6 +74,25 @@ export function backAction(hash: string, canGoBack: boolean): BackAction {
 }
 
 /**
+ * Who keeps the screen awake during a workout.
+ *
+ * The Screen Wake Lock API is missing from every iOS WebView, whatever the
+ * version, so on an iPhone the browser has nothing to offer and the phone
+ * locks thirty seconds after it is set down on the bench. The native builds
+ * ask the system instead. A browser that has the API uses it; anything with
+ * neither lets the screen sleep, which is the old behaviour.
+ */
+export type WakeLockBackend = 'native' | 'web' | 'none';
+
+export function wakeLockBackend(input: {
+  readonly native: boolean;
+  readonly hasWebApi: boolean;
+}): WakeLockBackend {
+  if (input.native) return 'native';
+  return input.hasWebApi ? 'web' : 'none';
+}
+
+/**
  * Whether a URL the system handed the app is the end of a sign-in.
  *
  * Google sends the browser back to `g7m://auth-callback?code=…`, which the
