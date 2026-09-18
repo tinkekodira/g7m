@@ -1,13 +1,25 @@
-import { MAX_PLATE_DIAMETER_MM, plateLook, type Loading } from '@g7m/core';
+import { BAR_LOOK, MAX_PLATE_DIAMETER_MM, plateLook, type Loading } from '@g7m/core';
 
 /**
- * One side of a loaded bar, drawn.
+ * The loaded bar, drawn as a bar.
  *
- * Coloured discs at the sizes they really are: a 25 is a wide red disc, a 1.25 a
- * small chrome one, and the difference between them is the difference you see on
- * the bar. "Each side: 25 · 15 · 1.25" is the same information and has to be
- * read; this is recognised, which is what makes it useful at the rack with a
- * heart rate up.
+ * Both ends, mirrored, because a barbell is a thing somebody recognises at a
+ * glance and half of one is a diagram. The plates are the app's own low-poly
+ * models rebuilt as vector: faceted discs at their real relative diameters, in
+ * the colours sampled off those models.
+ *
+ * ## Heaviest inside
+ *
+ * Big plates go on first, against the collar, and the small change goes outside
+ * them. That is how a bar is loaded and how a loaded bar is read — the outermost
+ * disc tells you what the last plate on was — so the drawing stacks them the
+ * same way, decreasing outward from the middle.
+ *
+ * ## Vector, not the renders
+ *
+ * The models are one fixed image of one fixed loading; a calculator has to draw
+ * any of several hundred. Rebuilding them as polygons composes, stays sharp at
+ * any size, ships no megabytes, and keeps the facet count honest to the source.
  *
  * ## The one liberty taken
  *
@@ -15,194 +27,283 @@ import { MAX_PLATE_DIAMETER_MM, plateLook, type Loading } from '@g7m/core';
  * nine times wider than they are thick, so at true scale four 25s stack into a
  * single red smear with three hairlines in it. Both scales stay *relative* — a
  * 25 is wider and thicker than a 10 in the right ratios — and only the
- * relationship between the two is stretched. Said out loud on the screen, so
- * nobody measures anything off it.
- *
- * One side, because the other is the same one. Drawing both halves doubles the
- * width for no information and invites the reading that the list is the total.
+ * relationship between the two is stretched.
  */
 
 /** How far thicknesses are exaggerated along the bar. See above. */
-const SPREAD = 5;
+const SPREAD = 2;
 
-/** Bar before the first plate, and the collar past the last. */
-const SHAFT_MM = 210;
-const COLLAR_MM = 70;
+/** Faces per disc. Low enough to read as faceted, high enough to read as round. */
+const FACETS = 18;
 
-/** Room under the widest disc for the numbers. */
-const LABEL_BAND_MM = 150;
+/** Where the light is, in radians — up and slightly left, as on the models. */
+const LIGHT_ANGLE = -Math.PI * 0.62;
 
-const AXIS_Y = MAX_PLATE_DIAMETER_MM / 2;
-const SHAFT_HALF_MM = 19;
+/** Half the bare shaft between the two collars. Compressed from a real bar. */
+const SHAFT_HALF_MM = 800;
+/** How far the sleeve runs past the outermost plate. */
+const END_CAP_MM = 150;
+
+const SHAFT_RADIUS_MM = 26;
+const SLEEVE_RADIUS_MM = 38;
+const COLLAR_RADIUS_MM = 50;
+const COLLAR_WIDTH_MM = 46;
+/**
+ * The hub, one size on every plate, because the sleeve it hangs on is one size.
+ * Scaling it with the disc would draw a 1.25 with a hole a 25 could not use.
+ */
+const HUB_RADIUS_MM = 36;
+
+/** Through the middle of every plate. Darker than any plate or sleeve tone. */
+const HOLE = '#23232a';
 
 /**
- * The frame the drawing is laid out in, which is fixed rather than fitted.
+ * The dark edge every disc gets, as a share of its radius.
  *
- * A box that hugged its contents would rescale on every step of the weight — a
- * lone 5 kg drawn as large as four 25s, and a plate that grows as you take
- * weight off. Fixing it keeps one millimetre the same number of pixels whatever
- * is loaded, so adding a plate makes the stack longer instead of making
- * everything else smaller.
- *
- * Wide enough for a bar somebody would need a spotter for; a heavier one
- * extends it rather than overflowing. A dumbbell gets its own narrower frame,
- * because its plates stop at 10 kg and a barbell's frame would draw a handle as
- * a speck in the corner.
+ * Without it two 25s side by side are one red blob with a seam. This is the
+ * single thing that makes a stack read as a count of plates.
  */
-const FRAME_WIDTH_MM = { bar: 1500, handle: 820 } as const;
-const FRAME_HEIGHT_MM = MAX_PLATE_DIAMETER_MM + LABEL_BAND_MM;
+const RIM_SHARE = 0.075;
 
-/** One baseline for every number, under the widest disc there can be. */
-const LABEL_BASELINE = MAX_PLATE_DIAMETER_MM + 68;
+/** Vertical room, which the widest plate sets. */
+const FRAME_HEIGHT_MM = MAX_PLATE_DIAMETER_MM + 60;
+const AXIS_Y = FRAME_HEIGHT_MM / 2;
+
+/**
+ * The narrowest the drawing gets.
+ *
+ * Wide enough for four 25s a side — a 220 kg bar — so that below it one
+ * millimetre is the same number of pixels whatever is loaded, and adding a plate
+ * makes the stack longer rather than shrinking everything. Past that the frame
+ * gives way rather than running the bar off the edge.
+ */
+const MIN_HALF_MM = SHAFT_HALF_MM + 4 * 25 * SPREAD + END_CAP_MM;
 
 export function PlateStack({
   loading,
   unit,
-  /** What the bare bar is called when there is nothing on it. */
-  noun,
 }: {
   readonly loading: Loading;
   readonly unit: 'kg' | 'lb';
-  readonly noun: string;
 }) {
-  if (loading.kind !== 'plates') {
-    return (
-      <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-card border border-subtle bg-elevated px-4">
-        <BareBar />
-        <p className="text-center text-sm text-secondary">
-          {loading.kind === 'bar_only'
-            ? `Just the ${noun} — ${plate(loading.bar)} ${unit}, nothing on it.`
-            : `Lighter than the ${noun} on its own, which is ${plate(loading.bar)} ${unit}.`}
-        </p>
-      </div>
-    );
-  }
+  const perSide = loading.kind === 'plates' ? loading.perSide : [];
 
-  const discs = loading.perSide.map((size) => ({ size, ...plateLook(size, unit) }));
-
-  // Centres along the bar. Each plate's face rests against the one before it,
-  // so its centre is half its own (spread) thickness past the last face.
-  let face = SHAFT_MM;
-  const placed = discs.map((disc) => {
-    const spread = disc.thicknessMm * SPREAD;
-    const centre = face + spread / 2;
-    face += spread;
-    return { ...disc, centre, radius: disc.diameterMm / 2 };
+  // Outward from the collar, heaviest first — the order they go on.
+  let edge = SHAFT_HALF_MM;
+  const placed = perSide.map((size) => {
+    const look = plateLook(size, unit);
+    const width = look.thicknessMm * SPREAD;
+    const from = edge + width / 2;
+    edge += width;
+    return { size, look, from, width, radius: look.diameterMm / 2 };
   });
 
-  const last = placed[placed.length - 1];
-  const content = Math.max(face + COLLAR_MM, (last?.centre ?? 0) + (last?.radius ?? 0) + COLLAR_MM);
-  const frame = noun === 'handle' ? FRAME_WIDTH_MM.handle : FRAME_WIDTH_MM.bar;
-  const width = Math.max(frame, content);
+  const outermost = placed[placed.length - 1];
+  const reach = outermost === undefined ? SHAFT_HALF_MM : outermost.from + outermost.radius;
+  const half = Math.max(MIN_HALF_MM, reach + END_CAP_MM);
 
   return (
-    // No height: the viewBox sets the aspect, so the drawing keeps one scale and
-    // simply takes the height it needs at whatever width it is given.
+    // No height: the viewBox sets the aspect, so the bar takes the height it
+    // needs at whatever width it is given.
     <svg
-      viewBox={`0 0 ${String(width)} ${String(FRAME_HEIGHT_MM)}`}
+      viewBox={`${String(-half)} 0 ${String(half * 2)} ${String(FRAME_HEIGHT_MM)}`}
       className="w-full"
       role="img"
-      aria-label={`One side of the ${noun}: ${placed
-        .map((disc) => `${plate(disc.size)} ${unit}`)
-        .join(', ')}`}
+      aria-label={
+        loading.kind === 'plates'
+          ? `A bar loaded with ${placed.map((disc) => `${trim(disc.size)} ${unit}`).join(', ')} on each end`
+          : `An empty ${trim(loading.bar)} ${unit} bar`
+      }
     >
-      {/* The bar itself, behind everything, running off the left edge — the
-          rest of it is the half this drawing is not showing. */}
-      <rect
-        x={0}
-        y={AXIS_Y - SHAFT_HALF_MM}
-        width={width}
-        height={SHAFT_HALF_MM * 2}
-        rx={SHAFT_HALF_MM}
-        fill="var(--color-muted)"
-        opacity={0.55}
-      />
+      <Bar half={half} />
 
-      {placed.map((disc, index) => (
-        // Position, because the same plate size appears more than once.
-        <g key={`${String(index)}-${String(disc.size)}`}>
-          <circle
-            cx={disc.centre}
-            cy={AXIS_Y}
-            r={disc.radius}
-            fill={disc.colour}
-            // An outline, or a white 5 kg disappears into a light background and
-            // two touching reds read as one wide plate.
-            stroke="var(--color-subtle)"
-            strokeWidth={5}
+      {/* Each end, innermost plate first so the smaller ones outside it land on
+          top — which is the order they occlude each other on a real bar. */}
+      {([-1, 1] as const).map((side) =>
+        placed.map((disc, index) => (
+          <Plate
+            key={`${String(side)}-${String(index)}-${String(disc.size)}`}
+            cx={disc.from * side}
+            radius={disc.radius}
+            thickness={disc.width}
+            look={disc.look}
+            side={side}
           />
-          {/* The hole, so a disc reads as a plate rather than a dot. */}
-          <circle
-            cx={disc.centre}
-            cy={AXIS_Y}
-            r={SHAFT_HALF_MM + 6}
-            fill="var(--color-muted)"
-            opacity={0.55}
-          />
-          {/* The weight, under the crescent that is actually visible — the
-              plate after this one covers the middle. One baseline for all of
-              them: following each disc's own edge draws a staircase. */}
-          <text
-            x={visibleCentre(placed, index)}
-            y={LABEL_BASELINE}
-            textAnchor="middle"
-            // The page's ink, not the plate's: these sit below the disc now,
-            // on the card, where a plate's white-on-red would vanish.
-            fill="var(--color-primary)"
-            fontSize={62}
-            fontWeight={600}
-          >
-            {plate(disc.size)}
-          </text>
-        </g>
-      ))}
-
-      {/* The collar that holds them on. */}
-      <rect
-        x={face + 12}
-        y={AXIS_Y - 42}
-        width={38}
-        height={84}
-        rx={12}
-        fill="var(--color-muted)"
-        opacity={0.8}
-      />
+        )),
+      )}
     </svg>
   );
 }
 
 /**
- * Where a plate's number goes: the middle of the part of it you can still see.
+ * The shaft, the two sleeves and the collars, as flat bands.
  *
- * The next plate along covers this one from its own left edge rightwards, so the
- * visible crescent runs from this disc's left edge to that one's. Centred
- * labels without this sit underneath the neighbour and vanish.
+ * A cylinder lit from above is three stripes — lit, face, shadow — and at this
+ * size that is all a cylinder needs to be.
  */
-function visibleCentre(
-  placed: readonly { readonly centre: number; readonly radius: number }[],
-  index: number,
-): number {
-  const disc = placed[index];
-  if (disc === undefined) return 0;
-  const next = placed[index + 1];
-  const left = disc.centre - disc.radius;
-  const right = next === undefined ? disc.centre + disc.radius : next.centre - next.radius;
-  // A neighbour wide enough to cover this disc entirely leaves nothing to aim
-  // at; fall back to its own left edge rather than off the front of the plate.
-  return right <= left ? left + disc.radius / 3 : (left + right) / 2;
-}
-
-/** A bar with nothing on it, for the two loadings that have no plates. */
-function BareBar() {
+function Bar({ half }: { readonly half: number }) {
   return (
-    <svg viewBox="0 0 400 80" className="h-10 w-40" aria-hidden>
-      <rect x={0} y={30} width={400} height={20} rx={10} fill="var(--color-muted)" opacity={0.55} />
-      <rect x={330} y={16} width={22} height={48} rx={7} fill="var(--color-muted)" opacity={0.8} />
-    </svg>
+    <g>
+      <Rod half={half} radius={SLEEVE_RADIUS_MM} />
+      <Rod half={SHAFT_HALF_MM} radius={SHAFT_RADIUS_MM} />
+      {([-1, 1] as const).map((side) => (
+        <Rod
+          key={side}
+          half={COLLAR_RADIUS_MM}
+          radius={COLLAR_RADIUS_MM}
+          // The collar the plates rest against, at the inner end of the sleeve.
+          shift={(SHAFT_HALF_MM - COLLAR_WIDTH_MM / 2) * side}
+          width={COLLAR_WIDTH_MM}
+        />
+      ))}
+    </g>
   );
 }
 
+/** One horizontal cylinder: three bands, lit on top. */
+function Rod({
+  half,
+  radius,
+  shift = 0,
+  width,
+}: {
+  readonly half: number;
+  readonly radius: number;
+  readonly shift?: number;
+  readonly width?: number;
+}) {
+  const span = width ?? half * 2;
+  const x = width === undefined ? -half : shift - width / 2;
+  const bands = [
+    { from: -radius, to: -radius * 0.35, fill: BAR_LOOK.lit },
+    { from: -radius * 0.35, to: radius * 0.45, fill: BAR_LOOK.colour },
+    { from: radius * 0.45, to: radius, fill: BAR_LOOK.shade },
+  ];
+  return (
+    <g>
+      {bands.map((band) => (
+        <rect
+          key={band.from}
+          x={x}
+          y={AXIS_Y + band.from}
+          width={span}
+          height={band.to - band.from}
+          fill={band.fill}
+        />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * One plate: an edge band, a faceted face, and the hub it hangs on.
+ *
+ * The edge is the same polygon shifted toward the middle of the bar, so the
+ * thickness shows on the side that stays visible when the next plate out covers
+ * the rest of this one.
+ */
+function Plate({
+  cx,
+  radius,
+  thickness,
+  look,
+  side,
+}: {
+  readonly cx: number;
+  readonly radius: number;
+  /** As drawn along the bar, spread included. */
+  readonly thickness: number;
+  readonly look: ReturnType<typeof plateLook>;
+  /** -1 for the left end of the bar, 1 for the right. */
+  readonly side: -1 | 1;
+}) {
+  const depth = Math.max(12, thickness * 0.5);
+  return (
+    <g>
+      {/* The thickness, shown toward the middle of the bar — the side that stays
+          visible once the next plate out covers the rest of this one. */}
+      <polygon points={polygon(cx - depth * side, radius)} fill={look.shade} />
+      {/* The whole disc in its dark tone, then the face inset into it. What is
+          left around the edge is the rim, and it is what separates one plate
+          from the next. */}
+      <polygon points={polygon(cx, radius)} fill={look.shade} />
+      {facets(cx, radius * (1 - RIM_SHARE)).map((facet) => (
+        <polygon key={facet.key} points={facet.points} fill={mix(look, facet.light)} />
+      ))}
+      {/* The raised hub and the hole through it. Light ring, dark hole — the
+          other way round it reads as a stud rather than a plate, and the dark
+          hole is also what keeps a chrome 1.25 from merging into the sleeve. */}
+      <polygon points={polygon(cx, HUB_RADIUS_MM)} fill={BAR_LOOK.lit} />
+      <polygon points={polygon(cx, HUB_RADIUS_MM * 0.55)} fill={HOLE} />
+    </g>
+  );
+}
+
+/** A regular polygon, rotated half a step so a flat face sits on top. */
+function polygon(cx: number, radius: number): string {
+  const step = (Math.PI * 2) / FACETS;
+  const points: string[] = [];
+  for (let index = 0; index < FACETS; index += 1) {
+    const angle = index * step + step / 2 - Math.PI / 2;
+    points.push(
+      `${String(round(cx + Math.cos(angle) * radius))},${String(round(AXIS_Y + Math.sin(angle) * radius))}`,
+    );
+  }
+  return points.join(' ');
+}
+
+/**
+ * The face, split into one triangle per facet.
+ *
+ * Each gets its own tone from how far it is turned toward the light, which is
+ * what makes a flat polygon read as a solid object rather than a sticker. It is
+ * also the honest way to draw a low-poly model: the facets are the model.
+ */
+function facets(cx: number, radius: number): { key: number; points: string; light: number }[] {
+  const step = (Math.PI * 2) / FACETS;
+  const out: { key: number; points: string; light: number }[] = [];
+  for (let index = 0; index < FACETS; index += 1) {
+    const start = index * step + step / 2 - Math.PI / 2;
+    const end = start + step;
+    const mid = start + step / 2;
+    out.push({
+      key: index,
+      points: [
+        `${String(round(cx))},${String(round(AXIS_Y))}`,
+        `${String(round(cx + Math.cos(start) * radius))},${String(round(AXIS_Y + Math.sin(start) * radius))}`,
+        `${String(round(cx + Math.cos(end) * radius))},${String(round(AXIS_Y + Math.sin(end) * radius))}`,
+      ].join(' '),
+      // 0 is turned fully away from the light, 1 fully toward it. Kept well
+      // inside both ends: a plate is a flat disc catching light across its
+      // facets, and the full range drew it as a ball instead.
+      light: 0.34 + 0.32 * ((Math.cos(mid - LIGHT_ANGLE) + 1) / 2),
+    });
+  }
+  return out;
+}
+
+/** The face colour, pulled toward the lit or the shaded tone. */
+function mix(look: { colour: string; lit: string; shade: string }, light: number): string {
+  if (light >= 0.5) return blend(look.colour, look.lit, (light - 0.5) * 2);
+  return blend(look.colour, look.shade, (0.5 - light) * 2);
+}
+
+function blend(from: string, to: string, amount: number): string {
+  const a = channels(from);
+  const b = channels(to);
+  const mixed = a.map((value, index) => Math.round(value + ((b[index] ?? value) - value) * amount));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function channels(hex: string): number[] {
+  return [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+}
+
+function round(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 /** 25, 2.5, 1.25 — no trailing zeros on a plate. */
-function plate(size: number): string {
+function trim(size: number): string {
   return String(Math.round(size * 100) / 100);
 }

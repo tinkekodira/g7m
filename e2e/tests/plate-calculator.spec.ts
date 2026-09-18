@@ -6,11 +6,11 @@ import { openTab, signIn } from './support/app.js';
  * The plate calculator under Learn: what goes on each end, drawn.
  *
  * The loading arithmetic is `loadBar`, which has its own tests. What is worth
- * driving through a browser is the wiring — that Learn offers the way in, that
- * the two kits are really different kits, and that a dumbbell says so when the
- * weight asked for cannot be built at all.
+ * driving through a browser is the wiring: that Learn offers the way in, that
+ * the plates change with the number, and that a bar too light to load says so
+ * instead of drawing nothing.
  */
-test('the calculator loads a bar, and a dumbbell handle, from Learn', async ({ page }) => {
+test('the calculator loads a bar, from Learn', async ({ page }) => {
   const user = await createUser('plates', { onboarded: true });
   await signIn(page, user);
   await openTab(page, 'Learn');
@@ -32,28 +32,14 @@ test('the calculator loads a bar, and a dumbbell handle, from Learn', async ({ p
   await stepper.blur();
   await expect(each).toContainText('25');
   await expect(each).toContainText('15');
-  await expect(page.getByRole('img', { name: /One side of the bar/ })).toBeVisible();
+  // The drawing says the same thing to anybody who cannot see it.
+  await expect(page.getByRole('img', { name: /A bar loaded with 25 kg, 15 kg/ })).toBeVisible();
 
-  // Under the bar's own weight there is nothing to load.
+  // Under the bar's own weight there is nothing to load, and the bar is drawn bare.
   await stepper.fill('15');
   await stepper.blur();
   await expect(page.getByText(/Lighter than the bar on its own/)).toBeVisible();
-
-  // A dumbbell is a different kit: a 2 kg handle, and no 25s to put on it.
-  await page.getByRole('button', { name: 'Dumbbell' }).click();
-  const handle = page.getByRole('textbox', { name: /Weight of one dumbbell/ });
-  await expect(handle).toHaveValue('20.0');
-  await expect(each).toContainText('on a 2 kg handle');
-
-  /**
-   * The answer somebody actually opens this for: a rack has a 14 kg dumbbell
-   * and a handle cannot make one, because 1 kg a side is less than the smallest
-   * plate there is.
-   */
-  await handle.fill('14');
-  await handle.blur();
-  await expect(page.getByText(/cannot make 14 kg/)).toBeVisible();
-  await expect(page.getByText(/closest under it is/)).toContainText('12 kg');
+  await expect(page.getByRole('img', { name: /An empty 20 kg bar/ })).toBeVisible();
 
   await page.getByRole('link', { name: 'Learn' }).first().click();
   await expect(page.getByRole('heading', { name: 'Learn', level: 1 })).toBeVisible();

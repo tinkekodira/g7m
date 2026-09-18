@@ -4715,3 +4715,82 @@ rather than the plate's: below the disc, a plate's white-on-red vanishes.
 Each label is placed on the crescent of its plate that is still visible, since
 the next plate along covers the middle. Centred labels sat underneath their
 neighbour.
+
+---
+
+## ADR-0082 — The calculator draws a barbell, and only a barbell
+
+**Status:** accepted · **Date:** 2026-09-18 · **Phase:** 7
+
+**Amends ADR-0081**, which shipped the calculator a day earlier.
+
+### Context
+
+ADR-0081 drew one end of a bar, sideways, as overlapping discs. It was correct
+and it read as a diagram of a loading rather than as a loaded bar. g7m has
+low-poly plate and barbell models; the calculator was not using them.
+
+### Decision
+
+**Both ends, mirrored.** A barbell is a thing somebody recognises at a glance
+and half of one is a diagram. The information is the same on both ends and the
+recognition is not.
+
+**Heaviest inside.** Big plates go on first, against the collar, and the small
+change goes outside them. That is how a bar is loaded and how a loaded bar is
+read: the outermost disc tells you what the last plate on was.
+
+**The models rebuilt as vector, not embedded as renders.** A render is one fixed
+image of one fixed loading and the calculator has to draw any of several
+hundred. Polygons compose, stay sharp at any size, ship no megabytes, and keep
+the facet count honest to the source. The colours are sampled off the models
+themselves, so the drawing and the models are the same plates.
+
+Each plate is a ring of flat triangles shaded between a lit and a shaded tone —
+the facets *are* the model, so the shading is per-facet rather than a gradient.
+`PlateLook` carries three tones now instead of one.
+
+Three things learned by rendering it and looking:
+
+- **Every disc needs a dark rim.** Without it two 25s side by side are one red
+  blob with a seam in it. This is the single thing that makes a stack read as a
+  count of plates.
+- **A flat disc is not a ball.** Shading the facets across the full range drew a
+  sphere. The range is now narrow, which is what a flat disc catching light
+  across its faces actually looks like.
+- **The hub is a light ring with a dark hole, not the reverse.** Inverted it
+  reads as a stud, and the dark hole is also what keeps a chrome 1.25 from
+  merging into the sleeve behind it.
+
+**The colours follow the models, not the IWF code.** ADR-0081 used the
+competition code — white 5, red 2.5, chrome 1.25. That code belongs to
+calibrated discs almost nobody trains on. A rack of iron runs black at the 5 and
+greys below it, which is what the models are, so that is the scheme the app
+knows. No two plates in a kit share a colour; a test asserts it.
+
+### The dumbbell is gone
+
+ADR-0081 argued a loadable dumbbell was the interesting half, because the honest
+answer is often that the weight cannot be made. That was true and beside the
+point: almost nobody trains on a loadable dumbbell, a rack of fixed ones needs no
+calculator, and a mode picker charges every user a decision on the way in to
+reach a question they were not asking. `DUMBBELL_KG_KIT` and `DUMBBELL_LB_KIT`
+are removed rather than left unused.
+
+`loadBar`'s `short` is now unreachable from this screen, since a barbell stepper
+moves in pairs of the smallest plate. It stays in the core — it is still the
+right answer for a weight typed by hand — and the screen no longer carries a
+warning that cannot fire.
+
+### Consequences
+
+A full barbell is a wide object, so on a phone the plates are smaller than they
+were when only one end was drawn. That is the trade being made deliberately: the
+chip row under the drawing is what you count plates from, and the drawing is what
+you recognise. The reference render has the same proportions at the same width.
+
+The shaft is compressed relative to a real bar. At true length the plates would
+be a twentieth of the width of the screen.
+
+The frame still holds one scale up to four 25s a side — a 220 kg bar — and gives
+way past that rather than running the bar off the edge.
