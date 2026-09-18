@@ -106,12 +106,13 @@ export function loadBar(target: number, kit: PlateKit): Loading {
  * which is true and useless. Iron plates step down as they get lighter, which
  * is what most gyms have and what the picture needs.
  *
- * ## Three tones, because the plates are drawn faceted
+ * ## Three tones, from the models' own shading
  *
- * A low-poly disc is a ring of flat faces catching different amounts of light,
- * so every plate carries a lit and a shaded tone as well as its face colour.
- * Interpolating them per facet is what makes a flat polygon read as a solid
- * object; one colour and it is a sticker.
+ * The bar itself is drawn from these, and the key under it takes its edge from
+ * `shade` so a black 5 still has an outline on a dark page and a chrome 1.25 has
+ * one on a light page. The plates on the bar are the model renders, so their
+ * shading comes with them; these are the same colours, for everything drawn
+ * beside them.
  */
 export interface PlateLook {
   /** The face, straight on. */
@@ -199,54 +200,61 @@ const KG_LOOKS: Readonly<Record<string, PlateLook>> = {
   },
 };
 
-/** The pound kit on the same scheme, by rank: a 45 stands in for a 20. */
+/**
+ * The pound kit, ranked onto the same seven models.
+ *
+ * Six plates to the metric seven, so it takes the ladder from the top: a 45
+ * wears the 25's art and colour, a 35 the 20's. Ranked rather than matched by
+ * weight, because the drawing hands out art by rank too — and a key that named
+ * a colour the bar was not wearing would be worse than no key.
+ */
 const LB_LOOKS: Readonly<Record<string, PlateLook>> = {
   '45': {
-    colour: '#064c99',
-    lit: '#0b5bb6',
-    shade: '#04396f',
+    colour: '#c8312f',
+    lit: '#e23f3d',
+    shade: '#ab2826',
     ink: LIGHT_INK,
     diameterMm: 450,
     thicknessMm: 45,
   },
   '35': {
+    colour: '#064c99',
+    lit: '#0b5bb6',
+    shade: '#04396f',
+    ink: LIGHT_INK,
+    diameterMm: 450,
+    thicknessMm: 38,
+  },
+  '25': {
     colour: '#f6c326',
     lit: '#fbd45a',
     shade: '#c99a1b',
     ink: DARK_INK,
     diameterMm: 400,
-    thicknessMm: 38,
+    thicknessMm: 32,
   },
-  '25': {
+  '10': {
     colour: '#18822a',
     lit: '#1fa035',
     shade: '#11601f',
     ink: LIGHT_INK,
     diameterMm: 350,
-    thicknessMm: 32,
+    thicknessMm: 25,
   },
-  '10': {
+  '5': {
     colour: '#1e1e1e',
     lit: '#343434',
     shade: '#121212',
     ink: LIGHT_INK,
-    diameterMm: 250,
-    thicknessMm: 25,
-  },
-  '5': {
-    colour: '#c8312f',
-    lit: '#e23f3d',
-    shade: '#ab2826',
-    ink: LIGHT_INK,
-    diameterMm: 200,
+    diameterMm: 280,
     thicknessMm: 20,
   },
   '2.5': {
-    colour: '#9a9da2',
-    lit: '#b7bac0',
-    shade: '#7b7e83',
-    ink: DARK_INK,
-    diameterMm: 160,
+    colour: '#55575a',
+    lit: '#6d7074',
+    shade: '#3e4043',
+    ink: LIGHT_INK,
+    diameterMm: 230,
     thicknessMm: 16,
   },
 };
