@@ -4740,27 +4740,46 @@ recognition is not.
 change goes outside them. That is how a bar is loaded and how a loaded bar is
 read: the outermost disc tells you what the last plate on was.
 
-**The models rebuilt as vector, not embedded as renders.** A render is one fixed
-image of one fixed loading and the calculator has to draw any of several
-hundred. Polygons compose, stay sharp at any size, ship no megabytes, and keep
-the facet count honest to the source. The colours are sampled off the models
-themselves, so the drawing and the models are the same plates.
+**The models themselves, composited.** Seven renders, one per plate, each a
+1024-square PNG with the plate centred and the background transparent. Resized
+to 512 and quantised to 128 colours on the way in: flat facets quantise without
+banding, and all seven together come to 72 KB rather than 300.
 
-Each plate is a ring of flat triangles shaded between a lit and a shaded tone —
-the facets *are* the model, so the shading is per-facet rather than a gradient.
-`PlateLook` carries three tones now instead of one.
+Imported as modules rather than dropped in `public/`. `vite.config.ts` sets
+`base: './'` so the same build works from a web root, a Capacitor bundle and a
+Tauri shell; an absolute `/plates/25kg.png` would be correct in exactly one of
+those.
 
-Three things learned by rendering it and looking:
+**Seen from the side, not the front.** This is the thing the first version got
+wrong. A plate on a bar is a tall narrow disc with its rim toward you, and
+drawing the discs face-on turned the barbell into an axle with two wheels on it.
+The models are rendered edge-on and needed no help.
 
-- **Every disc needs a dark rim.** Without it two 25s side by side are one red
-  blob with a seam in it. This is the single thing that makes a stack read as a
-  count of plates.
-- **A flat disc is not a ball.** Shading the facets across the full range drew a
-  sphere. The range is now narrow, which is what a flat disc catching light
-  across its faces actually looks like.
-- **The hub is a light ring with a dark hole, not the reverse.** Inverted it
-  reads as a stud, and the dark hole is also what keeps a chrome 1.25 from
-  merging into the sleeve behind it.
+**Three numbers measured off each file rather than guessed**, because two of
+them decide whether the drawing is a barbell or a pile:
+
+- `hole` — where the sleeve passes through. It sits right of the image centre by
+  the width of the rim, and by a different amount on every plate. Centring the
+  images instead hangs each one off the bar by its own error.
+- `rim` — the modelled thickness, and the distance to advance for the next
+  plate. Stacking by it is what makes the plates sit against each other the way
+  the render does, at true scale with no exaggeration. The flat discs this
+  replaced needed their thicknesses multiplied by five to read at all.
+- `height` — the plate's diameter within the square, which sets the scale and
+  keeps every plate at its true size relative to the others.
+
+**The right end as rendered, the left end mirrored.** The models all face right,
+so they belong on the right sleeve; the left end is the same group under a
+`scale(-1 1)`. Reusing them unflipped would light the two ends from opposite
+sides and read as two different bars bolted together.
+
+**The bar stays vector.** It has to be any length — the plates cover most of the
+sleeve and what shows past them changes with every weight — and a cylinder lit
+from above is three stripes, which at this size is all a cylinder needs to be.
+
+**A pound kit takes the same ladder by rank.** Six plates to the metric seven,
+so a 45 wears the 25's art and a 35 the 20's. `LB_LOOKS` is ranked to match,
+because a key naming a colour the bar is not wearing is worse than no key.
 
 **The colours follow the models, not the IWF code.** ADR-0081 used the
 competition code — white 5, red 2.5, chrome 1.25. That code belongs to
@@ -4788,6 +4807,10 @@ A full barbell is a wide object, so on a phone the plates are smaller than they
 were when only one end was drawn. That is the trade being made deliberately: the
 chip row under the drawing is what you count plates from, and the drawing is what
 you recognise. The reference render has the same proportions at the same width.
+
+The small change disappears into the sleeve on a heavily loaded bar — a 1.25 is
+a grey disc a little wider than the grey sleeve it hangs on. That is what it
+looks like on a real bar too, and the chip row is where it gets counted.
 
 The shaft is compressed relative to a real bar. At true length the plates would
 be a twentieth of the width of the screen.

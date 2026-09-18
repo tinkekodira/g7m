@@ -67,7 +67,7 @@ export function PlateCalculatorScreen() {
         {/* Edge to edge inside the card. A barbell is a wide object and every
             millimetre of width is a millimetre of plate. */}
         <div className="-mx-4 mt-4">
-          <PlateStack loading={loading} unit={kit.unit} />
+          <PlateStack loading={loading} kit={kit} />
         </div>
 
         {loading.kind === 'plates' ? (
@@ -97,8 +97,9 @@ export function PlateCalculatorScreen() {
       <PlateKey kit={kit} />
 
       <p className="pb-4 text-xs text-muted">
-        The discs are at their real sizes relative to each other, but spread further apart along the
-        bar than they really sit — four 25s at true thickness are one red smear.
+        One end is drawn and mirrored; the other is the same. The plates are at their real sizes and
+        real thicknesses, stacked the way they go on — biggest against the collar, small change
+        outside.
       </p>
     </main>
   );
