@@ -4611,3 +4611,107 @@ body drifts into a wider range as it ages. The browser test reads the band's
 upper bound out of the text and asserts it *moved* rather than asserting a
 literal, because a hard-coded 25.1 would quietly become wrong on a birthday
 nobody is watching.
+
+---
+
+## ADR-0081 — The plate calculator, and what Learn stopped saying
+
+**Status:** accepted · **Date:** 2026-09-18 · **Phase:** 7
+
+### Context
+
+`loadBar` has worked out what goes on a bar since the logger needed it, and the
+logger prints the answer as a line of text under a set: "Each side: 25 · 15 ·
+1.25 on a 20 kg bar". That is correct, and it is a sentence somebody has to
+parse with their heart rate up.
+
+There was also no way to ask the question outside a set — before loading, or
+when the interesting question is whether the gym's kit can make the number at
+all.
+
+### Decision
+
+**A calculator under Learn, at `/learn/plates`.** Not in the logger: the logger
+already answers during a set, and this is the thing reached for when you are
+*not* mid-set. Its own lazy chunk, deliberately not part of Learn's, so it
+carries none of Learn's three.js.
+
+**Coloured discs at their real relative sizes.** The competition colour code —
+red 25, blue 20, yellow 15, green 10, white 5 — is what is painted on the
+plates, so a drawing using it is read rather than decoded, and a shape checked
+against the bar in front of you catches a mistake a list does not.
+
+Three decisions inside that:
+
+- **Cast-iron diameters, not competition bumpers.** On calibrated discs the 25,
+  20, 15 and 10 are all 450 mm, and a drawing of them is four identical circles:
+  true, and useless. Iron plates step down as they get lighter, which is what
+  most gyms have.
+- **Thicknesses are spread along the bar.** A real 25 is about nine times wider
+  than it is thick, so four of them at true scale are one red smear with three
+  hairlines in it. Both scales stay relative; only the relationship between them
+  is stretched, and the screen says so.
+- **The frame is fixed, not fitted.** A box that hugged its contents would
+  rescale on every step of the weight — a lone 5 kg drawn as large as four 25s,
+  and plates that *grow* as you take weight off. Fixing the frame keeps one
+  millimetre the same number of pixels whatever is loaded, so adding a plate
+  makes the stack longer instead of making everything else smaller.
+
+**One end is drawn.** The other is the same one. Drawing both doubles the width
+for no information and invites reading the list as the total.
+
+### The dumbbell is a different kit, not a different screen
+
+A handle is a very short bar that weighs a couple of kilograms, so it is the
+same greedy loading with `DUMBBELL_KG_KIT`. The big plates are left out —
+a 450 mm disc on a 200 mm sleeve reaches the floor before the handle is level —
+and that omission is the point rather than a detail: it means the honest answer
+is often *the weight cannot be made*. A rack has a 14 kg dumbbell; a handle
+cannot build one, because 1 kg a side is less than the smallest plate there is.
+`loadBar` already reported `short` for exactly this and nothing had ever shown
+it, because a barbell stepper moves in pairs of the smallest plate and never
+misses.
+
+Fixed dumbbells off a rack need no calculator, which is why this is the loadable
+kind or nothing.
+
+**The plate colours and sizes live in `packages/core`.** None of it is a styling
+choice: the code is printed on the plates and the millimetres are off real iron.
+
+### What Learn stopped saying
+
+Learn opened with five stacked paragraphs before the body it exists to show: an
+error, a loading banner, an empty-catalogue notice, a model-contract report, and
+a development counts line. Three of those were diagnostics, and one of the three
+was shown to everybody.
+
+Now: the error and the empty-catalogue notice, which somebody can act on, and
+one development-only line carrying all the counts. "Loading the muscle
+catalogue…" is gone entirely — it was a third banner for a second that the
+model's own placeholder already covers.
+
+**The muscle panel moved up.** It used to render last, below both footnotes, so
+tapping a muscle put the reply off the bottom of the screen. The answer to a tap
+belongs under the thing that was tapped.
+
+**The instruction moved into the header** as the subtitle, which leaves the line
+under the figure to say only the thing that changes — what the colours mean in
+heat-map mode, and nothing at all in explore mode.
+
+**The calculator is in the header's own slot** rather than a card in the column.
+A row above the figure would make a tool the first thing on a screen about
+anatomy; at the bottom nobody would find it.
+
+### Consequences
+
+The drawing is an `<svg>` with a `viewBox` and no height, so it takes the height
+its aspect implies at whatever width it is given — no measuring, no resize
+observer.
+
+Labels sit on one baseline under the discs rather than following each disc's own
+edge, which drew a staircase, and they are inked in the page's text colour
+rather than the plate's: below the disc, a plate's white-on-red vanishes.
+
+Each label is placed on the crescent of its plate that is still visible, since
+the next plate along covers the middle. Centred labels sat underneath their
+neighbour.

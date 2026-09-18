@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useStageColor } from '../lib/use-theme.js';
+import { DumbbellIcon } from '../components/icons.js';
 import { Chip } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -108,37 +109,47 @@ export function LearnScreen() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Learn</h1>
+      {/* The tool goes in the header's own slot rather than a card in the
+          column. Learn's one job is the body, and a row above it pushing the
+          figure down would make the calculator the first thing on a screen
+          about anatomy — but tucked away at the bottom nobody would find it. */}
+      <header className="flex items-start justify-between gap-3 pt-6">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold text-primary">Learn</h1>
+          <p className="mt-1 text-sm text-secondary">
+            {mode === 'heatmap'
+              ? `What you have trained, over ${String(HEATMAP_WEEKS)} weeks.`
+              : 'Tap a muscle to see what trains it.'}
+          </p>
+        </div>
+        <Link
+          to="/learn/plates"
+          viewTransition
+          className="inline-flex min-h-tap shrink-0 items-center gap-2 rounded-full bg-accent/15 px-4 text-sm font-medium text-accent active:bg-accent/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <DumbbellIcon className="size-4" />
+          Plates
+        </Link>
       </header>
 
       {taxonomy.error !== null && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-3 text-sm text-danger">
           {taxonomy.error}
         </p>
       )}
 
       {/*
         The catalogue decides what a tap can select, so without it the model
-        spins beautifully and answers nothing.
+        spins beautifully and answers nothing — and every other symptom points
+        the wrong way: the body renders, the heat map runs, and the only sign is
+        that tapping does nothing, which reads as a broken model rather than as
+        an empty table.
 
-        Said out loud because every other symptom points the wrong way: the
-        body renders, the heat map runs, and the only sign is that clicking
-        does nothing — which reads as a broken model rather than as an empty
-        table. The same sentence the exercise library uses, for the same rows.
+        Only the state somebody can act on is said out loud now. "Loading the
+        muscle catalogue…" was a third banner for a second that the model's own
+        placeholder already covers, and the two development-only readouts were
+        three paragraphs of diagnostics above the thing the screen is for.
       */}
-      {/*
-        Loading is a third state and it looked exactly like the second one.
-        A catalogue that never arrives and a catalogue that arrived empty both
-        showed nothing at all, so "tapping does nothing" had two possible
-        causes and no way to tell them apart from the screen.
-      */}
-      {taxonomy.loading && (
-        <p className="rounded-card bg-surface p-3 text-sm text-secondary">
-          Loading the muscle catalogue…
-        </p>
-      )}
-
       {!taxonomy.loading && taxonomy.error === null && selectableSlugs.length === 0 && (
         <p className="rounded-card bg-surface p-3 text-sm text-secondary">
           No muscles on this device yet, so nothing on the model can be tapped. They arrive with the
@@ -146,26 +157,13 @@ export function LearnScreen() {
         </p>
       )}
 
-      {/* Development-time honesty. A model that is missing muscles renders
-          perfectly and simply ignores taps on the parts it lacks. */}
-      {report !== null &&
-        selectableSlugs.length > 0 &&
-        (report.missing.length > 0 || report.unknown.length > 0) && (
-          <p className="rounded-card bg-surface p-3 text-xs text-muted">
-            {report.missing.length > 0 &&
-              `${String(report.missing.length)} muscles have no geometry and cannot be tapped. `}
-            {report.unknown.length > 0 &&
-              `${String(report.unknown.length)} shapes match no muscle in the catalogue.`}
-          </p>
-        )}
-
       {/*
-        Counts, in development only.
-        
-        Three numbers that between them explain every way a tap can do
-        nothing: no muscles to select, no shapes to select them on, or the two
-        not matching. Working that out from the outside took a round trip and
-        a guess; it is one line here.
+        Development-time honesty, in one line instead of three paragraphs.
+
+        Between them these numbers explain every way a tap can do nothing: no
+        muscles to select, no shapes to select them on, or the two not matching.
+        A model missing geometry renders perfectly and silently ignores taps on
+        the parts it lacks, so nothing else on the screen would say.
       */}
       {import.meta.env.DEV && (
         <p className="numeric text-xs text-muted">
@@ -234,18 +232,30 @@ export function LearnScreen() {
         )}
       </div>
 
-      {mode === 'heatmap' ? (
+      {/* One line under the figure, about the figure. The instruction that used
+          to be here is the header's subtitle now, which leaves this to say only
+          the thing that changes: what the colours mean, or nothing at all. */}
+      {mode === 'heatmap' && (
         <p className="text-sm text-secondary">
           {heat.loading
             ? 'Working out what you have trained…'
             : heat.data?.trained === true
-              ? `Colour is volume over the last ${String(HEATMAP_WEEKS)} weeks, relative to your hardest-worked muscle. It answers what you trained most, not whether you trained enough.`
-              : 'Nothing logged in the last four weeks yet. Finish a workout and it will show up here.'}
+              ? 'Colour is volume relative to your hardest-worked muscle — what you trained most, not whether you trained enough.'
+              : 'Nothing logged in the last four weeks yet. Finish a workout and it shows up here.'}
         </p>
-      ) : (
-        <p className="text-sm text-secondary">
-          Drag to turn the figure. Tap a muscle to see what trains it.
-        </p>
+      )}
+
+      {/* The answer to the tap, directly under the thing that was tapped. It
+          used to render last, below both footnotes, so selecting a muscle put
+          the reply off the bottom of the screen. */}
+      {selected !== null && (
+        <MusclePanel
+          detail={detail.data}
+          loading={detail.loading}
+          onClear={() => {
+            setSelected(null);
+          }}
+        />
       )}
 
       {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
@@ -273,22 +283,13 @@ export function LearnScreen() {
 
       {/* Which body is on screen, said out loud rather than left to be worked
           out. It was still claiming to be a placeholder after the real model
-          had loaded, which is the kind of line nobody rereads. */}
-      <p className="text-xs text-muted">
+          had loaded, which is the kind of line nobody rereads. A footnote, at
+          the foot: it is worth knowing once and never again. */}
+      <p className="pb-4 text-xs text-muted">
         {sculpted.parts === null
           ? 'The figure is generated from origins and insertions — the licensed anatomy model is not in this build. Everything else on this screen is real.'
           : 'A sculpted body, divided between the muscles that reach the skin.'}
       </p>
-
-      {selected !== null && (
-        <MusclePanel
-          detail={detail.data}
-          loading={detail.loading}
-          onClear={() => {
-            setSelected(null);
-          }}
-        />
-      )}
     </main>
   );
 }
