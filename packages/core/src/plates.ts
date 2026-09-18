@@ -9,13 +9,12 @@
  * Standard gym kit only: a 20 kg bar with 25 to 1.25 kg plates, or a 45 lb bar
  * with 45 to 2.5 lb plates. EZ and trap bars are left out on purpose — they
  * vary too much from gym to gym to assume, and a loading worked out on the
- * wrong bar weight is worse than none. A loadable dumbbell handle is in, as a
- * very short bar with its own kit.
+ * wrong bar weight is worse than none.
  *
  * `plateLook` at the bottom carries what each plate weighs *and looks like* —
- * the competition colour code, and real diameters in millimetres — so the
- * calculator can draw the loading at the sizes a lifter recognises instead of
- * printing a list they have to parse.
+ * the colours off g7m's own plate models, and real diameters in millimetres —
+ * so the calculator can draw the loading at the sizes a lifter recognises
+ * instead of printing a list they have to parse.
  */
 
 export interface PlateKit {
@@ -27,21 +26,6 @@ export interface PlateKit {
 
 export const KG_KIT: PlateKit = { unit: 'kg', bar: 20, plates: [25, 20, 15, 10, 5, 2.5, 1.25] };
 export const LB_KIT: PlateKit = { unit: 'lb', bar: 45, plates: [45, 35, 25, 10, 5, 2.5] };
-
-/**
- * A loadable dumbbell: a short handle, and the plates that fit on one.
- *
- * The same arithmetic as a barbell — a handle is a very short bar — with two
- * differences that matter. The handle weighs a couple of kilograms rather than
- * twenty, and the big plates are left out: a 450 mm disc on a 200 mm sleeve
- * hits the floor before the handle is level. Ten kilograms is the largest plate
- * any loadable dumbbell set actually ships.
- *
- * Fixed dumbbells off a rack need no calculator, which is why this is the
- * loadable kind or nothing.
- */
-export const DUMBBELL_KG_KIT: PlateKit = { unit: 'kg', bar: 2, plates: [10, 5, 2.5, 1.25] };
-export const DUMBBELL_LB_KIT: PlateKit = { unit: 'lb', bar: 5, plates: [25, 10, 5, 2.5] };
 
 export type Loading =
   /** Lighter than the empty bar. Nothing to load; the bar alone is too much. */
@@ -106,15 +90,13 @@ export function loadBar(target: number, kit: PlateKit): Loading {
 /**
  * What a plate looks like, and how big it really is.
  *
- * Here rather than in the component because none of it is a styling choice.
- * The colours are the international competition code — red 25, blue 20, yellow
- * 15, green 10, white 5 — which is the code printed on the plates in any gym
- * that has coloured ones, and the one a lifter already reads across the room.
- * The diameters and thicknesses are millimetres off real cast iron.
+ * Here rather than in the component because none of it is a styling choice. The
+ * colours are sampled straight off g7m's own plate models, and the diameters and
+ * thicknesses are millimetres off real cast iron.
  *
  * ## Why the sizes are worth carrying
  *
- * "Each side: 25 · 15 · 1.25" is correct and still needs reading. A picture of
+ * "Each end: 25 · 15 · 1.25" is correct and still needs reading. A picture of
  * three discs at the sizes they actually are is recognised rather than parsed,
  * and it is the same recognition that catches a mistake: four big discs and a
  * little one is a shape you check against the bar in front of you.
@@ -123,11 +105,22 @@ export function loadBar(target: number, kit: PlateKit): Loading {
  * 15 and 10 are all 450 mm and a drawing of them is four identical circles,
  * which is true and useless. Iron plates step down as they get lighter, which
  * is what most gyms have and what the picture needs.
+ *
+ * ## Three tones, because the plates are drawn faceted
+ *
+ * A low-poly disc is a ring of flat faces catching different amounts of light,
+ * so every plate carries a lit and a shaded tone as well as its face colour.
+ * Interpolating them per facet is what makes a flat polygon read as a solid
+ * object; one colour and it is a sticker.
  */
 export interface PlateLook {
-  /** Face colour, as a plain CSS colour. */
+  /** The face, straight on. */
   readonly colour: string;
-  /** Ink that reads against that face. */
+  /** The facet turned toward the light. */
+  readonly lit: string;
+  /** The facet turned away, and the edge band. */
+  readonly shade: string;
+  /** Ink that reads against the face. */
   readonly ink: string;
   /** Real diameter, in millimetres. */
   readonly diameterMm: number;
@@ -135,42 +128,133 @@ export interface PlateLook {
   readonly thicknessMm: number;
 }
 
-const RED = '#c0392b';
-const BLUE = '#1f6fb2';
-const YELLOW = '#e0b019';
-const GREEN = '#2e8b4f';
-const WHITE = '#f2f0ea';
-const CHROME = '#b9bcc2';
-/** Ink for the light faces. Dark enough to read on white and on chrome. */
-const DARK_INK = '#26241f';
 const LIGHT_INK = '#faf9f5';
-
-const KG_LOOKS: Readonly<Record<string, PlateLook>> = {
-  '25': { colour: RED, ink: LIGHT_INK, diameterMm: 450, thicknessMm: 50 },
-  '20': { colour: BLUE, ink: LIGHT_INK, diameterMm: 450, thicknessMm: 40 },
-  '15': { colour: YELLOW, ink: DARK_INK, diameterMm: 400, thicknessMm: 33 },
-  '10': { colour: GREEN, ink: LIGHT_INK, diameterMm: 350, thicknessMm: 26 },
-  '5': { colour: WHITE, ink: DARK_INK, diameterMm: 280, thicknessMm: 23 },
-  // Red again, as the real code has it. Nobody confuses them: one is twice the
-  // diameter of the other.
-  '2.5': { colour: RED, ink: LIGHT_INK, diameterMm: 230, thicknessMm: 18 },
-  '1.25': { colour: CHROME, ink: DARK_INK, diameterMm: 160, thicknessMm: 14 },
-};
+const DARK_INK = '#26241f';
 
 /**
- * The pound code, which is the same code on the nearest metric equivalents: a
- * 45 stands in for a 20 and is blue, a 35 for a 15 and is yellow.
+ * The scheme on the models: red, blue, yellow, green, then black and two greys
+ * for the small change.
+ *
+ * Not the IWF competition code, which puts a white 5 and a red 2.5 on the bar.
+ * That code belongs to calibrated discs almost nobody trains on; a rack of iron
+ * runs black and chrome at the light end, and these are the plates the app
+ * draws, so this is the scheme it knows.
  */
-const LB_LOOKS: Readonly<Record<string, PlateLook>> = {
-  '45': { colour: BLUE, ink: LIGHT_INK, diameterMm: 450, thicknessMm: 45 },
-  '35': { colour: YELLOW, ink: DARK_INK, diameterMm: 400, thicknessMm: 38 },
-  '25': { colour: GREEN, ink: LIGHT_INK, diameterMm: 350, thicknessMm: 32 },
-  '10': { colour: WHITE, ink: DARK_INK, diameterMm: 250, thicknessMm: 25 },
-  '5': { colour: RED, ink: LIGHT_INK, diameterMm: 200, thicknessMm: 20 },
-  '2.5': { colour: CHROME, ink: DARK_INK, diameterMm: 160, thicknessMm: 16 },
+const KG_LOOKS: Readonly<Record<string, PlateLook>> = {
+  '25': {
+    colour: '#c8312f',
+    lit: '#e23f3d',
+    shade: '#ab2826',
+    ink: LIGHT_INK,
+    diameterMm: 450,
+    thicknessMm: 50,
+  },
+  '20': {
+    colour: '#064c99',
+    lit: '#0b5bb6',
+    shade: '#04396f',
+    ink: LIGHT_INK,
+    diameterMm: 450,
+    thicknessMm: 40,
+  },
+  '15': {
+    colour: '#f6c326',
+    lit: '#fbd45a',
+    shade: '#c99a1b',
+    ink: DARK_INK,
+    diameterMm: 400,
+    thicknessMm: 33,
+  },
+  '10': {
+    colour: '#18822a',
+    lit: '#1fa035',
+    shade: '#11601f',
+    ink: LIGHT_INK,
+    diameterMm: 350,
+    thicknessMm: 26,
+  },
+  '5': {
+    colour: '#1e1e1e',
+    lit: '#343434',
+    shade: '#121212',
+    ink: LIGHT_INK,
+    diameterMm: 280,
+    thicknessMm: 23,
+  },
+  '2.5': {
+    colour: '#55575a',
+    lit: '#6d7074',
+    shade: '#3e4043',
+    ink: LIGHT_INK,
+    diameterMm: 230,
+    thicknessMm: 18,
+  },
+  '1.25': {
+    colour: '#9a9da2',
+    lit: '#b7bac0',
+    shade: '#7b7e83',
+    ink: DARK_INK,
+    diameterMm: 160,
+    thicknessMm: 14,
+  },
 };
 
-/** The largest plate in either kit, so a drawing can scale against one figure. */
+/** The pound kit on the same scheme, by rank: a 45 stands in for a 20. */
+const LB_LOOKS: Readonly<Record<string, PlateLook>> = {
+  '45': {
+    colour: '#064c99',
+    lit: '#0b5bb6',
+    shade: '#04396f',
+    ink: LIGHT_INK,
+    diameterMm: 450,
+    thicknessMm: 45,
+  },
+  '35': {
+    colour: '#f6c326',
+    lit: '#fbd45a',
+    shade: '#c99a1b',
+    ink: DARK_INK,
+    diameterMm: 400,
+    thicknessMm: 38,
+  },
+  '25': {
+    colour: '#18822a',
+    lit: '#1fa035',
+    shade: '#11601f',
+    ink: LIGHT_INK,
+    diameterMm: 350,
+    thicknessMm: 32,
+  },
+  '10': {
+    colour: '#1e1e1e',
+    lit: '#343434',
+    shade: '#121212',
+    ink: LIGHT_INK,
+    diameterMm: 250,
+    thicknessMm: 25,
+  },
+  '5': {
+    colour: '#c8312f',
+    lit: '#e23f3d',
+    shade: '#ab2826',
+    ink: LIGHT_INK,
+    diameterMm: 200,
+    thicknessMm: 20,
+  },
+  '2.5': {
+    colour: '#9a9da2',
+    lit: '#b7bac0',
+    shade: '#7b7e83',
+    ink: DARK_INK,
+    diameterMm: 160,
+    thicknessMm: 16,
+  },
+};
+
+/** The bar, on the same three tones. Sampled off the same model. */
+export const BAR_LOOK = { colour: '#7c7c7d', lit: '#9a9a9c', shade: '#5f5f61' } as const;
+
+/** The largest plate in any kit, so a drawing can scale against one figure. */
 export const MAX_PLATE_DIAMETER_MM = 450;
 
 /**
@@ -189,7 +273,9 @@ export function plateLook(size: number, unit: 'kg' | 'lb'): PlateLook {
   const heaviest = unit === 'lb' ? 45 : 25;
   const share = Math.min(1, Math.max(0.2, size / heaviest));
   return {
-    colour: CHROME,
+    colour: '#9a9da2',
+    lit: '#b7bac0',
+    shade: '#7b7e83',
     ink: DARK_INK,
     diameterMm: Math.round(160 + (MAX_PLATE_DIAMETER_MM - 160) * share),
     thicknessMm: Math.round(14 + 36 * share),

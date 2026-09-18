@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  DUMBBELL_KG_KIT,
-  DUMBBELL_LB_KIT,
-  KG_KIT,
-  LB_KIT,
-  MAX_PLATE_DIAMETER_MM,
-  loadBar,
-  plateLook,
-} from './plates.js';
+import { KG_KIT, LB_KIT, MAX_PLATE_DIAMETER_MM, loadBar, plateLook } from './plates.js';
 
 describe('loadBar, in kilograms', () => {
   it('loads each side, heaviest plate first', () => {
@@ -76,55 +68,16 @@ describe('loadBar, in pounds', () => {
   });
 });
 
-describe('loadBar, on a dumbbell handle', () => {
-  /** A handle is a very short bar, and the arithmetic is the same arithmetic. */
-  it('loads both ends of the handle from its own weight up', () => {
-    expect(loadBar(12, DUMBBELL_KG_KIT)).toEqual({
-      kind: 'plates',
-      bar: 2,
-      perSide: [5],
-      total: 12,
-      short: 0,
-    });
-  });
-
-  it('is just the handle at the handle’s weight', () => {
-    expect(loadBar(2, DUMBBELL_KG_KIT).kind).toBe('bar_only');
-    expect(loadBar(1, DUMBBELL_KG_KIT).kind).toBe('below_bar');
-  });
-
-  /**
-   * A rack has a 14 kg dumbbell; a handle and a pair of plates cannot make one.
-   * Saying so is the point — it is the whole reason somebody reaches for this.
-   */
-  it('says how far short it falls when the plates cannot make the number', () => {
-    const loading = loadBar(14, DUMBBELL_KG_KIT);
-    expect(loading.kind).toBe('plates');
-    if (loading.kind !== 'plates') return;
-    // A 5 a side is as close as it gets: the next pair up is a 2.5, and
-    // 1 kg a side is less than the smallest plate there is.
-    expect(loading.total).toBe(12);
-    expect(loading.short).toBe(2);
-  });
-
-  /** No 25 on a dumbbell: a 450 mm disc on a short sleeve reaches the floor. */
-  it('leaves out the plates that do not fit a handle', () => {
-    expect(DUMBBELL_KG_KIT.plates).not.toContain(25);
-    expect(DUMBBELL_LB_KIT.plates).not.toContain(45);
-    const loading = loadBar(42, DUMBBELL_KG_KIT);
-    if (loading.kind !== 'plates') throw new Error('expected plates');
-    expect(Math.max(...loading.perSide)).toBe(10);
-  });
-});
-
 describe('plateLook', () => {
   /** The international code, which is what is printed on the plates. */
   it('gives every plate in both kits a colour and a real size', () => {
-    for (const kit of [KG_KIT, LB_KIT, DUMBBELL_KG_KIT, DUMBBELL_LB_KIT]) {
+    for (const kit of [KG_KIT, LB_KIT]) {
       for (const size of kit.plates) {
         const look = plateLook(size, kit.unit);
-        expect(look.colour).toMatch(/^#[0-9a-f]{6}$/);
-        expect(look.ink).toMatch(/^#[0-9a-f]{6}$/);
+        // Three tones each: the facets are shaded between them.
+        for (const tone of [look.colour, look.lit, look.shade, look.ink]) {
+          expect(tone).toMatch(/^#[0-9a-f]{6}$/);
+        }
         expect(look.diameterMm).toBeGreaterThan(0);
         expect(look.thicknessMm).toBeGreaterThan(0);
       }
@@ -149,12 +102,22 @@ describe('plateLook', () => {
     }
   });
 
-  it('separates the two plates that share a colour by size instead', () => {
-    // 25 and 2.5 are both red in the real code.
-    const heavy = plateLook(25, 'kg');
-    const light = plateLook(2.5, 'kg');
-    expect(light.colour).toBe(heavy.colour);
-    expect(heavy.diameterMm).toBeGreaterThan(light.diameterMm * 1.5);
+  /** Every disc on the bar has to be tellable from every other one. */
+  it('gives no two plates in a kit the same colour', () => {
+    for (const kit of [KG_KIT, LB_KIT]) {
+      const faces = kit.plates.map((size) => plateLook(size, kit.unit).colour);
+      expect(new Set(faces).size).toBe(faces.length);
+    }
+  });
+
+  /** Lit is brighter than the face, and the face than the shade, or the facets
+      shade the wrong way round and the disc reads as a hole. */
+  it('orders the three tones of every plate', () => {
+    for (const size of KG_KIT.plates) {
+      const look = plateLook(size, 'kg');
+      expect(luminance(look.lit)).toBeGreaterThan(luminance(look.colour));
+      expect(luminance(look.colour)).toBeGreaterThan(luminance(look.shade));
+    }
   });
 
   it('draws a plate from no kit at all rather than nothing', () => {
@@ -163,3 +126,9 @@ describe('plateLook', () => {
     expect(odd.diameterMm).toBeLessThanOrEqual(MAX_PLATE_DIAMETER_MM);
   });
 });
+
+/** Rough brightness of a hex colour, for the ordering test above. */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
+  return 0.299 * (r ?? 0) + 0.587 * (g ?? 0) + 0.114 * (b ?? 0);
+}
