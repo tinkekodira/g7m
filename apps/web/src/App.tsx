@@ -35,6 +35,11 @@ const ExerciseDetailScreen = lazyScreen(
 );
 const WorkoutScreen = lazyScreen(() => import('./screens/WorkoutScreen.js'), 'WorkoutScreen');
 const LearnScreen = lazyScreen(() => import('./screens/LearnScreen.js'), 'LearnScreen');
+/** Its own chunk, and deliberately not part of Learn's: it carries no three.js. */
+const PlateCalculatorScreen = lazyScreen(
+  () => import('./screens/PlateCalculatorScreen.js'),
+  'PlateCalculatorScreen',
+);
 const ProgressScreen = lazyScreen(() => import('./screens/ProgressScreen.js'), 'ProgressScreen');
 const MetricsScreen = lazyScreen(() => import('./screens/MetricsScreen.js'), 'MetricsScreen');
 const GoalScreen = lazyScreen(() => import('./screens/GoalScreen.js'), 'GoalScreen');
@@ -285,6 +290,7 @@ function AppScreens() {
       <Route element={<TabLayout />}>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/learn" element={<LearnScreen />} />
+        <Route path="/learn/plates" element={<PlateCalculatorScreen />} />
         <Route path="/progress" element={<ProgressScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
