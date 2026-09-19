@@ -1,14 +1,12 @@
 import { cx } from '@g7m/ui';
 import { DumbbellIcon } from './icons.js';
-import benchPress from '../assets/equipment/bench-press.png';
+import { equipmentArt } from './equipment-art.js';
 
 /**
  * The square in front of an exercise's name.
  *
- * Named and filed by *equipment*, not by exercise: a flat barbell bench press,
- * an incline press and a close-grip press are three exercises on one bench, and
- * drawing the bench three times would be three files to keep in step. The map
- * below is the join, and adding an icon is one asset and one line in it.
+ * The art comes from `equipment-art.ts`, which the exercise's own page reads
+ * too — one table, so a bench cannot have a square here and no hero there.
  *
  * ## Everything gets a container
  *
@@ -38,17 +36,6 @@ import benchPress from '../assets/equipment/bench-press.png';
  * job rather than a signalling one.
  */
 
-/**
- * Which equipment render an exercise wears, by exercise slug.
- *
- * One line per exercise, pointing at one file per piece of equipment. Anything
- * not listed falls back to the glyph, so a new exercise is never a broken
- * image.
- */
-const EQUIPMENT_ICONS: Readonly<Record<string, string>> = {
-  'barbell-bench-press': benchPress,
-};
-
 /** 56px, the size the Home tiles' squares are built from, one step up. */
 const BOX = 'size-14';
 
@@ -60,7 +47,7 @@ export function ExerciseIcon({
   readonly slug: string;
   readonly className?: string;
 }) {
-  const art = EQUIPMENT_ICONS[slug];
+  const art = equipmentArt(slug);
 
   return (
     <span
@@ -73,12 +60,12 @@ export function ExerciseIcon({
         className,
       )}
     >
-      {art === undefined ? (
+      {art === null ? (
         <DumbbellIcon className="size-6 text-secondary" />
       ) : (
         // Contained, never cropped: these are renders of real objects and a
         // bench with its feet cut off is worse than a smaller bench.
-        <img src={art} alt="" className="size-full object-contain" />
+        <img src={art.icon} alt="" className="size-full object-contain" />
       )}
     </span>
   );

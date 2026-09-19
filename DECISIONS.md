@@ -4817,3 +4817,90 @@ be a twentieth of the width of the screen.
 
 The frame still holds one scale up to four 25s a side — a 220 kg bar — and gives
 way past that rather than running the bar off the edge.
+
+## ADR-0083 — An exercise wears the kit it needs
+
+**Status:** accepted · **Date:** 2026-09-19 · **Phase:** 7
+
+**Builds on ADR-0082**, which brought the first equipment render into the app,
+and on the equipment square in the exercise list that followed it.
+
+### Context
+
+The exercise page opened with a back button, a heading and two chips on a flat
+near-black page. It read as a document about a lift rather than as a page for
+one, and the app now has a 3D bench that the list was already showing at 56px.
+
+### Decision
+
+**A hero render behind the title, for exercises that have one.** Full-bleed,
+running up behind the status bar, about 45% of the screen. The title sits over
+its lower third and the page continues underneath with no seam.
+
+**One table for both surfaces.** `equipment-art.ts` maps an exercise slug to an
+`{ icon, hero }` pair, and both the list square and the page hero read it. Two
+tables would let a bench pick up a square in the list and keep a bare header on
+its own page, which is the sort of thing nobody notices until it is everywhere.
+Adding a piece of kit is one constant and one line; adding an exercise to kit
+that already exists is one line.
+
+**Three things do the dimming, and only two touch the image.** Opacity 0.65, a
+short top wash for the status bar and the back button, and a long bottom wash
+that reaches the full page colour before the hero ends. The title takes its
+contrast from the third of those — measured on the rendered pixels it sits on
+13.6:1 in the dark theme and 11.7:1 in the light one, and 6.1:1 in the worst
+case a two-line name can reach, which is up into the lit barbell. No text
+shadow, no glow: the brief asked for the gradient to do it, and it can.
+
+**The baked drop shadow is cut out of the asset.** The render ships with one:
+pure black at partial alpha, made for a light backdrop. It is invisible on the
+dark theme and a grey smear across the bottom of the hero on the light one. The
+object is solid at alpha 255 and the shadow never is, so a threshold separates
+them cleanly and the downscale rebuilds the edges. The bottom wash does the
+grounding instead, in whichever colour the page is.
+
+**WebP for the hero, PNG for the icon.** Everything in `dist` is precached, so
+a hero is bytes every install pays before it opens anything. At 1200px — three
+times its display width — the same render is 243 KB as a quantised PNG and 51 KB
+as WebP at quality 82, and it is shown dimmed behind a gradient, which is the
+last place a lossless encode earns its size. The icon stays PNG: at 168px the
+difference is under 10 KB and its sharp edges are the whole point. Both encoders
+are in the WebView floor this app targets, Safari 17 and Chrome 96.
+
+**Whether a page has a hero is read from the URL, not from the row.** The slug
+is in the route and the table is keyed by it, so the right header renders on the
+first frame. Reading it off the loaded exercise would draw the plain header and
+then swap in a 400px image once SQLite answered — a jump on every visit.
+
+### Rejected
+
+**Parallax.** The brief offered it if it were smooth. Scroll-driven CSS
+animations are not in Safari 17, the iOS WebView floor, so the only way to do it
+is a scroll listener writing a transform every frame — jank on exactly the
+mid-range Android this app is built for. The hero scrolls away with the page.
+
+**A placeholder hero for exercises without a render.** Fifty-two of fifty-three
+have none. A tinted empty frame at 45% of the screen is a much louder absence
+than a heading, and the list square already had to solve the opposite problem —
+there, a missing square broke the alignment of every row, so it got a fallback
+glyph. A page has no row to line up with.
+
+**Darkening the image further to win contrast.** The bench is black and grey on
+a #1f1e1d page and has very little room before it disappears. The measurements
+above are all from the gradient, with the image at the top of the brief's range.
+
+### Consequences
+
+The exercise page now has two shapes, and a screenshot of one is not evidence
+about the other. The e2e test asserts both: full-bleed and exactly one `<h1>`
+for the bench, plain header and no image for a dumbbell press.
+
+A two-line name reaches up into the lit part of the barbell, which is the
+weakest contrast on the screen at 6.1:1. It clears AA and would not clear AAA.
+A name long enough to take three lines would reach further; none in the
+catalogue does, and the title is balanced rather than ragged so the second line
+carries roughly half.
+
+The light theme shows the render much more brightly than the dark one, because
+a dark object on cream separates by luminance where on near-black it barely
+does. Both were checked; the light one is the livelier of the two.
