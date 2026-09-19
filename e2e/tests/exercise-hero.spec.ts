@@ -62,3 +62,51 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
   await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
 });
+
+/**
+ * The bench is close to square-ish (1.22:1) and fills the hero box corner to
+ * corner. The rack and the lat pulldown are portrait — a tall render in a wide
+ * box — and the floor barbell is very low and wide. Neither shape gets a
+ * special case: `object-contain` on a box that only constrains width and
+ * max-height fits any aspect without cropping it, by construction, so what is
+ * worth asserting is that the fit still holds at the extremes rather than
+ * only at the bench's own near-square ratio.
+ */
+test('a portrait or a very wide render still fits without cropping', async ({ page }) => {
+  const user = await createUser('hero-shapes', { onboarded: true });
+  await signIn(page, user);
+  await page.setViewportSize({ width: 393, height: 852 });
+
+  for (const [slug, srcMatch] of [
+    ['barbell-back-squat', 'squat-rack-hero'],
+    ['barbell-row', 'barbell-hero'],
+    ['lat-pulldown', 'lat-pulldown-hero'],
+  ] as const) {
+    await page.goto(`/#/exercises/${slug}`);
+    const hero = page.locator(`img[src*="${srcMatch}"]`);
+    await expect(hero).toBeVisible();
+
+    // `object-fit: contain` is what guarantees no crop whatever the art's
+    // shape — this is the property a future edit could silently drop.
+    await expect(hero).toHaveCSS('object-fit', 'contain');
+
+    const frame = await hero.boundingBox();
+    const container = await page
+      .locator('div.overflow-hidden[class*="var(--hero-h)"]')
+      .boundingBox();
+    expect(frame?.x).toBeCloseTo(0, 0);
+    expect(frame?.width).toBeCloseTo(393, 0);
+    // Never taller than the box it sits in — contain letterboxes inside the
+    // element rather than growing the element past its container.
+    expect(frame?.height ?? Infinity).toBeLessThanOrEqual((container?.height ?? 0) + 1);
+
+    // The title still lands on the art, not above or below it, regardless of
+    // how little of the box's width or height the art itself occupies.
+    const title = page.getByRole('heading', { level: 1 });
+    const text = await title.boundingBox();
+    expect(text?.y ?? 0).toBeGreaterThanOrEqual(frame?.y ?? 0);
+    expect((text?.y ?? 0) + (text?.height ?? 0)).toBeLessThanOrEqual(
+      (frame?.y ?? 0) + (frame?.height ?? 0) + 1,
+    );
+  }
+});

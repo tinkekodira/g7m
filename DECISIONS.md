@@ -4931,3 +4931,89 @@ this shipped the first time.
 The light theme shows the render much more brightly than the dark one, because
 a dark object on cream separates by luminance where on near-black it barely
 does. Both were checked; the light one is the livelier of the two.
+
+---
+
+## ADR-0084 — Three more pieces wear the kit they need
+
+**Status:** accepted · **Date:** 2026-09-19 · **Phase:** 7
+
+**Builds on ADR-0083.** The bench was the first render; the rack, the floor
+barbell and the lat pulldown are the second, third and fourth keys into the
+same `equipment-art.ts` map, made exactly the way the bench was — same
+container, same sizes, same hero treatment, no new CSS.
+
+### Assets
+
+Each piece's Blender pipeline (`3d-models/`, outside this repo) already
+produces a shadowless, trimmed-square `<name>_icon.png` and a 2048px
+transparent `<name>_hero.png`, the same shape as the bench's. Turning those
+into what the app ships is two steps, reverse-engineered against the bench's
+own committed output rather than guessed, because no script for it was
+checked in:
+
+**Icon.** A plain downscale to 168px PNG — the source is already shadowless
+and square, so there is nothing else to do. Diffing a fresh downscale of the
+bench's own `bench_icon.png` against the committed `bench-press.png` (mean
+per-channel difference under 4/255, PNG-recompression noise) confirmed it.
+
+**Hero.** The source hero still carries a baked drop shadow and antialiased
+edge pixels the bench's did not ship with. Zeroing the alpha of every pixel
+that is not fully opaque removes both in one pass — the shadow is a soft
+low-alpha gradient over a wide area, the object's own edge antialiasing is a
+1-2px transition, and only the former survives at any reasonable cutoff.
+What is left is cropped to the bounding box of the fully-opaque pixels plus a
+fixed 50px pad, then downscaled to 1200px wide and encoded as WebP at quality
+82 — the same numbers the bench uses. The same reverse-diff against
+`bench-press-hero.webp` (mean difference under 5/255 on alpha, under 7/255 on
+colour, the rest attributable to WebP's own lossy encode) confirmed the
+crop and threshold, not just the resize.
+
+Assets are named for the equipment, not the exercise, matching the bench:
+`squat-rack.png` / `squat-rack-hero.webp`, `barbell.png` / `barbell-hero.webp`,
+`lat-pulldown.png` / `lat-pulldown-hero.webp`.
+
+### The hero box needed no new option
+
+The rack and the lat pulldown are portrait (about 1:1.5) against a hero box
+that is closer to square; the floor barbell is very wide (about 1.9:1). The
+brief anticipated needing a per-asset framing override for one of them.
+None was added: `object-contain` on a box that only constrains width and
+max-height fits any aspect without cropping it, by construction, whatever the
+ratio — the portrait pieces render narrower than the box, letterboxed left
+and right; the barbell renders shorter, letterboxed above. Nothing outside
+the image is ever trimmed, and the title's wash gradients span the full box
+width independent of how much of it the art itself occupies, so contrast
+holds either way. Checked on a 393×852 viewport for all three shapes before
+deciding an override was not worth adding — see the "portrait or a very wide
+render" case in `e2e/tests/exercise-hero.spec.ts`.
+
+### The map's three rules
+
+`overhead-press`, `barbell-back-squat` and `barbell-front-squat` are
+primary-`barbell` in the database — `squat-rack` is only ever secondary
+there — but get the rack's icon: what makes those three exercises distinct
+from a barbell row is the rack the bar comes off, not what the bar is made
+of. `barbell-row`, `barbell-shrug`, `barbell-curl`, `conventional-deadlift`,
+`romanian-deadlift` and `barbell-hip-thrust` get the floor barbell. `lat-pulldown`
+gets the lat pulldown; `pull-up` and `chin-up` do not, despite also being a
+pull-toward-you movement, because the equipment is a fixed bar, not a
+stack-and-cable machine.
+
+**Two primary-`barbell` exercises stay on the placeholder.** `incline-barbell-press`
+and `close-grip-bench-press` are pressed lying on a bench, the same family as
+the flat bench press — a bare floor-barbell icon next to either would say the
+wrong thing about what the exercise needs. They are not reassigned to the
+new barbell render, and they are not folded into `BENCH` either, since that
+render is a flat bench and neither of these is one. A full accounting of
+every exercise against every equipment type, including this judgment call,
+lives in `3d-models/EQUIPMENT.md` — outside this repo, next to the pipeline
+that renders the pieces it tracks.
+
+### Consequences
+
+Ten exercises out of sixty-two now carry a render; the rest keep the
+placeholder square. `exercise-icons.spec.ts` and `exercise-hero.spec.ts` each
+gained one test — a second row for the icon join, and the portrait/wide hero
+case — rather than a parametrised rewrite of the bench's own tests, so a
+failure still points at one shape at a time.
