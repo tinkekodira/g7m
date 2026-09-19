@@ -11,6 +11,9 @@ import {
   type UnitSystem,
 } from '@g7m/core';
 import type { Exercise, MuscleRole } from '@g7m/db';
+import { cx } from '@g7m/ui';
+import { ExerciseHero } from '../components/ExerciseHero.js';
+import { equipmentArt } from '../components/equipment-art.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronRightIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
@@ -29,6 +32,14 @@ import { fieldLabel } from './bout-copy.js';
 export function ExerciseDetailScreen() {
   const { slug = '' } = useParams();
   const now = useMemo(() => new Date(), []);
+
+  /**
+   * Whether this exercise has a hero, known from the URL rather than from the
+   * row — so the header is the right one on the first frame. Reading it off
+   * the loaded exercise instead would render the plain header, then swap it for
+   * a 400px image once SQLite answered, which is a jump on every visit.
+   */
+  const heroed = equipmentArt(slug)?.hero != null;
 
   const detail = useCatalogue(`exercise:${slug}`, async (repositories) => {
     const exercise = await repositories.exercises.bySlug(slug);
@@ -61,10 +72,25 @@ export function ExerciseDetailScreen() {
   });
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="pt-6 pb-2">
-        <HeaderLink to="/exercises">← All exercises</HeaderLink>
-      </header>
+    <main
+      className={cx(
+        'mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pb-safe-bottom',
+        // The hero runs up behind the status bar and insets its own contents,
+        // so the page must not inset it a second time.
+        !heroed && 'pt-safe-top',
+      )}
+    >
+      {heroed ? (
+        <ExerciseHero
+          slug={slug}
+          name={detail.data?.exercise.name ?? null}
+          aliases={detail.data?.exercise.aliases ?? []}
+        />
+      ) : (
+        <header className="pt-6 pb-2">
+          <HeaderLink to="/exercises">← All exercises</HeaderLink>
+        </header>
+      )}
 
       {detail.error !== null ? (
         <p role="alert" className="text-sm text-danger">
@@ -85,6 +111,7 @@ export function ExerciseDetailScreen() {
           strength={detail.data.strength}
           unitSystem={detail.data.unitSystem}
           now={now}
+          heroed={heroed}
         />
       )}
     </main>
@@ -110,6 +137,7 @@ function ExerciseDetail({
   strength,
   unitSystem,
   now,
+  heroed,
 }: {
   readonly exercise: Exercise;
   readonly muscles: readonly Involvement[];
@@ -117,15 +145,23 @@ function ExerciseDetail({
   readonly strength: StrengthEstimate | null;
   readonly unitSystem: UnitSystem;
   readonly now: Date;
+  /** The hero above carries the name and the aliases, so this must not. */
+  readonly heroed: boolean;
 }) {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold text-primary">{exercise.name}</h1>
-        {exercise.aliases.length > 0 && (
-          <p className="mt-1 text-sm text-secondary">Also called {exercise.aliases.join(', ')}</p>
+        {!heroed && (
+          <>
+            <h1 className="text-2xl font-semibold text-primary">{exercise.name}</h1>
+            {exercise.aliases.length > 0 && (
+              <p className="mt-1 text-sm text-secondary">
+                Also called {exercise.aliases.join(', ')}
+              </p>
+            )}
+          </>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className={cx('flex flex-wrap gap-2', !heroed && 'mt-3')}>
           <Badge>
             {exercise.cardioKind !== null
               ? 'Cardio'
