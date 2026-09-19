@@ -2,45 +2,56 @@ import { expect, test } from '@playwright/test';
 import { createUser } from './support/backend.js';
 import { signIn } from './support/app.js';
 
+/** The aspect the hero art is cut to. The bench fills it corner to corner. */
+const ART_ASPECT = 1200 / 984;
+
 /**
  * The render behind an exercise's title.
  *
- * One exercise has a hero and fifty-two do not, so the two things worth holding
- * are that the one with a render gets a full-bleed image and exactly one title,
- * and that the ones without keep the plain header they have always had. A
- * second <h1> would be the obvious regression — the hero carries the name, and
- * the detail below it used to.
+ * The thing worth holding is that the render is never cropped. It shipped once
+ * as `object-cover` on a box sized 45vh *plus the status-bar inset*, which on a
+ * notched phone is narrower than the art — so cover trimmed both ends off the
+ * bench. Chromium reports a zero inset and showed none of it, so the inset is
+ * set by hand here and the art's aspect is checked at each one.
  */
-test('an exercise with a hero wears it full-bleed, and one without is unchanged', async ({
-  page,
-}) => {
+test('the hero fills the width and is never cropped, whatever the notch', async ({ page }) => {
   const user = await createUser('hero', { onboarded: true });
   await signIn(page, user);
 
+  await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('/#/exercises/barbell-bench-press');
   const title = page.getByRole('heading', { level: 1, name: 'Barbell Bench Press' });
   await expect(title).toBeVisible();
   // The name is said once. It lived in the detail block before the hero took it.
   await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
 
-  // Edge to edge: `-mx-4` cancelling the page gutter is what makes this a hero
-  // rather than a picture in a column, and it is one class away from being lost.
   const hero = page.locator('img[src*="bench-press-hero"]');
   await expect(hero).toBeVisible();
-  const frame = await hero.boundingBox();
-  const width = page.viewportSize()?.width ?? 0;
-  expect(frame?.x).toBeCloseTo(0, 0);
-  expect(frame?.width).toBeCloseTo(width, 0);
-  // Behind the status bar, not under it.
-  expect(frame?.y).toBeCloseTo(0, 0);
-  // Roughly 45% of the screen, per the brief, and never the whole of it.
-  const height = page.viewportSize()?.height ?? 0;
-  expect(frame?.height ?? 0).toBeGreaterThan(height * 0.3);
-  expect(frame?.height ?? 0).toBeLessThan(height * 0.55);
 
-  // The way back is still there, over the image.
+  // A big notch, a small one, and none: the art keeps its shape through all of
+  // them, which is what says no edge of the bench has been trimmed off.
+  for (const inset of ['59px', '47px', '0px']) {
+    await page.evaluate((value) => {
+      document.documentElement.style.setProperty('--spacing-safe-top', value);
+    }, inset);
+    const frame = await hero.boundingBox();
+    expect(frame, inset).not.toBeNull();
+    expect(frame?.x, inset).toBeCloseTo(0, 0);
+    expect(frame?.width, inset).toBeCloseTo(393, 0);
+    expect((frame?.width ?? 0) / (frame?.height ?? 1)).toBeCloseTo(ART_ASPECT, 2);
+  }
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty('--spacing-safe-top');
+  });
+
+  // The title sits on the render rather than under it.
+  const frame = await hero.boundingBox();
+  const text = await title.boundingBox();
+  expect(text?.y ?? 0).toBeGreaterThan(frame?.y ?? 0);
+  expect((text?.y ?? 0) + (text?.height ?? 0)).toBeLessThan((frame?.y ?? 0) + (frame?.height ?? 0));
+
+  // The way back is still there, over the image, and the aliases under the name.
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
-  // And the aliases still sit under the name.
   await expect(page.getByText(/^Also called bench, bp/)).toBeVisible();
 
   // An exercise with no render keeps the plain header: no image, same title.
