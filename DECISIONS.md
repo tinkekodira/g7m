@@ -4834,8 +4834,10 @@ one, and the app now has a 3D bench that the list was already showing at 56px.
 ### Decision
 
 **A hero render behind the title, for exercises that have one.** Full-bleed,
-running up behind the status bar, about 45% of the screen. The title sits over
-its lower third and the page continues underneath with no seam.
+running up behind the status bar, about 45% of the screen. The title sits *on*
+the bench — across the pad and frame, with the base still showing below it —
+rather than in the space underneath, where it read as a caption under a
+photograph instead of a title over one.
 
 **One table for both surfaces.** `equipment-art.ts` maps an exercise slug to an
 `{ icon, hero }` pair, and both the list square and the page hero read it. Two
@@ -4844,13 +4846,26 @@ its own page, which is the sort of thing nobody notices until it is everywhere.
 Adding a piece of kit is one constant and one line; adding an exercise to kit
 that already exists is one line.
 
-**Three things do the dimming, and only two touch the image.** Opacity 0.65, a
-short top wash for the status bar and the back button, and a long bottom wash
-that reaches the full page colour before the hero ends. The title takes its
-contrast from the third of those — measured on the rendered pixels it sits on
-13.6:1 in the dark theme and 11.7:1 in the light one, and 6.1:1 in the worst
-case a two-line name can reach, which is up into the lit barbell. No text
-shadow, no glow: the brief asked for the gradient to do it, and it can.
+**The fit cannot crop, by construction.** This started as `object-cover` on a
+box of the right shape, which held until a real phone: the hero's height is 45vh
+*plus the status-bar inset*, and a 59px notch makes the box narrower than the
+art, so cover trimmed 31px off each side and cut the end off the bench.
+Chromium reports a zero inset, so no amount of testing there would have shown
+it. Two changes remove the class of bug rather than the instance. The inset is
+no longer added to the height — 45% of the screen is 45% of the screen, notch
+included — and the art is cut to 1.22, wider than any hero box can be, then laid
+in at `w-full` with its natural height. Filling the width is then the only
+outcome available whatever the inset does, and the slack lands at the top,
+behind the status bar, where it is wanted.
+
+**Three things do the dimming, and only one touches the image.** Opacity 0.5 —
+lower than a backdrop would need, because the title sits on the bench rather
+than under it — a short top wash for the status bar and the back button, and a
+long bottom wash. The title takes its contrast from the third of those. Measured
+on the rendered pixels: 7.6:1 for the title and 6.2:1 for the aliases in the
+dark theme, 8.6:1 and 5.8:1 in the light one, and 5.9:1 for the worst a
+two-line name reaches, which is up into the lit barbell. No text shadow, no
+glow: the brief asked for the gradient to do it, and it can.
 
 **The baked drop shadow is cut out of the asset.** The render ships with one:
 pure black at partial alpha, made for a light backdrop. It is invisible on the
@@ -4858,6 +4873,12 @@ dark theme and a grey smear across the bottom of the hero on the light one. The
 object is solid at alpha 255 and the shadow never is, so a threshold separates
 them cleanly and the downscale rebuilds the edges. The bottom wash does the
 grounding instead, in whichever colour the page is.
+
+**The title's height is tied to `--hero-h`, not to pixels or a percentage.** It
+has to land on the same part of the bench at every hero size. Pixels drift as
+the hero grows; a percentage padding resolves against the *width* in CSS, not
+the height, so it drifts too. One custom property sets the hero's height and the
+title's offset from it.
 
 **WebP for the hero, PNG for the icon.** Everything in `dist` is precached, so
 a hero is bytes every install pays before it opens anything. At 1200px — three
@@ -4896,10 +4917,16 @@ about the other. The e2e test asserts both: full-bleed and exactly one `<h1>`
 for the bench, plain header and no image for a dumbbell press.
 
 A two-line name reaches up into the lit part of the barbell, which is the
-weakest contrast on the screen at 6.1:1. It clears AA and would not clear AAA.
+weakest contrast on the screen at 5.9:1. It clears AA and would not clear AAA.
 A name long enough to take three lines would reach further; none in the
 catalogue does, and the title is balanced rather than ragged so the second line
 carries roughly half.
+
+The status-bar inset is not something Chromium can be asked for, so the e2e
+check sets `--spacing-safe-top` by hand and shoots the hero at 59px, 47px and
+0px. The composition is now identical at all three — the inset only changes how
+much page shows above the bench — which is the property that was missing when
+this shipped the first time.
 
 The light theme shows the render much more brightly than the dark one, because
 a dark object on cream separates by luminance where on near-black it barely
