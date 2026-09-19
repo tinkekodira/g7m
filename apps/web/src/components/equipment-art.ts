@@ -1,5 +1,11 @@
 import benchIcon from '../assets/equipment/bench-press.png';
 import benchHero from '../assets/equipment/bench-press-hero.webp';
+import squatRackIcon from '../assets/equipment/squat-rack.png';
+import squatRackHero from '../assets/equipment/squat-rack-hero.webp';
+import barbellIcon from '../assets/equipment/barbell.png';
+import barbellHero from '../assets/equipment/barbell-hero.webp';
+import latPulldownIcon from '../assets/equipment/lat-pulldown.png';
+import latPulldownHero from '../assets/equipment/lat-pulldown-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -37,9 +43,27 @@ export interface EquipmentArt {
 }
 
 const BENCH: EquipmentArt = { icon: benchIcon, hero: benchHero };
+const SQUAT_RACK: EquipmentArt = { icon: squatRackIcon, hero: squatRackHero };
+const BARBELL: EquipmentArt = { icon: barbellIcon, hero: barbellHero };
+const LAT_PULLDOWN: EquipmentArt = { icon: latPulldownIcon, hero: latPulldownHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
+
+  // A rack is what the bar comes off, not what it is made of.
+  'barbell-back-squat': SQUAT_RACK,
+  'barbell-front-squat': SQUAT_RACK,
+  'overhead-press': SQUAT_RACK,
+
+  // Lifted off the floor or held standing — no rack, no bench.
+  'barbell-row': BARBELL,
+  'barbell-shrug': BARBELL,
+  'barbell-curl': BARBELL,
+  'conventional-deadlift': BARBELL,
+  'romanian-deadlift': BARBELL,
+  'barbell-hip-thrust': BARBELL,
+
+  'lat-pulldown': LAT_PULLDOWN,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */

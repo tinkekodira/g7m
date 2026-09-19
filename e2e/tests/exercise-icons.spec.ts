@@ -5,7 +5,7 @@ import { signIn } from './support/app.js';
 /**
  * The equipment square in front of each exercise in the library.
  *
- * One exercise has a render and fifty-two do not, so the thing worth asserting
+ * Some exercises have a render and most do not, so the thing worth asserting
  * is that the two kinds of row are indistinguishable from the text's point of
  * view: same container, same left edge. A list where some rows indent and
  * others do not reads as broken rather than as incomplete, and that is a
@@ -39,4 +39,29 @@ test('every exercise row has an icon square, and the text lines up either way', 
   const named = await page.getByText('Barbell Bench Press', { exact: true }).boundingBox();
   const other = await page.getByText('Dumbbell Bench Press', { exact: true }).boundingBox();
   expect(named?.x).toBeCloseTo(other?.x ?? -1, 0);
+});
+
+/**
+ * The bench was the first render; the rack, the floor barbell and the lat
+ * pulldown followed it into the same map (see `equipment-art.ts`). One row
+ * per piece is enough to say the join still works for a second, third and
+ * fourth key — the square itself is already covered above.
+ */
+test('the rack, the floor barbell and the lat pulldown each draw their own icon', async ({
+  page,
+}) => {
+  const user = await createUser('icons-kit', { onboarded: true });
+  await signIn(page, user);
+  await page.goto('/#/exercises');
+
+  for (const [name, srcMatch] of [
+    ['Barbell Back Squat', 'squat-rack'],
+    ['Barbell Row', 'barbell'],
+    ['Lat Pulldown', 'lat-pulldown'],
+  ] as const) {
+    await page.getByLabel('Search').fill(name);
+    const row = page.getByRole('link', { name: new RegExp(`^${name}`) });
+    await expect(row).toBeVisible();
+    await expect(row.locator('img')).toHaveAttribute('src', new RegExp(srcMatch));
+  }
 });
