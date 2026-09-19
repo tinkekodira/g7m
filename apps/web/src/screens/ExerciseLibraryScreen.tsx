@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Chip, KitSlider, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
+import { ExerciseIcon } from '../components/ExerciseIcon.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { addedState } from './added-exercise.js';
@@ -320,8 +321,14 @@ function ExerciseRow({
 
   const body = (
     <>
-      <span className="text-base font-medium text-primary">{exercise.name}</span>
-      <span className="text-sm text-secondary">{detail}</span>
+      <ExerciseIcon slug={exercise.slug} />
+      {/* `min-w-0` so a long name wraps inside its own column rather than
+          growing the row and pushing the square off the left edge. The two
+          lines are untouched; they have only moved right. */}
+      <span className="flex min-w-0 flex-col">
+        <span className="text-base font-medium text-primary">{exercise.name}</span>
+        <span className="text-sm text-secondary">{detail}</span>
+      </span>
     </>
   );
 
@@ -334,7 +341,7 @@ function ExerciseRow({
         type="button"
         disabled={busy}
         onClick={onAdd}
-        className="flex min-h-tap w-full flex-col justify-center rounded-card bg-surface px-4 py-3 text-left active:bg-elevated disabled:opacity-60"
+        className="flex min-h-tap w-full items-center gap-3 rounded-card bg-surface px-4 py-3 text-left active:bg-elevated disabled:opacity-60"
       >
         {body}
       </button>
@@ -344,7 +351,7 @@ function ExerciseRow({
   return (
     <Link
       to={`/exercises/${exercise.slug}`}
-      className="flex min-h-tap flex-col justify-center rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      className="flex min-h-tap items-center gap-3 rounded-card bg-surface px-4 py-3 active:bg-elevated"
     >
       {body}
     </Link>
