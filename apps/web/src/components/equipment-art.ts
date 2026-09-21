@@ -6,6 +6,14 @@ import barbellIcon from '../assets/equipment/barbell.png';
 import barbellHero from '../assets/equipment/barbell-hero.webp';
 import latPulldownIcon from '../assets/equipment/lat-pulldown.png';
 import latPulldownHero from '../assets/equipment/lat-pulldown-hero.webp';
+import legPressIcon from '../assets/equipment/leg-press.png';
+import legPressHero from '../assets/equipment/leg-press-hero.webp';
+import dumbbellIcon from '../assets/equipment/dumbbell.png';
+import dumbbellHero from '../assets/equipment/dumbbell-hero.webp';
+import cableMachineIcon from '../assets/equipment/cable-machine.png';
+import cableMachineHero from '../assets/equipment/cable-machine-hero.webp';
+import pullUpBarIcon from '../assets/equipment/pull-up-bar.png';
+import pullUpBarHero from '../assets/equipment/pull-up-bar-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -46,6 +54,10 @@ const BENCH: EquipmentArt = { icon: benchIcon, hero: benchHero };
 const SQUAT_RACK: EquipmentArt = { icon: squatRackIcon, hero: squatRackHero };
 const BARBELL: EquipmentArt = { icon: barbellIcon, hero: barbellHero };
 const LAT_PULLDOWN: EquipmentArt = { icon: latPulldownIcon, hero: latPulldownHero };
+const LEG_PRESS: EquipmentArt = { icon: legPressIcon, hero: legPressHero };
+const DUMBBELL: EquipmentArt = { icon: dumbbellIcon, hero: dumbbellHero };
+const CABLE_MACHINE: EquipmentArt = { icon: cableMachineIcon, hero: cableMachineHero };
+const PULL_UP_BAR: EquipmentArt = { icon: pullUpBarIcon, hero: pullUpBarHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -64,6 +76,34 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-hip-thrust': BARBELL,
 
   'lat-pulldown': LAT_PULLDOWN,
+
+  'leg-press': LEG_PRESS,
+
+  'dumbbell-bench-press': DUMBBELL,
+  'incline-dumbbell-press': DUMBBELL,
+  'dumbbell-shoulder-press': DUMBBELL,
+  'lateral-raise': DUMBBELL,
+  'rear-delt-fly': DUMBBELL,
+  'single-arm-dumbbell-row': DUMBBELL,
+  'goblet-squat': DUMBBELL,
+  'bulgarian-split-squat': DUMBBELL,
+  'walking-lunge': DUMBBELL,
+  'hammer-curl': DUMBBELL,
+  'farmer-carry': DUMBBELL,
+  'dumbbell-pullover': DUMBBELL,
+
+  // A fixed bar, not a stack-and-cable machine — separate from the lat pulldown.
+  'pull-up': PULL_UP_BAR,
+  'chin-up': PULL_UP_BAR,
+  'hanging-leg-raise': PULL_UP_BAR,
+
+  'cable-fly': CABLE_MACHINE,
+  'face-pull': CABLE_MACHINE,
+  'straight-arm-pulldown': CABLE_MACHINE,
+  'triceps-pushdown': CABLE_MACHINE,
+  'overhead-triceps-extension': CABLE_MACHINE,
+  'cable-crunch': CABLE_MACHINE,
+  'cable-woodchop': CABLE_MACHINE,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */
