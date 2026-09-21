@@ -5076,3 +5076,87 @@ the cable machine and is not, so the test also stands as a regression check on
 that exclusion. Both specs gained one row per new piece in their existing
 parametrised cases rather than four new tests, keeping with ADR-0084's own
 choice not to parametrise-rewrite the bench's tests.
+
+---
+
+## ADR-0086 — Deleting a logged workout needed no cache to invalidate
+
+**Status:** accepted · **Date:** 2026-09-21 · **Phase:** 7
+
+A logged (finished) workout can now be deleted, from the calendar's per-day
+list and from the workout's own detail screen. The interesting part of this
+feature turned out to be *finding* it rather than *building* it: the delete
+call already existed, and nothing that shows a workout's numbers needed to be
+told one had gone.
+
+### The delete itself is not new
+
+`SessionRepository.discard(sessionId)` (`packages/db/src/repositories/sessions.ts`)
+already deleted a session and everything under it — `session_sets`, then
+`session_exercises`, then `workout_sessions`, in one local write transaction,
+explicit about the order because SQLite has `PRAGMA foreign_keys` off and
+would otherwise orphan the children until the next full re-sync. It was
+written to let the in-progress workout screen abandon a session, but nothing
+about it is specific to a session still in progress — a finished one is
+deleted exactly the same way. No schema change, no new repository method.
+
+Both surfaces call it through the existing `useWrite()` (`bump()` on success,
+an `error` string on failure, nothing in between): a `Button variant="danger"`
+plus a `globalThis.confirm(...)` on `SessionDetailScreen` — the same shape as
+`RoutineDetailScreen`'s "Delete this routine" — and a small `text-danger`
+trash-icon button per row in `CalendarScreen`'s `DayWorkouts`, chosen over a
+filled button because a list of workouts is not a list of one thing to
+delete, the way a routine's own page is.
+
+### Why nothing needed invalidating
+
+A session's numbers appear in five places — Progress (totals, the chart,
+"last week"), the calendar's day markers and day list, an exercise's
+estimated 1RM (`strengthEstimate`), streaks and achievements, and the Home
+screen's open-session card — and every one of them is a plain query over
+`workout_sessions` / `session_exercises` / `session_sets`, re-run from
+scratch on every read. None of the five is a materialised column, a
+denormalised total, or a table written at completion time. `personal_records`
+exists in the schema but nothing in `packages/db` has ever written to it —
+personal records, like the 1RM, are computed live from the sets
+(`packages/core/src/progress.ts`). `achievements.ts`'s own docblock states
+the design outright: *"Worked out, never stored... A 1,000 kg bench typed by
+accident and deleted takes the badge with it."*
+
+So deleting a session needed no follow-up write anywhere. `useWrite()`'s
+`bump()` — a revision counter that makes every mounted `useCatalogue` query
+re-run — already existed for exactly this shape of problem, and it is enough:
+the calendar re-reads `sessionSummaries`, Progress re-reads
+`sessionSummaries`/`completedSets`/`completedBouts`, an exercise page
+re-reads `completedSets` for its own slug, all on the next render after the
+delete resolves, no reload needed.
+
+### What a session references never gets touched
+
+`workout_sessions.routine_id` is a nullable FK to `routines`, one direction
+only: a session may name the routine it came from, but nothing about that
+routine holds a reference back, and `discard()` never touches the `routines`
+or `routine_exercises` tables. Deleting a session sourced from a routine
+therefore cannot delete or change that routine — the same guarantee already
+holds in the other direction (`RoutineRepository.remove()` nulls out
+`routine_id` on its sessions rather than deleting them — "The workouts you
+have already done with it are kept" on `RoutineDetailScreen`), just never
+exercised from this side before. Covered directly in
+`e2e/tests/delete-workout.spec.ts`: a session started from a routine is
+deleted, and the routine and its exercises are asserted unchanged in Postgres
+afterwards.
+
+### Confirm, then leave on success only
+
+`globalThis.confirm("Delete this workout? This can't be undone.")` on both
+surfaces — the same native-dialog pattern `RoutineDetailScreen` and the
+in-progress `WorkoutScreen`'s Discard button already use; there is no modal
+component in this codebase to reach for instead, and building one for a
+single call site was not worth it. On the detail screen specifically, the
+result of `write()` is checked before navigating away
+(`result !== null`): `write()` returns `null` only when the local write
+threw, in which case its `error` is already set and shown on the same screen
+— navigating away on a failure would carry the user past the one place that
+error is visible. The calendar's per-row delete has nowhere lower-stakes to
+go on failure; its existing top-of-screen `writeError` banner already covers
+it.
