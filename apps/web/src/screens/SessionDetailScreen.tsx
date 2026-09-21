@@ -14,6 +14,7 @@ import {
 import { boutSummary } from './bout-copy.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { formatWeightTotal } from '../components/chart-scale.js';
+import { TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -90,6 +91,7 @@ export function SessionDetailScreen() {
               block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
             )}
           />
+          <DeleteWorkout sessionId={sessionId} />
         </>
       )}
     </main>
@@ -332,6 +334,48 @@ function KeepAsRoutine({
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * Delete this workout for good.
+ *
+ * At the bottom of the screen, after everything else, so it cannot be hit
+ * reaching for something above it. Deletes the session and every exercise and
+ * set logged under it (`SessionRepository.discard`, the same call the
+ * in-progress workout screen uses to abandon a session) — nothing about that
+ * call is specific to a session still in progress. Every number that could
+ * mention this workout (Progress, the calendar, an exercise's estimated 1RM,
+ * streaks, achievements) is computed fresh from the sessions on the device
+ * rather than cached, so none of it needs separate cleanup — see DECISIONS.md.
+ */
+function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
+  const navigate = useNavigate();
+  const { write, busy, error } = useWrite();
+
+  return (
+    <div className="py-4">
+      <Button
+        variant="danger"
+        disabled={busy}
+        onClick={() => {
+          if (!globalThis.confirm("Delete this workout? This can't be undone.")) return;
+          void write((r) => r.sessions.discard(sessionId)).then((result) => {
+            // Null means the write failed and its error is already set below —
+            // leaving means the error message goes with it, unread.
+            if (result !== null) void navigate(-1);
+          });
+        }}
+      >
+        <TrashIcon className="size-5" />
+        Delete workout
+      </Button>
+      {error !== null && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -17,7 +17,7 @@ import {
 import type { SessionSummary } from '@g7m/db';
 import { Button, cx } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons.js';
+import { ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '../components/icons.js';
 import { StepArrow } from '../components/StepArrow.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
@@ -132,6 +132,21 @@ export function CalendarScreen() {
     if (started !== null) void navigate('/workout');
   }
 
+  /**
+   * Delete a logged workout for good.
+   *
+   * `discard` takes the session and everything under it, the same call the
+   * in-progress workout screen uses to abandon one — nothing about it is
+   * specific to a session still in progress. Nothing else needs telling:
+   * the day's marker and this list are both read fresh from `summaries` on
+   * every write (see `useWrite`'s `bump`), so a session that is gone here is
+   * gone from the calendar on the very next render.
+   */
+  async function deleteWorkout(sessionId: string): Promise<void> {
+    if (!globalThis.confirm("Delete this workout? This can't be undone.")) return;
+    await write((r) => r.sessions.discard(sessionId));
+  }
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
@@ -231,6 +246,9 @@ export function CalendarScreen() {
           busy={busy}
           onLogPast={() => {
             void logPast(selected);
+          }}
+          onDelete={(sessionId) => {
+            void deleteWorkout(sessionId);
           }}
         />
       )}
@@ -355,6 +373,7 @@ function DayWorkouts({
   openWorkout,
   busy,
   onLogPast,
+  onDelete,
 }: {
   readonly day: CalendarDay;
   readonly workouts: readonly SessionSummary[];
@@ -363,6 +382,7 @@ function DayWorkouts({
   readonly openWorkout: boolean;
   readonly busy: boolean;
   readonly onLogPast: () => void;
+  readonly onDelete: (sessionId: string) => void;
 }) {
   const ids = workouts.map((workout) => workout.sessionId);
 
@@ -457,15 +477,28 @@ function DayWorkouts({
                 <h3 className="min-w-0 truncate text-base font-semibold text-primary">
                   {workout.name ?? 'Workout'}
                 </h3>
-                <span className="numeric shrink-0 text-xs text-muted">
-                  {/* A workout logged afterwards has a day and no time of day;
-                      its noon start is a placeholder, not a fact. */}
-                  {workout.source === 'past'
-                    ? 'Logged afterwards'
-                    : workout.startedAt.toLocaleTimeString([], {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      })}
+                <span className="flex shrink-0 items-baseline gap-2">
+                  <span className="numeric text-xs text-muted">
+                    {/* A workout logged afterwards has a day and no time of
+                        day; its noon start is a placeholder, not a fact. */}
+                    {workout.source === 'past'
+                      ? 'Logged afterwards'
+                      : workout.startedAt.toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Delete this workout"
+                    disabled={busy}
+                    onClick={() => {
+                      onDelete(workout.sessionId);
+                    }}
+                    className="-my-3 -mr-2 inline-flex min-h-tap min-w-tap items-center justify-center rounded-control text-danger active:bg-elevated disabled:opacity-50"
+                  >
+                    <TrashIcon className="size-4" />
+                  </button>
                 </span>
               </div>
               <p className="numeric mt-0.5 text-xs text-muted">
