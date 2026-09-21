@@ -5017,3 +5017,62 @@ placeholder square. `exercise-icons.spec.ts` and `exercise-hero.spec.ts` each
 gained one test — a second row for the icon join, and the portrait/wide hero
 case — rather than a parametrised rewrite of the bench's own tests, so a
 failure still points at one shape at a time.
+
+---
+
+## ADR-0085 — Four more pieces wear the kit they need, and the dumbbell gets one
+
+**Status:** accepted · **Date:** 2026-09-21 · **Phase:** 7
+
+**Builds on ADR-0083 and ADR-0084.** The leg press, the (hex) dumbbell, the
+cable machine and the pull-up bar are the fifth through eighth keys into
+`equipment-art.ts`, made exactly the way the previous four were — same
+container, same sizes, same hero treatment, no new CSS, no per-asset framing
+override.
+
+### Assets
+
+Same two-step pipeline as ADR-0084 (icon: plain downscale of the shadowless
+trimmed-square source to 168px PNG; hero: zero the alpha of every
+not-fully-opaque pixel, crop to the bbox of the fully-opaque pixels plus a
+50px pad, downscale to 1200px wide, encode WebP q82), this time run through a
+small Node/`sharp` script rather than by hand, since `sharp` was already a
+devDependency. Reverse-diffed against the bench's own committed output before
+trusting it on new assets: mean color difference of 5.1/255 on the icon and a
+hero crop 22px taller than the bench's own — both close enough to attribute to
+a slightly different edge threshold in an unreverse-engineerable original
+script, not a wrong pipeline, and confirmed by eye on all four new heroes
+before shipping (equipment fully in frame, no shadow fringe, title legible).
+
+The dumbbell in `3d-models/dumbbell/` was rebuilt as a hex dumbbell but kept
+its `dumbbell_icon.png` / `dumbbell_hero.png` filenames, so this is a new
+`equipment-art.ts` entry, not a swap — no dumbbell render shipped in the app
+before this entry existed.
+
+### The map, by `3d-models/EQUIPMENT.md`
+
+Straight from the equipment doc's "Done" buckets, one exercise-slug key per
+row: **Leg press** — `leg-press` (1). **Dumbbell** — the twelve exercises
+listed under it, including `dumbbell-pullover` from the later skull-crusher
+migration. **Pull-up bar** — `pull-up`, `chin-up`, `hanging-leg-raise` (3);
+`pull-up` and `chin-up` move off the placeholder they were on before this
+piece existed. **Cable machine** — the seven cable-station exercises (3).
+`seated-cable-row` stays off the map on purpose: it names a different,
+not-yet-rendered seated row machine, not this dual-pulley functional trainer,
+matching the doc's own judgment call. No exercise needed a judgment call
+beyond what the doc already made.
+
+### Consequences
+
+Twenty-three more exercises carry a render — thirty-four of sixty-two now
+(ADR-0084's own count of eleven undercounted itself by one as "ten"; corrected
+here in passing), the rest still the placeholder square. Two exercises in the
+existing tests
+used `dumbbell-bench-press` and `dumbbell-shoulder-press` as the canonical
+"exercise with no art" example; both now have art, so `exercise-icons.spec.ts`
+and `exercise-hero.spec.ts` were repointed at `seated-cable-row` for that role
+— chosen because it is the one exercise a reader would most expect to be on
+the cable machine and is not, so the test also stands as a regression check on
+that exclusion. Both specs gained one row per new piece in their existing
+parametrised cases rather than four new tests, keeping with ADR-0084's own
+choice not to parametrise-rewrite the bench's tests.
