@@ -31,5 +31,8 @@ c6a31f86fc6e704af77dffb15ed5e23385cbb7ba:.env.example:generic-api-key:23
 # (Rewriting this comment to quote the old value verbatim, the way the JWT
 # one above does, reproduced the exact `NAME = 'value'` assignment shape
 # gitleaks matches and tripped a second, self-inflicted finding on this
-# file itself — hence the paraphrase instead of a quote.)
+# file itself — hence the paraphrase instead of a quote. That commit is
+# also already pushed, so it gets an entry here too rather than being
+# rewritten out of history.)
 e2126732afde65419a890782d86a40be485ff623:apps/web/src/lib/plate-calculator-settings.ts:generic-api-key:14
+5f775f0fc99bbf9b769b70455d4eadd712b771dc:.gitleaksignore:generic-api-key:22
