@@ -14,6 +14,16 @@ import cableMachineIcon from '../assets/equipment/cable-machine.png';
 import cableMachineHero from '../assets/equipment/cable-machine-hero.webp';
 import pullUpBarIcon from '../assets/equipment/pull-up-bar.png';
 import pullUpBarHero from '../assets/equipment/pull-up-bar-hero.webp';
+import ezBarIcon from '../assets/equipment/ez-bar.png';
+import ezBarHero from '../assets/equipment/ez-bar-hero.webp';
+import exerciseBikeIcon from '../assets/equipment/exercise-bike.png';
+import exerciseBikeHero from '../assets/equipment/exercise-bike-hero.webp';
+import legCurlExtensionIcon from '../assets/equipment/leg-curl-extension.png';
+import legCurlExtensionHero from '../assets/equipment/leg-curl-extension-hero.webp';
+import backExtensionIcon from '../assets/equipment/back-extension.png';
+import backExtensionHero from '../assets/equipment/back-extension-hero.webp';
+import adjustableBenchIcon from '../assets/equipment/adjustable-bench.png';
+import adjustableBenchHero from '../assets/equipment/adjustable-bench-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -58,6 +68,11 @@ const LEG_PRESS: EquipmentArt = { icon: legPressIcon, hero: legPressHero };
 const DUMBBELL: EquipmentArt = { icon: dumbbellIcon, hero: dumbbellHero };
 const CABLE_MACHINE: EquipmentArt = { icon: cableMachineIcon, hero: cableMachineHero };
 const PULL_UP_BAR: EquipmentArt = { icon: pullUpBarIcon, hero: pullUpBarHero };
+const EZ_BAR: EquipmentArt = { icon: ezBarIcon, hero: ezBarHero };
+const EXERCISE_BIKE: EquipmentArt = { icon: exerciseBikeIcon, hero: exerciseBikeHero };
+const LEG_CURL_EXTENSION: EquipmentArt = { icon: legCurlExtensionIcon, hero: legCurlExtensionHero };
+const BACK_EXTENSION: EquipmentArt = { icon: backExtensionIcon, hero: backExtensionHero };
+const ADJUSTABLE_BENCH: EquipmentArt = { icon: adjustableBenchIcon, hero: adjustableBenchHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -104,6 +119,27 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'overhead-triceps-extension': CABLE_MACHINE,
   'cable-crunch': CABLE_MACHINE,
   'cable-woodchop': CABLE_MACHINE,
+
+  // The fixed-weight urethane curl bar, not a loadable Olympic EZ bar.
+  'preacher-curl': EZ_BAR,
+  'skull-crusher': EZ_BAR,
+
+  // One upright bike render covers all three — the silhouette does not
+  // survive at 56px between upright and spin. Recumbent is the compromise.
+  'upright-bike': EXERCISE_BIKE,
+  'recumbent-bike': EXERCISE_BIKE,
+  'spin-bike': EXERCISE_BIKE,
+
+  // The dual Life Fitness Axiom station — one seat, one carriage, both pads.
+  'leg-extension': LEG_CURL_EXTENSION,
+  'seated-leg-curl': LEG_CURL_EXTENSION,
+
+  'back-extension': BACK_EXTENSION,
+
+  // Incline dumbbell press stays on DUMBBELL: the implement is what it
+  // needs, and the bench is secondary. This is the one exercise whose
+  // distinguishing station is the bench itself.
+  'incline-barbell-press': ADJUSTABLE_BENCH,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */

@@ -5160,3 +5160,74 @@ threw, in which case its `error` is already set and shown on the same screen
 error is visible. The calendar's per-row delete has nowhere lower-stakes to
 go on failure; its existing top-of-screen `writeError` banner already covers
 it.
+
+---
+
+## ADR-0087 — Five more pieces wear the kit they need
+
+**Status:** accepted · **Date:** 2026-09-22 · **Phase:** 7
+
+**Builds on ADR-0083 through ADR-0085.** The EZ bar, the exercise bike, the
+leg curl/extension machine, the back extension and the adjustable bench are
+the ninth through thirteenth keys into `equipment-art.ts`, made exactly the
+way the previous eight were — same container, same sizes, same hero
+treatment, no new CSS, no per-asset framing override.
+
+### Assets
+
+Same two-step pipeline as ADR-0084/0085 (icon: plain downscale of the
+shadowless trimmed-square source to 168px PNG; hero: zero the alpha of every
+not-fully-opaque pixel, crop to the bbox of the fully-opaque pixels plus a
+50px pad, downscale to 1200px wide, encode WebP q82), run through a small
+Node/`sharp` script (not checked in, same as the previous two batches) against
+`sharp` in `apps/mobile/node_modules` — the workspace root's own `sharp`
+entry is a version override, not a real dependency, so it resolves nowhere on
+its own. Output sizes land in the same range as the existing eight (13–32 KB
+icons, 18–82 KB heroes), and all five were checked by eye before shipping:
+equipment fully in frame, no shadow fringe, title legible.
+
+The EZ bar's hero is the widest render in the set (about 2.8:1, wider than
+the pull-up bar's 2.3:1) and the exercise bike's is the most portrait (about
+0.68:1) — both fit the existing hero box unchanged, per ADR-0084's
+`object-contain` reasoning. `exercise-hero.spec.ts` now names both as the
+extremes it checks.
+
+### The map, by `3d-models/EQUIPMENT.md`
+
+**EZ bar** — `preacher-curl`, `skull-crusher` (2): the fixed-weight urethane
+curl bar, not a loadable Olympic bar with sleeves. **Exercise bike** —
+`upright-bike`, `recumbent-bike`, `spin-bike` (3): one upright-bike render
+covers all three, the doc's own compromise for recumbent. **Leg curl/leg
+extension** — `leg-extension`, `seated-leg-curl` (2): the dual Life Fitness
+Axiom station; `lying-leg-curl` stays off it on purpose, a different,
+still-unmodelled prone machine. **Back extension** — `back-extension` (1).
+**Adjustable bench** — `incline-barbell-press` (1), moved off the placeholder
+it was held on since ADR-0084 explicitly kept it there pending this render.
+
+`incline-dumbbell-press` was **not** reassigned: the doc's Adjustable bench
+section itself says it "stays on the Dumbbell render" — the implement is what
+that exercise needs, and the bench is secondary. `EQUIPMENT.md` also carries
+a stray, malformed "Ajustable bench" header ahead of its real Dumbbell-section
+prose (the blockquotes under it are plainly the dumbbell's own notes, not a
+second adjustable-bench entry) — read as a doc-formatting artifact, not a
+second, conflicting mapping, and left unedited since the 3d-models folder is
+read-only from this repo. Flagged to Milan rather than silently resolved.
+
+No other exercise needed a judgment call beyond what the doc already made.
+
+### Consequences
+
+Forty-three exercises out of sixty-two now carry a render (thirty-four after
+ADR-0085, plus the nine this batch adds: two on the EZ bar, three on the
+exercise bike, two on the leg curl/extension machine, one on the back
+extension, one on the adjustable bench). Nineteen remain on the placeholder
+square: the sixteen exercises in `EQUIPMENT.md`'s "Not modelled yet" section
+(the calf raise machine, the abductor/adductor machine, and the twelve
+one-off pieces including `lying-leg-curl` and `seated-cable-row`), the two
+bodyweight exercises, and `close-grip-bench-press` — primary-`barbell` in the
+database and counted under the doc's Barbell bucket, but never given its own
+`equipment-art.ts` key, per ADR-0084's own judgment call not to point it at
+either the floor barbell or the bench. `exercise-icons.spec.ts` and
+`exercise-hero.spec.ts` each gained one row per new piece in their existing
+parametrised cases, keeping with ADR-0084's choice not to parametrise-rewrite
+the bench's own tests.
