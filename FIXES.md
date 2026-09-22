@@ -21,3 +21,20 @@ chips fill the card width and "on a 20 kg bar" drops to a second line on its
 own. It still reads fine, just worth a glance on a real narrow phone (this
 was checked at a Pixel-7-width viewport) to confirm it doesn't look like a
 stray orphaned line.
+
+## The 2.5 kg and 1.25 kg plates all but disappear against the sleeve
+
+Re-checked after the sprite re-import (bars redesigned, transparent bores
+added, `manifest.json`'s `layers` order now followed exactly — see the git
+log for the commit this note landed in). The layering itself is correct: a
+25+20+2.5+1.25-per-side load stacks flush, in the right order, with no hub
+or bar drawn over a plate face. But `plate_kg_2.5` (dark grey) and
+`plate_kg_1.25` (light grey) are close enough in tone to the sleeve's own
+metal that on a real screen they read as part of the hub rather than as
+their own discs — a pixel sample along the bar axis on that load shows a
+smooth gray gradient from the sleeve straight into the blue 20, with no
+perceptible step where the two grey plates sit. Red, blue, yellow, green and
+black are all fine; only the two lightest plates and the collar (also
+silver) are affected. Not something layout or draw order can fix — it would
+need a tone or rim-highlight change in the 3D source (`3d-models/plate-calculator/`)
+to give `plate_kg_2.5` and `plate_kg_1.25` more contrast against the sleeve.
