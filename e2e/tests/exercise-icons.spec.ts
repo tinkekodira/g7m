@@ -45,10 +45,12 @@ test('every exercise row has an icon square, and the text lines up either way', 
 
 /**
  * The bench was the first render; the rack, the floor barbell, the lat
- * pulldown, the leg press, the (hex) dumbbell, the cable machine and the
- * pull-up bar followed it into the same map (see `equipment-art.ts`). One row
- * per piece is enough to say the join still works for each new key — the
- * square itself is already covered above.
+ * pulldown, the leg press, the (hex) dumbbell, the cable machine, the
+ * pull-up bar, the EZ bar, the exercise bike, the leg curl/extension
+ * machine, the back extension and the adjustable bench followed it into the
+ * same map (see `equipment-art.ts`). One row per piece is enough to say the
+ * join still works for each new key — the square itself is already covered
+ * above.
  */
 test('every piece of kit draws its own icon', async ({ page }) => {
   const user = await createUser('icons-kit', { onboarded: true });
@@ -63,6 +65,11 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Hammer Curl', 'dumbbell'],
     ['Cable Fly', 'cable-machine'],
     ['Pull-Up', 'pull-up-bar'],
+    ['Preacher Curl', 'ez-bar'],
+    ['Upright Bike', 'exercise-bike'],
+    ['Leg Extension', 'leg-curl-extension'],
+    ['Back Extension', 'back-extension'],
+    ['Incline Barbell Press', 'adjustable-bench'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     const row = page.getByRole('link', { name: new RegExp(`^${name}`) });
