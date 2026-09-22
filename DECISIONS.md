@@ -5321,3 +5321,164 @@ instead: "Sent with your account email, app version and platform."
 Nothing new to configure — no account, no key, no webhook URL. The only step
 is applying the migration (`supabase db push`, or however migrations
 normally reach the linked project) so `public.feedback` exists there.
+
+---
+
+## ADR-0089 — The plate calculator's bar is sprites now, and knows its gym's rack
+
+**Status:** accepted · **Date:** 2026-09-22 · **Phase:** 7
+
+ADR-0081 drew the bar as coloured discs at their real relative sizes,
+rendered as flat SVG shapes. That reads correctly but looks nothing like a
+barbell — a stack of circles, not an object. `3d-models/plate-calculator/`
+rendered a cartoon barbell from the side instead: a shaft, one sleeve, seven
+plates and a collar, each a separate sprite with a manifest recording where
+its own pixel anchor sits on the bar axis. This ADR is the app side of using
+them, plus the second half of the brief: a gym missing some plates.
+
+### The sprites are cartoons, not a ruler
+
+The old renderer's plates were true relative diameters on purpose (ADR-0081):
+a shape check against the bar in front of you. The new sprites give that up —
+they are graduated so seven plates plus a collar exactly fill one sleeve
+(`3d-models/plate-calculator/sizes.md`), which is a deliberate cartoon
+choice, not a measurement. The footer copy under the calculator says so now,
+replacing "at their real sizes".
+
+**`apps/web/src/assets/plate-calculator/sprite-geometry.ts`** carries the
+manifest's pixel anchors as typed constants — not the JSON itself, so a
+missing or renamed piece is a compile error, not a blank patch of bar at
+runtime. **`layout.ts`** turns a bar and a list of plate ranks into placed
+images by one rule, taken straight from the manifest's own
+`how_to_stack`: each piece's anchor sits where the previous piece's anchor
+was, moved outward by the previous piece's `advance`. The collar always
+follows whichever piece was placed last — a plate, or the bare sleeve when
+the bar is empty, which is what "always show a collar just outside the last
+plate, or against the stop" falls out of for free rather than needing its
+own case.
+
+World coordinates are centred on the bar's middle, so the right half is
+`scale(-1 1)` on the left half's own group — position and sprite mirror
+together, matching the manifest's own note that a true right-side render
+would show the plates' *inner* faces and the mirror is the deliberate cheat.
+
+**The viewBox is fixed per bar, not per load** — same principle as ADR-0081's
+"frame is fixed, not fitted", now sized to each bar's own sleeve-to-sleeve
+span rather than one constant, since a 20 kg bar, a 15 kg bar and an EZ bar
+are genuinely different lengths. Switching bars is a deliberate tap; adding a
+plate to the one already chosen is not, and only the second case needed to
+hold still.
+
+### PNG to WebP: 1.06 MB of source sprites, 64 KB shipped
+
+The `3d-models` renders are lossless PNGs meant for review, not for a phone.
+Converted with Pillow at quality 92 (`method=6`), same dimensions, alpha
+kept: 13 files, 1,061,541 bytes down to 63,950 — about 6% of the original,
+smaller in total than the seven flat plate PNGs it replaces. No lossy
+artefact was visible at the card's actual display size. The conversion is
+not scripted into the build; it was a one-off over files that do not change
+unless the 3D source does, matching how the equipment icon set's own hero
+webps got here.
+
+### A gotcha worth recording: `transform: translate()` needs units
+
+Every plate is positioned with a CSS `transform` on a wrapping `<g>`, so the
+slide animation has something to transition. The first version wrote
+`translate(${x}, ${y})` with no unit suffix — valid as the `transform`
+*attribute*, invalid as the CSS *property*, where a bare number is not a
+`<length>` and the whole declaration is dropped. Nothing threw; every plate
+just rendered at the SVG's local origin instead of its place on the bar,
+which happened to look like a small shape floating near the top-left of the
+frame rather than an obvious blank. `px` fixes it — inside an SVG with no
+other viewport transform, one `px` in a CSS transform is one user unit, the
+same units every other coordinate in `layout.ts` is already in. Caught by
+actually looking at a screenshot, not by any test: every unit test asserting
+pixel math passed throughout, because they check the numbers `layoutBar`
+returns, not what a browser does with them in a `style` attribute.
+
+### Its own kit, not the logger's
+
+`packages/core/src/plates.ts` (`KG_KIT`, `LB_KIT`, `loadBar`, `plateLook`)
+is untouched and still backs the workout logger's "Each side: 25 · 15 ·
+1.25" line and the warm-up ramp. Both assume the standard rack on purpose —
+guessing a lighter one mid-set is worse than assuming the common one — and
+neither has any idea a gym might be short a plate.
+
+The calculator's job is the opposite: answer for a gym that might be
+missing something. Its kit lives in the new **`plate-calculator.ts`**,
+keyed by **colour slot** (`red` … `lightGrey`) rather than by weight, for
+the same reason ADR-0081 drew colours at all — a rack is a set of colours
+before it is a set of numbers. Storing the choice by slot rather than by kg
+value is what lets deselecting red remove the 25 kg plate in kg mode and the
+55 lb plate in lb mode with nothing to migrate when the unit switches.
+
+**The pound ladder is a new one, not `LB_KIT`'s.** `LB_KIT` stops at a 45 lb
+bar with six plates topping at 45 lb — a different, older scope. The
+calculator's own instruction was explicit: red 55, blue 45, yellow 35, green
+25, black 10, dark grey 5, light grey 2.5 — seven plates, ranked onto the
+same seven sprites the kilogram ladder uses. The two kits now disagree on
+purpose; a future change to one must not assume it touches the other.
+
+**Bar weights are independent numbers per unit, not conversions** — same
+precedent as `KG_KIT.bar = 20` / `LB_KIT.bar = 45` (44.09 rounded off
+nowhere in sight). The 20 kg and 15 kg bars carry fixed kg *and* lb weights
+(20/45, 15/35). The EZ bar has neither fixed — `BAR_SPECS.bar_ez.weightKg`
+and `.weightLb` are both `null`, and its real weight comes from
+`EzBarWeight`, editable per unit exactly the same way: two independent
+numbers (default 10 kg, 20 lb), not one converted from the other. Milan
+asked for this specifically — most EZ bars in the wild are not the same
+weight, and a fixed constant would be confidently wrong as often as it was
+right.
+
+### Fitting the sleeve is a millimetre fact, not a pixel one
+
+`sleeveFits` sums each loaded plate's `thicknessMm` (from the same manifest
+the sprites came from) plus the fixed 30 mm collar, and compares against the
+chosen bar's `sleeveUsableMm`. This holds regardless of how large the card
+draws the bar — it is a fact about the equipment, the same reasoning
+`sizes.md` used to size the sleeve in the first place (seven plates plus a
+collar exactly fill the 20 kg bar's 415 mm, and pointedly do not fill the
+15 kg bar's 320 mm or the EZ bar's 215 mm). When it fails, `PlateStack` draws
+the bar with an empty rank list — collar against the stop — and the screen
+swaps the "Each end" line for a message, rather than drawing plates past the
+sleeve's own end.
+
+### Available plates: on the calculator page, not in Settings
+
+The brief for this feature asked for a Settings panel. Milan redirected
+mid-build: it lives at the bottom of the Plate calculator screen itself
+instead, so a lifter mid-setup edits the same page they are looking at
+rather than leaving it. The "some plates are hidden" hint under the legend
+is therefore a same-page anchor link (`#available-plates`) rather than a
+cross-tab one.
+
+**Kept on this device**, the same reasoning and the same mechanism as the
+theme (`theme.ts` / `use-theme.ts`): which plates a gym has is a fact about
+where you are training, not about the lifter, and there is nothing here
+PowerSync would gain from syncing — it is read once per visit to one screen.
+`plate-calculator-settings.ts` stores the slot selection and the EZ bar's
+two weights as one JSON blob in `localStorage`, with the same
+malformed-storage-reads-as-defaults contract `theme.ts` established. No
+schema migration, no new Postgres column, no `ProfileChanges` field.
+
+At least one slot must stay selected — `toggleSlot` in `plate-calculator.ts`
+refuses to empty the set rather than the UI merely discouraging it, so a
+caller cannot construct an empty kit even by a bug elsewhere. The screen
+shows why a tap did nothing ("Keep at least one plate selected") rather than
+silently ignoring it.
+
+### Verifying it
+
+`layout.test.ts` checks the pixel algebra against hand-derived positions
+(plate_start, the running outward offset, the collar following the last
+piece). `plate-calculator.test.ts` covers slot toggling, both unit ladders,
+the EZ bar's independent weight, and `sleeveFits` against all three bars.
+`e2e/tests/plate-calculator.spec.ts` drives the built app: every bar, both
+units, a weight that cannot be made exactly, one too heavy for a sleeve, and
+deselecting plates changing the maths, the drawing and the legend together
+— surviving a switch to pounds and a reload. One thing the spec-writer got
+wrong while composing the manual verification steps is worth noting
+directly: with the 25 and the 15 deselected, 100 kg loads as two 20s a side
+(exactly, no shortfall) — not "20 + 20 + 10", which would total 120 kg. The
+app's arithmetic is the same greedy algorithm ADR-0081 already had tests
+for; only the plates it is allowed to reach for changed.
