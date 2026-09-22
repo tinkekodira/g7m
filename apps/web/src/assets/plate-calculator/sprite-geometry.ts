@@ -38,7 +38,7 @@ export const PLATE_SPRITES: readonly PlateSprite[] = [
   { width: 96, anchorX: 65.32, advance: 34.65 }, // lightGrey/1.25kg/2.5lb
 ];
 
-export const COLLAR_SPRITE: PlateSprite = { width: 68, anchorX: 54.89, advance: 28.87 };
+export const COLLAR_SPRITE: PlateSprite = { width: 58, anchorX: 43.44, advance: 28.87 };
 
 export interface BarSprite {
   readonly shaftWidth: number;
@@ -59,36 +59,36 @@ export interface BarSprite {
 
 export const BAR_SPRITES: Record<'bar_20' | 'bar_15' | 'bar_ez', BarSprite> = {
   bar_20: {
-    shaftWidth: 1286,
+    shaftWidth: 1238,
     shaftHeight: 480,
-    shaftHalfLength: 635.22,
-    shaftLocalAnchorX: 7.78,
-    sleeveWidth: 444,
+    shaftHalfLength: 611.16,
+    shaftLocalAnchorX: 7.84,
+    sleeveWidth: 474,
     sleeveHeight: 480,
-    sleeveLocalAnchorX: 431.75,
-    sleevePlateStartLocalX: 407.69,
-    sleeveLocalEndX: 8.27,
+    sleeveLocalAnchorX: 459.28,
+    sleevePlateStartLocalX: 432.33,
+    sleeveLocalEndX: 11.74,
   },
   bar_15: {
-    shaftWidth: 1286,
+    shaftWidth: 1238,
     shaftHeight: 480,
-    shaftHalfLength: 635.22,
-    shaftLocalAnchorX: 7.78,
-    sleeveWidth: 352,
+    shaftHalfLength: 611.16,
+    shaftLocalAnchorX: 7.84,
+    sleeveWidth: 382,
     sleeveHeight: 480,
-    sleeveLocalAnchorX: 340.04,
-    sleevePlateStartLocalX: 315.98,
-    sleeveLocalEndX: 7.99,
+    sleeveLocalAnchorX: 367.56,
+    sleevePlateStartLocalX: 340.61,
+    sleeveLocalEndX: 11.45,
   },
   bar_ez: {
-    shaftWidth: 708,
+    shaftWidth: 660,
     shaftHeight: 480,
-    shaftHalfLength: 346.485,
-    shaftLocalAnchorX: 7.52,
-    sleeveWidth: 250,
+    shaftHalfLength: 322.42,
+    shaftLocalAnchorX: 7.58,
+    sleeveWidth: 282,
     sleeveHeight: 480,
-    sleeveLocalAnchorX: 238.51,
-    sleevePlateStartLocalX: 214.45,
-    sleeveLocalEndX: 7.52,
+    sleeveLocalAnchorX: 267.03,
+    sleevePlateStartLocalX: 240.08,
+    sleeveLocalEndX: 11.98,
   },
 };
