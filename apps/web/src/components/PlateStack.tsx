@@ -1,150 +1,125 @@
-import { BAR_LOOK, type Loading, type PlateKit } from '@g7m/core';
-import plate25 from '../assets/plates/25kg.png';
-import plate20 from '../assets/plates/20kg.png';
-import plate15 from '../assets/plates/15kg.png';
-import plate10 from '../assets/plates/10kg.png';
-import plate5 from '../assets/plates/5kg.png';
-import plate2 from '../assets/plates/2.5kg.png';
-import plate1 from '../assets/plates/1.25kg.png';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import {
+  PLATE_SLOTS,
+  slotForValue,
+  type BarId,
+  type CalculatorUnit,
+  type Loading,
+} from '@g7m/core';
+import barEzShaft from '../assets/plate-calculator/bar_ez_shaft.webp';
+import barEzSleeveLeft from '../assets/plate-calculator/bar_ez_sleeve_left.webp';
+import bar15Shaft from '../assets/plate-calculator/bar_15_shaft.webp';
+import bar15SleeveLeft from '../assets/plate-calculator/bar_15_sleeve_left.webp';
+import bar20Shaft from '../assets/plate-calculator/bar_20_shaft.webp';
+import bar20SleeveLeft from '../assets/plate-calculator/bar_20_sleeve_left.webp';
+import collarLeft from '../assets/plate-calculator/collar_left.webp';
+import plate125 from '../assets/plate-calculator/plate_kg_1.25.webp';
+import plate10 from '../assets/plate-calculator/plate_kg_10.webp';
+import plate15 from '../assets/plate-calculator/plate_kg_15.webp';
+import plate20 from '../assets/plate-calculator/plate_kg_20.webp';
+import plate25 from '../assets/plate-calculator/plate_kg_25.webp';
+import plate5 from '../assets/plate-calculator/plate_kg_5.webp';
+import plate2Half from '../assets/plate-calculator/plate_kg_2.5.webp';
+import { layoutBar, type PlacedPlate } from '../assets/plate-calculator/layout.js';
+import { BAR_SPRITES, CANVAS_HEIGHT } from '../assets/plate-calculator/sprite-geometry.js';
 
 /**
- * The loaded bar, drawn with g7m's own plate models.
+ * The loaded bar, drawn from g7m's own cartoon sprites.
  *
- * Both ends, mirrored, because a barbell is a thing somebody recognises at a
- * glance and half of one is a diagram.
+ * Composed rather than photographed: a shaft, a sleeve, some plates and a
+ * collar, each blitted at the pixel anchor the render pipeline recorded for
+ * it (`assets/plate-calculator/sprite-geometry.ts`, carried over from
+ * `3d-models/plate-calculator/out/manifest.json`). The right half is the left
+ * half mirrored — the sprites were only ever rendered from one side, on
+ * purpose (see the manifest's own note on why the cheat is invisible).
  *
- * ## Seen from the side, not the front
+ * ## Not at real sizes any more
  *
- * The models are rendered edge-on: a plate is a tall narrow disc with its rim
- * facing you, which is what a plate on a bar actually looks like from where you
- * stand. Drawing them as circles facing the camera — which is what this did
- * before — turns a barbell into an axle with two wheels on it.
- *
- * ## Heaviest inside
- *
- * Big plates go on first, against the collar, and the small change goes outside
- * them. That is how a bar is loaded and how a loaded bar is read: the outermost
- * disc tells you what the last plate on was.
- *
- * ## One ladder of art, taken by rank
- *
- * The models are the metric set. A pound kit has six plates to the metric
- * seven, so it takes the same ladder from the top — a 45 wears the 25's art, a
- * 35 the 20's. The colours in `plateLook` are ranked the same way, so the key
- * under the bar always names what is drawn on it.
+ * The old renderer drew the plate models at their true relative diameters.
+ * These sprites are cartoons built to one shared scale, chosen so seven of
+ * them plus a collar exactly fill a sleeve — not so a 25 reads as visibly
+ * thicker than a 20. The shape still tells heavy from light; it is no longer
+ * a ruler.
  */
 
-/**
- * The seven models, heaviest first, with where things sit inside each
- * 1024-square render as fractions of it.
- *
- * Indexed by a plate's rank in its kit. Measured off the files rather than
- * guessed, because two of these decide whether the drawing is a barbell or a
- * pile:
- *
- * - `hole` is where the sleeve passes through, and it is right of centre by the
- *   width of the rim — by a different amount on every plate. Centring the
- *   images instead hangs each one off the bar by its own error.
- * - `rim` is the modelled thickness, and the distance to advance for the next
- *   plate. Stacking by it is what makes the plates sit against each other the
- *   way the render does, at true scale. No exaggeration is needed now: the flat
- *   discs this replaced had to have their thicknesses multiplied by five before
- *   they read at all.
- *
- * `height` is the plate's diameter in the square, which sets the scale and
- * keeps every plate true to the others.
- */
-const MODELS = [
-  { art: plate25, hole: 0.5674, rim: 0.1338, height: 0.9395 },
-  { art: plate20, hole: 0.5576, rim: 0.1143, height: 0.9395 },
-  { art: plate15, hole: 0.5488, rim: 0.0967, height: 0.8359 },
-  { art: plate10, hole: 0.5391, rim: 0.0781, height: 0.6797 },
-  { art: plate5, hole: 0.5342, rim: 0.0684, height: 0.4766 },
-  { art: plate2, hole: 0.5273, rim: 0.0547, height: 0.3965 },
-  { art: plate1, hole: 0.5215, rim: 0.042, height: 0.334 },
-] as const;
+const BAR_IMAGES: Record<BarId, { readonly shaft: string; readonly sleeveLeft: string }> = {
+  bar_20: { shaft: bar20Shaft, sleeveLeft: bar20SleeveLeft },
+  bar_15: { shaft: bar15Shaft, sleeveLeft: bar15SleeveLeft },
+  bar_ez: { shaft: barEzShaft, sleeveLeft: barEzSleeveLeft },
+};
 
-/** The widest model, and the one everything else is scaled against. */
-const WIDEST = MODELS[0];
+/** Heaviest first, matching `PLATE_SLOTS` — same rank as the sprite geometry. */
+const PLATE_IMAGES: readonly string[] = [
+  plate25,
+  plate20,
+  plate15,
+  plate10,
+  plate5,
+  plate2Half,
+  plate125,
+];
 
-/** What the widest plate stands, which everything else is scaled against. */
-const PLATE_DIAMETER = 450;
-/** So the widest plate comes out `PLATE_DIAMETER` tall inside its square. */
-const BOX = PLATE_DIAMETER / WIDEST.height;
-
-/** Half the bare shaft between the two collars. Compressed from a real bar. */
-const SHAFT_HALF = 470;
-/** Loading zone per end. Long enough for six 25s, which is more bar than anybody racks. */
-const SLEEVE = 400;
-/** The stub past the sleeve. */
-const END_CAP = 60;
-
-const HALF = SHAFT_HALF + SLEEVE + END_CAP;
-const FRAME_HEIGHT = BOX;
-const AXIS_Y = FRAME_HEIGHT / 2;
-
-const SHAFT_RADIUS = 22;
-const SLEEVE_RADIUS = 30;
-const COLLAR_RADIUS = 48;
-const COLLAR_WIDTH = 42;
+/** Short and subtle — long enough to read as motion, short enough not to be waited for. */
+const SLIDE_MS = 200;
+/** How far outward a plate travels while entering or leaving, in world pixels. */
+const SLIDE_OFFSET = 36;
 
 export function PlateStack({
   loading,
-  kit,
+  unit,
+  bar,
+  fits,
 }: {
   readonly loading: Loading;
-  readonly kit: PlateKit;
+  readonly unit: CalculatorUnit;
+  readonly bar: BarId;
+  /** False when the plates would run off the end of the sleeve. */
+  readonly fits: boolean;
 }) {
-  const perSide = loading.kind === 'plates' ? loading.perSide : [];
+  const perSide = loading.kind === 'plates' && fits ? loading.perSide : [];
+  const ranks = perSide.map((value) => PLATE_SLOTS.indexOf(slotForValue(value, unit)));
 
-  // Outward from the collar, heaviest first — the order they go on. Each plate
-  // sits one thickness further out than the one before it.
-  let out = SHAFT_HALF;
-  const placed = perSide.map((size) => {
-    // By rank, so a pound kit's 45 wears the 25's art. A size the kit does not
-    // list cannot reach here, but the widest model is the safe stand-in.
-    const model = MODELS[kit.plates.indexOf(size)] ?? WIDEST;
-    out += model.rim * BOX;
-    return { size, model, at: out };
-  });
+  const sprite = BAR_SPRITES[bar];
+  const images = BAR_IMAGES[bar];
+  const layout = layoutBar(sprite, ranks);
+
+  const label =
+    loading.kind === 'plates' && fits
+      ? `A bar loaded with ${perSide.map((size) => `${trim(size)} ${unit}`).join(', ')} on each end`
+      : `An empty ${trim(loading.bar)} ${unit} bar`;
 
   return (
-    // No height: the viewBox sets the aspect, so the bar takes the height it
-    // needs at whatever width it is given.
     <svg
-      viewBox={`${String(-HALF)} 0 ${String(HALF * 2)} ${String(FRAME_HEIGHT)}`}
+      viewBox={`${String(-layout.halfWidth)} ${String(-CANVAS_HEIGHT / 2)} ${String(layout.halfWidth * 2)} ${String(CANVAS_HEIGHT)}`}
       className="w-full"
       role="img"
-      aria-label={
-        loading.kind === 'plates'
-          ? `A bar loaded with ${placed.map((disc) => `${trim(disc.size)} ${kit.unit}`).join(', ')} on each end`
-          : `An empty ${trim(loading.bar)} ${kit.unit} bar`
-      }
+      aria-label={label}
     >
-      <Bar />
+      <image
+        href={images.shaft}
+        x={layout.shaft.x}
+        y={layout.shaft.y}
+        width={layout.shaft.width}
+        height={layout.shaft.height}
+      />
 
-      {/*
-        The right end as rendered, the left end mirrored.
-
-        The models all face right, so they belong on the right sleeve. Flipping
-        the whole group is what puts them on the left one — reusing them
-        unflipped would light both ends from opposite sides and read as two
-        different bars bolted together.
-      */}
-      {([1, -1] as const).map((side) => (
-        <g key={side} {...(side === -1 ? { transform: 'scale(-1 1)' } : {})}>
-          {/* Innermost first, so each smaller plate outside it lands on top —
-              the order they occlude each other on a real bar. */}
-          {placed.map((disc, index) => (
-            <image
-              key={`${String(index)}-${String(disc.size)}`}
-              href={disc.model.art}
-              x={disc.at - disc.model.hole * BOX}
-              y={AXIS_Y - BOX / 2}
-              width={BOX}
-              height={BOX}
-            />
-          ))}
+      {(['left', 'right'] as const).map((side) => (
+        <g key={side} transform={side === 'right' ? 'scale(-1 1)' : undefined}>
+          <image
+            href={images.sleeveLeft}
+            x={layout.sleeve.x}
+            y={layout.sleeve.y}
+            width={layout.sleeve.width}
+            height={layout.sleeve.height}
+          />
+          <PlateSide plates={layout.plates} />
+          <image
+            href={collarLeft}
+            x={layout.collar.x}
+            y={layout.collar.y}
+            width={layout.collar.width}
+            height={layout.collar.height}
+          />
         </g>
       ))}
     </svg>
@@ -152,59 +127,110 @@ export function PlateStack({
 }
 
 /**
- * The shaft, the two sleeves and the collars.
+ * One side's plates, sliding on or off from the outer end of the sleeve.
  *
- * Vector rather than the bar model, because this one has to be any length: the
- * plates cover most of the sleeve and what shows past them changes with every
- * weight. A cylinder lit from above is three stripes, and at this size that is
- * all a cylinder needs to be.
+ * Positions come from the inside out, so a stepper nudge — which almost
+ * always changes only the outer plates — animates just the ones that moved.
+ * The common prefix (same rank at the same position as last render) is left
+ * alone; anything past it is the part that changed, and is what gets a
+ * transition, in either direction.
  */
-function Bar() {
+function PlateSide({ plates }: { readonly plates: readonly PlacedPlate[] }) {
+  const previous = useRef<readonly PlacedPlate[]>(plates);
+  const [leaving, setLeaving] = useState<readonly (PlacedPlate & { readonly leaveId: number })[]>(
+    [],
+  );
+  const nextLeaveId = useRef(0);
+  const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(() => {
+    const prior = previous.current;
+    let common = 0;
+    while (
+      common < prior.length &&
+      common < plates.length &&
+      prior[common]?.rank === plates[common]?.rank
+    ) {
+      common += 1;
+    }
+    const dropped = prior.slice(common);
+    if (dropped.length > 0) {
+      const tagged = dropped.map((plate) => ({ ...plate, leaveId: nextLeaveId.current++ }));
+      setLeaving((current) => [...current, ...tagged]);
+      const ids = new Set(tagged.map((plate) => plate.leaveId));
+      const timer = setTimeout(() => {
+        setLeaving((current) => current.filter((plate) => !ids.has(plate.leaveId)));
+        timers.current.delete(timer);
+      }, SLIDE_MS);
+      timers.current.add(timer);
+    }
+    previous.current = plates;
+  }, [plates]);
+
+  useEffect(
+    () => () => {
+      for (const timer of timers.current) clearTimeout(timer);
+    },
+    [],
+  );
+
   return (
-    <g>
-      <Rod from={-HALF} to={HALF} radius={SLEEVE_RADIUS} />
-      <Rod from={-SHAFT_HALF} to={SHAFT_HALF} radius={SHAFT_RADIUS} />
-      {([-1, 1] as const).map((side) => (
-        <Rod
-          key={side}
-          from={SHAFT_HALF * side - (COLLAR_WIDTH / 2) * side}
-          to={SHAFT_HALF * side + (COLLAR_WIDTH / 2) * side}
-          radius={COLLAR_RADIUS}
+    <>
+      {plates.map((plate, index) => (
+        <SlidingImage
+          key={`live-${String(index)}-${String(plate.rank)}`}
+          plate={plate}
+          direction="in"
         />
       ))}
-    </g>
+      {leaving.map((plate) => (
+        <SlidingImage key={`gone-${String(plate.leaveId)}`} plate={plate} direction="out" />
+      ))}
+    </>
   );
 }
 
-/** One horizontal cylinder: three bands, lit on top. */
-function Rod({
-  from,
-  to,
-  radius,
+function SlidingImage({
+  plate,
+  direction,
 }: {
-  readonly from: number;
-  readonly to: number;
-  readonly radius: number;
+  readonly plate: PlacedPlate;
+  readonly direction: 'in' | 'out';
 }) {
-  const x = Math.min(from, to);
-  const width = Math.abs(to - from);
-  const bands = [
-    { at: -radius, to: -radius * 0.3, fill: BAR_LOOK.lit },
-    { at: -radius * 0.3, to: radius * 0.45, fill: BAR_LOOK.colour },
-    { at: radius * 0.45, to: radius, fill: BAR_LOOK.shade },
-  ];
+  // Entering starts offset and settles; leaving starts settled and offsets.
+  // The reduced-motion media query in tokens.css zeroes the transition
+  // duration globally, so this still ends in the right place instantly.
+  const [settled, setSettled] = useState(direction === 'out');
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      setSettled(direction === 'in');
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+    };
+    // Runs once per mount: a plate that is already settled never re-triggers,
+    // and a plate that changes identity gets a new key and a fresh mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dx = settled ? 0 : -SLIDE_OFFSET;
+  const style: CSSProperties = {
+    // `px` is required here: a bare number is an invalid CSS length and the
+    // whole `transform` declaration is dropped, leaving every plate pinned to
+    // the SVG's local origin instead of its place on the bar. Inside an SVG,
+    // `px` is one user unit — the same units every other coordinate here is
+    // already in — not a physical pixel.
+    transform: `translate(${String(plate.x + dx)}px, ${String(plate.y)}px)`,
+    opacity: settled ? 1 : 0,
+    transition: `transform ${String(SLIDE_MS)}ms ease-out, opacity ${String(SLIDE_MS)}ms ease-out`,
+  };
+
+  const image = PLATE_IMAGES[plate.rank];
+  if (image === undefined) return null;
+
   return (
-    <g>
-      {bands.map((band) => (
-        <rect
-          key={band.at}
-          x={x}
-          y={AXIS_Y + band.at}
-          width={width}
-          height={band.to - band.at}
-          fill={band.fill}
-        />
-      ))}
+    <g style={style}>
+      <image href={image} width={plate.width} height={plate.height} />
     </g>
   );
 }
