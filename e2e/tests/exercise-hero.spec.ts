@@ -67,9 +67,11 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
  * corner. The rack, the lat pulldown and the cable machine are portrait — a
  * tall render in a wide box — while the floor barbell, the dumbbell and the
  * pull-up bar are low and wide (the pull-up bar the widest yet, about 2.3:1).
- * The leg press is close to square. None of these shapes gets a special
- * case: `object-contain` on a box that only constrains width and max-height
- * fits any aspect without cropping it, by construction, so what is worth
+ * The leg press is close to square. The EZ bar is wider still (about 2.8:1,
+ * the widest render in the set) and the exercise bike is the most portrait
+ * yet (about 0.68:1). None of these shapes gets a special case:
+ * `object-contain` on a box that only constrains width and max-height fits
+ * any aspect without cropping it, by construction, so what is worth
  * asserting is that the fit still holds at the extremes rather than only at
  * the bench's own near-square ratio.
  */
@@ -86,6 +88,11 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['hammer-curl', 'dumbbell-hero'],
     ['cable-fly', 'cable-machine-hero'],
     ['pull-up', 'pull-up-bar-hero'],
+    ['preacher-curl', 'ez-bar-hero'],
+    ['upright-bike', 'exercise-bike-hero'],
+    ['leg-extension', 'leg-curl-extension-hero'],
+    ['back-extension', 'back-extension-hero'],
+    ['incline-barbell-press', 'adjustable-bench-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);
