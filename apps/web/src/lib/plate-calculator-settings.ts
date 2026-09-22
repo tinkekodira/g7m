@@ -11,7 +11,7 @@
  */
 import { ALL_PLATE_SLOTS, DEFAULT_EZ_BAR_WEIGHT, PLATE_SLOTS, type PlateSlot } from '@g7m/core';
 
-export const PLATE_SETTINGS_STORAGE_KEY = 'g7m.plateCalculator';
+export const PLATE_SETTINGS_STORAGE_KEY = 'g7m.plates';
 
 export interface PlateCalculatorSettings {
   readonly availableSlots: ReadonlySet<PlateSlot>;
