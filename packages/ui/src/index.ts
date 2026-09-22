@@ -18,6 +18,8 @@ export { Switch } from './Switch.js';
 export type { SwitchProps } from './Switch.js';
 export { TextField } from './TextField.js';
 export type { TextFieldProps } from './TextField.js';
+export { TextareaField } from './TextareaField.js';
+export type { TextareaFieldProps } from './TextareaField.js';
 export { cx } from './cx.js';
 export {
   MIN_TAP_TARGET_PX,

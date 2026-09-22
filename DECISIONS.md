@@ -5160,3 +5160,97 @@ threw, in which case its `error` is already set and shown on the same screen
 error is visible. The calendar's per-row delete has nowhere lower-stakes to
 go on failure; its existing top-of-screen `writeError` banner already covers
 it.
+
+---
+
+## ADR-0087 — Feedback goes straight into Postgres, not through PowerSync
+
+<!-- If the equipment-batch-3 PR (ADR-0087, "Five more pieces wear the kit
+they need") merges before this one, renumber this to ADR-0088 and drop this
+comment. -->
+
+**Status:** accepted · **Date:** 2026-09-22 · **Phase:** 7
+
+Settings needed a way for any signed-in user to reach the developer. A "Send
+feedback" panel sits directly under Units, above Account and everything else
+— the two settings a user is likely to change land first, then the one way
+to say something about the app, then the read-only/account panels.
+
+### Delivery: a table, not a webhook
+
+Four options were on the table: a Supabase table, a mailto link, a Discord/
+Slack webhook, or GitHub issues. The app already runs a Supabase project with
+RLS as its whole security model — a table costs nothing new to operate and
+needs no secret held anywhere, where a webhook or a GitHub token would both
+need an Edge Function just to keep the credential off the client (`VITE_`
+values are compiled into the bundle and are public by construction). A
+mailto link needs no backend at all but leaves the app and cannot reliably
+carry the auto-attached context below. The table won.
+
+`public.feedback` is shaped exactly like every other user table in this
+schema — `id` / `created_at` / `updated_at`, an owner-scoped `FOR ALL` RLS
+policy (see `body_metrics`) — rather than a narrower insert-only shape, so it
+needs no exception in `schema.test.ts`'s `USER_TABLES` conventions (id/
+created_at/updated_at on every table, an owner policy covering all commands).
+No screen in the app reads a submitted message back; the developer reads the
+table from the Supabase dashboard as the project owner, which bypasses RLS
+the way the dashboard always does.
+
+**Not synced through PowerSync.** Every user table before this one is
+written offline and reconciled later — the reason the sync layer exists at
+all — but there is nothing to reconcile about a message that has not been
+sent yet, and the app already had a pattern for a write that simply needs a
+connection: `DeleteAccount` (ADR-0065) posts straight through PostgREST and
+disables its button offline rather than queuing anything. Feedback does the
+same. `UNSYNCED_TABLES` in `app-schema.ts` — empty until now — carries the
+one-line reason, checked by `app-schema.test.ts` the same way
+`UNSYNCED_COLUMNS` already covers individual columns.
+
+### Fields, identity, and what rides along unasked
+
+Free text plus a Bug/Idea/Other category (`SegmentedControl`, the same
+component `Units` already uses) — a rating or a screenshot field would be
+more to build for signal nobody asked this feature to carry. Tied to the
+account rather than anonymous or an optional email field: every user is
+already signed in, so `user_id` and, from the dashboard, their account email
+come along for free.
+
+Auto-attached, not asked of the user: `app_version` (the `package.json`
+version, baked in as `__APP_VERSION__` — a Vite `define`, the same mechanism
+the service worker already uses for `__BUILD_ID__`, needed because
+`package.json` sits outside `tsconfig.json`'s `include` and an ordinary
+import would fail typecheck) and `platform` (`detectPlatform().platform`).
+Both nullable in case either read ever fails; the message is still worth
+having without them.
+
+### Limits, offline, and errors
+
+A 2000-character cap, checked both client-side (`TextareaField`'s new
+`error` state disables Send rather than silently truncating what was typed)
+and again in Postgres (`char_length(message) between 1 and 2000`) as the
+actual boundary. A rate limit — five submissions per account per rolling
+hour, a `before insert` trigger counting the account's own recent rows — is
+a cap against an accidental double-tap or a stuck retry loop, not a
+moderation system; a determined abuser needs more than a table trigger to
+stop.
+
+Offline, `useOnline()` — already written for `DeleteAccount` — disables Send
+and says why, rather than queuing the message for later: nothing else in the
+app queues a write like that, and building a second offline mechanism for
+one low-stakes panel was not worth it. A server the app cannot reach for
+some other reason (checked in `send-feedback.spec.ts` with the fake
+backend's `outage()` helper, the same tool `delete-account.spec.ts` uses)
+fails through the existing `describeDataError` path — "Cannot reach the
+server" — rather than silently.
+
+### Privacy
+
+The app has no privacy policy screen at all yet — building one was out of
+scope for this feature. A one-line disclosure sits under the Send button
+instead: "Sent with your account email, app version and platform."
+
+### What Milan needs to do
+
+Nothing new to configure — no account, no key, no webhook URL. The only step
+is applying the migration (`supabase db push`, or however migrations
+normally reach the linked project) so `public.feedback` exists there.
