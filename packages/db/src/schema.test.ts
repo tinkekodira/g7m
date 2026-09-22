@@ -39,6 +39,7 @@ const USER_TABLES = [
   'personal_records',
   'body_metrics',
   'training_goals',
+  'feedback',
 ];
 
 describe('migrations', () => {
@@ -450,6 +451,8 @@ describe('deleting your own account', () => {
       insert into public.body_metrics (user_id, weight_kg) values ('${user}', 80);
       insert into public.training_goals (user_id, goal, days_per_week)
       values ('${user}', 'get_stronger', 3);
+      insert into public.feedback (user_id, category, message)
+      values ('${user}', 'idea', 'More cardio machines please.');
       with routine as (
         insert into public.routines (user_id, name) values ('${user}', 'Push') returning id
       )

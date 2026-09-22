@@ -1,10 +1,25 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { serviceWorker } from './service-worker/plugin.js';
 
+const pkg: { readonly version: string } = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8'),
+);
+
 export default defineConfig({
+  /**
+   * Read once at build time, not from an import: `package.json` sits outside
+   * `src`, which `tsconfig.json`'s `include` does not reach, so an ordinary
+   * import would fail typecheck. `readFileSync` here has no such boundary —
+   * this file runs under Node, checked by `tsconfig.node.json` instead.
+   */
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
+
   /**
    * The service worker is built last, from the files the other two produced:
    * it needs the fingerprinted asset names, which do not exist until the

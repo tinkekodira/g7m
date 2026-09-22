@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { UnitSystem } from '@g7m/core';
-import { Button, SegmentedControl, Switch, TextField } from '@g7m/ui';
+import { Button, SegmentedControl, Switch, TextareaField, TextField } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { detectPlatform, platformLabel } from '../platform.js';
 import { describeDataError, retryOnceIfTransient } from '../lib/errors.js';
+import { APP_VERSION } from '../lib/app-version.js';
 import {
   describePersistence,
   formatBytes,
@@ -23,6 +24,7 @@ import {
   DeviceIcon,
   DownloadIcon,
   KettlebellIcon,
+  MessageIcon,
   MoonIcon,
   ProfileIcon,
   StorageIcon,
@@ -65,6 +67,7 @@ export function SettingsScreen() {
 
       <Appearance />
       <Units />
+      <SendFeedback />
       <Account />
       <SyncPanel />
       <OfflineStorage />
@@ -168,6 +171,122 @@ function Units() {
           {error}
         </p>
       )}
+    </Panel>
+  );
+}
+
+type FeedbackCategory = 'bug' | 'idea' | 'other';
+
+const FEEDBACK_CATEGORY_OPTIONS = [
+  { value: 'bug', label: 'Bug' },
+  { value: 'idea', label: 'Idea' },
+  { value: 'other', label: 'Other' },
+] as const satisfies readonly { value: FeedbackCategory; label: string }[];
+
+const FEEDBACK_MAX_LENGTH = 2000;
+
+/**
+ * A message to the developer, from Settings.
+ *
+ * Inserted straight into `public.feedback` through PostgREST — the same
+ * direct-write shape `Account` already reads with and `DeleteAccount` already
+ * writes with — rather than going through PowerSync. There is nothing to
+ * reconcile offline about a message that has not been sent yet, so this
+ * needs a connection the same way deleting the account does, and says so the
+ * same way: disable Send, explain why (ADR-0088).
+ */
+function SendFeedback() {
+  const userId = useAuthStore((s) => s.session?.user.id ?? null);
+  const online = useOnline();
+  const [category, setCategory] = useState<FeedbackCategory>('idea');
+  const [message, setMessage] = useState('');
+  const [state, setState] = useState<
+    | { readonly step: 'idle' }
+    | { readonly step: 'sending' }
+    | { readonly step: 'sent' }
+    | { readonly step: 'failed'; readonly message: string }
+  >({ step: 'idle' });
+
+  const trimmed = message.trim();
+  const tooLong = trimmed.length > FEEDBACK_MAX_LENGTH;
+  const canSend =
+    online && userId !== null && trimmed.length > 0 && !tooLong && state.step !== 'sending';
+
+  const send = async () => {
+    if (!canSend || userId === null) return;
+    setState({ step: 'sending' });
+    const { error } = await supabase.from('feedback').insert({
+      user_id: userId,
+      category,
+      message: trimmed,
+      app_version: APP_VERSION,
+      platform: detectPlatform().platform,
+    });
+    if (error !== null) {
+      setState({ step: 'failed', message: describeDataError(error.message) });
+      return;
+    }
+    setMessage('');
+    setState({ step: 'sent' });
+  };
+
+  return (
+    <Panel title="Send feedback" icon={<MessageIcon className="size-5" />}>
+      <p className="max-w-prose text-sm text-secondary">
+        Report a bug, suggest something, or just say what&rsquo;s on your mind — it goes straight to
+        the developer.
+      </p>
+      <SegmentedControl
+        className="mt-3"
+        label="Category"
+        options={FEEDBACK_CATEGORY_OPTIONS}
+        value={category}
+        disabled={state.step === 'sending'}
+        onChange={setCategory}
+      />
+      <div className="mt-3">
+        <TextareaField
+          label="Message"
+          value={message}
+          disabled={state.step === 'sending'}
+          error={
+            tooLong
+              ? `${String(trimmed.length)}/${String(FEEDBACK_MAX_LENGTH)} — too long`
+              : undefined
+          }
+          hint={tooLong ? undefined : `${String(trimmed.length)}/${String(FEEDBACK_MAX_LENGTH)}`}
+          onChange={(event) => {
+            setMessage(event.target.value);
+            if (state.step === 'sent' || state.step === 'failed') setState({ step: 'idle' });
+          }}
+        />
+      </div>
+      {!online && (
+        <p className="mt-2 text-sm text-warning">You need a connection to send feedback.</p>
+      )}
+      {state.step === 'failed' && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {state.message}
+        </p>
+      )}
+      {state.step === 'sent' && (
+        <p role="status" className="mt-2 text-sm text-success">
+          Thanks — this reached the developer.
+        </p>
+      )}
+      <Button
+        fullWidth
+        className="mt-3"
+        disabled={!canSend}
+        onClick={() => {
+          void send();
+        }}
+      >
+        {state.step === 'sending' ? 'Sending…' : 'Send feedback'}
+      </Button>
+      <p className="mt-3 text-xs text-muted">
+        Sent with your account email, app version and platform.
+      </p>
     </Panel>
   );
 }

@@ -350,3 +350,13 @@ export function HeartIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** A speech bubble: a message to someone. */
+export function MessageIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 5.5h16v10.5H9l-4 4v-4H4V5.5Z" strokeLinejoin="round" />
+      <path d="M8 9.5h8M8 12.5h5" />
+    </Glyph>
+  );
+}

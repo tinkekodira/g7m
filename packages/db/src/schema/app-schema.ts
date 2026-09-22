@@ -442,11 +442,15 @@ export type LocalDatabase = (typeof AppSchema)['types'];
 /**
  * Tables that exist in Postgres and are not synced at all.
  *
- * Empty, and worth keeping as a declaration rather than an assumption: the
- * drift test uses it, so adding a table to Postgres without deciding whether
- * the client needs it fails the build.
+ * The drift test uses this, so adding a table to Postgres without deciding
+ * whether the client needs it fails the build.
  */
-export const UNSYNCED_TABLES: Readonly<Record<string, string>> = {};
+export const UNSYNCED_TABLES: Readonly<Record<string, string>> = {
+  feedback:
+    'Write-only from the app via PostgREST (ADR-0088), not read back on any device. ' +
+    'Nothing to reconcile offline about a message that has not been sent, so it skips ' +
+    'PowerSync the same way account deletion does.',
+};
 
 /**
  * Columns that exist in Postgres but are deliberately not on the device, and
