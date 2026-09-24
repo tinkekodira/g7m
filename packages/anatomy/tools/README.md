@@ -80,10 +80,39 @@ bicep is in the right place, and ADR-0039 was written after three rounds of
 chasing rendering seams that a GPU would never have drawn. Look at the body
 before building anything on the labels.
 
+## Pass three and a half — move borders onto the grooves
+
+```
+blender --background --factory-startup --python packages/anatomy/tools/shape.py -- \
+  packages/anatomy/assets/licensed/full_body/body_fit.obj \
+  packages/anatomy/assets/licensed/full_body/body_labels.json \
+  packages/anatomy/assets/licensed/full_body/body_labels_shaped.json
+```
+
+The atlas is a different body from the sculpt, and in a few places pass two's
+borders are centimetres out. The sculpt already has the right ones, as
+grooves, so named groups of neighbouring muscles redraw their shared borders
+along them: seeds where each muscle certainly is, a watershed on concavity
+between them, **confined to the group's own territory on one side of the
+body** (ADR-0092). Two groups today:
+
+- **Chest and abdomen**: sternal pec, serratus, obliques, rectus abdominis.
+  Seeded from each label's core, with the rectus held to the midline column,
+  the pec held above its crease, and the serratus given the side of the
+  ribcage. The clavicular pec stays out, since nothing is sculpted between the
+  two heads of the pec for a border to follow.
+- **Front of the thigh**: rectus femoris, vastus lateralis, vastus medialis,
+  adductors. Seeded by position around the thigh, because here the labels
+  themselves were what was wrong.
+
+It prints how many vertices each muscle gained or lost and refuses to write a
+file where any muscle has lost all of its skin. Run pass three on its output
+before going on — this pass decides what a lifter sees highlighted.
+
 ## Pass four — split and export
 
 ```
-blender --background --factory-startup --python packages/anatomy/tools/split.py --   packages/anatomy/assets/licensed/full_body/body_fit.obj   packages/anatomy/assets/licensed/full_body/body_labels.json   packages/anatomy/assets/licensed/full_body/body.glb
+blender --background --factory-startup --python packages/anatomy/tools/split.py --   packages/anatomy/assets/licensed/full_body/body_fit.obj   packages/anatomy/assets/licensed/full_body/body_labels_shaped.json   packages/anatomy/assets/licensed/full_body/body.glb
 ```
 
 Cuts the labelled skin into one object per muscle, named the way
@@ -104,7 +133,7 @@ within a triangle. Two knobs, both environment variables:
 The map is also written beside the GLB as `<name>_regions.png`, for looking
 at. It is never shipped on its own. Smoothing makes a border smooth, not
 right: a border the labels put in the wrong place stays in the wrong place, and
-is fixed in pass two.
+is fixed in pass three and a half.
 
 Run `pnpm model:label` again afterwards: it checks the GLB against the atlas
 with `checkModelContract` and fails if a muscle that reaches the skin has no

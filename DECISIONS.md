@@ -5665,3 +5665,72 @@ and are gitignored like the rest of `packages/anatomy/assets/licensed/`
 model built before this has no map, and the viewer draws it exactly as
 before, piece by piece — so a deploy that still fetches the old GLB is
 unchanged rather than broken.
+
+## ADR-0092 — Muscles that trade skin along the sculpt's grooves
+
+**Status:** accepted · **Date:** 2026-09-24
+
+ADR-0091 made the highlight smooth, and so made its shape easy to read. Three
+shapes were wrong, and wrong in the labels rather than in the drawing: the
+sternal pec ran down the side of the ribcage below its own crease, the rectus
+abdominis flared out over the lower belly to the hips, and vastus medialis
+owned most of the front of the thigh while rectus femoris sat on its upper
+third.
+
+### The sculpt already has the borders
+
+A sculpted body is bellies with grooves between them. The pec ends at a
+crease, the six-pack at the linea semilunaris, and the quadriceps' heads at the
+grooves either side of rectus femoris. So `tools/shape.py`, a new pass between
+labelling and splitting, lets named groups of neighbouring muscles redraw the
+borders among themselves:
+
+1. **Seeds** where each muscle certainly is.
+2. **A watershed on concavity**: the seeds flood outward lowest first, a groove
+   is a ridge in that landscape, and two floods meet in the groove between
+   them.
+3. **Confined to the group's own territory, one side of the body at a time.**
+
+The third is the difference from the global watershed ADR-0091 tried and
+rejected, which put the pec's lower edge exactly on the crease and in the same
+run flooded groin skin up the abdomen and left the anterior deltoid with
+nothing. Inside a group a muscle can only trade skin with the neighbours named
+beside it. Everything outside the groups keeps exactly the label pass two gave
+it.
+
+### The two groups
+
+**Chest and abdomen** — sternal pec, serratus anterior, external obliques,
+rectus abdominis. Seeded from the most interior 30% of each label, three of
+them held to where the muscle is: the rectus to 5 cm either side of the
+midline, the pec to forward-facing chest above y 1.29 (its crease by the nipple
+line on this body), and the serratus given the side of the ribcage between
+y 1.20 and 1.26 as well. Without that last one the serratus's own core is
+boxed in by the grooves between its digitations, and the pec flooded round the
+end of its crease into the wing it was meant to lose.
+
+**Front of the thigh** — rectus femoris, vastus lateralis, vastus medialis,
+hip adductors. Seeded by position around the thigh's own leaning axis,
+because here the labels' cores were themselves wrong: rectus femoris down the
+middle, vastus lateralis on the outside, vastus medialis in the teardrop above
+the inner knee, the adductors high on the inside.
+
+A share of each label rather than a threshold, because the first attempt used
+one: after heavy smoothing no small muscle reaches the level a large one does,
+the small ones got no seeds, and the sternal pec flooded the whole chest.
+
+### What moved
+
+Right side (the left mirrors it within a few percent): sternal pec 898 → 676
+vertices, serratus 341 → 580, rectus abdominis 1,053 → 934, obliques 472 → 574,
+rectus femoris 559 → 404 but now running the length of the thigh, vastus
+lateralis 505 → 800, vastus medialis 1,060 → 415, adductors 483 → 988. Every
+selectable muscle still taps to itself in the app, 31 of 31.
+
+### Not changed
+
+The clavicular pec is left out of the chest group on purpose: nothing is
+sculpted between the two heads of the pec, so a flood there has no groove to
+stop in, and a trial moved that border by several centimetres on one side and
+not the other. Its band still runs up over the collarbones. The back, the arms
+and the calves were not touched; none of them looked wrong at the same scale.
