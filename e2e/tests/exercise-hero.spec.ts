@@ -69,11 +69,13 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
  * pull-up bar are low and wide (the pull-up bar the widest yet, about 2.3:1).
  * The leg press is close to square. The EZ bar is wider still (about 2.8:1,
  * the widest render in the set) and the exercise bike is the most portrait
- * yet (about 0.68:1). None of these shapes gets a special case:
- * `object-contain` on a box that only constrains width and max-height fits
- * any aspect without cropping it, by construction, so what is worth
- * asserting is that the fit still holds at the extremes rather than only at
- * the bench's own near-square ratio.
+ * yet (about 0.68:1). The chest press machine is portrait too (about
+ * 0.67:1, a tall two-post frame) and the trap bar is wide (about 1.94:1),
+ * a bar between two plates like the floor barbell. None of these shapes
+ * gets a special case: `object-contain` on a box that only constrains
+ * width and max-height fits any aspect without cropping it, by
+ * construction, so what is worth asserting is that the fit still holds at
+ * the extremes rather than only at the bench's own near-square ratio.
  */
 test('a portrait or a very wide render still fits without cropping', async ({ page }) => {
   const user = await createUser('hero-shapes', { onboarded: true });
@@ -93,6 +95,11 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['leg-extension', 'leg-curl-extension-hero'],
     ['back-extension', 'back-extension-hero'],
     ['incline-barbell-press', 'adjustable-bench-hero'],
+    ['hip-abduction-machine', 'abductor-machine-hero'],
+    ['hip-adduction-machine', 'adductor-machine-hero'],
+    ['machine-chest-press', 'chest-press-machine-hero'],
+    ['trap-bar-deadlift', 'trap-bar-hero'],
+    ['treadmill', 'treadmill-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);
