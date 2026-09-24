@@ -18,6 +18,9 @@ test-results/
 apps/web/dist-e2e/
 .vitest-cache/
 
+# --- Python bytecode, from the Blender tools importing each other ---
+__pycache__/
+
 # --- OS / editor noise ---
 .DS_Store
 Thumbs.db

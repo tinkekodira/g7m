@@ -32,6 +32,7 @@ import { Matrix3, Vector3, type Matrix4, type Object3D } from 'three';
 import type { MeshData } from './geometry/tube.js';
 import { parseBodyNode } from './node-names.js';
 import type { BodyPart } from './placeholder-body.js';
+import { parseRegionExtras, regionMapFrom, type RegionMap } from './region-map.js';
 
 /**
  * Every muscle in a loaded scene, in the order it appears.
@@ -40,7 +41,7 @@ import type { BodyPart } from './placeholder-body.js';
  * author left the parts under a rotated or scaled parent still arrives in the
  * frame the viewer expects. Ours has no transforms; the next one might.
  */
-export function partsFromObject(root: Object3D): BodyPart[] {
+export function partsFromObject(root: Object3D, map: RegionMap | null = null): BodyPart[] {
   root.updateMatrixWorld(true);
 
   const parts: BodyPart[] = [];
@@ -53,8 +54,10 @@ export function partsFromObject(root: Object3D): BodyPart[] {
     const mesh = meshDataFrom(object.geometry, object.matrixWorld);
     if (mesh === null) return;
 
+    const nodeName = object.name.trim().toLowerCase();
+    const index = map?.regions.get(nodeName);
     parts.push({
-      nodeName: object.name.trim().toLowerCase(),
+      nodeName,
       slug: node.slug,
       side: node.side,
       mesh,
@@ -62,6 +65,7 @@ export function partsFromObject(root: Object3D): BodyPart[] {
       // in this file at all (ADR-0045), and nothing here has to stand in for
       // them — they are not selectable on either body.
       deep: false,
+      ...(map === null || index === undefined ? {} : { region: { map, index } }),
     });
   });
 
@@ -248,6 +252,68 @@ export async function loadBodyParts(url: string): Promise<BodyPart[] | null> {
   const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
   const gltf = await new GLTFLoader().parseAsync(buffer, '');
 
-  const parts = partsFromObject(gltf.scene);
+  // The muscles' smooth outlines, if this model was built with them. A model
+  // without a map still loads and still selects; it highlights by piece.
+  const map = await readRegionMap(gltf.scene.userData, gltf.parser);
+
+  const parts = partsFromObject(gltf.scene, map);
   return parts.length > 0 ? parts : null;
+}
+
+/** The two things read from three's glTF parser, typed without its `any`. */
+interface GltfParser {
+  readonly json: unknown;
+  readonly getDependency: (type: 'bufferView', index: number) => Promise<ArrayBuffer>;
+}
+
+/**
+ * The region map inside a loaded GLB, decoded, or null if it has none.
+ *
+ * The image is referenced by no material — the viewer draws the colour itself
+ * — so three never loads it; it is found through the scene's extras and read
+ * straight out of the binary chunk.
+ *
+ * A map that is present and unreadable is null too, with a warning: the body
+ * still draws in its resting colour and a tap still selects. Losing the
+ * highlight's outline is better than losing the model.
+ */
+async function readRegionMap(
+  userData: Record<string, unknown>,
+  parser: GltfParser,
+): Promise<RegionMap | null> {
+  const extras = parseRegionExtras(userData['g7mRegions']);
+  if (extras === null) return null;
+
+  const images = (parser.json as { images?: unknown } | null)?.images;
+  const entry: unknown = Array.isArray(images) ? images[extras.image] : undefined;
+  const view = (entry as { bufferView?: unknown } | undefined)?.bufferView;
+  if (typeof view !== 'number') return null;
+
+  try {
+    const bytes = await parser.getDependency('bufferView', view);
+    return regionMapFrom(extras, await decodePng(bytes));
+  } catch (cause: unknown) {
+    console.warn('Could not read the muscle region map; drawing the body without it.', cause);
+    return null;
+  }
+}
+
+/**
+ * Decoded through an `<img>`, not `createImageBitmap`.
+ *
+ * The bitmap's options — no premultiplying, no colour conversion — are the
+ * part Safari has historically got wrong, and a region number moved by a
+ * colour conversion is a different muscle. An image uploaded to a texture
+ * whose colour space is none is passed through untouched on every engine.
+ */
+async function decodePng(bytes: ArrayBuffer): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

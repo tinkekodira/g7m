@@ -5565,3 +5565,103 @@ already-shipped batch). `3d-models/CLAUDE.md` needed no change: all five
 pieces were already finished and in `common/make_outputs.py`'s `SET` and
 `contact_sheet.png` before this work started; nothing about app integration
 touches the modelling brief.
+
+## ADR-0091 — A muscle's highlight is drawn from a map, not from its triangles
+
+**Status:** accepted · **Date:** 2026-09-24
+
+Tapping a muscle on the sculpted body lit it in the accent colour with an edge
+that was jagged and spiky — fur along the pec, stalactites under the abs.
+
+### Why it looked like that
+
+The sculpt is one welded skin, cut into a piece per muscle by giving each
+vertex the name of the nearest atlas muscle (ADR-0044, ADR-0045), and the
+highlight was that piece painted orange. **A piece is whole triangles**, so the
+edge of the highlight was a chain of triangle edges on a mesh decimated to
+120,000 of them, and every stray finger the nearest-muscle labelling left was
+reproduced exactly. No vertex colour, emissive or smoothing of the labels on
+their own could make a triangle edge a curve.
+
+### What draws it now
+
+The border is moved off the mesh and into a texture.
+
+1. **The labels become fields.** Each muscle's vertices start at 1 and every
+   other vertex at 0, and 30 rounds of averaging spread them across the
+   surface. A point belongs to whichever field is strongest there, so the
+   border — where the two strongest are equal — runs *through* triangles
+   rather than along their edges, and the fingers lose to the region around
+   them.
+2. **The body is unwrapped** (Smart UV Project, headless, in `split.py`), and
+   the fields are painted into a 2048² PNG: red is the region, green is the
+   **distance** to its edge, in texels.
+3. **The PNG travels inside the GLB**, found through the scene's extras.
+   One file keeps one content hash, one download and one cache entry, and a
+   rebuilt model can never arrive with the previous model's map.
+4. **The shader** reads the four texels around each pixel with `texelFetch`,
+   interpolates the signed distance for each region among them, and turns it
+   into coverage with `smoothstep` across one screen pixel, measured with
+   `fwidth`. The edge stays a curve at any zoom, softened by about a pixel
+   and no more.
+
+Everything else is what it was: the same `MeshStandardMaterial` with the same
+roughness, metalness and lights, and two lines of it replaced — where the
+diffuse colour comes from, and where the emissive does. The accent, the 0.42
+glow, the heat-map ramp and the camera are unchanged. **Taps are unchanged**:
+the pieces are still cut and still named `muscle_<slug>_<side>`, now from the
+smoothed regions, so a tap lands on a node, the node names a muscle, and every
+slug the app uses is the same. A tap within one triangle of a border can pick
+the neighbour, which is smaller than a fingertip.
+
+### Three things that had to be found by measuring
+
+- **Averaging neighbours equally smoothed the fields as a graph, not as a
+  surface.** On a decimated mesh the triangles are every shape and size, and
+  the borders zig-zagged from one triangle to the next however many rounds
+  were run: the mean turn between neighbouring border segments sat at 21° at
+  30 rounds and 20° at 80. Cotangent weights leave a linear field where it is,
+  and took it to 12°. Threshold dynamics (smooth, reassign, repeat) did not
+  move it further, which is how the remaining turning was shown to be the
+  outlines' own curvature rather than noise.
+- **Hundreds of UV islands are smaller than a texel.** They covered no texel
+  centre, the shader read empty texels there, and a highlighted muscle showed
+  pinpricks of bare skin. The rasteriser now also splats the texels around
+  each triangle's corners, midpoints and centre. A numpy copy of the shader
+  run over 1.44 million points on the model counts the empty reads: 2,054
+  before, 0 after.
+- **The map is drawn from the body split once more.** A border inside a
+  triangle is straight, so at full zoom the 7 mm segments showed their
+  corners. The fields are carried onto a four-times-finer copy and smoothed a
+  little at that scale before painting. The geometry that ships is untouched;
+  only the map gains the detail.
+
+### Cost
+
+The GLB goes from 2.24 MB to 3.79 MB (UVs, the seams they add, and a 726 KB
+PNG). The texture is 16 MB of GPU memory, with no mipmaps: the shader only
+ever fetches texels. Measured on the Learn screen under a 4× CPU throttle,
+old model against new: model on screen 1.21 s and 0.95 s, 143 fps against
+143 while orbiting, p95 frame 7.1 ms both, JS heap 23.0 MB against 26.4 MB.
+That is a desktop GPU; nobody has measured it on a phone yet.
+
+### What this does not fix
+
+The regions are the old labels, smoothed. Where the label transfer put a
+border in the wrong place, it is now a smooth border in the wrong place: the
+sternal pec runs down the side of the ribcage below its own crease, the
+rectus abdominis flares out to the hips where the obliques should be, and
+vastus medialis owns most of the front of the thigh. A seeded watershed on
+the sculpt's own grooves put the pec's lower edge exactly on the sculpted
+crease, and in the same run gave the lower abdomen to the groin and left the
+anterior deltoid with no geometry. Anatomy needs per-muscle control and is its
+own change.
+
+### The asset stays out of the repository
+
+The rebuilt GLB, and the map inside it, are derived from the licensed sculpt
+and are gitignored like the rest of `packages/anatomy/assets/licensed/`
+(ADR-0009). The repository carries the code that builds and draws them. A
+model built before this has no map, and the viewer draws it exactly as
+before, piece by piece — so a deploy that still fetches the old GLB is
+unchanged rather than broken.

@@ -39,6 +39,14 @@ export {
 } from './align.js';
 export { loadBodyParts, partsFromObject } from './model-source.js';
 export {
+  createRegionMaterial,
+  parseRegionExtras,
+  regionMapFrom,
+  type PartRegion,
+  type RegionLook,
+  type RegionMap,
+} from './region-map.js';
+export {
   buildTube,
   mergeMeshes,
   profileAt,
