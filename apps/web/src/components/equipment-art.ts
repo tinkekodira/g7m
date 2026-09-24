@@ -85,7 +85,10 @@ const BACK_EXTENSION: EquipmentArt = { icon: backExtensionIcon, hero: backExtens
 const ADJUSTABLE_BENCH: EquipmentArt = { icon: adjustableBenchIcon, hero: adjustableBenchHero };
 const ABDUCTOR_MACHINE: EquipmentArt = { icon: abductorMachineIcon, hero: abductorMachineHero };
 const ADDUCTOR_MACHINE: EquipmentArt = { icon: adductorMachineIcon, hero: adductorMachineHero };
-const CHEST_PRESS_MACHINE: EquipmentArt = { icon: chestPressMachineIcon, hero: chestPressMachineHero };
+const CHEST_PRESS_MACHINE: EquipmentArt = {
+  icon: chestPressMachineIcon,
+  hero: chestPressMachineHero,
+};
 const TRAP_BAR: EquipmentArt = { icon: trapBarIcon, hero: trapBarHero };
 const TREADMILL: EquipmentArt = { icon: treadmillIcon, hero: treadmillHero };
 
@@ -162,7 +165,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
 
-  'treadmill': TREADMILL,
+  treadmill: TREADMILL,
 
   // Two icons, one machine: same frame, pads and arrows swung the other way.
   'hip-abduction-machine': ABDUCTOR_MACHINE,
