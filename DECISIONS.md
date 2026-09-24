@@ -5482,3 +5482,86 @@ directly: with the 25 and the 15 deselected, 100 kg loads as two 20s a side
 (exactly, no shortfall) — not "20 + 20 + 10", which would total 120 kg. The
 app's arithmetic is the same greedy algorithm ADR-0081 already had tests
 for; only the plates it is allowed to reach for changed.
+
+---
+
+## ADR-0090 — Five more pieces wear the kit they need: abductor, adductor, chest press, trap bar, treadmill
+
+**Status:** accepted · **Date:** 2026-09-24 · **Phase:** 7
+
+**Builds on ADR-0083, ADR-0084, ADR-0085 and ADR-0087.** The abductor
+machine, the adductor machine, the chest press machine, the trap bar and the
+treadmill are the fourteenth through eighteenth keys into `equipment-art.ts`,
+made exactly the way the previous thirteen were — same container, same
+sizes, same hero treatment, no new CSS, no per-asset framing override (none
+exists to reach for; every render fits the existing `object-contain` box
+regardless of shape, same as every batch before this one).
+
+### Assets
+
+Same two-step pipeline as ADR-0084/0085/0087 (icon: plain downscale of the
+shadowless trimmed-square source to 168px PNG; hero: zero the alpha of every
+not-fully-opaque pixel, crop to the bbox of the fully-opaque pixels plus a
+50px pad, downscale to 1200px wide, encode WebP q82), run through a small
+Node/`sharp` script (not checked in, same as the previous three batches)
+against `sharp` in `apps/mobile/node_modules`. All five checked by eye before
+shipping: equipment fully in frame, no shadow fringe, title legible.
+
+The chest press machine is the most portrait render in the set yet (about
+0.67:1, a tall two-post frame) and the trap bar is wide (about 1.94:1),
+alongside the floor barbell and pull-up bar. The abductor and adductor
+machines are near-square (about 0.93:1 and 0.92:1). The treadmill, despite
+being the longest-for-its-height piece on the floor, crops to a near-square
+bbox (about 0.95:1) once its console posts are counted — the console rises
+about as tall as the deck runs long, so the opaque bounding box is not the
+shape the equipment itself reads as.
+
+Two icons come from one machine, per the doc's own note:
+`abductor/abductor_icon.png` (pads together, two arrows pointing OUT) and
+`adductor/adductor_icon.png` (pad arms swung wider, arrows pointing IN) were
+opened side by side and checked against `EQUIPMENT.md`'s own description
+before mapping, since the two folders differ by one letter. The folder names
+already matched what the renders showed — no swap needed.
+
+### The map, by `3d-models/EQUIPMENT.md`
+
+**Abductor machine** — `hip-abduction-machine` (1). **Adductor machine** —
+`hip-adduction-machine` (1). Both exercise slugs already existed, seeded by
+`20260917120000_add_hip_machines.sql` against `abductor-machine` /
+`adductor-machine` equipment rows; only the art was missing. **Chest press
+machine** — `machine-chest-press` (1); Pec Deck and Chest Dip stay
+unrendered, their own still-unmodelled stations. **Trap bar** —
+`trap-bar-deadlift` (1); Conventional Deadlift and Romanian Deadlift stay on
+`BARBELL`, unmoved. **Treadmill** — `treadmill` (1); the catalogue seeds one
+exercise covering running, walking and incline walking, distinguished at log
+time by the logged bout's speed and incline rather than by separate exercise
+rows, so one key covers all three.
+
+Two exercises named in the work item — a trap-bar shrug and a
+trap-bar-specific farmer's carry — are not in the exercise catalogue: the
+catalogue's only shrug (`barbell-shrug`) and only farmer's carry
+(`farmer-carry`) are seeded with `barbell` and `dumbbell` as their equipment,
+and neither has a trap-bar variant. Adding either would mean a new exercise
+migration, out of scope for an art-integration change — flagged to Milan
+rather than silently created or silently dropped.
+
+### Consequences
+
+Forty-eight exercises out of sixty-two now carry a render (forty-three after
+ADR-0087, plus the five this batch adds). Fourteen remain on the placeholder
+square: the calf raise machine (2), the seated row machine and the eight
+other one-off exercises in `EQUIPMENT.md`'s "Not modelled yet" section (9),
+the two bodyweight exercises, and `close-grip-bench-press` — still
+deliberately unmapped per ADR-0084's own judgment call. `exercise-icons.spec.ts`
+and `exercise-hero.spec.ts` each gained one row per new piece in their
+existing parametrised cases, keeping with ADR-0084's choice not to
+parametrise-rewrite the bench's own tests.
+
+`3d-models/EQUIPMENT.md` gained an **Integrated in app** note under each of
+the five sections, dated and citing this ADR, matching the convention ADR-0085
+and ADR-0087 started (though ADR-0087's own five pieces never got the note
+added at the time — left as-is here, not backfilled, since it is a separate,
+already-shipped batch). `3d-models/CLAUDE.md` needed no change: all five
+pieces were already finished and in `common/make_outputs.py`'s `SET` and
+`contact_sheet.png` before this work started; nothing about app integration
+touches the modelling brief.

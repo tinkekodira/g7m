@@ -24,6 +24,16 @@ import backExtensionIcon from '../assets/equipment/back-extension.png';
 import backExtensionHero from '../assets/equipment/back-extension-hero.webp';
 import adjustableBenchIcon from '../assets/equipment/adjustable-bench.png';
 import adjustableBenchHero from '../assets/equipment/adjustable-bench-hero.webp';
+import abductorMachineIcon from '../assets/equipment/abductor-machine.png';
+import abductorMachineHero from '../assets/equipment/abductor-machine-hero.webp';
+import adductorMachineIcon from '../assets/equipment/adductor-machine.png';
+import adductorMachineHero from '../assets/equipment/adductor-machine-hero.webp';
+import chestPressMachineIcon from '../assets/equipment/chest-press-machine.png';
+import chestPressMachineHero from '../assets/equipment/chest-press-machine-hero.webp';
+import trapBarIcon from '../assets/equipment/trap-bar.png';
+import trapBarHero from '../assets/equipment/trap-bar-hero.webp';
+import treadmillIcon from '../assets/equipment/treadmill.png';
+import treadmillHero from '../assets/equipment/treadmill-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -73,6 +83,14 @@ const EXERCISE_BIKE: EquipmentArt = { icon: exerciseBikeIcon, hero: exerciseBike
 const LEG_CURL_EXTENSION: EquipmentArt = { icon: legCurlExtensionIcon, hero: legCurlExtensionHero };
 const BACK_EXTENSION: EquipmentArt = { icon: backExtensionIcon, hero: backExtensionHero };
 const ADJUSTABLE_BENCH: EquipmentArt = { icon: adjustableBenchIcon, hero: adjustableBenchHero };
+const ABDUCTOR_MACHINE: EquipmentArt = { icon: abductorMachineIcon, hero: abductorMachineHero };
+const ADDUCTOR_MACHINE: EquipmentArt = { icon: adductorMachineIcon, hero: adductorMachineHero };
+const CHEST_PRESS_MACHINE: EquipmentArt = {
+  icon: chestPressMachineIcon,
+  hero: chestPressMachineHero,
+};
+const TRAP_BAR: EquipmentArt = { icon: trapBarIcon, hero: trapBarHero };
+const TREADMILL: EquipmentArt = { icon: treadmillIcon, hero: treadmillHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -89,6 +107,10 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'conventional-deadlift': BARBELL,
   'romanian-deadlift': BARBELL,
   'barbell-hip-thrust': BARBELL,
+
+  // A chrome frame fills the span between the plates where the barbell has
+  // one thin line — its own render, not a barbell variant.
+  'trap-bar-deadlift': TRAP_BAR,
 
   'lat-pulldown': LAT_PULLDOWN,
 
@@ -140,6 +162,14 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   // needs, and the bench is secondary. This is the one exercise whose
   // distinguishing station is the bench itself.
   'incline-barbell-press': ADJUSTABLE_BENCH,
+
+  'machine-chest-press': CHEST_PRESS_MACHINE,
+
+  treadmill: TREADMILL,
+
+  // Two icons, one machine: same frame, pads and arrows swung the other way.
+  'hip-abduction-machine': ABDUCTOR_MACHINE,
+  'hip-adduction-machine': ADDUCTOR_MACHINE,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */
