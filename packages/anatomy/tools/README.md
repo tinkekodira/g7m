@@ -87,8 +87,24 @@ blender --background --factory-startup --python packages/anatomy/tools/split.py 
 ```
 
 Cuts the labelled skin into one object per muscle, named the way
-`node-names.ts` says, and writes a Draco-compressed GLB. Sixty-four objects,
-120,000 triangles, **438 KB**.
+`node-names.ts` says, and writes the GLB: seventy objects (sixty-four muscle
+parts and six of bare skin), 120,000 triangles, about **3.8 MB** uncompressed.
+
+It also draws the **region map** the highlight comes from (ADR-0091, and
+`regions.py` for the format). The body is unwrapped, the labels are smoothed
+into fields whose borders run through triangles rather than along them, and a
+2048² PNG of region and distance-to-edge is embedded in the GLB. The pieces
+are cut from the same smoothed regions, so a tap and a highlight agree to
+within a triangle. Two knobs, both environment variables:
+
+- `G7M_REGION_SMOOTHING` (default 30) — rounds of cotangent-weighted
+  averaging. More makes rounder regions and starts to eat narrow ones.
+- `G7M_REGION_SIZE` (default 2048) — the map's side, in texels.
+
+The map is also written beside the GLB as `<name>_regions.png`, for looking
+at. It is never shipped on its own. Smoothing makes a border smooth, not
+right: a border the labels put in the wrong place stays in the wrong place, and
+is fixed in pass two.
 
 Run `pnpm model:label` again afterwards: it checks the GLB against the atlas
 with `checkModelContract` and fails if a muscle that reaches the skin has no

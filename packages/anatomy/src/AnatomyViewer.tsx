@@ -1,10 +1,14 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
-import { BufferAttribute, BufferGeometry, Color, type Mesh } from 'three';
+import { BufferAttribute, BufferGeometry, Color, type Material, type Mesh } from 'three';
 import type { MeshData } from './geometry/tube.js';
 import { bodyForms, type BodyPart } from './placeholder-body.js';
 import { PALETTE } from './palette.js';
+import { createRegionMaterial, type RegionLook, type RegionMap } from './region-map.js';
+
+/** How strongly a selected muscle glows in its own colour. */
+const SELECTED_GLOW = 0.42;
 
 /**
  * The 3D model. Spin it, tap a muscle.
@@ -95,6 +99,39 @@ export function AnatomyViewer({
   const selectable = useMemo(() => new Set(selectableSlugs), [selectableSlugs]);
   const forms = useMemo(() => bodyForms(), []);
 
+  // A sculpted body built with a region map is coloured from the map, so its
+  // highlight has the muscle's outline rather than its triangles' (see
+  // `region-map.ts`). Every part of one model shares the one map.
+  const regionMap = useMemo(
+    () => parts.find((part) => part.region !== undefined)?.region?.map ?? null,
+    [parts],
+  );
+  const looks = useMemo(() => {
+    const byRegion = new Map<number, RegionLook>();
+    for (const part of parts) {
+      if (part.region === undefined) continue;
+      const isSelectable = selectable.has(part.slug);
+      const isSelected = part.slug === selectedSlug;
+      byRegion.set(part.region.index, {
+        color: colourFor({ part, isSelectable, isSelected, mode, intensity, closedSurface }),
+        glow: isSelected ? SELECTED_GLOW : 0,
+      });
+    }
+    return byRegion;
+  }, [parts, selectable, selectedSlug, mode, intensity, closedSurface]);
+
+  const clickFor = (part: BodyPart) => {
+    if (!selectable.has(part.slug) || !interactive) return undefined;
+    const isSelected = part.slug === selectedSlug;
+    return (event: { stopPropagation: () => void }) => {
+      // Otherwise the click passes through to every mesh behind it and the
+      // last one wins, which from the front means selecting something on the
+      // back.
+      event.stopPropagation();
+      onSelect(isSelected ? null : part.slug);
+    };
+  };
+
   return (
     <div className={className}>
       <Canvas
@@ -146,7 +183,17 @@ export function AnatomyViewer({
             />
           ))}
 
+        {regionMap !== null && (
+          <RegionBody
+            map={regionMap}
+            looks={looks}
+            parts={parts.filter((part) => part.region !== undefined)}
+            clickFor={clickFor}
+          />
+        )}
+
         {parts.map((part) => {
+          if (regionMap !== null && part.region !== undefined) return null;
           const isSelectable = selectable.has(part.slug);
           const isSelected = part.slug === selectedSlug;
           return (
@@ -159,17 +206,7 @@ export function AnatomyViewer({
               tendonColor={closedSurface ? PALETTE.skin : PALETTE.tendon}
               roughness={0.52}
               emissive={isSelected ? PALETTE.selected : undefined}
-              onClick={
-                isSelectable && interactive
-                  ? (event) => {
-                      // Otherwise the click passes through to every mesh
-                      // behind it and the last one wins, which from the front
-                      // means selecting something on the back.
-                      event.stopPropagation();
-                      onSelect(isSelected ? null : part.slug);
-                    }
-                  : undefined
-              }
+              onClick={clickFor(part)}
             />
           );
         })}
@@ -301,9 +338,84 @@ function GeneratedMesh({
         metalness={0.02}
         {...(emissive === undefined
           ? {}
-          : { emissive: new Color(emissive), emissiveIntensity: 0.42 })}
+          : { emissive: new Color(emissive), emissiveIntensity: SELECTED_GLOW })}
       />
     </mesh>
+  );
+}
+
+/**
+ * A sculpted body coloured from its region map: one material, every part.
+ *
+ * The parts are still separate meshes, because they are what a tap lands on
+ * and what names the muscle. They share the material because the colour is
+ * no longer theirs — the map decides it per pixel, and a highlight's smooth
+ * edge crosses into its neighbour's triangles.
+ */
+function RegionBody({
+  map,
+  looks,
+  parts,
+  clickFor,
+}: {
+  readonly map: RegionMap;
+  readonly looks: ReadonlyMap<number, RegionLook>;
+  readonly parts: readonly BodyPart[];
+  readonly clickFor: (
+    part: BodyPart,
+  ) => ((event: { stopPropagation: () => void }) => void) | undefined;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const skin = useMemo(() => createRegionMaterial(map), [map]);
+
+  useEffect(
+    () => () => {
+      skin.dispose();
+    },
+    [skin],
+  );
+
+  // A recolour is a 256-entry table upload; the geometry is never touched.
+  useLayoutEffect(() => {
+    skin.paint(looks, PALETTE.skin);
+    invalidate();
+  }, [skin, looks, invalidate]);
+
+  return (
+    <>
+      {parts.map((part) => (
+        <RegionMesh
+          key={part.nodeName}
+          mesh={part.mesh}
+          material={skin.material}
+          onClick={clickFor(part)}
+        />
+      ))}
+    </>
+  );
+}
+
+function RegionMesh({
+  mesh,
+  material,
+  onClick,
+}: {
+  readonly mesh: MeshData;
+  readonly material: Material;
+  readonly onClick?: ((event: { stopPropagation: () => void }) => void) | undefined;
+}) {
+  const geometry = useMemo(() => {
+    const built = new BufferGeometry();
+    built.setAttribute('position', new BufferAttribute(mesh.positions, 3));
+    built.setAttribute('normal', new BufferAttribute(mesh.normals, 3));
+    built.setAttribute('uv', new BufferAttribute(mesh.uvs, 2));
+    built.setIndex(new BufferAttribute(mesh.indices, 1));
+    built.computeBoundingSphere();
+    return built;
+  }, [mesh]);
+
+  return (
+    <mesh geometry={geometry} material={material} {...(onClick === undefined ? {} : { onClick })} />
   );
 }
 

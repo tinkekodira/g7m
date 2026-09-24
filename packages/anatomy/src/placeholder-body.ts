@@ -29,6 +29,7 @@ import { FORMS, MUSCLES, type FormSpec, type MuscleSpec } from './atlas.js';
 import { buildTube, mergeMeshes, type MeshData, type TubeProfile } from './geometry/tube.js';
 import { distance, lerp, mirrorX, type Vec3 } from './geometry/vec3.js';
 import { meshNodeName, skinNodeName, type Side } from './node-names.js';
+import type { PartRegion } from './region-map.js';
 
 export interface BodyPart {
   readonly nodeName: string;
@@ -43,6 +44,14 @@ export interface BodyPart {
    * and would otherwise have to reach back into `MUSCLES` to ask.
    */
   readonly deep: boolean;
+  /**
+   * Where the part is in the model's region map, when it has one.
+   *
+   * Only a sculpted body carries a map. With one, the viewer colours the skin
+   * from the map rather than from the part — see `region-map.ts` — and the
+   * part is only what a tap lands on.
+   */
+  readonly region?: PartRegion;
 }
 
 export interface BodyForm {
