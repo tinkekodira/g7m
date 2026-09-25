@@ -5777,3 +5777,59 @@ The serratus is 533 and 522 vertices, all on the ribcage. Checked in the app
 by tapping it through the viewer camera: the highlight is two patches on the
 sides of the ribcage and nothing on the arms. As with ADR-0092, lifters see
 it only once the rebuilt GLB is uploaded behind `ANATOMY_MODEL_URL`.
+
+## ADR-0094 — The upper chest is drawn from the collarbone
+
+**Status:** accepted · **Date:** 2026-09-25
+
+### Context
+
+ADR-0092 left the clavicular pec as the transfer had it, because nothing is
+sculpted between the two heads of the pec for a flood to follow. That label
+was wrong in three ways:
+
+- it ran up over the collarbone into the hollow above it, which on the Learn
+  screen read as the collarbones being highlighted;
+- it ran down the sternum in a V to the level of the nipples, where the
+  sternal head starts;
+- at the shoulder it sat above the front delt, past the deltopectoral groove,
+  on skin the deltoid owns.
+
+### Decision
+
+A fourth step in `shape.py`, per side, after the chest flood:
+
+1. **The collarbone is a line.** Its ridge is the least concave row on the
+   front of the chest. Measured between the sternal end (|x| 0.025) and the
+   acromion (0.14), it is `y = 1.470 + 0.21|x|`, and the two sides agree to
+   2 mm. Pec skin more than 4 mm above it goes to the neighbours that are not
+   pec (the neck, the upper traps, the delts), grown in from the edge as for
+   the serratus (ADR-0093): 27 vertices a side.
+2. **The clavicular head is a fan below it.** From |x| 0.02 outward, 1 cm deep
+   at the sternal end and 7 mm deeper for every centimetre towards the arm.
+   That is about 10 cm deep at the arm and a point at the sternum, the shape
+   of the head in any anatomy plate. Every other pec vertex is
+   sternal.
+3. **Its border with the front delt is flooded.** The deltopectoral groove
+   *is* sculpted, and a watershed confined to those two muscles puts the
+   border in it. The seeds are the fan's inner part and the front delt's outer
+   half. 49 and 51 vertices crossed.
+
+### Rejected
+
+- **A flood between the two heads.** ADR-0092's trial moved that border by
+  several centimetres on one side and not the other. There is no groove.
+- **Detecting the ridge at build time.** It would be the same line, derived
+  every run from a body that does not change, with a fit that could fail
+  silently if the sculpt did. `CLAVICLE` is measured once and written down,
+  like the thigh's seed positions.
+
+### Consequences
+
+The clavicular pec goes from 492 and 475 vertices to 231 and 239. The sternal
+pec takes the midline and grows to 923 and 891. The front delt is 129 and 131,
+now reaching up to the outer collarbone. Checked in the app by tapping each
+through the viewer camera: the upper chest is a fan under each inner
+collarbone, the mid and lower chest is the rest of the pec, and the front delt
+is the front of the shoulder, meeting the pec at the groove. As before,
+lifters see it once the rebuilt GLB is uploaded.

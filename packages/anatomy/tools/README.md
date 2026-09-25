@@ -94,16 +94,23 @@ borders are centimetres out. The sculpt already has the right ones, as
 grooves, so named groups of neighbouring muscles redraw their shared borders
 along them: seeds where each muscle certainly is, a watershed on concavity
 between them, **confined to the group's own territory on one side of the
-body** (ADR-0092). Two groups today:
+body** (ADR-0092). Three today:
 
 - **Chest and abdomen**: sternal pec, serratus, obliques, rectus abdominis.
   Seeded from each label's core, with the rectus held to the midline column,
   the pec held above its crease, and the serratus given the side of the
-  ribcage. The clavicular pec stays out, since nothing is sculpted between the
-  two heads of the pec for a border to follow. Afterwards the serratus keeps
+  ribcage. The clavicular pec stays out of the flood, since nothing is
+  sculpted between the two heads of the pec for a border to follow. Afterwards
+  the serratus keeps
   only its ribcage piece: the transfer had also named a patch on the inner
   upper arm, which faces it across the armpit, and no seed can flood there to
   take it back. That patch goes to the arm muscles around it (ADR-0093).
+- **The two heads of the pec**, drawn rather than flooded (ADR-0094). Nothing
+  of the pec is left above the collarbone's ridge (`CLAVICLE`); the
+  clavicular head is the fan below the ridge (`CLAVICULAR_FAN`), from a point
+  at the sternal end to about 10 cm deep at the arm; and its border
+  with the front delt is flooded to the deltopectoral groove, which is
+  sculpted.
 - **Front of the thigh**: rectus femoris, vastus lateralis, vastus medialis,
   adductors. Seeded by position around the thigh, because here the labels
   themselves were what was wrong.
