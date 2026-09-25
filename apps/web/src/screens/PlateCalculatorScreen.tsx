@@ -145,13 +145,6 @@ export function PlateCalculatorScreen() {
         </p>
       )}
 
-      <p className="pb-4 text-xs text-muted">
-        One end is drawn and mirrored; the other is the same. The plates are drawn to one shared
-        cartoon scale rather than their real sizes, stacked the way they go on — biggest against the
-        collar, small change outside. The collar is shown for shape; it doesn&rsquo;t add to the
-        weight.
-      </p>
-
       <AvailablePlates unit={unit} />
     </main>
   );
