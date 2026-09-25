@@ -100,7 +100,10 @@ body** (ADR-0092). Two groups today:
   Seeded from each label's core, with the rectus held to the midline column,
   the pec held above its crease, and the serratus given the side of the
   ribcage. The clavicular pec stays out, since nothing is sculpted between the
-  two heads of the pec for a border to follow.
+  two heads of the pec for a border to follow. Afterwards the serratus keeps
+  only its ribcage piece: the transfer had also named a patch on the inner
+  upper arm, which faces it across the armpit, and no seed can flood there to
+  take it back. That patch goes to the arm muscles around it (ADR-0093).
 - **Front of the thigh**: rectus femoris, vastus lateralis, vastus medialis,
   adductors. Seeded by position around the thigh, because here the labels
   themselves were what was wrong.
