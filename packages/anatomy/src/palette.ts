@@ -25,6 +25,18 @@
  */
 export const RESTING_SKIN = '#6f6058';
 
+/**
+ * The heat map's hot end, least trained first.
+ *
+ * Yellow to red, getting more saturated as it goes, rather than the old run
+ * of browns into a peach. Those sat within a few shades of the skin they were
+ * painted on, so the figure read as one warm body with smudges instead of a
+ * map: which muscles got the work was there, but you had to look for it. Now
+ * a lightly trained muscle is a dull yellow, clearly not skin, and the
+ * hardest-worked are a red that nothing else on the screen uses.
+ */
+const HOT = ['#bfa45a', '#e0b43c', '#ee8a2c', '#ec5226', '#e3161d'] as const;
+
 export const PALETTE = {
   /** Resting muscle. Deep enough that the selection has somewhere to go. */
   muscle: '#a3453a',
@@ -37,8 +49,8 @@ export const PALETTE = {
   bone: '#ded4bf',
   /** The bulk under the muscles, so gaps show body rather than background. */
   core: '#6d4a41',
-  /** Heat map, cold to hot. */
-  heat: ['#5c4a45', '#8a4a3c', '#bd5a3f', '#e2725b', '#f6b06a'] as const,
+  /** Heat map, cold to hot. The hot steps are `HOT`, from the untrained colour. */
+  heat: ['#5c4a45', ...HOT] as const,
 
   /**
    * The same three colours again, for a sculpted skin.
@@ -53,8 +65,34 @@ export const PALETTE = {
    * colours.
    */
   skin: RESTING_SKIN,
-  skinHeat: [RESTING_SKIN, '#946a52', '#b8774b', '#d9854e', '#f2a463'] as const,
+  skinHeat: [RESTING_SKIN, ...HOT] as const,
 };
+
+/**
+ * The value below which a muscle counts as untrained and stays skin.
+ *
+ * Stabilisers are credited a sliver of every heavy lift (`volumeByMuscle`),
+ * so after a month of squats the abs carry a few percent of the peak. Painting that yellow would light the whole figure and leave nothing
+ * grey to read against.
+ */
+export const HEAT_FLOOR = 0.05;
+
+/**
+ * The colour for a muscle's share of the hardest-worked one's volume.
+ *
+ * Anything trained gets a hot colour, however little: rounding to the nearest
+ * step used to send everything under an eighth of the peak back to skin, so a
+ * muscle somebody did work read exactly like one they never touched. The rest
+ * of the range is split evenly across the hot steps, and only the top fifth
+ * is the full red.
+ */
+export function heatColour(value: number, closedSurface: boolean): string {
+  const ramp = heatRampFor(closedSurface);
+  if (!(value >= HEAT_FLOOR)) return ramp[0] ?? RESTING_SKIN;
+  const hot = ramp.length - 1;
+  const step = Math.min(hot, 1 + Math.floor(Math.min(1, value) * hot));
+  return ramp[step] ?? RESTING_SKIN;
+}
 
 /**
  * The colours a heat map runs through, coldest first, for a legend drawn

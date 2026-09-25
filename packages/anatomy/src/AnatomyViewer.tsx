@@ -4,7 +4,7 @@ import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { BufferAttribute, BufferGeometry, Color, type Material, type Mesh } from 'three';
 import type { MeshData } from './geometry/tube.js';
 import { bodyForms, type BodyPart } from './placeholder-body.js';
-import { PALETTE } from './palette.js';
+import { PALETTE, heatColour } from './palette.js';
 import { createRegionMaterial, type RegionLook, type RegionMap } from './region-map.js';
 
 /** How strongly a selected muscle glows in its own colour. */
@@ -461,11 +461,7 @@ function colourFor({
     return mode === 'heatmap' ? (ramp[0] ?? PALETTE.skin) : PALETTE.skin;
   }
 
-  if (mode === 'heatmap') {
-    const value = intensity?.get(part.slug) ?? 0;
-    const step = Math.min(ramp.length - 1, Math.max(0, Math.round(value * (ramp.length - 1))));
-    return ramp[step] ?? PALETTE.inert;
-  }
+  if (mode === 'heatmap') return heatColour(intensity?.get(part.slug) ?? 0, closedSurface);
 
   return closedSurface ? PALETTE.skin : PALETTE.muscle;
 }
