@@ -12,7 +12,13 @@
  * that a year of training is a few thousand rows, and the alternative is the
  * same rules written twice in two languages, drifting.
  */
-import { isCardioKind, type HistoricalSet, type LoggedBout, type MuscleShare } from '@g7m/core';
+import {
+  isCardioKind,
+  type HistoricalSet,
+  type LoggedBout,
+  type MuscleShare,
+  type PrimaryWork,
+} from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -79,6 +85,8 @@ export interface SessionSummary {
    */
   readonly firstSetAt: Date | null;
   readonly lastSetAt: Date | null;
+  /** What the sets trained, for `workoutTitle` to name a workout nobody named. */
+  readonly work: readonly PrimaryWork[];
 }
 
 function toHistoricalSet(row: RawRow): HistoricalSet {
@@ -266,6 +274,7 @@ export class HistoryRepository {
         LIMIT ?`,
       [userId, bound],
     );
+    const work = await this.primaryWork();
 
     return rows.map((row) => ({
       sessionId: readString(row, 'session_id', ''),
@@ -279,7 +288,57 @@ export class HistoryRepository {
       source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
+      work: work.get(readString(row, 'session_id', '')) ?? [],
     }));
+  }
+
+  /**
+   * Each workout's counted sets per exercise, against every primary mover of
+   * that exercise.
+   *
+   * One row per set count and muscle, not the split: how a set is shared
+   * between two quad heads is `workoutTitle`'s decision, and it is tested
+   * there. Warm-ups are left out for the reason they are left out of the set
+   * count, and cardio has no primary movers to join to.
+   *
+   * Every workout ever, or one. The history list needs all of them and a
+   * workout's own page needs its own.
+   */
+  async primaryWork(sessionId?: string): Promise<Map<string, PrimaryWork[]>> {
+    const { userId } = resolveContext(this.context);
+    const params: SqlValue[] = [userId];
+    if (sessionId !== undefined) params.push(sessionId);
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT se.session_id, se.exercise_id, m.slug AS muscle, mg.slug AS muscle_group,
+              COUNT(*) AS sets
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
+         JOIN exercise_muscles em ON em.exercise_id = se.exercise_id AND em.role = 'primary'
+         JOIN muscles m ON m.id = em.muscle_id
+         JOIN muscle_groups mg ON mg.id = m.muscle_group_id
+        WHERE ws.user_id = ?
+          ${sessionId === undefined ? '' : 'AND ws.id = ?'}
+          AND ss.is_completed = 1
+          AND ss.set_type <> 'warmup'
+        GROUP BY se.session_id, se.exercise_id, m.slug, mg.slug`,
+      params,
+    );
+
+    const bySession = new Map<string, PrimaryWork[]>();
+    for (const row of rows) {
+      const session = readString(row, 'session_id', '');
+      bySession.set(session, [
+        ...(bySession.get(session) ?? []),
+        {
+          exerciseId: readString(row, 'exercise_id', ''),
+          muscle: readString(row, 'muscle', ''),
+          group: readString(row, 'muscle_group', ''),
+          sets: readNumber(row, 'sets', 0),
+        },
+      ]);
+    }
+    return bySession;
   }
 
   /**

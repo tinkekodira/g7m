@@ -152,7 +152,9 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
   if (todaysSession === undefined) throw new Error('The new workout never reached the server');
 
   await page.goto(`/#/progress/session/${todaysSession.id}`);
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  // The header names what was trained, not when — a single bench set names
+  // it "Push day (chest focused)"; the date is in the stats card below.
+  await expect(page.getByRole('heading', { name: 'Push day (chest focused)' })).toBeVisible();
 
   page.on('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: /Delete workout/ }).click();

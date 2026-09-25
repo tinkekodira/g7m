@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import { finishWorkout, logSet, openTab, signIn, startWith } from './support/app.js';
+import {
+  finishWorkout,
+  logSet,
+  openTab,
+  recentWorkoutLink,
+  signIn,
+  startWith,
+} from './support/app.js';
 
 /**
  * The hot path: a workout, logged set by set, arriving on the server.
@@ -24,7 +31,7 @@ test('a logged workout reaches the server and shows up in Progress', async ({ pa
   // On the device: the finished workout is in Progress.
   await openTab(page, 'Progress');
   await expect(page.getByText('Recent workouts')).toBeVisible();
-  await expect(page.getByRole('link', { name: /Workout/ }).first()).toBeVisible();
+  await expect(recentWorkoutLink(page)).toBeVisible();
 
   // On the server: both sets, completed, owned by this user.
   const sets = await eventually(
