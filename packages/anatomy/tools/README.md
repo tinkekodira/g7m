@@ -94,7 +94,7 @@ borders are centimetres out. The sculpt already has the right ones, as
 grooves, so named groups of neighbouring muscles redraw their shared borders
 along them: seeds where each muscle certainly is, a watershed on concavity
 between them, **confined to the group's own territory on one side of the
-body** (ADR-0092). Three today:
+body** (ADR-0092). Several today:
 
 - **Chest and abdomen**: sternal pec, serratus, obliques, rectus abdominis.
   Seeded from each label's core, with the rectus held to the midline column,
@@ -111,6 +111,12 @@ body** (ADR-0092). Three today:
   at the sternal end to about 10 cm deep at the arm; and its border
   with the front delt is flooded to the deltopectoral groove, which is
   sculpted.
+- **The back of the thigh, the forearm and the lower back** (ADR-0095). The
+  hamstrings split down the back line, outer half biceps femoris and inner
+  half semitendinosus. The forearm is divided by angle around it
+  (`BRACHIORADIALIS`, `ULNA`), with anything past the wrist given to the
+  hand. The lower back floods between the erector spinae, the lats and the
+  lower traps, seeded by position.
 - **Front of the thigh**: rectus femoris, vastus lateralis, vastus medialis,
   adductors. Seeded by position around the thigh, because here the labels
   themselves were what was wrong.

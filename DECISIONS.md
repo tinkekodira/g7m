@@ -5833,3 +5833,56 @@ through the viewer camera: the upper chest is a fan under each inner
 collarbone, the mid and lower chest is the rest of the pec, and the front delt
 is the front of the shoulder, meeting the pec at the groove. As before,
 lifters see it once the rebuilt GLB is uploaded.
+
+## ADR-0095 — The hamstrings, the forearm and the lower back
+
+**Status:** accepted · **Date:** 2026-09-25
+
+### Context
+
+An audit of every selectable muscle, each lit alone, front and back, found
+three places where the label transfer had the proportions wrong:
+
+- **Hamstrings.** Biceps femoris covered almost the whole back of the thigh
+  (565 vertices on the right). Semitendinosus was a patch under the buttock
+  (221).
+- **Forearm.** Brachioradialis covered about 120° of the forearm and ran down
+  onto the thumb (833). The wrist flexors were a strip (182).
+- **Lower back.** The erector spinae was a square from the sacrum up to the
+  shoulder blades, and the lats two strips beside it.
+
+The glute medius looked like a sliver in those flat views, but it is on the
+side of the hip between y 0.97 and 1.06, which is where it belongs. It was
+left alone.
+
+### Decision
+
+Three more per-side steps in `shape.py`:
+
+- **Hamstrings, split down the back line.** Using the thigh's own leaning
+  axis, the outer half is biceps femoris and the inner half semitendinosus.
+- **Forearm, by angle.** The arms hang thumb-forward. Brachioradialis runs
+  from the groove on its inner edge (−15°) to 60° at the elbow, narrowing to
+  30° at the wrist. The flexors run from there round the inside to the ulna
+  (−150°), and the extensors take the rest. Brachioradialis skin past the
+  wrist goes to the hand.
+- **Lower back, flooded.** The erector columns' outer grooves are sculpted,
+  so a watershed confined to the erectors, the lats and the lower traps
+  draws it. It is seeded low beside the spine, out on the flank, and from the
+  lower traps' own core.
+
+### Rejected
+
+- **Floods for the hamstrings and the forearm.** Tried first. With no groove
+  between the hamstrings, the outer one flooded a band across the top of the
+  inner. Brachioradialis stopped at the extensors' far groove instead of its
+  own and kept 120° of the forearm.
+
+### Consequences
+
+Right side, the left within a few percent: biceps femoris 565 → 390 and
+semitendinosus 221 → 396; brachioradialis 833 → 420, flexors 182 → 735,
+extensors 1,124 → 984; erector spinae 362 → 253, lats 470 → 491, lower traps
+143 → 231. Each was tapped in the app, front or back, and opened its own
+panel. Brachioradialis still fills much of the forearm seen from straight in
+front, because that is the side facing the camera in this pose.

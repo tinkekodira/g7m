@@ -57,6 +57,16 @@ CLAVICLE = (1.470, 0.21)
 # inner collarbone to the arm, so it deepens as it goes.
 CLAVICULAR_FAN = (0.02, 0.01, 0.7)
 
+# The forearm, between the elbow crease and the wrist, measured from where the
+# biceps stops (y 1.207) and the flexors and extensors stop (0.99).
+ELBOW, WRIST = 1.19, 1.0
+# Brachioradialis in degrees around the forearm. The arms hang thumb-forward,
+# so it runs down the front: from the groove on its inner edge (-15) to 60 at
+# the elbow, narrowing to 30 at the wrist, where it is tendon. Flexors from
+# there round the inside to the ulna at -150; extensors the rest.
+BRACHIORADIALIS = (-15.0, 60.0, 30.0)
+ULNA = -150.0
+
 
 def vertex_normals(verts: np.ndarray, tris: np.ndarray) -> np.ndarray:
     face = np.cross(verts[tris[:, 1]] - verts[tris[:, 0]], verts[tris[:, 2]] - verts[tris[:, 0]])
@@ -188,12 +198,12 @@ def hand_over(labels: np.ndarray, stray: np.ndarray, near, refuse: tuple[int, ..
             pending.discard(v)
 
 
-def thigh_frame(verts: np.ndarray, territory: np.ndarray, lateral: float) -> tuple[np.ndarray, np.ndarray]:
-    """Height and angle around the thigh for every vertex.
+def limb_frame(verts: np.ndarray, territory: np.ndarray, lateral: float) -> tuple[np.ndarray, np.ndarray]:
+    """Height and angle around a limb for every vertex.
 
-    The legs stand apart, so the thigh's axis leans; its centre is taken slice
-    by slice. Angle 0 faces forward and positive turns towards the outside of
-    this leg, so one set of numbers places the seeds on both legs.
+    Limbs lean in the A-pose, so the axis is the territory's centre slice by
+    slice. Angle 0 faces forward and positive turns towards the outside of
+    this limb, so one set of numbers places the seeds on both sides.
     """
     y = verts[:, 1]
     pts = verts[territory]
@@ -306,12 +316,61 @@ def main() -> None:
         moved = flood(labels, seeds, np.isin(labels, (clavicular, deltoid)), height, near)
         print(f'UPPER CHEST {side}: {len(above)} vertices off the collarbone, {moved} across the groove')
 
+        # The back of the thigh (ADR-0095). The transfer gave the outer
+        # hamstring almost all of it and the inner one a patch under the
+        # buttock. Nothing sculpted runs between the two, so they split down
+        # the back line: outer half biceps femoris, inner half semitendinosus.
+        outer = index[f'muscle_biceps-femoris_{side}']
+        inner = index[f'muscle_semitendinosus_{side}']
+        leg = np.isin(labels, [index[f'muscle_{m}_{side}'] for m in (*THIGH, 'biceps-femoris', 'semitendinosus')])
+        _, angle = limb_frame(verts, leg, lateral)
+        back = np.isin(labels, (outer, inner))
+        labels[back & (angle >= 0)] = outer
+        labels[back & (angle < 0)] = inner
+        print(f'HAMSTRINGS {side}: {int((labels == outer).sum())} outer, {int((labels == inner).sum())} inner')
+
+        # The forearm (ADR-0095). Brachioradialis had the whole front and the
+        # thumb, the flexors a strip. The grooves either side of it are faint
+        # and a flood stopped at whichever it met first, so it is drawn by
+        # angle, and everything past the wrist goes to the hand.
+        radial = index[f'muscle_brachioradialis_{side}']
+        flexors = index[f'muscle_wrist-flexors_{side}']
+        extensors = index[f'muscle_wrist-extensors_{side}']
+        forearm = np.isin(labels, (radial, flexors, extensors)) & (y < ELBOW)
+        _, angle = limb_frame(verts, forearm, lateral)
+        low, elbow_edge, wrist_edge = BRACHIORADIALIS
+        along = np.clip((y - WRIST) / (ELBOW - WRIST), 0.0, 1.0)
+        edge = wrist_edge + (elbow_edge - wrist_edge) * along
+        labels[forearm] = extensors
+        labels[forearm & (angle < low) & (angle >= ULNA)] = flexors
+        labels[forearm & (angle >= low) & (angle <= edge)] = radial
+        thumb = np.where((labels == radial) & (y < WRIST - 0.01))[0]
+        hand_over(labels, thumb, near, refuse=(radial,))
+        print(f'FOREARM {side}: {int((labels == radial).sum())} brachioradialis, {len(thumb)} off the thumb')
+
+        # The lower back (ADR-0095). The erector spinae was a square from the
+        # sacrum to the shoulder blades and the lats two strips beside it.
+        # The columns' outer grooves are sculpted, so this one floods: the
+        # erectors seeded low beside the spine, the lats out on the flank,
+        # the lower traps from their own core.
+        erectors = index[f'muscle_erector-spinae_{side}']
+        lats = index[f'muscle_latissimus-dorsi_{side}']
+        traps = index[f'muscle_lower-trapezius_{side}']
+        territory = np.isin(labels, (erectors, lats, traps))
+        seeds = {
+            erectors: np.where(territory & (x > 0.015) & (x < 0.04) & (y > 1.06) & (y < 1.14))[0],
+            lats: np.where(territory & (x > 0.12) & (x < 0.17) & (y > 1.15) & (y < 1.28))[0],
+            traps: core(fields, labels, traps, 0.3),
+        }
+        moved = flood(labels, seeds, territory, height, near)
+        print(f'LOWER BACK {side}: {moved} vertices moved')
+
         # The front of the thigh, seeded by position: rectus femoris down the
         # middle, vastus lateralis on the outside, vastus medialis in the
         # teardrop above the inner knee, the adductors high on the inside.
         group = [index[f'muscle_{m}_{side}'] for m in THIGH]
         territory = np.isin(labels, group)
-        y, angle = thigh_frame(verts, territory, lateral)
+        y, angle = limb_frame(verts, territory, lateral)
         place = {
             'rectus-femoris': (y > 0.62) & (y < 0.82) & (angle > -10) & (angle < 20),
             'vastus-lateralis': (y > 0.60) & (y < 0.82) & (angle > 70) & (angle < 115),
