@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import { finishWorkout, openTab, signIn, waitForCatalogue } from './support/app.js';
+import {
+  finishWorkout,
+  openTab,
+  recentWorkoutLink,
+  signIn,
+  waitForCatalogue,
+} from './support/app.js';
 
 /**
  * Cardio on a machine, logged as bouts. ADR-0069.
@@ -97,10 +103,7 @@ test('a treadmill workout is logged as bouts, with calories', async ({ page }) =
 
   // On the workout's page: bouts in the display's words, cardio totals, and
   // no lifting numbers for a workout that had no lifting.
-  await page
-    .getByRole('link', { name: /Workout/ })
-    .first()
-    .click();
+  await recentWorkoutLink(page).click();
   await expect(page.getByText('30:00 · 5 km · 6:00 /km · ≈ 460 kcal')).toBeVisible();
   await expect(page.getByText('30:00 · 5 km · 6:00 /km · 300 kcal')).toBeVisible();
   await expect(page.getByText('1:00:00')).toBeVisible();

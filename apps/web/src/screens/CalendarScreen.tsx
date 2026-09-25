@@ -10,6 +10,7 @@ import {
   toDisplayWeight,
   totalsWithin,
   trainingMinutes,
+  workoutTitle,
   type CalendarDay,
   type UnitSystem,
   type WeekStart,
@@ -475,7 +476,7 @@ function DayWorkouts({
             >
               <div className="flex items-baseline justify-between gap-3">
                 <h3 className="min-w-0 truncate text-base font-semibold text-primary">
-                  {workout.name ?? 'Workout'}
+                  {workout.name ?? workoutTitle(workout.work, workout.boutCount)}
                 </h3>
                 <span className="flex shrink-0 items-baseline gap-2">
                   <span className="numeric text-xs text-muted">

@@ -14,6 +14,7 @@ import {
   startOfDay,
   totalsWithin,
   trainingMinutes,
+  workoutTitle,
   type ChartMetric,
   type Period,
   type UnitSystem,
@@ -620,7 +621,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-medium text-primary">
-          {summary.name ?? 'Workout'}
+          {summary.name ?? workoutTitle(summary.work, summary.boutCount)}
         </span>
         <span className="numeric block text-xs text-muted">
           {describeWhen(summary.startedAt, now)} ·{' '}

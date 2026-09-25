@@ -5,6 +5,7 @@ import {
   finishWorkout,
   logSet,
   openTab,
+  recentWorkoutLink,
   signIn,
   startWith,
   waitForCatalogue,
@@ -126,10 +127,7 @@ test('a past workout can be saved as a routine from its page', async ({ page }) 
   await finishWorkout(page);
 
   await openTab(page, 'Progress');
-  await page
-    .getByRole('link', { name: /Workout/ })
-    .first()
-    .click();
+  await recentWorkoutLink(page).click();
   await page.getByRole('button', { name: 'Save as a routine' }).click();
   await page.getByLabel('Routine name').fill('Heavy Bench');
   await page.getByRole('button', { name: 'Save', exact: true }).click();

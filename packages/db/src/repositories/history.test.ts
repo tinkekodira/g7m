@@ -467,3 +467,41 @@ describe('groupsByExercise', () => {
     expect(await history.groupsByExercise().then((g) => g.get('bench'))).toEqual(['chest']);
   });
 });
+
+describe('primaryWork', () => {
+  beforeEach(async () => {
+    await db.seed('muscle_groups', { id: 'g-chest', slug: 'chest', name: 'Chest' });
+    await db.seed('muscle_groups', { id: 'g-back', slug: 'back', name: 'Back' });
+    await db.seed('muscles', { id: 'pec', slug: 'pec-major-sternal', muscle_group_id: 'g-chest' });
+    await db.seed('muscles', { id: 'lat', slug: 'latissimus-dorsi', muscle_group_id: 'g-back' });
+    await db.seed('exercise_muscles', {
+      id: 'em-bench',
+      exercise_id: 'bench',
+      muscle_id: 'pec',
+      role: 'primary',
+      recruitment_weight: 0.95,
+    });
+    await db.seed('exercise_muscles', {
+      id: 'em-bench-lat',
+      exercise_id: 'bench',
+      muscle_id: 'lat',
+      role: 'secondary',
+      recruitment_weight: 0.3,
+    });
+  });
+
+  it("counts a workout's sets against each primary mover, and rides on its summary", async () => {
+    const id = await loggedSession('2026-09-07T10:00:00.000Z', 'bench', [
+      { weightKg: 100, reps: 5 },
+      { weightKg: 100, reps: 5 },
+    ]);
+
+    const work = await history.primaryWork(id);
+    // The lat only assisted, so it names nothing.
+    expect(work.get(id)).toEqual([
+      { exerciseId: 'bench', muscle: 'pec-major-sternal', group: 'chest', sets: 2 },
+    ]);
+    const [summary] = await history.sessionSummaries();
+    expect(summary?.work).toEqual(work.get(id));
+  });
+});

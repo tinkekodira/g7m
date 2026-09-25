@@ -69,6 +69,21 @@ export async function finishAndKeepAsRoutine(page: Page, name: string): Promise<
   await expect(page.getByRole('heading', { name: 'Your routines' })).toBeVisible();
 }
 
+/**
+ * The n-th row in Progress's "Recent workouts" list (0 = most recent).
+ *
+ * Not by name: an unnamed workout is now titled after what it trained
+ * ("Push day (chest focused)", "Cardio", …), which a test would otherwise
+ * have to predict. Position is what every caller actually means by "the
+ * workout I just logged".
+ */
+export function recentWorkoutLink(page: Page, index = 0) {
+  return page
+    .locator('section', { has: page.getByRole('heading', { name: 'Recent workouts' }) })
+    .getByRole('link')
+    .nth(index);
+}
+
 /** Sign out from Settings, and wait for the sign-in screen. */
 export async function signOut(page: Page): Promise<void> {
   await openTab(page, 'Settings');

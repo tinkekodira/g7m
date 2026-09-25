@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
-  describeWhen,
   toDisplayWeight,
   totalVolumeKg,
   trainingMinutes,
@@ -10,6 +9,7 @@ import {
   type Bout,
   type CardioKind,
   type UnitSystem,
+  workoutTitle,
 } from '@g7m/core';
 import { boutSummary } from './bout-copy.js';
 import { HeaderLink } from '../components/HeaderLink.js';
@@ -28,15 +28,15 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
  */
 export function SessionDetailScreen() {
   const { sessionId = '' } = useParams();
-  const now = useMemo(() => new Date(), []);
 
   const state = useCatalogue(`session:${sessionId}`, async (repositories) => {
     const session = await repositories.sessions.byId(sessionId);
     if (session === null) return null;
 
-    const [profile, entries] = await Promise.all([
+    const [profile, entries, work] = await Promise.all([
       repositories.profile.current(),
       repositories.sessions.exercisesFor(sessionId),
+      repositories.history.primaryWork(sessionId),
     ]);
 
     const blocks = await Promise.all(
@@ -49,7 +49,13 @@ export function SessionDetailScreen() {
       }),
     );
 
-    return { session, profile, blocks };
+    const bouts = blocks
+      .filter((block) => block.exercise?.cardioKind != null)
+      .reduce((sum, block) => sum + block.sets.filter((set) => set.isCompleted).length, 0);
+    // The same name the history list gave it, so the row and the page agree.
+    const title = session.name ?? workoutTitle(work.get(sessionId) ?? [], bouts);
+
+    return { session, profile, blocks, title };
   });
 
   const data = state.data;
@@ -57,10 +63,7 @@ export function SessionDetailScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">
-          {data?.session.name ??
-            (data === null ? 'Workout' : describeWhen(data.session.startedAt, now))}
-        </h1>
+        <h1 className="text-2xl font-semibold text-primary">{data?.title ?? 'Workout'}</h1>
         <HeaderLink to="/progress">Progress</HeaderLink>
       </header>
 
