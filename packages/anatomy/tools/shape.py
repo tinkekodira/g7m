@@ -43,9 +43,19 @@ import regions  # noqa: E402
 
 # The clavicular pec is left out on purpose: nothing is sculpted between the
 # two heads of the pec, so a flood there has no groove to stop in and puts the
-# border wherever the seeds happen to meet. The transfer's border stands.
+# border wherever the seeds happen to meet. It is drawn from the collarbone
+# instead, after this group (ADR-0094).
 CHEST = ('pec-major-sternal', 'serratus-anterior', 'external-obliques', 'rectus-abdominis')
 THIGH = ('rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'hip-adductors')
+
+# The collarbone's ridge on the front of the chest, as y = a + b|x|: the least
+# concave row between the sternal end (|x| 0.025) and the acromion (0.14),
+# measured on both sides, which agree to 2 mm.
+CLAVICLE = (1.470, 0.21)
+# The clavicular head's inner edge (|x|), how far below the ridge it reaches
+# there, and how much deeper for every metre outward. It is a fan from the
+# inner collarbone to the arm, so it deepens as it goes.
+CLAVICULAR_FAN = (0.02, 0.01, 0.7)
 
 
 def vertex_normals(verts: np.ndarray, tris: np.ndarray) -> np.ndarray:
@@ -155,19 +165,21 @@ def strays(labels: np.ndarray, label: int, near) -> np.ndarray:
     return own[piece[own] != int(np.argmax(sizes))]
 
 
-def hand_over(labels: np.ndarray, stray: np.ndarray, near) -> None:
+def hand_over(labels: np.ndarray, stray: np.ndarray, near, refuse: tuple[int, ...] = ()) -> None:
     """Give each stray vertex to whatever surrounds it, in place.
 
     Grown in from the edge a ring at a time, each vertex taking the commonest
     label among its settled neighbours, so an island is shared out between the
-    muscles around it along a border roughly halfway across.
+    muscles around it along a border roughly halfway across. Labels in
+    `refuse` are never given any, which is how skin leaves a muscle for its
+    neighbours rather than going straight back.
     """
     labels[stray] = -1
     pending = set(int(v) for v in stray)
     while pending:
         ring = {}
         for v in sorted(pending):
-            settled = [int(labels[u]) for u in near[v] if labels[u] >= 0]
+            settled = [int(labels[u]) for u in near[v] if labels[u] >= 0 and labels[u] not in refuse]
             if settled:
                 ring[v] = int(np.bincount(settled).argmax())
         assert ring, 'an island with no neighbours'
@@ -260,6 +272,39 @@ def main() -> None:
         stray = strays(labels, serratus, near)
         hand_over(labels, stray, near)
         print(f'SERRATUS {side}: {len(stray)} vertices off the arm')
+
+        # The two heads of the pec, from the collarbone (ADR-0094). The
+        # transfer ran the clavicular head up over the collarbone into the
+        # hollow above it, down the sternum in a V, and out past the
+        # deltopectoral groove over the front delt. With no groove between the
+        # heads there is nothing for a flood to find, so the border is drawn:
+        # - nothing of the pec above the ridge; that skin goes to the neck,
+        #   the traps and the delts around it;
+        # - the clavicular head is the fan below the ridge, from a point at
+        #   the sternal end, deepening towards the arm; every other pec
+        #   vertex is sternal;
+        # - its border with the front delt is the deltopectoral groove, which
+        #   is sculpted, so that one is a flood again.
+        clavicular = index[f'muscle_pec-major-clavicular_{side}']
+        pecs = (clavicular, pec)
+        ridge = CLAVICLE[0] + CLAVICLE[1] * x
+        whole = np.isin(labels, pecs)
+        above = np.where(whole & (y > ridge + 0.004))[0]
+        hand_over(labels, above, near, refuse=pecs)
+        whole = np.isin(labels, pecs)
+        inner, depth, slope = CLAVICULAR_FAN
+        fan = whole & (x > inner) & (y > ridge - depth - slope * (x - inner))
+        labels[whole] = pec
+        labels[fan] = clavicular
+        deltoid = index[f'muscle_anterior-deltoid_{side}']
+        own = np.where(labels == deltoid)[0]
+        seeds = {
+            clavicular: np.where((labels == clavicular) & (x < 0.11))[0],
+            # The outer half of the front delt, well clear of the groove.
+            deltoid: own[x[own] > np.median(x[own])],
+        }
+        moved = flood(labels, seeds, np.isin(labels, (clavicular, deltoid)), height, near)
+        print(f'UPPER CHEST {side}: {len(above)} vertices off the collarbone, {moved} across the groove')
 
         # The front of the thigh, seeded by position: rectus femoris down the
         # middle, vastus lateralis on the outside, vastus medialis in the
