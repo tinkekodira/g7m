@@ -5734,3 +5734,46 @@ sculpted between the two heads of the pec, so a flood there has no groove to
 stop in, and a trial moved that border by several centimetres on one side and
 not the other. Its band still runs up over the collarbones. The back, the arms
 and the calves were not touched; none of them looked wrong at the same scale.
+
+## ADR-0093 — The serratus keeps to the ribcage
+
+**Status:** accepted · **Date:** 2026-09-25
+
+### Context
+
+With the serratus selected on Learn, a second patch lit up on the inner upper
+arm on both sides, apart from the one on the ribcage. It was 47 vertices on
+the right and 41 on the left, all facing the midline, bordered by the biceps,
+the triceps' lateral head and the brachioradialis. In the A-pose the arm hangs
+a few centimetres off the ribcage, and pass two named the arm's inner face
+after the nearest atlas muscle, which across the armpit is the serratus.
+
+ADR-0092's flood could not fix it. The island is inside the chest group's
+territory but not connected to any of its seeds, and territory no seed
+reaches keeps its old label by design.
+
+### Decision
+
+After the chest flood, `shape.py` keeps the serratus's largest connected
+piece on each side and hands every other serratus vertex to the labels around
+it. It grows in from the edge a ring at a time, each vertex taking the
+commonest settled label among its neighbours. The right arm's island went to
+the biceps (+11), the triceps' lateral head (+17), the brachioradialis (+18)
+and the lats (+1); the left's split the same way.
+
+### Rejected
+
+- **Every muscle keeps only its largest piece.** A general rule for a
+  problem seen in one place. It would move borders nobody has looked at, and
+  this pass's rule (ADR-0092) is that a change is confined to what was
+  checked.
+- **Dropping skin whose normal faces the midline.** It matches this island
+  exactly, but it is a proxy. "Not connected to the ribcage" is the actual
+  fault.
+
+### Consequences
+
+The serratus is 533 and 522 vertices, all on the ribcage. Checked in the app
+by tapping it through the viewer camera: the highlight is two patches on the
+sides of the ribcage and nothing on the arms. As with ADR-0092, lifters see
+it only once the rebuilt GLB is uploaded behind `ANATOMY_MODEL_URL`.

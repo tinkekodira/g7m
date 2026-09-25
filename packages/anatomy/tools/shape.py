@@ -132,6 +132,50 @@ def flood(labels: np.ndarray, seeds: dict[int, np.ndarray], territory: np.ndarra
     return moved
 
 
+def strays(labels: np.ndarray, label: int, near) -> np.ndarray:
+    """A label's vertices outside its largest connected piece."""
+    own = np.where(labels == label)[0]
+    piece = np.full(len(labels), -1)
+    sizes: list[int] = []
+    for start in own:
+        if piece[start] >= 0:
+            continue
+        piece[start] = len(sizes)
+        stack, size = [int(start)], 0
+        while stack:
+            v = stack.pop()
+            size += 1
+            for u in near[v]:
+                if labels[u] == label and piece[u] < 0:
+                    piece[u] = len(sizes)
+                    stack.append(int(u))
+        sizes.append(size)
+    if len(sizes) < 2:
+        return np.array([], dtype=int)
+    return own[piece[own] != int(np.argmax(sizes))]
+
+
+def hand_over(labels: np.ndarray, stray: np.ndarray, near) -> None:
+    """Give each stray vertex to whatever surrounds it, in place.
+
+    Grown in from the edge a ring at a time, each vertex taking the commonest
+    label among its settled neighbours, so an island is shared out between the
+    muscles around it along a border roughly halfway across.
+    """
+    labels[stray] = -1
+    pending = set(int(v) for v in stray)
+    while pending:
+        ring = {}
+        for v in sorted(pending):
+            settled = [int(labels[u]) for u in near[v] if labels[u] >= 0]
+            if settled:
+                ring[v] = int(np.bincount(settled).argmax())
+        assert ring, 'an island with no neighbours'
+        for v, label in ring.items():
+            labels[v] = label
+            pending.discard(v)
+
+
 def thigh_frame(verts: np.ndarray, territory: np.ndarray, lateral: float) -> tuple[np.ndarray, np.ndarray]:
     """Height and angle around the thigh for every vertex.
 
@@ -205,6 +249,17 @@ def main() -> None:
         seeds[serratus] = np.union1d(seeds[serratus], np.where(ribs)[0])
         moved = flood(labels, seeds, territory, height, near)
         print(f'CHEST {side}: {moved} vertices moved')
+
+        # The serratus's patch on the inner upper arm. In the A-pose the arm
+        # hangs a few centimetres off the ribcage, and the transfer gave the
+        # arm's inner face, which looks straight at the serratus, the
+        # serratus's name. No seed on the ribcage can flood across to it, so
+        # it kept that name and lit up on the arm with the muscle. The
+        # serratus is one piece of ribcage; anything else goes to the arm
+        # muscles around it.
+        stray = strays(labels, serratus, near)
+        hand_over(labels, stray, near)
+        print(f'SERRATUS {side}: {len(stray)} vertices off the arm')
 
         # The front of the thigh, seeded by position: rectus femoris down the
         # middle, vastus lateralis on the outside, vastus medialis in the
