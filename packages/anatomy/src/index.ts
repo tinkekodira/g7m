@@ -19,7 +19,7 @@ export {
   type AnatomyView,
   type AnatomyViewerProps,
 } from './AnatomyViewer.js';
-export { PALETTE, RESTING_SKIN, heatRampFor } from './palette.js';
+export { HEAT_FLOOR, PALETTE, RESTING_SKIN, heatColour, heatRampFor } from './palette.js';
 export {
   bareSkinForms,
   bodyForms,
