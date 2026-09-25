@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useStageColor } from '../lib/use-theme.js';
-import { DumbbellIcon } from '../components/icons.js';
+import { ChevronRightIcon, DumbbellIcon } from '../components/icons.js';
 import { Chip } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -377,14 +377,17 @@ function ExerciseGroup({
     <div className="mb-4 last:mb-0">
       <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">{title}</h3>
       {hint !== undefined && <p className="mb-2 text-xs text-muted">{hint}</p>}
-      <ul className="flex flex-col gap-1">
+      {/* Tiles with a chevron, not bare names: as plain text on the card
+          they read as a list to look at, and nobody tapped them. */}
+      <ul className="flex flex-col gap-2">
         {exercises.map((exercise) => (
           <li key={exercise.id}>
             <Link
               to={`/exercises/${exercise.slug}`}
-              className="flex min-h-tap items-center rounded-control px-2 text-base text-primary active:bg-elevated"
+              className="flex min-h-tap items-center justify-between gap-3 rounded-control border border-subtle bg-elevated px-3 py-2 text-base text-primary active:opacity-80"
             >
-              {exercise.name}
+              <span className="min-w-0 truncate">{exercise.name}</span>
+              <ChevronRightIcon className="size-5 shrink-0 text-muted" />
             </Link>
           </li>
         ))}
