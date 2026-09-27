@@ -59,6 +59,21 @@ jobs:
           fi
           node scripts/install-anatomy-model.mjs "$ANATOMY_MODEL_URL"
 
+      # ADR-0096: the female body, drawn for a profile that says female. The
+      # same kind of signed link, in its own secret, installed into its own
+      # slot so it never replaces the male. Optional on its own: without it a
+      # female profile is shown the male sculpt, which is what it saw before.
+      - name: Anatomy model, female
+        working-directory: apps/web
+        env:
+          ANATOMY_FEMALE_MODEL_URL: ${{ secrets.ANATOMY_FEMALE_MODEL_URL }}
+        run: |
+          if [ -z "$ANATOMY_FEMALE_MODEL_URL" ]; then
+            echo "No ANATOMY_FEMALE_MODEL_URL secret; female profiles get the male body."
+            exit 0
+          fi
+          node scripts/install-anatomy-model.mjs --body female "$ANATOMY_FEMALE_MODEL_URL"
+
       - name: Build
         working-directory: apps/web
         env:

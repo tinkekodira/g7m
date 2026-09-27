@@ -184,7 +184,30 @@ phone that has opened Learn once keeps that body for good.
 The same script is what CI runs, with a signed URL from a repository secret
 instead of a path — see `.github/workflows/pages.yml`.
 
-The Learn screen reads the manifest on open. If there is none — and for most
+**There are two bodies** (ADR-0096). The male is the one these passes cut. The
+female is cut by the same `split.py` in the 3d-models repository and arrives
+here as a finished GLB with the same node contract, plus `skin_breast_l/_r`,
+which render and never select. She goes in her own slot:
+
+```
+cd apps/web
+node scripts/install-anatomy-model.mjs --body female <path>/female_body_app.glb
+```
+
+Without `--body` the script installs the male, as it always did. Each body
+keeps its own hashed file (`body-<hash>.glb`, `body-female-<hash>.glb`), and
+installing one never deletes the other. The manifest lists both under
+`bodies` and still carries the male at the top level, which is the only line
+a build from before this change reads. CI installs her from
+`ANATOMY_FEMALE_MODEL_URL` and skips her, with a log line, when that secret is
+not set. `apps/web/src/lib/installed-bodies.test.ts` checks whatever is
+installed against the node contract.
+
+The app draws the female body for a profile whose sex is female, and the male
+for everybody else. A female profile on a build without her gets the male
+sculpt; a build with neither gets the generated body, as before.
+
+Learn and Profile read the manifest on open. If there is none — and for most
 checkouts there will not be, the model being licensed and uncommitted — the
 screen falls back to the generated body and says nothing about it. A missing
 optional asset that shouts is worse than one that is quietly absent.

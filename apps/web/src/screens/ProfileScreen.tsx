@@ -18,6 +18,7 @@ import {
   TrophyIcon,
 } from '../components/icons.js';
 import { useSculptedBody } from '../lib/anatomy-model.js';
+import { useProfileBody } from '../lib/db/use-profile-body.js';
 import { Flag } from '../components/Flag.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
@@ -387,7 +388,8 @@ function GoalCard({
 function TrainingBody({ now }: { readonly now: Date }) {
   const heat = useTrainingHeat(now, true);
   const neglected = useNeglected(now, true);
-  const sculpted = useSculptedBody();
+  // The body that matches the profile, and nothing until the profile has said.
+  const sculpted = useSculptedBody(useProfileBody());
   const generated = useMemo(() => placeholderBodyParts(), []);
   const parts = sculpted.parts ?? generated;
   const stage = useStageColor();
