@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
+import { useProfileBody } from '../lib/db/use-profile-body.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { ChevronRightIcon, DumbbellIcon } from '../components/icons.js';
 import { Chip } from '@g7m/ui';
@@ -33,7 +34,8 @@ export function LearnScreen() {
   const now = useMemo(() => new Date(), []);
 
   const generated = useMemo(() => placeholderBodyParts(), []);
-  const sculpted = useSculptedBody();
+  // The body that matches the profile, and nothing until the profile has said.
+  const sculpted = useSculptedBody(useProfileBody());
   const stage = useStageColor();
 
   // Falls back without comment. Most checkouts have no model — it is licensed

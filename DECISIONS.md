@@ -5886,3 +5886,74 @@ extensors 1,124 → 984; erector spinae 362 → 253, lats 470 → 491, lower tra
 143 → 231. Each was tapped in the app, front or back, and opened its own
 panel. Brachioradialis still fills much of the forearm seen from straight in
 front, because that is the side facing the camera in this pose.
+
+## ADR-0096 — A female body, chosen by the profile's sex
+
+**Status:** accepted · **Date:** 2026-09-27
+
+### Context
+
+Learn and Profile drew one sculpted body, and it was male. Onboarding already
+asks for sex, and a woman opening Learn was shown a man's chest to tap.
+
+A female body now exists. It is built in the 3d-models repository from a CC0
+base mesh (Blender Studio's Human Base Meshes) and cut by this repository's
+own `split.py`, from a fit OBJ and a labels file in the male's formats. So it
+keeps his contract: the atlas frame at his height, 120,000 triangles, the
+region map, and the same node names. It adds two, `skin_breast_l` and
+`skin_breast_r`, which render and never select.
+
+The app had one slot for a model. The install script deleted every other
+`body-*.glb` and repointed the manifest, so installing her removed him.
+
+### Decision
+
+Two slots, and the profile picks.
+
+- **Install.** `install-anatomy-model.mjs --body female` writes
+  `body-female-<hash>.glb`; with no flag it writes the male's
+  `body-<hash>.glb`, as before. It only deletes older copies of the body it
+  installs. The manifest gains `bodies: { male, female }`, and the male is
+  also written at the top level, in the old `{ "model", "bytes" }` shape.
+- **Choose.** `bodyFor(sex)` is female for `'female'` and male for anything
+  else, `null` included. `useSculptedBody(body)` loads that body, cached per
+  body and per file.
+- **Fall back, never worse than before.** Female requested and not installed:
+  the male sculpt. Neither installed: the generated body, silently. Male
+  requested and only the female installed: the generated body, because a male
+  profile was never shown hers.
+- **Wait for the profile.** Until it has been read once the body is `null`,
+  nothing is fetched and the placeholder shows.
+- **CI.** `ANATOMY_FEMALE_MODEL_URL` is a second, optional secret. When it is
+  missing, the step logs a line and skips.
+
+### Rejected
+
+- **One slot, swapped per build.** Every user would get the same body.
+- **A `female` key beside the old top-level fields, with no `bodies` map.**
+  It has no duplication, but it makes the two bodies different shapes in the
+  file for no reason except history. The map says what the manifest is. The
+  duplicated top-level line is there so phones on the previous build keep
+  working. Those phones get a new manifest from the network while their
+  service worker still serves the old code.
+- **Showing the male while the profile loads, then swapping.** Learn already
+  waits rather than flash the generated body before the sculpt. Drawing him
+  first would bring back the same flash, and would download him for a woman
+  who never sees him.
+- **Separate names for the female's muscles.** Same slugs, same nodes: the
+  taxonomy, the exercises and the heat map need no second copy. Only her
+  breast skin is new, and it is not a muscle.
+
+### Consequences
+
+- A profile's sex now changes what Learn and Profile draw. Sex is set once,
+  and an account made before onboarding asked sets it in Metrics. The body
+  then switches without a reload, and a body already loaded is not fetched
+  again.
+- `installed-bodies.test.ts` checks every installed body against
+  `checkModelContract`. It also checks that the female's only extra nodes are
+  her breast skin. Like the male's check, it is skipped where nothing is
+  installed.
+- She is not the male's licensed sculpt, but she is handled like him. She is
+  never committed, the pre-commit hook and `.gitignore` apply to her, and she
+  reaches production only when her file is uploaded behind the new secret.
