@@ -34,6 +34,16 @@ import trapBarIcon from '../assets/equipment/trap-bar.png';
 import trapBarHero from '../assets/equipment/trap-bar-hero.webp';
 import treadmillIcon from '../assets/equipment/treadmill.png';
 import treadmillHero from '../assets/equipment/treadmill-hero.webp';
+import seatedRowMachineIcon from '../assets/equipment/seated-row-machine.png';
+import seatedRowMachineHero from '../assets/equipment/seated-row-machine-hero.webp';
+import hackSquatIcon from '../assets/equipment/hack-squat.png';
+import hackSquatHero from '../assets/equipment/hack-squat-hero.webp';
+import pecDeckIcon from '../assets/equipment/pec-deck.png';
+import pecDeckHero from '../assets/equipment/pec-deck-hero.webp';
+import calfRaiseMachineIcon from '../assets/equipment/calf-raise-machine.png';
+import calfRaiseMachineHero from '../assets/equipment/calf-raise-machine-hero.webp';
+import dipBarIcon from '../assets/equipment/dip-bar.png';
+import dipBarHero from '../assets/equipment/dip-bar-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -91,6 +101,11 @@ const CHEST_PRESS_MACHINE: EquipmentArt = {
 };
 const TRAP_BAR: EquipmentArt = { icon: trapBarIcon, hero: trapBarHero };
 const TREADMILL: EquipmentArt = { icon: treadmillIcon, hero: treadmillHero };
+const SEATED_ROW_MACHINE: EquipmentArt = { icon: seatedRowMachineIcon, hero: seatedRowMachineHero };
+const HACK_SQUAT: EquipmentArt = { icon: hackSquatIcon, hero: hackSquatHero };
+const PEC_DECK: EquipmentArt = { icon: pecDeckIcon, hero: pecDeckHero };
+const CALF_RAISE_MACHINE: EquipmentArt = { icon: calfRaiseMachineIcon, hero: calfRaiseMachineHero };
+const DIP_BAR: EquipmentArt = { icon: dipBarIcon, hero: dipBarHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -115,6 +130,8 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'lat-pulldown': LAT_PULLDOWN,
 
   'leg-press': LEG_PRESS,
+
+  'hack-squat': HACK_SQUAT,
 
   'dumbbell-bench-press': DUMBBELL,
   'incline-dumbbell-press': DUMBBELL,
@@ -142,6 +159,10 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'cable-crunch': CABLE_MACHINE,
   'cable-woodchop': CABLE_MACHINE,
 
+  // Plate-loaded rather than cable-driven, but the seated, chest-supported
+  // pull is the same — its own machine, not the cable machine's low pulley.
+  'seated-cable-row': SEATED_ROW_MACHINE,
+
   // The fixed-weight urethane curl bar, not a loadable Olympic EZ bar.
   'preacher-curl': EZ_BAR,
   'skull-crusher': EZ_BAR,
@@ -164,8 +185,17 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'incline-barbell-press': ADJUSTABLE_BENCH,
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
+  'pec-deck': PEC_DECK,
+
+  // A wall-mounted dip bar, not a free-standing dip station.
+  'chest-dip': DIP_BAR,
 
   treadmill: TREADMILL,
+
+  // A seated calf raise. Standing is a different machine (shoulder pads, no
+  // seat) and shares this render until it has one of its own.
+  'seated-calf-raise': CALF_RAISE_MACHINE,
+  'standing-calf-raise': CALF_RAISE_MACHINE,
 
   // Two icons, one machine: same frame, pads and arrows swung the other way.
   'hip-abduction-machine': ABDUCTOR_MACHINE,
