@@ -27,16 +27,15 @@ test('every exercise row has an icon square, and the text lines up either way', 
   const named = await page.getByText('Barbell Bench Press', { exact: true }).boundingBox();
   expect(art).not.toBeNull();
 
-  // Seated Cable Row shares a name with the cable machine but deliberately
-  // stays off its map (it is its own, not-yet-rendered seated row machine).
-  await page.getByLabel('Search').fill('Seated Cable Row');
-  const withoutArt = page.getByRole('link', { name: /^Seated Cable Row/ });
+  // Plank is bodyweight: no kit to render, so it stays off the map for good.
+  await page.getByLabel('Search').fill('Plank');
+  const withoutArt = page.getByRole('link', { name: /^Plank/ });
   await expect(withoutArt).toBeVisible();
   // The one without a render falls back to the app's own glyph.
   await expect(withoutArt.locator('img')).toHaveCount(0);
   await expect(withoutArt.locator('svg')).toHaveCount(1);
   const glyph = await withoutArt.locator('svg').first().boundingBox();
-  const other = await page.getByText('Seated Cable Row', { exact: true }).boundingBox();
+  const other = await page.getByText('Plank', { exact: true }).boundingBox();
   expect(glyph).not.toBeNull();
 
   // Both squares are the same square, and both names start at the same x.
@@ -48,10 +47,11 @@ test('every exercise row has an icon square, and the text lines up either way', 
  * pulldown, the leg press, the (hex) dumbbell, the cable machine, the
  * pull-up bar, the EZ bar, the exercise bike, the leg curl/extension
  * machine, the back extension, the adjustable bench, the abductor and
- * adductor machines, the chest press machine, the trap bar and the
- * treadmill followed it into the same map (see `equipment-art.ts`). One row
- * per piece is enough to say the join still works for each new key — the
- * square itself is already covered above.
+ * adductor machines, the chest press machine, the trap bar, the
+ * treadmill, the seated row machine, the hack squat, the pec deck, the calf
+ * raise machine and the dip bar followed it into the same map (see
+ * `equipment-art.ts`). One row per piece is enough to say the join still
+ * works for each new key — the square itself is already covered above.
  */
 test('every piece of kit draws its own icon', async ({ page }) => {
   const user = await createUser('icons-kit', { onboarded: true });
@@ -76,6 +76,11 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Machine Chest Press', 'chest-press-machine'],
     ['Trap Bar Deadlift', 'trap-bar'],
     ['Treadmill', 'treadmill'],
+    ['Seated Cable Row', 'seated-row-machine'],
+    ['Hack Squat', 'hack-squat'],
+    ['Pec Deck', 'pec-deck'],
+    ['Seated Calf Raise', 'calf-raise-machine'],
+    ['Chest Dip', 'dip-bar'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     const row = page.getByRole('link', { name: new RegExp(`^${name}`) });

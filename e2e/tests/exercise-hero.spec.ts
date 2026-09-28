@@ -55,9 +55,9 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
   await expect(page.getByText(/^Also called bench, bp/)).toBeVisible();
 
   // An exercise with no render keeps the plain header: no image, same title.
-  // Seated Cable Row deliberately stays off the map (see `equipment-art.ts`).
-  await page.goto('/#/exercises/seated-cable-row');
-  await expect(page.getByRole('heading', { level: 1, name: 'Seated Cable Row' })).toBeVisible();
+  // Plank is bodyweight, with no kit to render (see `equipment-art.ts`).
+  await page.goto('/#/exercises/plank');
+  await expect(page.getByRole('heading', { level: 1, name: 'Plank' })).toBeVisible();
   await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
 });
@@ -71,11 +71,14 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
  * the widest render in the set) and the exercise bike is the most portrait
  * yet (about 0.68:1). The chest press machine is portrait too (about
  * 0.67:1, a tall two-post frame) and the trap bar is wide (about 1.94:1),
- * a bar between two plates like the floor barbell. None of these shapes
- * gets a special case: `object-contain` on a box that only constrains
- * width and max-height fits any aspect without cropping it, by
- * construction, so what is worth asserting is that the fit still holds at
- * the extremes rather than only at the bench's own near-square ratio.
+ * a bar between two plates like the floor barbell. The pec deck is the
+ * most portrait render yet (about 0.64:1, a single tall spine tower) and
+ * the dip bar is wide (about 2.6:1, two arms out of a wall plate), second
+ * only to the EZ bar. None of these shapes gets a special case:
+ * `object-contain` on a box that only constrains width and max-height fits
+ * any aspect without cropping it, by construction, so what is worth
+ * asserting is that the fit still holds at the extremes rather than only at
+ * the bench's own near-square ratio.
  */
 test('a portrait or a very wide render still fits without cropping', async ({ page }) => {
   const user = await createUser('hero-shapes', { onboarded: true });
@@ -100,6 +103,11 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['machine-chest-press', 'chest-press-machine-hero'],
     ['trap-bar-deadlift', 'trap-bar-hero'],
     ['treadmill', 'treadmill-hero'],
+    ['seated-cable-row', 'seated-row-machine-hero'],
+    ['hack-squat', 'hack-squat-hero'],
+    ['pec-deck', 'pec-deck-hero'],
+    ['seated-calf-raise', 'calf-raise-machine-hero'],
+    ['chest-dip', 'dip-bar-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);

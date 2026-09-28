@@ -5957,3 +5957,82 @@ Two slots, and the profile picks.
 - She is not the male's licensed sculpt, but she is handled like him. She is
   never committed, the pre-commit hook and `.gitignore` apply to her, and she
   reaches production only when her file is uploaded behind the new secret.
+
+---
+
+## ADR-0097 — Five more pieces wear the kit they need: seated row, hack squat, pec deck, calf raise, dip bar
+
+**Status:** accepted · **Date:** 2026-09-28 · **Phase:** 7
+
+**Builds on ADR-0084, ADR-0085, ADR-0087 and ADR-0090.** The seated row
+machine, the hack squat, the pec deck, the calf raise machine and the dip bar
+are the nineteenth through twenty-third keys into `equipment-art.ts`, made
+the same way as the previous eighteen: same container, same sizes, same hero
+treatment, no new CSS and no per-asset framing override.
+
+### Assets
+
+Same two-step pipeline as ADR-0084 (icon: plain downscale of the shadowless
+trimmed-square `<name>_icon.png` to 168px; hero: zero the alpha of every
+not-fully-opaque pixel, crop to the fully-opaque bbox plus a 50px pad,
+downscale to 1200px wide, WebP q82). It ran as a small Node/`sharp` script
+against `apps/mobile/node_modules`, not checked in, as with the previous
+batches. Before touching the new pieces, the script was run on the trap
+bar's sources and diffed against the committed `trap-bar.png` and
+`trap-bar-hero.webp`. Both came out pixel-identical.
+
+That check caught a trap. A first draft wrote the icon as a **palette** PNG,
+which differed visibly from the shipped truecolour RGBA icons (up to 179/255
+on edge pixels). The icons are truecolour; write them without quantisation.
+
+Asset names follow the equipment drawn: `seated-row-machine`, `hack-squat`,
+`pec-deck`, `calf-raise-machine`, and `dip-bar`. The catalogue's equipment
+row for Chest Dip is `dip-station`, but the render is a wall-mounted dip
+bar, not a free-standing station, so the art is filed under what it shows.
+
+Shapes: the pec deck is the most portrait render yet (about 0.64:1, one tall
+spine tower). The dip bar is about 2.57:1, second only to the EZ bar. The
+seated row (0.96:1), hack squat (1.19:1) and calf raise (1.12:1) are near
+square. All five were checked by eye before shipping, on a sheet and in the
+running app: fully in frame, no shadow fringe, title legible.
+
+### The map, by `3d-models/EQUIPMENT.md`
+
+- **Seated row machine**: `seated-cable-row` (1). This is the render
+  ADR-0085 held Seated Cable Row back for. It stays off the cable machine.
+- **Hack squat**: `hack-squat` (1).
+- **Pec deck**: `pec-deck` (1).
+- **Calf raise machine**: `seated-calf-raise` and `standing-calf-raise` (2).
+  The render is a seated calf raise. Standing points at it too, as the
+  compromise `EQUIPMENT.md` records, the same call as Recumbent Bike on the
+  upright bike.
+- **Dip bar**: `chest-dip` (1).
+
+`hanging-leg-raise` stays on `PULL_UP_BAR`. It hangs from that bar, and no
+leg-raise machine has been modelled.
+
+### Tests
+
+`exercise-icons.spec.ts` and `exercise-hero.spec.ts` each gained one row per
+new exercise key in their existing parametrised cases, with Seated Calf Raise
+standing in for the calf raise. Both files used **Seated Cable Row** as their
+"exercise with no render" fixture, and it now has one. They now use **Plank**,
+which is bodyweight and so, per `EQUIPMENT.md`, will never get a render. The
+fixture should not go stale again.
+
+### Consequences
+
+Fifty-four of sixty-two exercises now carry a render (forty-eight after
+ADR-0090, plus these six). Eight remain on the placeholder square: the five
+one-off machines still under `EQUIPMENT.md`'s "Not modelled yet" (lying leg
+curl, air bike, rowing machine, ski erg, stair climber), the two bodyweight
+exercises, and `close-grip-bench-press`, which stays unmapped per ADR-0084's
+own judgment call.
+
+`3d-models/EQUIPMENT.md` gained an **Integrated in app** note under each of
+the five sections. The cable machine note also lost its stale
+"not-yet-modelled" description of the seated row. `3d-models/CLAUDE.md` needed
+no change. All five pieces were already in `common/make_outputs.py`'s `SET`,
+and `contact_sheet.png` was rebuilt after the last of them. That file's own
+maintenance rules say finished pieces are not listed there, and app
+integration does not touch the modelling brief.
