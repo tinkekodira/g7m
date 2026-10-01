@@ -144,6 +144,11 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'bulgarian-split-squat': DUMBBELL,
   'walking-lunge': DUMBBELL,
   'hammer-curl': DUMBBELL,
+  'dumbbell-curl': DUMBBELL,
+  'dumbbell-preacher-curl': DUMBBELL,
+  'concentration-curl': DUMBBELL,
+  // Same call as the incline dumbbell press: the implement, not the bench.
+  'incline-dumbbell-curl': DUMBBELL,
   'farmer-carry': DUMBBELL,
   'dumbbell-pullover': DUMBBELL,
 
@@ -160,6 +165,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'cable-crunch': CABLE_MACHINE,
   'cable-woodchop': CABLE_MACHINE,
   'cable-lat-pullover': CABLE_MACHINE,
+  'cable-curl': CABLE_MACHINE,
   // The low pulley, seated — the cable machine, not the row machine below.
   'seated-cable-row': CABLE_MACHINE,
 
@@ -169,6 +175,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   // The fixed-weight urethane curl bar, not a loadable Olympic EZ bar.
   'preacher-curl': EZ_BAR,
+  'ez-bar-curl': EZ_BAR,
   'skull-crusher': EZ_BAR,
 
   // One upright bike render covers all three — the silhouette does not

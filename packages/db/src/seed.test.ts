@@ -47,13 +47,13 @@ describe('volumes', () => {
   /**
    * The 50 from the brief, plus the four added afterwards — the skull crusher,
    * the dumbbell pullover and the two hip machines — the eight cardio
-   * machines (ADR-0069), and five more: the barbell preacher curl, the seated
+   * machines (ADR-0069), and eleven more (ADR-0098): seven curls, the seated
    * cable row, the T-bar row, the cable lat pullover and the wall sit. Counted rather than left open, because an exercise
    * that fails to insert — a bad slug in a join, a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(67);
+    expect(await count('select count(*) n from public.exercises')).toBe(73);
   });
 });
 

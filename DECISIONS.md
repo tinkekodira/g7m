@@ -6046,8 +6046,8 @@ integration does not touch the modelling brief.
 A round of changes to the exercise list, asked for as one PR: split the
 preacher curl by bar, split the seated row by station, give the cable lat
 pullover its own row, and add a T-bar row and a wall sit. A barbell curl was
-also asked for; `barbell-curl` ("Barbell Curl", alias "bicep curl") is already
-in the catalogue, so no second row was added.
+also asked for. `barbell-curl` already existed, and the ask turned out to be
+broader: the curl should come in its common variations, one row per kit.
 
 ### Decision
 
@@ -6057,6 +6057,12 @@ One migration, `20261001120000_exercise_list_changes.sql`.
   **Preacher Curl (EZ Bar)**, which is what its station (`ez-bar`) and render
   already said. **Preacher Curl (Barbell)** is new, `barbell-preacher-curl`,
   on `barbell` with `preacher-bench` secondary.
+- **Curls.** Six more rows beside `barbell-curl` and `hammer-curl`:
+  **Preacher Curl (Dumbbell)** (one arm, `preacher-bench` secondary),
+  **Dumbbell Curl**, **EZ Bar Curl**, **Cable Curl**, **Incline Dumbbell
+  Curl** (`incline-bench` secondary) and **Concentration Curl**. Kit changes
+  the load and the range enough that a logged weight means nothing without
+  it, so these are separate exercises rather than notes on one.
 - **Seated row.** The row named "Seated Cable Row" was already the machine:
   its station is `seated-row-machine` and since ADR-0097 it wears that render.
   It is renamed **Seated Row Machine** and its slug moves to
@@ -6077,14 +6083,16 @@ One migration, `20261001120000_exercise_list_changes.sql`.
 
 ### Renders
 
-`barbell-preacher-curl` wears `BARBELL`, `seated-cable-row` and
-`cable-lat-pullover` wear `CABLE_MACHINE`, `seated-row-machine` keeps
+`barbell-preacher-curl` wears `BARBELL`; the dumbbell, dumbbell preacher,
+incline and concentration curls wear `DUMBBELL` (the implement, not the bench,
+as with the incline dumbbell press); `ez-bar-curl` wears `EZ_BAR`;
+`seated-cable-row`, `cable-lat-pullover` and `cable-curl` wear `CABLE_MACHINE`; `seated-row-machine` keeps
 `SEATED_ROW_MACHINE`. The T-bar row has no render yet; a model is to come. The
 wall sit is bodyweight and stays off the map, like the plank.
 
 ### Consequences
 
-Sixty-seven exercises, fifty-seven with a render. `seed.test.ts` pins the new
+Seventy-three exercises, sixty-three with a render. `seed.test.ts` pins the new
 count, the wall sit among the holds, both new rows in the horizontal pull
 pattern, the cable lat pullover as its own row, and the split rows' names and
 stations. The two e2e icon/hero specs follow the renames, and the icon spec

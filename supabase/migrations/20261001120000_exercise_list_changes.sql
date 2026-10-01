@@ -10,6 +10,16 @@
 -- the wrist angle and the weight on it, and a logged 30 kg means nothing
 -- unless you know which bar it was on.
 --
+-- ## The curl family fills out
+--
+-- The list had a barbell curl, a hammer curl and one preacher curl. Curls are
+-- the exercise people vary most by kit, and the variations are not
+-- interchangeable in a log: a dumbbell preacher curl is one arm at a time, an
+-- incline curl starts from a stretch the standing curl never reaches. So the
+-- common ones each get a row: dumbbell preacher, dumbbell, EZ bar, cable,
+-- incline dumbbell and concentration. `barbell-curl` is unchanged and remains
+-- the plain barbell bicep curl.
+--
 -- ## The seated row splits by station
 --
 -- The row called "Seated Cable Row" was already the machine: its primary
@@ -76,6 +86,67 @@ values
  array['Dropping the weight fast at the bottom, which strains the elbow',
        'Loading it like the EZ bar; the straight grip is harder on the wrists'],
  10, 15, 90, 176),
+
+('dumbbell-preacher-curl', 'Preacher Curl (Dumbbell)',
+ array['dumbbell preacher curl','db preacher curl','single arm preacher curl','preacher',
+       'preacher curl'],
+ 'isolation', 'pull', 1, 'beginner', true, false,
+ array['Set the pad so one armpit rests on the top edge, the dumbbell in that hand.',
+       'Curl it up, stopping short of vertical to keep tension.',
+       'Lower slowly until the arm is almost straight, then switch sides.'],
+ array['Elbow stays on the pad','Turn the little finger up at the top'],
+ array['Dropping the weight fast at the bottom, which strains the elbow'],
+ 10, 15, 75, 177),
+
+('dumbbell-curl', 'Dumbbell Curl',
+ array['db curl','dumbbell bicep curl','bicep curl','alternating curl','standing dumbbell curl'],
+ 'isolation', 'pull', 1, 'beginner', false, false,
+ array['Stand holding a dumbbell in each hand, arms straight, palms forward.',
+       'Curl to shoulder height keeping the elbows at your sides.',
+       'Lower under control to full extension, together or one arm at a time.'],
+ array['Elbows pinned to the ribs','Full extension at the bottom'],
+ array['Swinging the hips to start each rep','Letting the elbows drift forward'],
+ 10, 12, 75, 42),
+
+('ez-bar-curl', 'EZ Bar Curl',
+ array['ez curl','ez bar bicep curl','cambered bar curl'],
+ 'isolation', 'pull', 1, 'beginner', false, false,
+ array['Stand holding the EZ bar on the angled grips, arms extended.',
+       'Curl the bar to shoulder height keeping the elbows at your sides.',
+       'Lower under control to full extension.'],
+ array['Elbows pinned to the ribs','Full extension at the bottom'],
+ array['Swinging the hips to start each rep'],
+ 8, 12, 90, 95),
+
+('cable-curl', 'Cable Curl',
+ array['cable bicep curl','standing cable curl','rope curl'],
+ 'isolation', 'pull', 1, 'beginner', false, false,
+ array['Stand facing a low pulley with a straight bar or rope.',
+       'Curl it to shoulder height keeping the elbows at your sides.',
+       'Lower until the arms are straight, keeping tension on the cable.'],
+ array['Elbows still','Squeeze at the top'],
+ array['Leaning back to finish the rep'],
+ 10, 15, 75, 105),
+
+('incline-dumbbell-curl', 'Incline Dumbbell Curl',
+ array['incline curl','incline db curl','seated incline curl'],
+ 'isolation', 'pull', 1, 'intermediate', false, false,
+ array['Sit back on a bench set to about 45 degrees, arms hanging straight down.',
+       'Curl the dumbbells up without bringing the elbows forward.',
+       'Lower all the way to the stretch.'],
+ array['Elbows stay behind the body','Own the stretch at the bottom'],
+ array['Lifting the shoulders off the bench to swing the weight up'],
+ 10, 12, 75, 130),
+
+('concentration-curl', 'Concentration Curl',
+ array['seated concentration curl','single arm curl'],
+ 'isolation', 'pull', 1, 'beginner', true, false,
+ array['Sit on a bench and brace the back of one upper arm against the inside of the thigh.',
+       'Curl the dumbbell up towards the shoulder.',
+       'Lower under control until the arm is straight, then switch sides.'],
+ array['Upper arm stays on the thigh','Slow on the way down'],
+ array['Using the thigh to push the arm up'],
+ 10, 15, 60, 150),
 
 -- --- Horizontal pull ---------------------------------------------------------
 ('seated-row-machine', 'Seated Row Machine',
@@ -168,6 +239,15 @@ select e.id, q.id, x.is_primary
 from (values
   ('barbell-preacher-curl', 'barbell',         true),
   ('barbell-preacher-curl', 'preacher-bench',  false),
+  ('dumbbell-preacher-curl','dumbbell',        true),
+  ('dumbbell-preacher-curl','preacher-bench',  false),
+  ('dumbbell-curl',         'dumbbell',        true),
+  ('ez-bar-curl',           'ez-bar',          true),
+  ('cable-curl',            'cable-machine',   true),
+  ('incline-dumbbell-curl', 'dumbbell',        true),
+  ('incline-dumbbell-curl', 'incline-bench',   false),
+  ('concentration-curl',    'dumbbell',        true),
+  ('concentration-curl',    'flat-bench',      false),
   ('seated-cable-row',      'cable-machine',   true),
   ('t-bar-row',             'barbell',         true),
   ('cable-lat-pullover',    'cable-machine',   true),
@@ -190,6 +270,26 @@ select e.id, m.id, x.role, x.weight
 from (values
   ('barbell-preacher-curl','biceps-brachii','primary',0.95),
   ('barbell-preacher-curl','brachialis','secondary',0.55),
+
+  ('dumbbell-preacher-curl','biceps-brachii','primary',0.95),
+  ('dumbbell-preacher-curl','brachialis','secondary',0.60),
+
+  ('dumbbell-curl','biceps-brachii','primary',0.95),
+  ('dumbbell-curl','brachialis','secondary',0.55),
+  ('dumbbell-curl','brachioradialis','secondary',0.40),
+
+  ('ez-bar-curl','biceps-brachii','primary',0.90),
+  ('ez-bar-curl','brachialis','secondary',0.65),
+  ('ez-bar-curl','brachioradialis','secondary',0.45),
+
+  ('cable-curl','biceps-brachii','primary',0.95),
+  ('cable-curl','brachialis','secondary',0.55),
+
+  ('incline-dumbbell-curl','biceps-brachii','primary',0.95),
+  ('incline-dumbbell-curl','brachialis','secondary',0.50),
+
+  ('concentration-curl','biceps-brachii','primary',0.95),
+  ('concentration-curl','brachialis','secondary',0.60),
 
   ('seated-cable-row','latissimus-dorsi','primary',0.80),
   ('seated-cable-row','rhomboids','secondary',0.70),
