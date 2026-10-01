@@ -46,6 +46,8 @@ import dipBarIcon from '../assets/equipment/dip-bar.png';
 import dipBarHero from '../assets/equipment/dip-bar-hero.webp';
 import lyingLegCurlIcon from '../assets/equipment/lying-leg-curl.png';
 import lyingLegCurlHero from '../assets/equipment/lying-leg-curl-hero.webp';
+import exerciseMatIcon from '../assets/equipment/exercise-mat.png';
+import exerciseMatHero from '../assets/equipment/exercise-mat-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -109,6 +111,7 @@ const PEC_DECK: EquipmentArt = { icon: pecDeckIcon, hero: pecDeckHero };
 const CALF_RAISE_MACHINE: EquipmentArt = { icon: calfRaiseMachineIcon, hero: calfRaiseMachineHero };
 const DIP_BAR: EquipmentArt = { icon: dipBarIcon, hero: dipBarHero };
 const LYING_LEG_CURL: EquipmentArt = { icon: lyingLegCurlIcon, hero: lyingLegCurlHero };
+const EXERCISE_MAT: EquipmentArt = { icon: exerciseMatIcon, hero: exerciseMatHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -217,6 +220,12 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   // Two icons, one machine: same frame, pads and arrows swung the other way.
   'hip-abduction-machine': ABDUCTOR_MACHINE,
   'hip-adduction-machine': ADDUCTOR_MACHINE,
+
+  // Bodyweight, so no catalogue kit: the mat is what they are done on. The
+  // wall sit needs a wall rather than a mat and wears this until it has one.
+  'push-up': EXERCISE_MAT,
+  plank: EXERCISE_MAT,
+  'wall-sit': EXERCISE_MAT,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */
