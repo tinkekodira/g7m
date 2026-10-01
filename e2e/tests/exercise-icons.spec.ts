@@ -49,8 +49,8 @@ test('every exercise row has an icon square, and the text lines up either way', 
  * machine, the back extension, the adjustable bench, the abductor and
  * adductor machines, the chest press machine, the trap bar, the
  * treadmill, the seated row machine, the hack squat, the pec deck, the calf
- * raise machine and the dip bar followed it into the same map (see
- * `equipment-art.ts`). One row per piece is enough to say the join still
+ * raise machine, the dip bar and the lying leg curl followed it into the same
+ * map (see `equipment-art.ts`). One row per piece is enough to say the join still
  * works for each new key — the square itself is already covered above.
  */
 test('every piece of kit draws its own icon', async ({ page }) => {
@@ -87,6 +87,7 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Pec Deck', 'pec-deck'],
     ['Seated Calf Raise', 'calf-raise-machine'],
     ['Chest Dip', 'dip-bar'],
+    ['Lying Leg Curl', 'lying-leg-curl'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     // Escaped: "Preacher Curl (EZ Bar)" carries brackets.

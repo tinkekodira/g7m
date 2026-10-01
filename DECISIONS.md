@@ -6097,3 +6097,52 @@ count, the wall sit among the holds, both new rows in the horizontal pull
 pattern, the cable lat pullover as its own row, and the split rows' names and
 stations. The two e2e icon/hero specs follow the renames, and the icon spec
 escapes the brackets in "Preacher Curl (EZ Bar)" before building its regex.
+
+---
+
+## ADR-0099 — The lying leg curl wears its own machine
+
+**Status:** accepted · **Date:** 2026-10-01 · **Phase:** 7
+
+**Builds on ADR-0084 and ADR-0097.** The lying leg curl is the twenty-fourth
+key into `equipment-art.ts`, made the same way as the previous twenty-three:
+same container, same sizes, same hero treatment, no new CSS and no per-asset
+framing override.
+
+### Assets
+
+Same two-step pipeline as ADR-0084 and ADR-0097 (icon: plain downscale of the
+shadowless trimmed-square `lying_leg_icon.png` to 168px, truecolour; hero:
+zero the alpha of every not-fully-opaque pixel, crop to the fully-opaque bbox
+plus a 50px pad, downscale to 1200px wide, WebP q82), as a small Node/`sharp`
+script against `apps/mobile/node_modules`, not checked in. Run on the trap
+bar's sources first, it reproduced the committed `trap-bar.png` and
+`trap-bar-hero.webp` pixel for pixel.
+
+The asset is `lying-leg-curl`, after the machine. The render is the Life
+Fitness Insignia SS-LC, the prone station. The hero is near square (about
+0.94:1, a tall stack tower behind a low bench) and was checked by eye before
+shipping: fully in frame, no shadow fringe.
+
+### The map
+
+- **Lying leg curl**: `lying-leg-curl` (1).
+
+It does not join `LEG_CURL_EXTENSION`. That render is a seated station, with
+an upright seat and four stacked rollers. This one is a prone bench with a
+cranked pad and one roller. `3d-models/EQUIPMENT.md` already held Lying Leg
+Curl off the seated render for that reason.
+
+### Tests
+
+`exercise-icons.spec.ts` and `exercise-hero.spec.ts` each gained one row for
+Lying Leg Curl in their existing parametrised cases.
+
+### Consequences
+
+Sixty-four of seventy-three exercises now carry a render. Nine remain on the
+placeholder square: the four one-off cardio machines still under
+`EQUIPMENT.md`'s "Not modelled yet" (air bike, rowing machine, ski erg, stair
+climber), the T-bar row (a model is to come, per ADR-0098), the three
+bodyweight exercises (push-up, plank, wall sit) and `close-grip-bench-press`,
+which stays unmapped per ADR-0084.
