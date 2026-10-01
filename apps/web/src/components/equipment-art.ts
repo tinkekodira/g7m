@@ -119,6 +119,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-row': BARBELL,
   'barbell-shrug': BARBELL,
   'barbell-curl': BARBELL,
+  'barbell-preacher-curl': BARBELL,
   'conventional-deadlift': BARBELL,
   'romanian-deadlift': BARBELL,
   'barbell-hip-thrust': BARBELL,
@@ -143,6 +144,11 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'bulgarian-split-squat': DUMBBELL,
   'walking-lunge': DUMBBELL,
   'hammer-curl': DUMBBELL,
+  'dumbbell-curl': DUMBBELL,
+  'dumbbell-preacher-curl': DUMBBELL,
+  'concentration-curl': DUMBBELL,
+  // Same call as the incline dumbbell press: the implement, not the bench.
+  'incline-dumbbell-curl': DUMBBELL,
   'farmer-carry': DUMBBELL,
   'dumbbell-pullover': DUMBBELL,
 
@@ -158,13 +164,18 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'overhead-triceps-extension': CABLE_MACHINE,
   'cable-crunch': CABLE_MACHINE,
   'cable-woodchop': CABLE_MACHINE,
+  'cable-lat-pullover': CABLE_MACHINE,
+  'cable-curl': CABLE_MACHINE,
+  // The low pulley, seated — the cable machine, not the row machine below.
+  'seated-cable-row': CABLE_MACHINE,
 
-  // Plate-loaded rather than cable-driven, but the seated, chest-supported
-  // pull is the same — its own machine, not the cable machine's low pulley.
-  'seated-cable-row': SEATED_ROW_MACHINE,
+  // Plate-loaded rather than cable-driven, the seated, chest-supported pull —
+  // its own machine, not the cable machine's low pulley.
+  'seated-row-machine': SEATED_ROW_MACHINE,
 
   // The fixed-weight urethane curl bar, not a loadable Olympic EZ bar.
   'preacher-curl': EZ_BAR,
+  'ez-bar-curl': EZ_BAR,
   'skull-crusher': EZ_BAR,
 
   // One upright bike render covers all three — the silhouette does not
