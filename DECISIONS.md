@@ -6036,3 +6036,56 @@ no change. All five pieces were already in `common/make_outputs.py`'s `SET`,
 and `contact_sheet.png` was rebuilt after the last of them. That file's own
 maintenance rules say finished pieces are not listed there, and app
 integration does not touch the modelling brief.
+
+## ADR-0098 — The exercise list splits two rows by kit and gains five
+
+**Status:** accepted · **Date:** 2026-10-01 · **Phase:** 7
+
+### Context
+
+A round of changes to the exercise list, asked for as one PR: split the
+preacher curl by bar, split the seated row by station, give the cable lat
+pullover its own row, and add a T-bar row and a wall sit. A barbell curl was
+also asked for; `barbell-curl` ("Barbell Curl", alias "bicep curl") is already
+in the catalogue, so no second row was added.
+
+### Decision
+
+One migration, `20261001120000_exercise_list_changes.sql`.
+
+- **Preacher curl.** `preacher-curl` keeps its id and history and is renamed
+  **Preacher Curl (EZ Bar)**, which is what its station (`ez-bar`) and render
+  already said. **Preacher Curl (Barbell)** is new, `barbell-preacher-curl`,
+  on `barbell` with `preacher-bench` secondary.
+- **Seated row.** The row named "Seated Cable Row" was already the machine:
+  its station is `seated-row-machine` and since ADR-0097 it wears that render.
+  It is renamed **Seated Row Machine** and its slug moves to
+  `seated-row-machine`. The freed `seated-cable-row` slug goes to the new
+  **Seated Cable Row Machine**, on `cable-machine`. Nothing on the user side
+  stores an exercise slug (sessions, sets and plans hold the id), so the move
+  is safe; the only consumers are the `/exercises/:slug` route and
+  `equipment-art.ts`.
+- **Cable lat pullover.** Twice before this was answered with
+  `straight-arm-pulldown`. It was asked for again as its own entry, and the two
+  are done differently: the pulldown standing tall with a straight bar, the
+  pullover hinged forward with a rope, pulled through to the hips. It is a new
+  row, `cable-lat-pullover`, and the pullover aliases move off the pulldown.
+- **T-bar row.** New, `t-bar-row`, filed under `barbell` (bar in a corner or a
+  landmine). A dedicated T-bar station would be a new equipment-picker item,
+  which ADR-0010 makes its own decision.
+- **Wall sit.** New, `wall-sit`, time based like the plank, `bodyweight-only`.
+
+### Renders
+
+`barbell-preacher-curl` wears `BARBELL`, `seated-cable-row` and
+`cable-lat-pullover` wear `CABLE_MACHINE`, `seated-row-machine` keeps
+`SEATED_ROW_MACHINE`. The T-bar row has no render yet; a model is to come. The
+wall sit is bodyweight and stays off the map, like the plank.
+
+### Consequences
+
+Sixty-seven exercises, fifty-seven with a render. `seed.test.ts` pins the new
+count, the wall sit among the holds, both new rows in the horizontal pull
+pattern, the cable lat pullover as its own row, and the split rows' names and
+stations. The two e2e icon/hero specs follow the renames, and the icon spec
+escapes the brackets in "Preacher Curl (EZ Bar)" before building its regex.

@@ -46,13 +46,14 @@ describe('volumes', () => {
 
   /**
    * The 50 from the brief, plus the four added afterwards — the skull crusher,
-   * the dumbbell pullover and the two hip machines — and the eight cardio
-   * machines (ADR-0069). Counted rather than left open, because an exercise
+   * the dumbbell pullover and the two hip machines — the eight cardio
+   * machines (ADR-0069), and five more: the barbell preacher curl, the seated
+   * cable row, the T-bar row, the cable lat pullover and the wall sit. Counted rather than left open, because an exercise
    * that fails to insert — a bad slug in a join, a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(62);
+    expect(await count('select count(*) n from public.exercises')).toBe(67);
   });
 });
 
@@ -125,7 +126,7 @@ describe('every exercise is usable', () => {
   it('marks only genuine holds as time based', async () => {
     expect(
       await slugs(`select slug from public.exercises where is_time_based order by slug`),
-    ).toEqual(['farmer-carry', 'plank']);
+    ).toEqual(['farmer-carry', 'plank', 'wall-sit']);
   });
 });
 
@@ -259,7 +260,7 @@ describe('movement pattern coverage', () => {
     ['horizontal push', ['barbell-bench-press', 'push-up', 'machine-chest-press']],
     ['vertical push', ['overhead-press', 'dumbbell-shoulder-press']],
     ['vertical pull', ['pull-up', 'lat-pulldown']],
-    ['horizontal pull', ['barbell-row', 'seated-cable-row']],
+    ['horizontal pull', ['barbell-row', 'seated-row-machine', 'seated-cable-row', 't-bar-row']],
     ['squat', ['barbell-back-squat', 'leg-press', 'goblet-squat']],
     ['hinge', ['conventional-deadlift', 'romanian-deadlift']],
     ['lunge', ['walking-lunge', 'bulgarian-split-squat']],
@@ -386,14 +387,35 @@ describe('the exercises asked for after the first fifty', () => {
   });
 
   /**
-   * Asked for by name, and already here: the cable lat pullover is this row,
-   * which is why it must stay findable by that name rather than be added twice.
+   * Asked for a third time as its own entry, and now it is one. The pulldown
+   * gave up the alias, so the name finds exactly one row.
    */
-  it('finds the cable lat pullover under the name it already has', async () => {
+  it('finds the cable lat pullover as its own exercise', async () => {
     const found = await slugs(
       `select slug from public.exercises
         where 'cable lat pullover' = any(aliases) or lower(name) = 'cable lat pullover'`,
     );
-    expect(found).toEqual(['straight-arm-pulldown']);
+    expect(found).toEqual(['cable-lat-pullover']);
+  });
+
+  /**
+   * The split rows keep their ids: the EZ bar preacher curl and the seated row
+   * machine are the rows people already logged, renamed, not new ones.
+   */
+  it('splits the preacher curl and the seated row by what they are done on', async () => {
+    const { rows } = await h.db.query<{ slug: string; name: string; station: string }>(
+      `select e.slug, e.name, q.slug as station from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id and ee.is_primary
+         join public.equipment q on q.id = ee.equipment_id
+        where e.slug in ('preacher-curl','barbell-preacher-curl',
+                         'seated-row-machine','seated-cable-row')
+        order by e.slug`,
+    );
+    expect(rows).toEqual([
+      { slug: 'barbell-preacher-curl', name: 'Preacher Curl (Barbell)', station: 'barbell' },
+      { slug: 'preacher-curl', name: 'Preacher Curl (EZ Bar)', station: 'ez-bar' },
+      { slug: 'seated-cable-row', name: 'Seated Cable Row Machine', station: 'cable-machine' },
+      { slug: 'seated-row-machine', name: 'Seated Row Machine', station: 'seated-row-machine' },
+    ]);
   });
 });

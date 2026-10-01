@@ -103,7 +103,7 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['machine-chest-press', 'chest-press-machine-hero'],
     ['trap-bar-deadlift', 'trap-bar-hero'],
     ['treadmill', 'treadmill-hero'],
-    ['seated-cable-row', 'seated-row-machine-hero'],
+    ['seated-row-machine', 'seated-row-machine-hero'],
     ['hack-squat', 'hack-squat-hero'],
     ['pec-deck', 'pec-deck-hero'],
     ['seated-calf-raise', 'calf-raise-machine-hero'],

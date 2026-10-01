@@ -66,7 +66,8 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Hammer Curl', 'dumbbell'],
     ['Cable Fly', 'cable-machine'],
     ['Pull-Up', 'pull-up-bar'],
-    ['Preacher Curl', 'ez-bar'],
+    ['Preacher Curl (EZ Bar)', 'ez-bar'],
+    ['Preacher Curl (Barbell)', 'barbell'],
     ['Upright Bike', 'exercise-bike'],
     ['Leg Extension', 'leg-curl-extension'],
     ['Back Extension', 'back-extension'],
@@ -76,14 +77,18 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Machine Chest Press', 'chest-press-machine'],
     ['Trap Bar Deadlift', 'trap-bar'],
     ['Treadmill', 'treadmill'],
-    ['Seated Cable Row', 'seated-row-machine'],
+    ['Seated Row Machine', 'seated-row-machine'],
+    ['Seated Cable Row Machine', 'cable-machine'],
+    ['Cable Lat Pullover', 'cable-machine'],
     ['Hack Squat', 'hack-squat'],
     ['Pec Deck', 'pec-deck'],
     ['Seated Calf Raise', 'calf-raise-machine'],
     ['Chest Dip', 'dip-bar'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
-    const row = page.getByRole('link', { name: new RegExp(`^${name}`) });
+    // Escaped: "Preacher Curl (EZ Bar)" carries brackets.
+    const pattern = name.replace(/[()]/g, '\\$&');
+    const row = page.getByRole('link', { name: new RegExp(`^${pattern}`) });
     await expect(row).toBeVisible();
     await expect(row.locator('img')).toHaveAttribute('src', new RegExp(srcMatch));
   }
