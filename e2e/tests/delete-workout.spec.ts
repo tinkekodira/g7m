@@ -171,6 +171,11 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
   await expect(page.getByText('Nothing logged today yet.')).toBeVisible();
 
   // The three-days-ago workout — never touched by any of this — is still there.
+  // On the 1st to the 3rd of a month that day is in the previous one, which the
+  // calendar does not draw until you step back to it.
+  if (threeDaysAgo.getMonth() !== new Date().getMonth()) {
+    await page.getByRole('button', { name: 'Previous month' }).click();
+  }
   await dayButton(page, threeDaysAgo).click();
   await expect(page.getByText('100 kg × 1')).toBeVisible();
 
