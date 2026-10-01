@@ -44,6 +44,8 @@ import calfRaiseMachineIcon from '../assets/equipment/calf-raise-machine.png';
 import calfRaiseMachineHero from '../assets/equipment/calf-raise-machine-hero.webp';
 import dipBarIcon from '../assets/equipment/dip-bar.png';
 import dipBarHero from '../assets/equipment/dip-bar-hero.webp';
+import lyingLegCurlIcon from '../assets/equipment/lying-leg-curl.png';
+import lyingLegCurlHero from '../assets/equipment/lying-leg-curl-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -106,6 +108,7 @@ const HACK_SQUAT: EquipmentArt = { icon: hackSquatIcon, hero: hackSquatHero };
 const PEC_DECK: EquipmentArt = { icon: pecDeckIcon, hero: pecDeckHero };
 const CALF_RAISE_MACHINE: EquipmentArt = { icon: calfRaiseMachineIcon, hero: calfRaiseMachineHero };
 const DIP_BAR: EquipmentArt = { icon: dipBarIcon, hero: dipBarHero };
+const LYING_LEG_CURL: EquipmentArt = { icon: lyingLegCurlIcon, hero: lyingLegCurlHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -187,6 +190,9 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   // The dual Life Fitness Axiom station — one seat, one carriage, both pads.
   'leg-extension': LEG_CURL_EXTENSION,
   'seated-leg-curl': LEG_CURL_EXTENSION,
+
+  // Prone on a cranked pad, not seated — its own machine, not the station above.
+  'lying-leg-curl': LYING_LEG_CURL,
 
   'back-extension': BACK_EXTENSION,
 
