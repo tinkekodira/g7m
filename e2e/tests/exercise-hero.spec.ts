@@ -62,6 +62,11 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
   ).toBeVisible();
   await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
+
+  // An icon with no hero is the same: the mat is drawn for the list only.
+  await page.goto('/#/exercises/push-up');
+  await expect(page.getByRole('heading', { level: 1, name: 'Push-Up' })).toBeVisible();
+  await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
 });
 
 /**
@@ -70,18 +75,17 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
  * tall render in a wide box — while the floor barbell, the dumbbell and the
  * pull-up bar are low and wide (the pull-up bar the widest yet, about 2.3:1).
  * The leg press is close to square. The EZ bar is wider still (about 2.8:1,
- * widest until the mat below) and the exercise bike is the most portrait
+ * the widest render in the set) and the exercise bike is the most portrait
  * yet (about 0.68:1). The chest press machine is portrait too (about
  * 0.67:1, a tall two-post frame) and the trap bar is wide (about 1.94:1),
  * a bar between two plates like the floor barbell. The pec deck is the
  * most portrait render yet (about 0.64:1, a single tall spine tower) and
- * the dip bar is wide (about 2.6:1, two arms out of a wall plate). The
- * exercise mat is the widest render in the set by far (about 4:1, a flat
- * slab with two push-up bars on it), a low band the title still sits on.
- * None of these shapes gets a special case: `object-contain` on a box that
- * only constrains width and max-height fits any aspect without cropping it,
- * by construction, so what is worth asserting is that the fit still holds at
- * the extremes rather than only at the bench's own near-square ratio.
+ * the dip bar is wide (about 2.6:1, two arms out of a wall plate), second
+ * only to the EZ bar. None of these shapes gets a special case:
+ * `object-contain` on a box that only constrains width and max-height fits
+ * any aspect without cropping it, by construction, so what is worth
+ * asserting is that the fit still holds at the extremes rather than only at
+ * the bench's own near-square ratio.
  */
 test('a portrait or a very wide render still fits without cropping', async ({ page }) => {
   const user = await createUser('hero-shapes', { onboarded: true });
@@ -112,7 +116,6 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['seated-calf-raise', 'calf-raise-machine-hero'],
     ['chest-dip', 'dip-bar-hero'],
     ['lying-leg-curl', 'lying-leg-curl-hero'],
-    ['push-up', 'exercise-mat-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);

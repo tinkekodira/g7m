@@ -47,7 +47,6 @@ import dipBarHero from '../assets/equipment/dip-bar-hero.webp';
 import lyingLegCurlIcon from '../assets/equipment/lying-leg-curl.png';
 import lyingLegCurlHero from '../assets/equipment/lying-leg-curl-hero.webp';
 import exerciseMatIcon from '../assets/equipment/exercise-mat.png';
-import exerciseMatHero from '../assets/equipment/exercise-mat-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -111,7 +110,9 @@ const PEC_DECK: EquipmentArt = { icon: pecDeckIcon, hero: pecDeckHero };
 const CALF_RAISE_MACHINE: EquipmentArt = { icon: calfRaiseMachineIcon, hero: calfRaiseMachineHero };
 const DIP_BAR: EquipmentArt = { icon: dipBarIcon, hero: dipBarHero };
 const LYING_LEG_CURL: EquipmentArt = { icon: lyingLegCurlIcon, hero: lyingLegCurlHero };
-const EXERCISE_MAT: EquipmentArt = { icon: exerciseMatIcon, hero: exerciseMatHero };
+// Icon only. At about 4:1 the mat is too flat to carry a name: on a phone it
+// is a band under 100px tall, and the name sat on bare page above it.
+const EXERCISE_MAT: EquipmentArt = { icon: exerciseMatIcon, hero: null };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
