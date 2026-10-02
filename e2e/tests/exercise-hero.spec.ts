@@ -124,6 +124,9 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     // `object-fit: contain` is what guarantees no crop whatever the art's
     // shape — this is the property a future edit could silently drop.
     await expect(hero).toHaveCSS('object-fit', 'contain');
+    // The name arrives after the image. Measured before it does, the heading
+    // is an empty box sitting low on the art, and every check below passes.
+    await expect(page.getByRole('heading', { level: 1 })).not.toBeEmpty();
 
     const frame = await hero.boundingBox();
     const container = await page
@@ -153,35 +156,35 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
  * the loop above, that put Preacher Curl's name on bare page above the bar.
  * The aliases now hang below the name and grow downward.
  *
- * 360px is a common Android width, and there Preacher Curl's aliases wrap in
- * any font. At 393px whether they wrap depends on the font, so CI never saw it.
+ * What is pinned is where the name ends, not whether it fits on the art: a
+ * long name may wrap and grow upward by design, and whether it wraps depends
+ * on the font. At 320px Preacher Curl's aliases wrap in any font, so the name
+ * still has to end where a one-line list would leave it: a quarter of the
+ * hero plus one alias line (1.5rem) up from the bottom.
  */
-test('a long alias list grows down and leaves the name on the art', async ({ page }) => {
+test('a long alias list grows down and leaves the name where it was', async ({ page }) => {
   const user = await createUser('hero-aliases', { onboarded: true });
   await signIn(page, user);
-  await page.setViewportSize({ width: 360, height: 740 });
+  await page.setViewportSize({ width: 320, height: 740 });
 
   await page.goto('/#/exercises/preacher-curl');
-  const hero = page.locator('img[src*="ez-bar-hero"]');
-  await expect(hero).toBeVisible();
+  await expect(page.locator('img[src*="ez-bar-hero"]')).toBeVisible();
   const aliases = page.getByText(/^Also called ez bar preacher curl/);
   await expect(aliases).toBeVisible();
 
-  const frame = await hero.boundingBox();
   const text = await page.getByRole('heading', { level: 1 }).boundingBox();
   const under = await aliases.boundingBox();
   const container = await page.locator('div.overflow-hidden[class*="var(--hero-h)"]').boundingBox();
+  const heroBottom = (container?.y ?? 0) + (container?.height ?? 0);
+  const nameBottom = (text?.y ?? 0) + (text?.height ?? 0);
 
   // The case under test: the aliases really do take more than one line.
   expect(under?.height ?? 0).toBeGreaterThan(30);
-  // The name is still on the art.
-  expect(text?.y ?? 0).toBeGreaterThanOrEqual(frame?.y ?? 0);
-  expect((text?.y ?? 0) + (text?.height ?? 0)).toBeLessThanOrEqual(
-    (frame?.y ?? 0) + (frame?.height ?? 0) + 1,
+  // The name ends where it would with one line of aliases.
+  expect(Math.abs(nameBottom - (heroBottom - (container?.height ?? 0) * 0.25 - 24))).toBeLessThan(
+    1,
   );
   // The aliases sit under it and stay inside the hero.
-  expect(under?.y ?? 0).toBeGreaterThanOrEqual((text?.y ?? 0) + (text?.height ?? 0));
-  expect((under?.y ?? 0) + (under?.height ?? 0)).toBeLessThanOrEqual(
-    (container?.y ?? 0) + (container?.height ?? 0),
-  );
+  expect(under?.y ?? 0).toBeGreaterThanOrEqual(nameBottom);
+  expect((under?.y ?? 0) + (under?.height ?? 0)).toBeLessThanOrEqual(heroBottom);
 });
