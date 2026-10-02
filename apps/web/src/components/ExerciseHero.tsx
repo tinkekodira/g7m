@@ -109,12 +109,28 @@ export function ExerciseHero({
             it stays on the same part of the bench at every hero size; a
             percentage would resolve against the width and drift. A long name
             growing to two lines grows upward into the calmer part of the
-            image rather than down towards the chips. */}
-        <div className="mt-auto pb-[calc(var(--hero-h)*0.25)]">
-          <h1 className="text-2xl font-semibold text-balance text-primary">{name}</h1>
-          {aliases.length > 0 && (
-            <p className="mt-1 text-sm text-secondary">Also called {aliases.join(', ')}</p>
-          )}
+            image rather than down towards the chips.
+
+            The aliases go the other way. They hang off the name, out of flow,
+            with one line of room kept for them, so a list that wraps grows
+            down into the hero's bottom quarter instead of lifting the name.
+            Lifted, the name cleared the top of a short, wide render like the
+            EZ bar and sat on bare page. */}
+        <div
+          className={
+            aliases.length > 0
+              ? 'mt-auto pb-[calc(var(--hero-h)*0.25+1.5rem)]'
+              : 'mt-auto pb-[calc(var(--hero-h)*0.25)]'
+          }
+        >
+          <div className="relative">
+            <h1 className="text-2xl font-semibold text-balance text-primary">{name}</h1>
+            {aliases.length > 0 && (
+              <p className="absolute inset-x-0 top-full mt-1 text-sm text-secondary">
+                Also called {aliases.join(', ')}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
