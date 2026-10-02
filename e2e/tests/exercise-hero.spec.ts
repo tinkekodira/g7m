@@ -170,9 +170,7 @@ test('a long alias list grows down and leaves the name on the art', async ({ pag
   const frame = await hero.boundingBox();
   const text = await page.getByRole('heading', { level: 1 }).boundingBox();
   const under = await aliases.boundingBox();
-  const container = await page
-    .locator('div.overflow-hidden[class*="var(--hero-h)"]')
-    .boundingBox();
+  const container = await page.locator('div.overflow-hidden[class*="var(--hero-h)"]').boundingBox();
 
   // The case under test: the aliases really do take more than one line.
   expect(under?.height ?? 0).toBeGreaterThan(30);
