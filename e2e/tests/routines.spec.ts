@@ -96,7 +96,8 @@ test('a routine can be built from scratch, reordered and deleted', async ({ page
     await page.getByRole('link', { name: '+ Add an exercise' }).click();
     await page.getByLabel('Search').fill(exercise);
     await page.getByRole('button', { name: new RegExp(`^${exercise}`) }).click();
-    await expect(page.getByText(exercise)).toBeVisible();
+    // Exact: "Incline Barbell Bench Press" contains "Barbell Bench Press".
+    await expect(page.getByText(exercise, { exact: true })).toBeVisible();
   }
 
   const names = page.getByRole('listitem').getByText(/Barbell/);
