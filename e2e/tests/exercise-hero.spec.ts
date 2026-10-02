@@ -145,3 +145,45 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     );
   }
 });
+
+/**
+ * A long "Also called" line wraps, and it used to lift the name with it. The
+ * name and aliases were one block anchored at the bottom, so each extra alias
+ * line pushed the name up by a line. Over the EZ bar, the shortest render in
+ * the loop above, that put Preacher Curl's name on bare page above the bar.
+ * The aliases now hang below the name and grow downward.
+ *
+ * 360px is a common Android width, and there Preacher Curl's aliases wrap in
+ * any font. At 393px whether they wrap depends on the font, so CI never saw it.
+ */
+test('a long alias list grows down and leaves the name on the art', async ({ page }) => {
+  const user = await createUser('hero-aliases', { onboarded: true });
+  await signIn(page, user);
+  await page.setViewportSize({ width: 360, height: 740 });
+
+  await page.goto('/#/exercises/preacher-curl');
+  const hero = page.locator('img[src*="ez-bar-hero"]');
+  await expect(hero).toBeVisible();
+  const aliases = page.getByText(/^Also called ez bar preacher curl/);
+  await expect(aliases).toBeVisible();
+
+  const frame = await hero.boundingBox();
+  const text = await page.getByRole('heading', { level: 1 }).boundingBox();
+  const under = await aliases.boundingBox();
+  const container = await page
+    .locator('div.overflow-hidden[class*="var(--hero-h)"]')
+    .boundingBox();
+
+  // The case under test: the aliases really do take more than one line.
+  expect(under?.height ?? 0).toBeGreaterThan(30);
+  // The name is still on the art.
+  expect(text?.y ?? 0).toBeGreaterThanOrEqual(frame?.y ?? 0);
+  expect((text?.y ?? 0) + (text?.height ?? 0)).toBeLessThanOrEqual(
+    (frame?.y ?? 0) + (frame?.height ?? 0) + 1,
+  );
+  // The aliases sit under it and stay inside the hero.
+  expect(under?.y ?? 0).toBeGreaterThanOrEqual((text?.y ?? 0) + (text?.height ?? 0));
+  expect((under?.y ?? 0) + (under?.height ?? 0)).toBeLessThanOrEqual(
+    (container?.y ?? 0) + (container?.height ?? 0),
+  );
+});
