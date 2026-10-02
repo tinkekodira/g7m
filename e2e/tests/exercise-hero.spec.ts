@@ -139,13 +139,19 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     expect(frame?.height ?? Infinity).toBeLessThanOrEqual((container?.height ?? 0) + 1);
 
     // The title still lands on the art, not above or below it, regardless of
-    // how little of the box's width or height the art itself occupies.
+    // how little of the box's width or height the art itself occupies. A name
+    // that wraps grows upward by design (see `ExerciseHero`), and whether it
+    // wraps is up to the font: CI's breaks "Preacher Curl (EZ Bar)" in two at
+    // 393px, where phone fonts do not. So what is pinned is the last line,
+    // measured as layout (bottom less one line-height), not glyphs, so the
+    // font's ascent cannot move it.
     const title = page.getByRole('heading', { level: 1 });
     const text = await title.boundingBox();
-    expect(text?.y ?? 0).toBeGreaterThanOrEqual(frame?.y ?? 0);
-    expect((text?.y ?? 0) + (text?.height ?? 0)).toBeLessThanOrEqual(
-      (frame?.y ?? 0) + (frame?.height ?? 0) + 1,
-    );
+    const lineHeight = await title.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    const bottom = (text?.y ?? 0) + (text?.height ?? 0);
+    expect(lineHeight).toBeGreaterThan(0);
+    expect(bottom - lineHeight).toBeGreaterThanOrEqual(frame?.y ?? 0);
+    expect(bottom).toBeLessThanOrEqual((frame?.y ?? 0) + (frame?.height ?? 0) + 1);
   }
 });
 
