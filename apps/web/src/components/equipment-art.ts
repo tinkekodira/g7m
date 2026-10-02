@@ -47,6 +47,20 @@ import dipBarHero from '../assets/equipment/dip-bar-hero.webp';
 import lyingLegCurlIcon from '../assets/equipment/lying-leg-curl.png';
 import lyingLegCurlHero from '../assets/equipment/lying-leg-curl-hero.webp';
 import exerciseMatIcon from '../assets/equipment/exercise-mat.png';
+import inclineBenchIcon from '../assets/equipment/incline-bench.png';
+import inclineBenchHero from '../assets/equipment/incline-bench-hero.webp';
+import tBarIcon from '../assets/equipment/t-bar.png';
+import tBarHero from '../assets/equipment/t-bar-hero.webp';
+import standingCalfRaiseIcon from '../assets/equipment/standing-calf-raise.png';
+import standingCalfRaiseHero from '../assets/equipment/standing-calf-raise-hero.webp';
+import seatedCableRowIcon from '../assets/equipment/seated-cable-row.png';
+import seatedCableRowHero from '../assets/equipment/seated-cable-row-hero.webp';
+import rowingMachineIcon from '../assets/equipment/rowing-machine.png';
+import rowingMachineHero from '../assets/equipment/rowing-machine-hero.webp';
+import skiErgIcon from '../assets/equipment/ski-erg.png';
+import skiErgHero from '../assets/equipment/ski-erg-hero.webp';
+import stairClimberIcon from '../assets/equipment/stair-climber.png';
+import stairClimberHero from '../assets/equipment/stair-climber-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -113,9 +127,24 @@ const LYING_LEG_CURL: EquipmentArt = { icon: lyingLegCurlIcon, hero: lyingLegCur
 // Icon only. At about 4:1 the mat is too flat to carry a name: on a phone it
 // is a band under 100px tall, and the name sat on bare page above it.
 const EXERCISE_MAT: EquipmentArt = { icon: exerciseMatIcon, hero: null };
+const INCLINE_BENCH: EquipmentArt = { icon: inclineBenchIcon, hero: inclineBenchHero };
+const T_BAR: EquipmentArt = { icon: tBarIcon, hero: tBarHero };
+const STANDING_CALF_RAISE: EquipmentArt = {
+  icon: standingCalfRaiseIcon,
+  hero: standingCalfRaiseHero,
+};
+const SEATED_CABLE_ROW: EquipmentArt = { icon: seatedCableRowIcon, hero: seatedCableRowHero };
+const ROWING_MACHINE: EquipmentArt = { icon: rowingMachineIcon, hero: rowingMachineHero };
+const SKI_ERG: EquipmentArt = { icon: skiErgIcon, hero: skiErgHero };
+const STAIR_CLIMBER: EquipmentArt = { icon: stairClimberIcon, hero: stairClimberHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
+  // Same flat bench and rack, hands closer together on the bar.
+  'close-grip-bench-press': BENCH,
+
+  // A fixed Olympic incline bench with its own J-hooks, not the adjustable one.
+  'incline-barbell-press': INCLINE_BENCH,
 
   // A rack is what the bar comes off, not what it is made of.
   'barbell-back-squat': SQUAT_RACK,
@@ -142,7 +171,6 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'hack-squat': HACK_SQUAT,
 
   'dumbbell-bench-press': DUMBBELL,
-  'incline-dumbbell-press': DUMBBELL,
   'dumbbell-shoulder-press': DUMBBELL,
   'lateral-raise': DUMBBELL,
   'rear-delt-fly': DUMBBELL,
@@ -154,7 +182,6 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'dumbbell-curl': DUMBBELL,
   'dumbbell-preacher-curl': DUMBBELL,
   'concentration-curl': DUMBBELL,
-  // Same call as the incline dumbbell press: the implement, not the bench.
   'incline-dumbbell-curl': DUMBBELL,
   'farmer-carry': DUMBBELL,
   'dumbbell-pullover': DUMBBELL,
@@ -173,8 +200,9 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'cable-woodchop': CABLE_MACHINE,
   'cable-lat-pullover': CABLE_MACHINE,
   'cable-curl': CABLE_MACHINE,
-  // The low pulley, seated — the cable machine, not the row machine below.
-  'seated-cable-row': CABLE_MACHINE,
+  // A selectorised low row: its own stack, bench and footplates. Not the
+  // cable crossover, and not the plate-loaded row machine below.
+  'seated-cable-row': SEATED_CABLE_ROW,
 
   // Plate-loaded rather than cable-driven, the seated, chest-supported pull —
   // its own machine, not the cable machine's low pulley.
@@ -200,10 +228,12 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   'back-extension': BACK_EXTENSION,
 
-  // Incline dumbbell press stays on DUMBBELL: the implement is what it
-  // needs, and the bench is secondary. This is the one exercise whose
-  // distinguishing station is the bench itself.
-  'incline-barbell-press': ADJUSTABLE_BENCH,
+  // The back set to an incline is what tells this press from the flat one.
+  'incline-dumbbell-press': ADJUSTABLE_BENCH,
+
+  // A chest-supported T-bar station. The row is filed under `barbell` in the
+  // equipment picker (a landmine does it too), but this is what it looks like.
+  't-bar-row': T_BAR,
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
   'pec-deck': PEC_DECK,
@@ -212,11 +242,13 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'chest-dip': DIP_BAR,
 
   treadmill: TREADMILL,
+  'rowing-machine': ROWING_MACHINE,
+  'ski-erg': SKI_ERG,
+  'stair-climber': STAIR_CLIMBER,
 
-  // A seated calf raise. Standing is a different machine (shoulder pads, no
-  // seat) and shares this render until it has one of its own.
   'seated-calf-raise': CALF_RAISE_MACHINE,
-  'standing-calf-raise': CALF_RAISE_MACHINE,
+  // Shoulder pads and no seat — a different machine from the seated one.
+  'standing-calf-raise': STANDING_CALF_RAISE,
 
   // Two icons, one machine: same frame, pads and arrows swung the other way.
   'hip-abduction-machine': ABDUCTOR_MACHINE,

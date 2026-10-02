@@ -6209,3 +6209,76 @@ Sixty-seven of seventy-three exercises now carry an icon (sixty-four after
 ADR-0099, plus these three). Sixty-four have a hero. The six with no art at
 all are the four cardio machines under `EQUIPMENT.md`'s "Not modelled yet",
 the T-bar row, and `close-grip-bench-press`.
+
+---
+
+## ADR-0101 — Seven new renders, the incline presses swap benches, and the close-grip press takes the bench
+
+**Status:** accepted · **Date:** 2026-10-02 · **Phase:** 7
+
+**Builds on ADR-0084 and ADR-0097. Reverses two calls from ADR-0084 and
+ADR-0085, at Milan's request.** Seven renders from `3d-models/` join
+`equipment-art.ts`: the incline bench, the T-bar, the standing calf raise,
+the seated cable row, the rowing machine, the ski erg and the stair climber.
+They use the same container and sizes as the rest, with no new CSS and no
+per-asset framing override. Milan asked for all of it in one PR.
+
+### Assets
+
+Same pipeline as ADR-0099. Icon: a plain downscale of each `*_icon.png` to
+168px, truecolour. Hero: zero the alpha of every pixel that is not fully
+opaque, crop to the opaque bbox plus a 50px pad, downscale to 1200px wide,
+WebP q82. The script was run on the lying leg curl's sources first and
+reproduced both committed files byte for byte.
+
+Hero shapes run from 0.56:1 (the ski erg, now the most portrait in the set)
+to 1.35:1 (the rowing machine). That range is well inside what the shape
+test already passes. The mat failed it at 4:1. All seven were checked by eye
+on the dark page colour: fully in frame, with no shadow fringe.
+
+### The map
+
+- **Incline bench** (new): `incline-barbell-press`. This is a fixed Olympic
+  incline bench with its own J-hooks, which is the station the exercise is
+  done on. It moves off the adjustable bench.
+- **Adjustable bench**: `incline-dumbbell-press`, which moves off the
+  dumbbell. ADR-0085 kept it on the dumbbell because the implement is what it
+  needs. Milan's call is that the inclined back is what tells it apart from
+  the flat dumbbell press in a list. `incline-dumbbell-curl` stays on the
+  dumbbell.
+- **Bench**: `close-grip-bench-press` joins `barbell-bench-press`. ADR-0084
+  left it unmapped because the render is "a flat bench" and the close-grip
+  press is not a separate one. It is done on that same flat bench and rack,
+  so it now wears that render.
+- **Seated cable row** (new): `seated-cable-row`, the selectorised low row
+  (a tower with its own stack, a long bench and footplates). It moves off the
+  cable machine. `seated-row-machine` keeps its plate-loaded render.
+- **Standing calf raise** (new): `standing-calf-raise`. It moves off the
+  seated calf raise, which it had borrowed since ADR-0097.
+- **T-bar** (new): `t-bar-row`. This is a chest-supported T-bar station.
+  The exercise stays filed under `barbell` in the equipment picker
+  (ADR-0098). This is only what it is drawn as.
+- **Rowing machine**, **ski erg** and **stair climber** (new): one exercise
+  each, with the same slugs.
+
+### The rename
+
+`incline-barbell-press` is renamed from "Incline Barbell Press" to
+**"Incline Barbell Bench Press"**, so it reads as the incline form of
+"Barbell Bench Press". This is a follow-up migration that updates the row in
+place: the slug, the id and the history do not change. "incline barbell
+press" joins the aliases so a search for the old name still finds it.
+
+### Tests
+
+`exercise-icons.spec.ts` and `exercise-hero.spec.ts` gained one row for each
+new key. Each spec also kept or moved a row for every swap. Both used
+**Close-Grip Bench Press** as their "no render" fixture (ADR-0100), and
+that row now has art. The fixture is now **Air Bike**, the last exercise with
+none. When it gets a render, the fixture needs to change again.
+
+### Consequences
+
+Seventy-two of seventy-three exercises now carry an icon, and sixty-nine
+carry a hero (the three on the mat have none). Only the air bike remains on
+the placeholder square.

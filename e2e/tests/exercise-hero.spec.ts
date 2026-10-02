@@ -55,11 +55,10 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
   await expect(page.getByText(/^Also called bench, bp/)).toBeVisible();
 
   // An exercise with no render keeps the plain header: no image, same title.
-  // Close-Grip Bench Press is unmapped on purpose (see `equipment-art.ts`).
-  await page.goto('/#/exercises/close-grip-bench-press');
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Close-Grip Bench Press' }),
-  ).toBeVisible();
+  // Air Bike is the last exercise with no render. When it gets one, this
+  // needs another fixture.
+  await page.goto('/#/exercises/air-bike');
+  await expect(page.getByRole('heading', { level: 1, name: 'Air Bike' })).toBeVisible();
   await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
 
@@ -81,7 +80,8 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
  * a bar between two plates like the floor barbell. The pec deck is the
  * most portrait render yet (about 0.64:1, a single tall spine tower) and
  * the dip bar is wide (about 2.6:1, two arms out of a wall plate), second
- * only to the EZ bar. None of these shapes gets a special case:
+ * only to the EZ bar. The ski erg is now the most portrait (about 0.56:1,
+ * a tall mast on a small floor plate). None of these shapes gets a special case:
  * `object-contain` on a box that only constrains width and max-height fits
  * any aspect without cropping it, by construction, so what is worth
  * asserting is that the fit still holds at the extremes rather than only at
@@ -104,7 +104,9 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['upright-bike', 'exercise-bike-hero'],
     ['leg-extension', 'leg-curl-extension-hero'],
     ['back-extension', 'back-extension-hero'],
-    ['incline-barbell-press', 'adjustable-bench-hero'],
+    ['incline-dumbbell-press', 'adjustable-bench-hero'],
+    ['incline-barbell-press', 'incline-bench-hero'],
+    ['close-grip-bench-press', 'bench-press-hero'],
     ['hip-abduction-machine', 'abductor-machine-hero'],
     ['hip-adduction-machine', 'adductor-machine-hero'],
     ['machine-chest-press', 'chest-press-machine-hero'],
@@ -116,6 +118,12 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['seated-calf-raise', 'calf-raise-machine-hero'],
     ['chest-dip', 'dip-bar-hero'],
     ['lying-leg-curl', 'lying-leg-curl-hero'],
+    ['t-bar-row', 't-bar-hero'],
+    ['standing-calf-raise', 'standing-calf-raise-hero'],
+    ['seated-cable-row', 'seated-cable-row-hero'],
+    ['rowing-machine', 'rowing-machine-hero'],
+    ['ski-erg', 'ski-erg-hero'],
+    ['stair-climber', 'stair-climber-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);
