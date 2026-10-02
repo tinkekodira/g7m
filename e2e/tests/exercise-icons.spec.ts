@@ -27,16 +27,16 @@ test('every exercise row has an icon square, and the text lines up either way', 
   const named = await page.getByText('Barbell Bench Press', { exact: true }).boundingBox();
   expect(art).not.toBeNull();
 
-  // Close-Grip Bench Press is unmapped on purpose, not waiting on a model:
-  // neither the floor barbell nor the flat bench says what it needs.
-  await page.getByLabel('Search').fill('Close-Grip Bench Press');
-  const withoutArt = page.getByRole('link', { name: /^Close-Grip Bench Press/ });
+  // Air Bike is the last exercise with no render. When it gets one, this
+  // needs another fixture.
+  await page.getByLabel('Search').fill('Air Bike');
+  const withoutArt = page.getByRole('link', { name: /^Air Bike/ });
   await expect(withoutArt).toBeVisible();
   // The one without a render falls back to the app's own glyph.
   await expect(withoutArt.locator('img')).toHaveCount(0);
   await expect(withoutArt.locator('svg')).toHaveCount(1);
   const glyph = await withoutArt.locator('svg').first().boundingBox();
-  const other = await page.getByText('Close-Grip Bench Press', { exact: true }).boundingBox();
+  const other = await page.getByText('Air Bike', { exact: true }).boundingBox();
   expect(glyph).not.toBeNull();
 
   // Both squares are the same square, and both names start at the same x.
@@ -50,8 +50,10 @@ test('every exercise row has an icon square, and the text lines up either way', 
  * machine, the back extension, the adjustable bench, the abductor and
  * adductor machines, the chest press machine, the trap bar, the
  * treadmill, the seated row machine, the hack squat, the pec deck, the calf
- * raise machine, the dip bar, the lying leg curl and the exercise mat followed
- * it into the same map (see `equipment-art.ts`). One row per piece is enough
+ * raise machine, the dip bar, the lying leg curl, the exercise mat, the
+ * incline bench, the T-bar, the standing calf raise, the seated cable row, the
+ * rowing machine, the ski erg and the stair climber followed it into the same
+ * map (see `equipment-art.ts`). One row per piece is enough
  * to say the join still works for each new key — the square itself is
  * already covered above.
  */
@@ -76,14 +78,16 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Upright Bike', 'exercise-bike'],
     ['Leg Extension', 'leg-curl-extension'],
     ['Back Extension', 'back-extension'],
-    ['Incline Barbell Press', 'adjustable-bench'],
+    ['Incline Dumbbell Press', 'adjustable-bench'],
+    ['Incline Barbell Bench Press', 'incline-bench'],
+    ['Close-Grip Bench Press', 'bench-press'],
     ['Abductor Machine', 'abductor-machine'],
     ['Adductor Machine', 'adductor-machine'],
     ['Machine Chest Press', 'chest-press-machine'],
     ['Trap Bar Deadlift', 'trap-bar'],
     ['Treadmill', 'treadmill'],
     ['Seated Row Machine', 'seated-row-machine'],
-    ['Seated Cable Row Machine', 'cable-machine'],
+    ['Seated Cable Row Machine', 'seated-cable-row'],
     ['Cable Lat Pullover', 'cable-machine'],
     ['Hack Squat', 'hack-squat'],
     ['Pec Deck', 'pec-deck'],
@@ -91,6 +95,11 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Chest Dip', 'dip-bar'],
     ['Lying Leg Curl', 'lying-leg-curl'],
     ['Push-Up', 'exercise-mat'],
+    ['T-Bar Row', 't-bar'],
+    ['Standing Calf Raise', 'standing-calf-raise'],
+    ['Rowing Machine', 'rowing-machine'],
+    ['Ski Erg', 'ski-erg'],
+    ['Stair Climber', 'stair-climber'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     // Escaped: "Preacher Curl (EZ Bar)" carries brackets.
