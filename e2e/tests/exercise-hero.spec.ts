@@ -55,11 +55,18 @@ test('the hero fills the width and is never cropped, whatever the notch', async 
   await expect(page.getByText(/^Also called bench, bp/)).toBeVisible();
 
   // An exercise with no render keeps the plain header: no image, same title.
-  // Plank is bodyweight, with no kit to render (see `equipment-art.ts`).
-  await page.goto('/#/exercises/plank');
-  await expect(page.getByRole('heading', { level: 1, name: 'Plank' })).toBeVisible();
+  // Close-Grip Bench Press is unmapped on purpose (see `equipment-art.ts`).
+  await page.goto('/#/exercises/close-grip-bench-press');
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Close-Grip Bench Press' }),
+  ).toBeVisible();
   await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
   await expect(page.getByRole('link', { name: '← All exercises' })).toBeVisible();
+
+  // An icon with no hero is the same: the mat is drawn for the list only.
+  await page.goto('/#/exercises/push-up');
+  await expect(page.getByRole('heading', { level: 1, name: 'Push-Up' })).toBeVisible();
+  await expect(page.locator('img[src*="hero"]')).toHaveCount(0);
 });
 
 /**

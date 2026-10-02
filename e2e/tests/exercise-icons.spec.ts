@@ -27,15 +27,16 @@ test('every exercise row has an icon square, and the text lines up either way', 
   const named = await page.getByText('Barbell Bench Press', { exact: true }).boundingBox();
   expect(art).not.toBeNull();
 
-  // Plank is bodyweight: no kit to render, so it stays off the map for good.
-  await page.getByLabel('Search').fill('Plank');
-  const withoutArt = page.getByRole('link', { name: /^Plank/ });
+  // Close-Grip Bench Press is unmapped on purpose, not waiting on a model:
+  // neither the floor barbell nor the flat bench says what it needs.
+  await page.getByLabel('Search').fill('Close-Grip Bench Press');
+  const withoutArt = page.getByRole('link', { name: /^Close-Grip Bench Press/ });
   await expect(withoutArt).toBeVisible();
   // The one without a render falls back to the app's own glyph.
   await expect(withoutArt.locator('img')).toHaveCount(0);
   await expect(withoutArt.locator('svg')).toHaveCount(1);
   const glyph = await withoutArt.locator('svg').first().boundingBox();
-  const other = await page.getByText('Plank', { exact: true }).boundingBox();
+  const other = await page.getByText('Close-Grip Bench Press', { exact: true }).boundingBox();
   expect(glyph).not.toBeNull();
 
   // Both squares are the same square, and both names start at the same x.
@@ -49,9 +50,10 @@ test('every exercise row has an icon square, and the text lines up either way', 
  * machine, the back extension, the adjustable bench, the abductor and
  * adductor machines, the chest press machine, the trap bar, the
  * treadmill, the seated row machine, the hack squat, the pec deck, the calf
- * raise machine, the dip bar and the lying leg curl followed it into the same
- * map (see `equipment-art.ts`). One row per piece is enough to say the join still
- * works for each new key — the square itself is already covered above.
+ * raise machine, the dip bar, the lying leg curl and the exercise mat followed
+ * it into the same map (see `equipment-art.ts`). One row per piece is enough
+ * to say the join still works for each new key — the square itself is
+ * already covered above.
  */
 test('every piece of kit draws its own icon', async ({ page }) => {
   const user = await createUser('icons-kit', { onboarded: true });
@@ -88,6 +90,7 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Seated Calf Raise', 'calf-raise-machine'],
     ['Chest Dip', 'dip-bar'],
     ['Lying Leg Curl', 'lying-leg-curl'],
+    ['Push-Up', 'exercise-mat'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     // Escaped: "Preacher Curl (EZ Bar)" carries brackets.

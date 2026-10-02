@@ -6146,3 +6146,66 @@ placeholder square: the four one-off cardio machines still under
 climber), the T-bar row (a model is to come, per ADR-0098), the three
 bodyweight exercises (push-up, plank, wall sit) and `close-grip-bench-press`,
 which stays unmapped per ADR-0084.
+
+---
+
+## ADR-0100 — Push-up, plank and wall sit wear the exercise mat
+
+**Status:** accepted · **Date:** 2026-10-01 · **Phase:** 7
+
+**Builds on ADR-0084 and ADR-0097.** The exercise mat is the first render
+that is not a catalogue equipment type. Push-Up, Plank and Wall Sit are
+`bodyweight-only`, and until now they sat on the placeholder square. It is
+the first piece to ship an **icon with no hero**, the `hero: null` case
+`EquipmentArt` has allowed since ADR-0084 but nothing had used.
+
+### Assets
+
+The icon step of ADR-0084's pipeline: a plain downscale of `mat_icon.png` to
+168px, truecolour. The script was checked against the trap bar first and
+reproduced its committed assets pixel for pixel.
+
+The asset is `exercise-mat`. The render is a flat black mat with two chrome
+push-up bars on it, because the reference photo has them. The bars are also
+the only thing standing up off the mat, so they carry the icon.
+
+**No hero.** The mat is about 4:1, against the EZ bar's 2.8:1, the widest
+before it. On a 393px phone that is a band under 100px tall at the foot of the
+hero. The name sits a quarter of the hero up from the bottom, so it landed on
+bare page above the mat. That breaks the one rule every hero keeps: the name
+sits on the art. A first local check missed this, because the shape test read
+the heading before the name had loaded. CI caught it.
+
+Placing the name relative to the art instead of the hero would fix it, but it
+moves the name on every hero page. That is a separate decision. Until then
+the mat is an icon, and the three exercises keep the plain header. The hero
+spec now checks that path too, with Push-Up.
+
+**The icon is faint, as `3d-models/EQUIPMENT.md` warns.** A mat is the
+flattest object in the set. At the house camera's 10° elevation it is a
+light-grey sliver with a small chrome knot. The camera is locked across the
+set, so this is not bent for one piece.
+
+### The map
+
+- **Exercise mat**: `push-up`, `plank` and `wall-sit` (3).
+
+Wall Sit is a stopgap: it needs a wall, not a mat. `EQUIPMENT.md` records the
+same call, the way Standing Calf Raise borrows the seated render.
+
+### Tests
+
+`exercise-icons.spec.ts` gained a Push-Up row, and `exercise-hero.spec.ts`
+checks that Push-Up, with an icon but no hero, keeps the plain header. Both
+used **Plank** as their "exercise with no render" fixture, which ADR-0097
+picked because a bodyweight exercise would never get a render. That did not
+hold. The fixture is now **Close-Grip Bench Press**, which ADR-0084
+left unmapped by judgment, so it is not waiting on a model. The air bike,
+rowing machine, ski erg, stair climber and T-bar row all are.
+
+### Consequences
+
+Sixty-seven of seventy-three exercises now carry an icon (sixty-four after
+ADR-0099, plus these three). Sixty-four have a hero. The six with no art at
+all are the four cardio machines under `EQUIPMENT.md`'s "Not modelled yet",
+the T-bar row, and `close-grip-bench-press`.
