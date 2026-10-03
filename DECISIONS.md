@@ -6407,9 +6407,13 @@ different movement on the same bench. Adding a loop is three files in
 - `exercise-demos.test.ts`: both exercises are found, an unknown one gives
   `null`, the MP4 plays only on `#1C1C1C`, the dark and light tokens choose
   correctly, and reduced motion gives the poster.
-- `precache.test.ts` and `vite-config.test.ts`: the loops are built into
-  `assets/demos/` and left out of the precache, while every other asset keeps
-  its name and stays precached. Both tests fail on the previous config.
+- `precache.test.ts`: the loops are built into `assets/demos/` and left out
+  of the precache, while every other asset keeps its name and stays
+  precached. These tests fail on the previous config. They resolve the real
+  Vite config, and they live in `service-worker/` because only the
+  `tsconfig.node.json` project can import both halves. The same test under
+  `src/` typechecked locally against a stale build of that project and failed
+  in CI, as `vite-config.test.ts` already warns.
 - `exercise-demo.spec.ts`: both loops play and are square and at most 360px.
   The close-grip press keeps its card. A blocked file removes the panel with
   no error (this test fails without the `onError` handler). Neither the list
