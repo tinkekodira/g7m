@@ -137,13 +137,31 @@ test.describe('with reduced motion', () => {
 
     await openHowTo(page, 'barbell-back-squat', 'Barbell Back Squat');
     const panel = page.getByRole('img', { name: 'Barbell Back Squat demonstration' });
+    // The opaque poster, on the dark panel it was rendered for.
     await expect(panel.locator('img')).toHaveAttribute(
       'src',
-      /assets\/demos\/barbell-back-squat-poster-[\w-]+\.webp$/,
+      /assets\/demos\/barbell-back-squat-poster-(?!transparent)[\w-]+\.webp$/,
     );
     await expect(panel.locator('video')).toHaveCount(0);
     // The poster is the only file asked for: no MP4, no animated WebP.
     expect(loops.filter((url) => !url.includes('-poster-'))).toEqual([]);
+  });
+
+  test('in the light theme, the still is the transparent one', async ({ page }) => {
+    const user = await createUser('demo-still-light', { onboarded: true });
+    await page.addInitScript(() => {
+      localStorage.setItem('g7m.theme', 'light');
+    });
+    await signIn(page, user);
+
+    await openHowTo(page, 'barbell-bench-press', 'Barbell Bench Press');
+    const panel = page.getByRole('img', { name: 'Barbell Bench Press demonstration' });
+    // Not the dark first frame, which would be a dark square on the light panel.
+    await expect(panel.locator('img')).toHaveAttribute(
+      'src',
+      /assets\/demos\/barbell-bench-press-poster-transparent-[\w-]+\.webp$/,
+    );
+    await expect(panel.locator('video')).toHaveCount(0);
   });
 });
 

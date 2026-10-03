@@ -6310,8 +6310,9 @@ the list must not download a loop at all.
 ### MP4 on dark, WebP on light
 
 Each loop ships as an H.264 MP4 (170–190 KB, opaque on `#1C1C1C`), an
-animated WebP (2.2–2.7 MB, transparent), and a poster (~20 KB, the first
-frame on `#1C1C1C`). The MP4 is about a twelfth of the WebP. But it is
+animated WebP (2.2–2.7 MB, transparent), and two posters of the first frame:
+one on `#1C1C1C` (~20 KB) and one transparent (64–75 KB). The MP4 is about a
+twelfth of the WebP. But it is
 opaque, so it can only play where the surface is its own background.
 
 **No surface in the app was `#1C1C1C`.** The dark page is `#1f1e1d` and the
@@ -6346,9 +6347,13 @@ With `prefers-reduced-motion: reduce`, the panel shows the poster and no
 squatting on repeat is exactly the motion that setting exists to stop. The
 setting is read live, so changing it with the page open takes effect at once.
 
-In the light theme the poster is still the dark first frame, because there is
-no transparent still yet. It reads as a framed picture, not a broken one, but
-it does not match the light panel.
+The still follows the same rule as the loop (`demoPoster`). On the dark panel
+it is the opaque poster. Everywhere else it is a transparent poster, so it is
+never a dark square on the light panel. That file is frame 1 with its alpha
+and contact shadow, 720px, 64–75 KB. `render_loop.py` in 3d-models now writes
+it (`--post`, or `--transparent-poster` on its own). It is encoded with the
+loop's WebP settings, and on the light panel it matches the loop's first frame
+pixel for pixel.
 
 ### Loading, pausing, failing
 
@@ -6378,10 +6383,12 @@ apps bundle `dist`, so they are not affected.
 
 ### Assets
 
-The six files are copied from `3d-models/mannequin/previews/` byte for byte
+The eight files are copied from `3d-models/mannequin/previews/` byte for byte
 and checked by SHA-256. They are renamed only to the app's kebab-case slugs:
-`barbell-back-squat.mp4`, `barbell-back-squat.webp` and
-`barbell-back-squat-poster.webp`, and the same for the bench press. The figure
+`barbell-back-squat.mp4`, `barbell-back-squat.webp`,
+`barbell-back-squat-poster.webp` and
+`barbell-back-squat-poster-transparent.webp`, and the same for the bench
+press. The figure
 is built from CC0 geometry and the kit is this project's own models. They are
 committed like the equipment icons, with no install step.
 
@@ -6399,7 +6406,7 @@ still refused (checked by staging one).
 
 The map is one entry per exercise, not per piece of kit as in
 `equipment-art.ts`. A loop shows a movement, and the close-grip press is a
-different movement on the same bench. Adding a loop is three files in
+different movement on the same bench. Adding a loop is four files in
 `src/assets/demos/` and one line in `exercise-demos.ts`.
 
 ### Tests
@@ -6418,4 +6425,5 @@ different movement on the same bench. Adding a loop is three files in
   The close-grip press keeps its card. A blocked file removes the panel with
   no error (this test fails without the `onError` handler). Neither the list
   nor the install downloads a loop. Reduced motion asks only for the poster,
-  and the light theme plays the WebP.
+  and in light it is the transparent one (this test fails with the opaque
+  poster). The light theme plays the WebP.

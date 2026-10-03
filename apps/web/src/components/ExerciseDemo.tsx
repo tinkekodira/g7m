@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { colorTokens, lightColorTokens } from '@g7m/ui';
 import { useThemeStore } from '../lib/use-theme.js';
-import { demoFormat, demoView, exerciseDemo, type ExerciseDemo as Demo } from './exercise-demos.js';
+import {
+  demoFormat,
+  demoPoster,
+  demoView,
+  exerciseDemo,
+  type ExerciseDemo as Demo,
+} from './exercise-demos.js';
 
 /**
  * One rep of the exercise, on repeat, for the exercises that have a loop.
@@ -32,8 +38,8 @@ import { demoFormat, demoView, exerciseDemo, type ExerciseDemo as Demo } from '.
  *   comes back. An animated WebP cannot be paused, so it is taken out of the
  *   page instead. The loop is seamless, so starting again from the top looks
  *   the same as resuming.
- * - **Reduced motion.** The poster, and no loop. In the light theme that is
- *   still the dark first frame, because there is no transparent still yet.
+ * - **Reduced motion.** The first frame as a still, and no loop: the opaque
+ *   poster on the dark panel, the transparent one on the light panel.
  * - **A file that fails.** The panel goes and the page is as it was before
  *   loops existed. There is no error state: the steps beside it are the
  *   real instructions, and a missing loop takes nothing away from them.
@@ -66,7 +72,8 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
   }, [near]);
 
   const surface = theme === 'light' ? lightColorTokens['bg-demo'] : colorTokens['bg-demo'];
-  const view = demoView(demoFormat(surface), reducedMotion);
+  const format = demoFormat(surface);
+  const view = demoView(format, reducedMotion);
   const playing = view === 'mp4' && onScreen && tabVisible;
 
   useEffect(() => {
@@ -99,7 +106,12 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
       className="mx-auto mb-4 aspect-square w-full max-w-[360px] overflow-hidden rounded-control bg-demo"
     >
       {reached && view === 'poster' && (
-        <img src={demo.poster} alt="" onError={fail} className="size-full object-contain" />
+        <img
+          src={demoPoster(demo, format)}
+          alt=""
+          onError={fail}
+          className="size-full object-contain"
+        />
       )}
       {reached && view === 'mp4' && (
         <video

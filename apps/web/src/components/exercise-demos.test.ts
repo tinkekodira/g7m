@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { colorTokens, lightColorTokens } from '@g7m/ui';
-import { DEMO_MP4_BACKGROUND, demoFormat, demoView, exerciseDemo } from './exercise-demos.js';
+import {
+  DEMO_MP4_BACKGROUND,
+  demoFormat,
+  demoPoster,
+  demoView,
+  exerciseDemo,
+} from './exercise-demos.js';
 
 describe('exerciseDemo', () => {
   it('finds the back squat and the bench press, each with all three files', () => {
@@ -10,6 +16,7 @@ describe('exerciseDemo', () => {
       expect(demo?.mp4).toMatch(new RegExp(`${slug}\\.mp4$`));
       expect(demo?.webp).toMatch(new RegExp(`${slug}\\.webp$`));
       expect(demo?.poster).toMatch(new RegExp(`${slug}-poster\\.webp$`));
+      expect(demo?.transparentPoster).toMatch(new RegExp(`${slug}-poster-transparent\\.webp$`));
     }
   });
 
@@ -57,5 +64,19 @@ describe('demoView', () => {
   it('plays the chosen format otherwise', () => {
     expect(demoView('mp4', false)).toBe('mp4');
     expect(demoView('webp', false)).toBe('webp');
+  });
+});
+
+describe('demoPoster', () => {
+  const demo = exerciseDemo('barbell-back-squat');
+  if (demo === null) throw new Error('The back squat has no loop.');
+
+  it('gives the opaque poster on the colour it was rendered on', () => {
+    expect(demoPoster(demo, demoFormat(colorTokens['bg-demo']))).toBe(demo.poster);
+  });
+
+  it('gives the transparent one anywhere else, so it is never a dark square', () => {
+    expect(demoPoster(demo, demoFormat(lightColorTokens['bg-demo']))).toBe(demo.transparentPoster);
+    expect(demoPoster(demo, 'webp')).toBe(demo.transparentPoster);
   });
 });

@@ -1,9 +1,11 @@
 import backSquatMp4 from '../assets/demos/barbell-back-squat.mp4';
 import backSquatWebp from '../assets/demos/barbell-back-squat.webp';
 import backSquatPoster from '../assets/demos/barbell-back-squat-poster.webp';
+import backSquatTransparentPoster from '../assets/demos/barbell-back-squat-poster-transparent.webp';
 import benchPressMp4 from '../assets/demos/barbell-bench-press.mp4';
 import benchPressWebp from '../assets/demos/barbell-bench-press.webp';
 import benchPressPoster from '../assets/demos/barbell-bench-press-poster.webp';
+import benchPressTransparentPoster from '../assets/demos/barbell-bench-press-poster-transparent.webp';
 
 /**
  * The demonstration loops, by exercise slug: a clay mannequin doing one rep in
@@ -15,7 +17,7 @@ import benchPressPoster from '../assets/demos/barbell-bench-press-poster.webp';
  *
  * Unlike `equipment-art.ts` this is one entry per exercise, not per piece of
  * kit: a loop shows a movement, and two exercises on one bench are two
- * different movements. Adding one is three files in `assets/demos/` and one
+ * different movements. Adding one is four files in `assets/demos/` and one
  * entry here.
  *
  * The files sit under `assets/demos/` for a reason beyond tidiness: Vite emits
@@ -30,11 +32,23 @@ export interface ExerciseDemo {
   readonly webp: string;
   /** The first frame, opaque on `DEMO_MP4_BACKGROUND`. About 20 KB. */
   readonly poster: string;
+  /** The same first frame, transparent with the contact shadow. 60–80 KB. */
+  readonly transparentPoster: string;
 }
 
 const DEMOS: Readonly<Record<string, ExerciseDemo>> = {
-  'barbell-back-squat': { mp4: backSquatMp4, webp: backSquatWebp, poster: backSquatPoster },
-  'barbell-bench-press': { mp4: benchPressMp4, webp: benchPressWebp, poster: benchPressPoster },
+  'barbell-back-squat': {
+    mp4: backSquatMp4,
+    webp: backSquatWebp,
+    poster: backSquatPoster,
+    transparentPoster: backSquatTransparentPoster,
+  },
+  'barbell-bench-press': {
+    mp4: benchPressMp4,
+    webp: benchPressWebp,
+    poster: benchPressPoster,
+    transparentPoster: benchPressTransparentPoster,
+  },
 };
 
 /** This exercise's loop, or null if it has none. */
@@ -72,4 +86,13 @@ export type DemoView = DemoFormat | 'poster';
  */
 export function demoView(format: DemoFormat, reducedMotion: boolean): DemoView {
   return reducedMotion ? 'poster' : format;
+}
+
+/**
+ * The still, by the same rule as the loop: the opaque poster where the MP4
+ * would play, and the transparent one everywhere else, so the still is never
+ * a dark square on a light panel.
+ */
+export function demoPoster(demo: ExerciseDemo, format: DemoFormat): string {
+  return format === 'mp4' ? demo.poster : demo.transparentPoster;
 }
