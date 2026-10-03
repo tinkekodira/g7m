@@ -71,6 +71,12 @@
      needs one; tokens.ts carries it for the viewer. */
   --bg-stage: #17161a;
 
+  /* The panel an exercise's demonstration loop plays in. Exactly the colour
+     the loops are rendered on (3d-models render_common's UI_BG), so the
+     opaque MP4 fills it with no edge; `exercise-demos.ts` plays the MP4 only
+     on this exact value. ADR-0102. */
+  --bg-demo: #1c1c1c;
+
   /* The one shadow, per theme: a light page needs far less of it. */
   --shadow-floating-value: 0 8px 24px -4px rgb(0 0 0 / 0.45);
 }
@@ -113,6 +119,10 @@
 
   --bg-stage: #e6e2d9;
 
+  /* The page colour, a step down from the white card. The transparent WebP
+     plays here, and its contact shadow ends at the panel's edge. */
+  --bg-demo: #f5f3ee;
+
   --shadow-floating-value: 0 8px 24px -6px rgb(60 40 20 / 0.18);
 }
 
@@ -132,6 +142,7 @@
   --color-on-accent: var(--text-on-accent);
   --color-on-danger: var(--text-on-danger);
   --color-stage: var(--bg-stage);
+  --color-demo: var(--bg-demo);
 
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);

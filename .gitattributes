@@ -19,5 +19,11 @@
 *.webm  filter=lfs diff=lfs merge=lfs -text
 *.mov   filter=lfs diff=lfs merge=lfs -text
 
+# Except the exercise demonstration loops (ADR-0102). They are 170–190 KB,
+# smaller than the transparent WebPs beside them, and every build needs them —
+# but no workflow checks LFS out, so through LFS the build would bundle the
+# pointer files and no loop would play. Committed like the equipment icons.
+apps/web/src/assets/demos/*.mp4 -filter -diff -merge -text
+
 # Lockfile: generated, don't blow up diffs in review.
 pnpm-lock.yaml -diff linguist-generated=true

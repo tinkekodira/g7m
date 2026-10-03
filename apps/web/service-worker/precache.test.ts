@@ -1,4 +1,6 @@
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { resolveConfig } from 'vite';
 import { precacheId, sha256, shouldPrecache, type PrecacheEntry } from './precache.js';
 
 function entry(path: string, content: string): PrecacheEntry {
@@ -14,6 +16,22 @@ describe('shouldPrecache', () => {
    */
   it('leaves the anatomy model out', () => {
     expect(shouldPrecache('anatomy/body.glb')).toBe(false);
+  });
+
+  /**
+   * Megabytes per exercise, wanted only by whoever scrolls to one. Precached,
+   * they would be downloaded at install by everyone, on every new loop.
+   */
+  it('leaves the exercise demonstration loops out', () => {
+    for (const file of [
+      'assets/demos/barbell-back-squat-Bq3kT9xA.mp4',
+      'assets/demos/barbell-back-squat-Cw81pLmZ.webp',
+      'assets/demos/barbell-back-squat-poster-D0aHf2Qe.webp',
+    ]) {
+      expect(shouldPrecache(file), file).toBe(false);
+    }
+    // Only that folder: the equipment heroes are WebPs too, and stay.
+    expect(shouldPrecache('assets/bench-press-hero-Dk2PqA1x.webp')).toBe(true);
   });
 
   it('takes the shell, the assets and the icons', () => {
@@ -69,5 +87,57 @@ describe('precacheId', () => {
 
   it('is short enough to read in a cache name', () => {
     expect(precacheId([entry('index.html', '<html>')])).toMatch(/^[0-9a-f]{12}$/);
+  });
+});
+
+/**
+ * The demonstration loops, kept out of the install (ADR-0102).
+ *
+ * `shouldPrecache` leaves out `assets/demos/`, and it is `vite.config.ts` that
+ * puts the loops there. Each half is harmless alone and the pair is the point:
+ * rename the folder on one side and every loop is downloaded at install again,
+ * with nothing failing. Here rather than beside the other config tests in
+ * `src/`, because this file is in the same TypeScript project as the config
+ * and the precache, and a test in `src/` importing either only typechecks on a
+ * machine that has already built that project.
+ */
+describe('the demonstration loops', () => {
+  const appRoot = fileURLToPath(new URL('..', import.meta.url));
+
+  async function builtName(originalFileName: string): Promise<string> {
+    const config = await resolveConfig({ root: appRoot }, 'build', 'production', 'production');
+    const output = config.build.rollupOptions.output;
+    const name = (Array.isArray(output) ? output[0] : output)?.assetFileNames;
+    if (typeof name !== 'function') throw new Error('assetFileNames is not a function.');
+    const file = originalFileName.split('/').pop() ?? originalFileName;
+    return name({
+      type: 'asset',
+      name: file,
+      names: [file],
+      originalFileName,
+      originalFileNames: [originalFileName],
+      source: new Uint8Array(),
+    })
+      .replace('[name]', file.replace(/\.[^.]+$/, ''))
+      .replace('[hash]', 'Bq3kT9xA')
+      .replace('[extname]', file.replace(/^[^.]+/, ''));
+  }
+
+  it('are built into a folder the precache leaves out', async () => {
+    for (const source of [
+      'src/assets/demos/barbell-back-squat.mp4',
+      'src/assets/demos/barbell-back-squat.webp',
+      'src/assets/demos/barbell-back-squat-poster.webp',
+    ]) {
+      const built = await builtName(source);
+      expect(built, source).toMatch(/^assets\/demos\/barbell-back-squat/);
+      expect(shouldPrecache(built), built).toBe(false);
+    }
+  });
+
+  it('leave every other asset where it was, and precached', async () => {
+    const built = await builtName('src/assets/equipment/bench-press-hero.webp');
+    expect(built).toBe('assets/bench-press-hero-Bq3kT9xA.webp');
+    expect(shouldPrecache(built)).toBe(true);
   });
 });

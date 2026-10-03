@@ -12,8 +12,10 @@ import {
 } from '@g7m/core';
 import type { Exercise, MuscleRole } from '@g7m/db';
 import { cx } from '@g7m/ui';
+import { ExerciseDemo } from '../components/ExerciseDemo.js';
 import { ExerciseHero } from '../components/ExerciseHero.js';
 import { equipmentArt } from '../components/equipment-art.js';
+import { exerciseDemo } from '../components/exercise-demos.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronRightIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
@@ -196,8 +198,12 @@ function ExerciseDetail({
         </Section>
       )}
 
-      {exercise.instructions.length > 0 && (
+      {(exercise.instructions.length > 0 || exerciseDemo(exercise.slug) !== null) && (
         <Section title="How to do it">
+          {/* The movement the steps describe, above them: it is taken in at a
+              glance, and the steps are read in order. Nothing at all for an
+              exercise without a loop. */}
+          <ExerciseDemo slug={exercise.slug} name={exercise.name} />
           <ol className="flex flex-col gap-2">
             {exercise.instructions.map((step, index) => (
               <li key={step} className="flex gap-3 text-sm text-secondary">
