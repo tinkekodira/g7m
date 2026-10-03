@@ -33,6 +33,14 @@ export function shouldPrecache(file: string): boolean {
   // cache keeps it from then on.
   if (file.startsWith('anatomy/')) return false;
 
+  // The exercise demonstration loops, for the same reason. The transparent
+  // WebPs are 2–3 MB each and there is a set per exercise, so precaching them
+  // would download every loop at install, before anyone opens an exercise.
+  // They are fetched when a loop scrolls into view. The MP4 would be wrong
+  // here as well: a `<video>` asks for byte ranges, and a whole cached file
+  // handed back to a range request is one Safari will not play. ADR-0102.
+  if (file.startsWith('assets/demos/')) return false;
+
   // `.nojekyll` and friends: hosting markers, zero bytes, no request ever
   // made for them.
   const name = file.split('/').pop() ?? file;

@@ -6282,3 +6282,136 @@ none. When it gets a render, the fixture needs to change again.
 Seventy-two of seventy-three exercises now carry an icon, and sixty-nine
 carry a hero (the three on the mat have none). Only the air bike remains on
 the placeholder square.
+
+---
+
+## ADR-0102 — The squat and the bench press show a demonstration loop
+
+**Status:** accepted · **Date:** 2026-10-03 · **Phase:** 7
+
+The first two demonstration loops come from `3d-models/mannequin`: a clay
+mannequin doing one rep of Barbell Back Squat and Barbell Bench Press, in the
+same kit, camera and light as their icons. Each loop is 2.6 s at 15 fps and
+seamless. `exercise-demos.ts` maps exercise slug to its three files. An
+exercise with no entry renders exactly what it did before.
+
+### Where it shows
+
+At the top of the **How to do it** card on the exercise's page, above the
+numbered steps. It shows the movement the steps describe. The cues card stays
+first, because the cues are still the answer when there is no signal. The
+loop is square, the column's width, and at most 360px, so the 720px source is
+sharp on a 2x screen. Its accessible name is "Barbell Back Squat
+demonstration". It holds no text.
+
+It is not in the exercise list. A moving figure at 56px reads as noise, and
+the list must not download a loop at all.
+
+### MP4 on dark, WebP on light
+
+Each loop ships as an H.264 MP4 (170–190 KB, opaque on `#1C1C1C`), an
+animated WebP (2.2–2.7 MB, transparent), and a poster (~20 KB, the first
+frame on `#1C1C1C`). The MP4 is about a twelfth of the WebP. But it is
+opaque, so it can only play where the surface is its own background.
+
+**No surface in the app was `#1C1C1C`.** The dark page is `#1f1e1d` and the
+dark card `#262624`. Both are close enough to look like a match and far
+enough to show the MP4 as a faint square. So the loop plays in a panel of its
+own, a new token `--bg-demo`:
+
+- **Dark:** `#1c1c1c`, exactly the render background. The MP4 fills it with
+  no edge.
+- **Light:** `#f5f3ee`, the page colour, a step down from the white card. The
+  transparent WebP plays on it.
+
+The panel also fixes something in the WebP. Its contact shadow is cut off at
+the frame's bottom and left edges, with alpha up to about 130 at the cut. On
+a bare card that cut is a hard line. On the panel it falls on the panel's
+edge.
+
+`demoFormat` picks the file from the panel's colour, not the theme's name. It
+returns the MP4 only on an exact match. A unit test pins the dark token to
+the render background, so if the token drifts by one level, every dark view
+fails a test instead of quietly becoming a 2.5 MB WebP.
+
+**Rejected:** the WebP everywhere, as the brief allows for any surface that
+is not `#1C1C1C`. That costs 2.5 MB a view in the default theme and leaves
+the shadow cut showing on the card. Also rejected: the MP4 straight on the
+`#262624` card, which shows its square.
+
+### Reduced motion
+
+With `prefers-reduced-motion: reduce`, the panel shows the poster and no
+`<video>`. The MP4 and the animated WebP are never fetched. A figure
+squatting on repeat is exactly the motion that setting exists to stop. The
+setting is read live, so changing it with the page open takes effect at once.
+
+In the light theme the poster is still the dark first frame, because there is
+no transparent still yet. It reads as a framed picture, not a broken one, but
+it does not match the light panel.
+
+### Loading, pausing, failing
+
+- **Lazy.** Nothing is fetched until the panel is within 200px of the screen.
+- **Not precached.** The service worker precaches everything in `dist`, which
+  would download every loop at install, before anyone opens an exercise. A
+  set of loops is megabytes, and every new exercise adds more. Vite now emits
+  anything from `src/assets/demos/` into `assets/demos/` (`assetFileNames` in
+  `vite.config.ts`). `shouldPrecache` leaves that folder out, the way it
+  leaves out the anatomy model. The files are still fingerprinted, so the
+  worker serves them cache-first once fetched. Precaching the MP4 would also
+  break playback in Safari: a `<video>` asks for byte ranges, and the worker
+  would answer with the whole cached file.
+- **Off screen or tab hidden.** The video pauses and resumes. An animated WebP
+  cannot be paused, so it is taken out of the page and put back. The loop is
+  seamless, so restarting looks the same as resuming. The browser keeps the
+  bytes in memory, so it is not downloaded again.
+- **Failure.** If a file fails, the panel goes and the card is the heading and
+  the steps again. There is no error state, because the steps are the real
+  instructions.
+
+**Consequence:** on the web build with no connection, the loop is absent. The
+WebP and the poster are runtime-cached once seen. The MP4 arrives as range
+responses (206), which the worker does not store. Offline playback would need
+range support in the worker, which is not part of this change. The native
+apps bundle `dist`, so they are not affected.
+
+### Assets
+
+The six files are copied from `3d-models/mannequin/previews/` byte for byte
+and checked by SHA-256. They are renamed only to the app's kebab-case slugs:
+`barbell-back-squat.mp4`, `barbell-back-squat.webp` and
+`barbell-back-squat-poster.webp`, and the same for the bench press. The figure
+is built from CC0 geometry and the kit is this project's own models. They are
+committed like the equipment icons, with no install step.
+
+**Not through LFS.** `.gitattributes` sends `*.mp4` to Git LFS, but no
+workflow checks LFS out. Through LFS, CI and Pages would bundle 130-byte
+pointer files, and the dark-theme loop would fail in production and quietly
+drop to no panel. A scoped exception keeps `apps/web/src/assets/demos/*.mp4`
+in plain git. Milan's call: the two MP4s total 360 KB, less than either
+transparent WebP, which were never LFS files. The alternative was `lfs: true`
+on all seven checkout steps, with LFS bandwidth spent on every CI run. The
+global `*.mp4` rule still covers any large video. `.githooks/pre-commit`
+matched extensions alone, so it now also asks `.gitattributes` whether LFS
+manages the path. The exception passes, and a raw `.mp4` anywhere else is
+still refused (checked by staging one).
+
+The map is one entry per exercise, not per piece of kit as in
+`equipment-art.ts`. A loop shows a movement, and the close-grip press is a
+different movement on the same bench. Adding a loop is three files in
+`src/assets/demos/` and one line in `exercise-demos.ts`.
+
+### Tests
+
+- `exercise-demos.test.ts`: both exercises are found, an unknown one gives
+  `null`, the MP4 plays only on `#1C1C1C`, the dark and light tokens choose
+  correctly, and reduced motion gives the poster.
+- `precache.test.ts` and `vite-config.test.ts`: the loops are built into
+  `assets/demos/` and left out of the precache, while every other asset keeps
+  its name and stays precached. Both tests fail on the previous config.
+- `exercise-demo.spec.ts`: both loops play and are square and at most 360px.
+  The close-grip press keeps its card. A blocked file removes the panel with
+  no error (this test fails without the `onError` handler). Neither the list
+  nor the install downloads a loop. Reduced motion asks only for the poster,
+  and the light theme plays the WebP.

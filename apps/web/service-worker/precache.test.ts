@@ -16,6 +16,22 @@ describe('shouldPrecache', () => {
     expect(shouldPrecache('anatomy/body.glb')).toBe(false);
   });
 
+  /**
+   * Megabytes per exercise, wanted only by whoever scrolls to one. Precached,
+   * they would be downloaded at install by everyone, on every new loop.
+   */
+  it('leaves the exercise demonstration loops out', () => {
+    for (const file of [
+      'assets/demos/barbell-back-squat-Bq3kT9xA.mp4',
+      'assets/demos/barbell-back-squat-Cw81pLmZ.webp',
+      'assets/demos/barbell-back-squat-poster-D0aHf2Qe.webp',
+    ]) {
+      expect(shouldPrecache(file), file).toBe(false);
+    }
+    // Only that folder: the equipment heroes are WebPs too, and stay.
+    expect(shouldPrecache('assets/bench-press-hero-Dk2PqA1x.webp')).toBe(true);
+  });
+
   it('takes the shell, the assets and the icons', () => {
     for (const file of [
       'index.html',

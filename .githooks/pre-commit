@@ -61,6 +61,10 @@ done
 for f in $STAGED; do
   case "$f" in
     *.glb|*.gltf|*.ktx2|*.hdr|*.bin|*.mp4|*.webm|*.mov)
+      # `.gitattributes` decides what LFS manages. A path it deliberately
+      # exempts — the small exercise demo loops, ADR-0102 — is meant to be
+      # raw bytes, so only a path it sends to LFS must arrive as a pointer.
+      git check-attr filter -- "$f" | grep -q ': filter: lfs$' || continue
       if ! git show ":$f" 2>/dev/null | head -c 45 | grep -q '^version https://git-lfs'; then
         fail "'$f' is staged as raw bytes, not a Git LFS pointer."
         printf "  Run 'git lfs install' then re-stage it. Committing it as-is puts the\n" >&2

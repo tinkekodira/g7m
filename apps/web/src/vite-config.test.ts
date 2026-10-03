@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveConfig } from 'vite';
+import { shouldPrecache } from '../service-worker/precache.js';
 
 /**
  * The blank page.
@@ -105,5 +106,55 @@ describe('dependency optimizer', () => {
         `${name} no longer ships ${asset} beside ${loader}.`,
       ).toBe(true);
     }
+  });
+});
+
+/**
+ * The demonstration loops, kept out of the install.
+ *
+ * The service worker precaches everything in `dist` but a few named paths, and
+ * the loops are megabytes per exercise. The precache leaves out
+ * `assets/demos/`, and it is this config that puts them there. Each half is
+ * harmless alone and the pair is the point: rename the folder on one side and
+ * every loop is downloaded at install again, with nothing failing.
+ */
+describe('demonstration loops', () => {
+  const appRoot = fileURLToPath(new URL('..', import.meta.url));
+
+  async function builtName(originalFileName: string): Promise<string> {
+    const config = await resolveConfig({ root: appRoot }, 'build', 'production', 'production');
+    const output = config.build.rollupOptions.output;
+    const name = (Array.isArray(output) ? output[0] : output)?.assetFileNames;
+    if (typeof name !== 'function') throw new Error('assetFileNames is not a function.');
+    const file = originalFileName.split('/').pop() ?? originalFileName;
+    return name({
+      type: 'asset',
+      name: file,
+      names: [file],
+      originalFileName,
+      originalFileNames: [originalFileName],
+      source: new Uint8Array(),
+    })
+      .replace('[name]', file.replace(/\.[^.]+$/, ''))
+      .replace('[hash]', 'Bq3kT9xA')
+      .replace('[extname]', file.replace(/^[^.]+/, ''));
+  }
+
+  it('builds them into a folder the precache leaves out', async () => {
+    for (const source of [
+      'src/assets/demos/barbell-back-squat.mp4',
+      'src/assets/demos/barbell-back-squat.webp',
+      'src/assets/demos/barbell-back-squat-poster.webp',
+    ]) {
+      const built = await builtName(source);
+      expect(built, source).toMatch(/^assets\/demos\/barbell-back-squat/);
+      expect(shouldPrecache(built), built).toBe(false);
+    }
+  });
+
+  it('leaves every other asset where it was, and precached', async () => {
+    const built = await builtName('src/assets/equipment/bench-press-hero.webp');
+    expect(built).toBe('assets/bench-press-hero-Bq3kT9xA.webp');
+    expect(shouldPrecache(built)).toBe(true);
   });
 });

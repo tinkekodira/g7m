@@ -46,6 +46,7 @@ export const colorTokens = {
   'muscle-heat-4': '#d97757',
 
   'bg-stage': '#17161a',
+  'bg-demo': '#1c1c1c',
 } as const;
 
 export type ColorTokenName = keyof typeof colorTokens;
@@ -83,6 +84,7 @@ export const lightColorTokens = {
   'badge-secret': '#6b4aa5',
 
   'bg-stage': '#e6e2d9',
+  'bg-demo': '#f5f3ee',
 } as const satisfies Partial<Record<ColorTokenName, string>>;
 
 export type LightTokenName = keyof typeof lightColorTokens;

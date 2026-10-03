@@ -138,6 +138,23 @@ export default defineConfig({
             ? 'achievements'
             : undefined;
         },
+
+        /**
+         * The exercise demonstration loops get a folder of their own in `dist`.
+         *
+         * Fingerprinted like every other asset, so the service worker can
+         * serve them cache-first. But they are megabytes, one set per
+         * exercise, and wanted only by somebody who scrolls an exercise's page
+         * down to its loop, so the worker leaves this folder out of its
+         * precache (`service-worker/precache.ts`). That needs them findable by
+         * path once they are built, and this is what makes them findable.
+         * Everything else keeps Vite's default name. See ADR-0102.
+         */
+        assetFileNames(asset) {
+          return asset.originalFileNames.some((file) => file.startsWith('src/assets/demos/'))
+            ? 'assets/demos/[name]-[hash][extname]'
+            : 'assets/[name]-[hash][extname]';
+        },
       },
     },
   },
