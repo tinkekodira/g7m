@@ -5,7 +5,7 @@ import { signIn } from './support/app.js';
 /**
  * The demonstration loop on an exercise's page (ADR-0102).
  *
- * The squat and the bench press have one; nothing else does yet. It plays in
+ * Fifteen exercises have one (`WITH_LOOP` below); the rest do not. It plays in
  * the "How to do it" card, the MP4 in the dark theme and the transparent WebP
  * in the light one, the poster alone under reduced motion, and none of it is
  * fetched until somebody scrolls to it.
@@ -27,7 +27,28 @@ async function howToCard(page: Page): Promise<string[]> {
     .evaluate((card) => Array.from(card.children, (child) => child.tagName));
 }
 
-test('the squat and the bench press play their loop', async ({ page }) => {
+/** Every exercise with a loop: its slug and its name as the page heads it. */
+const WITH_LOOP = [
+  ['barbell-back-squat', 'Barbell Back Squat'],
+  ['barbell-bench-press', 'Barbell Bench Press'],
+  ['conventional-deadlift', 'Conventional Deadlift'],
+  ['romanian-deadlift', 'Romanian Deadlift'],
+  ['barbell-row', 'Barbell Row'],
+  ['barbell-curl', 'Barbell Curl'],
+  ['overhead-press', 'Overhead Press'],
+  ['dumbbell-bench-press', 'Dumbbell Bench Press'],
+  ['dumbbell-curl', 'Dumbbell Curl'],
+  ['lateral-raise', 'Lateral Raise'],
+  ['push-up', 'Push-Up'],
+  ['pull-up', 'Pull-Up'],
+  ['chin-up', 'Chin-Up'],
+  ['lat-pulldown', 'Lat Pulldown'],
+  ['leg-press', 'Leg Press'],
+] as const;
+
+test('every exercise with a loop plays it', async ({ page }) => {
+  // Fifteen pages, each waiting for its video to start.
+  test.setTimeout(180_000);
   const user = await createUser('demo', { onboarded: true });
   await signIn(page, user);
   // A browser that cannot decode H.264 never plays the MP4: it takes the
@@ -39,10 +60,7 @@ test('the squat and the bench press play their loop', async ({ page }) => {
     'This browser cannot decode H.264.',
   );
 
-  for (const [slug, name] of [
-    ['barbell-back-squat', 'Barbell Back Squat'],
-    ['barbell-bench-press', 'Barbell Bench Press'],
-  ] as const) {
+  for (const [slug, name] of WITH_LOOP) {
     await openHowTo(page, slug, name);
     const panel = page.getByRole('img', { name: `${name} demonstration` });
     await expect(panel).toBeVisible();

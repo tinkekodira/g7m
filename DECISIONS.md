@@ -6427,3 +6427,72 @@ different movement on the same bench. Adding a loop is four files in
   nor the install downloads a loop. Reduced motion asks only for the poster,
   and in light it is the transparent one (this test fails with the opaque
   poster). The light theme plays the WebP.
+
+## ADR-0103 — Thirteen more exercises show a demonstration loop
+
+**Status:** accepted · **Date:** 2026-10-05 · **Phase:** 7
+
+`3d-models/mannequin` rendered three more batches of loops in the same kit,
+camera, light and format as the first two (ADR-0102). They go into the same
+map, `exercise-demos.ts`, the same way. The player, the format choice, the
+reduced-motion rule and the list rows are unchanged.
+
+| Exercise | Slug | Kit in the loop | Loop |
+|---|---|---|---|
+| Conventional Deadlift | `conventional-deadlift` | floor barbell | 2.6 s |
+| Romanian Deadlift | `romanian-deadlift` | floor barbell | 2.6 s |
+| Barbell Row | `barbell-row` | floor barbell | 2.33 s |
+| Barbell Curl | `barbell-curl` | floor barbell | 2.6 s |
+| Overhead Press | `overhead-press` | squat rack | 2.6 s |
+| Dumbbell Bench Press | `dumbbell-bench-press` | flat bench, two hex dumbbells | 2.6 s |
+| Dumbbell Curl | `dumbbell-curl` | two hex dumbbells | 2.6 s |
+| Lateral Raise | `lateral-raise` | two hex dumbbells | 2.6 s |
+| Push-Up | `push-up` | mat with push-up bars | 2.33 s |
+| Pull-Up | `pull-up` | wall pull-up bar | 2.8 s |
+| Chin-Up | `chin-up` | wall pull-up bar | 2.8 s |
+| Lat Pulldown | `lat-pulldown` | lat pulldown machine | 2.6 s |
+| Leg Press | `leg-press` | linear leg press | 2.6 s |
+
+Every file was checked against ADR-0102's contract before it was copied:
+720px square, H.264 at 15 fps with the frame count 3d-models gives, posters
+on `#1C1C1C`, WebPs transparent and looping forever. They are copied byte
+for byte. Loop lengths now differ, from 2.33 s to 2.8 s, and nothing in the
+player assumed 2.6 s, so nothing there changed.
+
+Each loop starts where its lift ends: lockout, chin over the bar, bar at the
+chest. Pull-Up, Chin-Up, Lat Pulldown and Leg Press show the figure's back,
+because that is how a lifter faces that kit and how its icon is drawn. That
+is deliberate. Dumbbell Bench Press shows a bench as well as the dumbbells,
+while its list icon stays the dumbbell.
+
+### The bench press is re-rendered
+
+The four `barbell-bench-press` files are replaced. The old loop let the bar
+cross the chest by a fraction of a millimetre. The new one stops it 2.4 mm
+higher. The filenames are content-hashed in the build, so they change with
+the bytes and no cached copy of the old loop is served.
+
+### Dumbbell Curl, not "Dumbbell Bicep Curl"
+
+3d-models named this loop `dumbbell_bicep_curl` and asked for an exercise of
+exactly that name, warning that the list might only have Hammer Curl. There
+is no row with that name. There is `dumbbell-curl`, added in ADR-0098: palms
+forward, both dumbbells to the shoulders, with "dumbbell bicep curl" among
+its aliases. That is the movement in the loop, so the loop maps to it. The
+files are installed under the app's slug, `dumbbell-curl.*`, like every
+other loop.
+
+**Rejected:** Hammer Curl, which uses a neutral grip, a different movement
+in the same kit (its test pins it to `null`). Also rejected: leaving the
+loop unmapped until the name was decided. The name was decided, in
+ADR-0098, before the loop existed.
+
+### Tests
+
+- `exercise-demos.test.ts`: all fifteen exercises resolve to four files
+  each, and Hammer Curl, the close-grip press and an unknown slug give
+  `null`. A new test maps every file in `src/assets/demos/` to an entry, so
+  a loop copied in without one fails a test instead of shipping unused in
+  the bundle. It fails with one extra file in the folder.
+- `exercise-demo.spec.ts`: every one of the fifteen plays on its page, square
+  and at most 360px, above its steps.
