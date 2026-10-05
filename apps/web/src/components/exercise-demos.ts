@@ -1,24 +1,78 @@
-import backSquatMp4 from '../assets/demos/barbell-back-squat.mp4';
-import backSquatWebp from '../assets/demos/barbell-back-squat.webp';
-import backSquatPoster from '../assets/demos/barbell-back-squat-poster.webp';
-import backSquatTransparentPoster from '../assets/demos/barbell-back-squat-poster-transparent.webp';
-import benchPressMp4 from '../assets/demos/barbell-bench-press.mp4';
-import benchPressWebp from '../assets/demos/barbell-bench-press.webp';
-import benchPressPoster from '../assets/demos/barbell-bench-press-poster.webp';
-import benchPressTransparentPoster from '../assets/demos/barbell-bench-press-poster-transparent.webp';
+import barbellBackSquatMp4 from '../assets/demos/barbell-back-squat.mp4';
+import barbellBackSquatWebp from '../assets/demos/barbell-back-squat.webp';
+import barbellBackSquatPoster from '../assets/demos/barbell-back-squat-poster.webp';
+import barbellBackSquatTransparentPoster from '../assets/demos/barbell-back-squat-poster-transparent.webp';
+import barbellBenchPressMp4 from '../assets/demos/barbell-bench-press.mp4';
+import barbellBenchPressWebp from '../assets/demos/barbell-bench-press.webp';
+import barbellBenchPressPoster from '../assets/demos/barbell-bench-press-poster.webp';
+import barbellBenchPressTransparentPoster from '../assets/demos/barbell-bench-press-poster-transparent.webp';
+import conventionalDeadliftMp4 from '../assets/demos/conventional-deadlift.mp4';
+import conventionalDeadliftWebp from '../assets/demos/conventional-deadlift.webp';
+import conventionalDeadliftPoster from '../assets/demos/conventional-deadlift-poster.webp';
+import conventionalDeadliftTransparentPoster from '../assets/demos/conventional-deadlift-poster-transparent.webp';
+import romanianDeadliftMp4 from '../assets/demos/romanian-deadlift.mp4';
+import romanianDeadliftWebp from '../assets/demos/romanian-deadlift.webp';
+import romanianDeadliftPoster from '../assets/demos/romanian-deadlift-poster.webp';
+import romanianDeadliftTransparentPoster from '../assets/demos/romanian-deadlift-poster-transparent.webp';
+import barbellRowMp4 from '../assets/demos/barbell-row.mp4';
+import barbellRowWebp from '../assets/demos/barbell-row.webp';
+import barbellRowPoster from '../assets/demos/barbell-row-poster.webp';
+import barbellRowTransparentPoster from '../assets/demos/barbell-row-poster-transparent.webp';
+import barbellCurlMp4 from '../assets/demos/barbell-curl.mp4';
+import barbellCurlWebp from '../assets/demos/barbell-curl.webp';
+import barbellCurlPoster from '../assets/demos/barbell-curl-poster.webp';
+import barbellCurlTransparentPoster from '../assets/demos/barbell-curl-poster-transparent.webp';
+import overheadPressMp4 from '../assets/demos/overhead-press.mp4';
+import overheadPressWebp from '../assets/demos/overhead-press.webp';
+import overheadPressPoster from '../assets/demos/overhead-press-poster.webp';
+import overheadPressTransparentPoster from '../assets/demos/overhead-press-poster-transparent.webp';
+import dumbbellBenchPressMp4 from '../assets/demos/dumbbell-bench-press.mp4';
+import dumbbellBenchPressWebp from '../assets/demos/dumbbell-bench-press.webp';
+import dumbbellBenchPressPoster from '../assets/demos/dumbbell-bench-press-poster.webp';
+import dumbbellBenchPressTransparentPoster from '../assets/demos/dumbbell-bench-press-poster-transparent.webp';
+import dumbbellCurlMp4 from '../assets/demos/dumbbell-curl.mp4';
+import dumbbellCurlWebp from '../assets/demos/dumbbell-curl.webp';
+import dumbbellCurlPoster from '../assets/demos/dumbbell-curl-poster.webp';
+import dumbbellCurlTransparentPoster from '../assets/demos/dumbbell-curl-poster-transparent.webp';
+import lateralRaiseMp4 from '../assets/demos/lateral-raise.mp4';
+import lateralRaiseWebp from '../assets/demos/lateral-raise.webp';
+import lateralRaisePoster from '../assets/demos/lateral-raise-poster.webp';
+import lateralRaiseTransparentPoster from '../assets/demos/lateral-raise-poster-transparent.webp';
+import pushUpMp4 from '../assets/demos/push-up.mp4';
+import pushUpWebp from '../assets/demos/push-up.webp';
+import pushUpPoster from '../assets/demos/push-up-poster.webp';
+import pushUpTransparentPoster from '../assets/demos/push-up-poster-transparent.webp';
+import pullUpMp4 from '../assets/demos/pull-up.mp4';
+import pullUpWebp from '../assets/demos/pull-up.webp';
+import pullUpPoster from '../assets/demos/pull-up-poster.webp';
+import pullUpTransparentPoster from '../assets/demos/pull-up-poster-transparent.webp';
+import chinUpMp4 from '../assets/demos/chin-up.mp4';
+import chinUpWebp from '../assets/demos/chin-up.webp';
+import chinUpPoster from '../assets/demos/chin-up-poster.webp';
+import chinUpTransparentPoster from '../assets/demos/chin-up-poster-transparent.webp';
+import latPulldownMp4 from '../assets/demos/lat-pulldown.mp4';
+import latPulldownWebp from '../assets/demos/lat-pulldown.webp';
+import latPulldownPoster from '../assets/demos/lat-pulldown-poster.webp';
+import latPulldownTransparentPoster from '../assets/demos/lat-pulldown-poster-transparent.webp';
+import legPressMp4 from '../assets/demos/leg-press.mp4';
+import legPressWebp from '../assets/demos/leg-press.webp';
+import legPressPoster from '../assets/demos/leg-press-poster.webp';
+import legPressTransparentPoster from '../assets/demos/leg-press-poster-transparent.webp';
 
 /**
  * The demonstration loops, by exercise slug: a clay mannequin doing one rep in
  * the same kit as the exercise's icon.
  *
  * Rendered in `3d-models/mannequin` with the icons' camera, lights and render
- * settings, and copied here byte for byte. Each loop is one rep, 2.6 s at
- * 15 fps, and seamless: the last frame leads into the first.
+ * settings, and copied here byte for byte. Each loop is one rep at 15 fps,
+ * 2.33–2.8 s depending on the lift, and seamless: the last frame leads into
+ * the first. The player takes each file's own length and assumes none.
  *
  * Unlike `equipment-art.ts` this is one entry per exercise, not per piece of
  * kit: a loop shows a movement, and two exercises on one bench are two
  * different movements. Adding one is four files in `assets/demos/` and one
- * entry here.
+ * entry here. The files are named after the app's slug, not 3d-models' file
+ * name: its `dumbbell_bicep_curl` is this catalogue's `dumbbell-curl`.
  *
  * The files sit under `assets/demos/` for a reason beyond tidiness: Vite emits
  * them to the same folder in `dist`, and the service worker leaves that folder
@@ -26,28 +80,106 @@ import benchPressTransparentPoster from '../assets/demos/barbell-bench-press-pos
  * scrolls one into view, never at install.
  */
 export interface ExerciseDemo {
-  /** H.264, 720px square, opaque on `DEMO_MP4_BACKGROUND`. About 180 KB. */
+  /** H.264, 720px square, opaque on `DEMO_MP4_BACKGROUND`. 100–210 KB. */
   readonly mp4: string;
-  /** Animated WebP, 720px square, transparent with a contact shadow. 2.2–2.7 MB. */
+  /** Animated WebP, 720px square, transparent with a contact shadow. 1.0–2.8 MB. */
   readonly webp: string;
-  /** The first frame, opaque on `DEMO_MP4_BACKGROUND`. About 20 KB. */
+  /** The first frame, opaque on `DEMO_MP4_BACKGROUND`. 10–30 KB. */
   readonly poster: string;
-  /** The same first frame, transparent with the contact shadow. 60–80 KB. */
+  /** The same first frame, transparent with the contact shadow. 25–85 KB. */
   readonly transparentPoster: string;
 }
 
 const DEMOS: Readonly<Record<string, ExerciseDemo>> = {
   'barbell-back-squat': {
-    mp4: backSquatMp4,
-    webp: backSquatWebp,
-    poster: backSquatPoster,
-    transparentPoster: backSquatTransparentPoster,
+    mp4: barbellBackSquatMp4,
+    webp: barbellBackSquatWebp,
+    poster: barbellBackSquatPoster,
+    transparentPoster: barbellBackSquatTransparentPoster,
   },
   'barbell-bench-press': {
-    mp4: benchPressMp4,
-    webp: benchPressWebp,
-    poster: benchPressPoster,
-    transparentPoster: benchPressTransparentPoster,
+    mp4: barbellBenchPressMp4,
+    webp: barbellBenchPressWebp,
+    poster: barbellBenchPressPoster,
+    transparentPoster: barbellBenchPressTransparentPoster,
+  },
+  'conventional-deadlift': {
+    mp4: conventionalDeadliftMp4,
+    webp: conventionalDeadliftWebp,
+    poster: conventionalDeadliftPoster,
+    transparentPoster: conventionalDeadliftTransparentPoster,
+  },
+  'romanian-deadlift': {
+    mp4: romanianDeadliftMp4,
+    webp: romanianDeadliftWebp,
+    poster: romanianDeadliftPoster,
+    transparentPoster: romanianDeadliftTransparentPoster,
+  },
+  'barbell-row': {
+    mp4: barbellRowMp4,
+    webp: barbellRowWebp,
+    poster: barbellRowPoster,
+    transparentPoster: barbellRowTransparentPoster,
+  },
+  'barbell-curl': {
+    mp4: barbellCurlMp4,
+    webp: barbellCurlWebp,
+    poster: barbellCurlPoster,
+    transparentPoster: barbellCurlTransparentPoster,
+  },
+  'overhead-press': {
+    mp4: overheadPressMp4,
+    webp: overheadPressWebp,
+    poster: overheadPressPoster,
+    transparentPoster: overheadPressTransparentPoster,
+  },
+  'dumbbell-bench-press': {
+    mp4: dumbbellBenchPressMp4,
+    webp: dumbbellBenchPressWebp,
+    poster: dumbbellBenchPressPoster,
+    transparentPoster: dumbbellBenchPressTransparentPoster,
+  },
+  'dumbbell-curl': {
+    mp4: dumbbellCurlMp4,
+    webp: dumbbellCurlWebp,
+    poster: dumbbellCurlPoster,
+    transparentPoster: dumbbellCurlTransparentPoster,
+  },
+  'lateral-raise': {
+    mp4: lateralRaiseMp4,
+    webp: lateralRaiseWebp,
+    poster: lateralRaisePoster,
+    transparentPoster: lateralRaiseTransparentPoster,
+  },
+  'push-up': {
+    mp4: pushUpMp4,
+    webp: pushUpWebp,
+    poster: pushUpPoster,
+    transparentPoster: pushUpTransparentPoster,
+  },
+  'pull-up': {
+    mp4: pullUpMp4,
+    webp: pullUpWebp,
+    poster: pullUpPoster,
+    transparentPoster: pullUpTransparentPoster,
+  },
+  'chin-up': {
+    mp4: chinUpMp4,
+    webp: chinUpWebp,
+    poster: chinUpPoster,
+    transparentPoster: chinUpTransparentPoster,
+  },
+  'lat-pulldown': {
+    mp4: latPulldownMp4,
+    webp: latPulldownWebp,
+    poster: latPulldownPoster,
+    transparentPoster: latPulldownTransparentPoster,
+  },
+  'leg-press': {
+    mp4: legPressMp4,
+    webp: legPressWebp,
+    poster: legPressPoster,
+    transparentPoster: legPressTransparentPoster,
   },
 };
 

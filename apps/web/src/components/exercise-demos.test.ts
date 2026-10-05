@@ -8,22 +8,57 @@ import {
   exerciseDemo,
 } from './exercise-demos.js';
 
+/** Every exercise with a loop, by the catalogue's slug. */
+const WITH_LOOP = [
+  'barbell-back-squat',
+  'barbell-bench-press',
+  'conventional-deadlift',
+  'romanian-deadlift',
+  'barbell-row',
+  'barbell-curl',
+  'overhead-press',
+  'dumbbell-bench-press',
+  'dumbbell-curl',
+  'lateral-raise',
+  'push-up',
+  'pull-up',
+  'chin-up',
+  'lat-pulldown',
+  'leg-press',
+];
+
 describe('exerciseDemo', () => {
-  it('finds the back squat and the bench press, each with all three files', () => {
-    for (const slug of ['barbell-back-squat', 'barbell-bench-press']) {
+  it('finds every exercise that has a loop, each with all four files', () => {
+    for (const slug of WITH_LOOP) {
       const demo = exerciseDemo(slug);
       expect(demo, slug).not.toBeNull();
-      expect(demo?.mp4).toMatch(new RegExp(`${slug}\\.mp4$`));
-      expect(demo?.webp).toMatch(new RegExp(`${slug}\\.webp$`));
-      expect(demo?.poster).toMatch(new RegExp(`${slug}-poster\\.webp$`));
-      expect(demo?.transparentPoster).toMatch(new RegExp(`${slug}-poster-transparent\\.webp$`));
+      expect(demo?.mp4).toMatch(new RegExp(`/${slug}\\.mp4$`));
+      expect(demo?.webp).toMatch(new RegExp(`/${slug}\\.webp$`));
+      expect(demo?.poster).toMatch(new RegExp(`/${slug}-poster\\.webp$`));
+      expect(demo?.transparentPoster).toMatch(new RegExp(`/${slug}-poster-transparent\\.webp$`));
     }
+  });
+
+  it('maps every file in the loop folder, so none ships unused', () => {
+    // A loop copied in without its entry would be bundled and never shown.
+    const files = Object.keys(
+      import.meta.glob('../assets/demos/*', { query: '?url', eager: true }),
+    );
+    const slugs = new Set(
+      files.map((file) =>
+        (file.split('/').pop() ?? file).replace(/(-poster(-transparent)?)?\.\w+$/, ''),
+      ),
+    );
+    expect([...slugs].sort()).toEqual([...WITH_LOOP].sort());
+    expect(files).toHaveLength(WITH_LOOP.length * 4);
   });
 
   it('gives null for an exercise with no loop, so its page stays as it was', () => {
     expect(exerciseDemo('air-bike')).toBeNull();
     // Same kit as the bench press, different movement: no borrowed loop.
     expect(exerciseDemo('close-grip-bench-press')).toBeNull();
+    // Same dumbbells as the curl, different grip.
+    expect(exerciseDemo('hammer-curl')).toBeNull();
     expect(exerciseDemo('')).toBeNull();
   });
 
