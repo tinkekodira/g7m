@@ -58,6 +58,50 @@ import legPressMp4 from '../assets/demos/leg-press.mp4';
 import legPressWebp from '../assets/demos/leg-press.webp';
 import legPressPoster from '../assets/demos/leg-press-poster.webp';
 import legPressTransparentPoster from '../assets/demos/leg-press-poster-transparent.webp';
+import hammerCurlMp4 from '../assets/demos/hammer-curl.mp4';
+import hammerCurlWebp from '../assets/demos/hammer-curl.webp';
+import hammerCurlPoster from '../assets/demos/hammer-curl-poster.webp';
+import hammerCurlTransparentPoster from '../assets/demos/hammer-curl-poster-transparent.webp';
+import rearDeltFlyMp4 from '../assets/demos/rear-delt-fly.mp4';
+import rearDeltFlyWebp from '../assets/demos/rear-delt-fly.webp';
+import rearDeltFlyPoster from '../assets/demos/rear-delt-fly-poster.webp';
+import rearDeltFlyTransparentPoster from '../assets/demos/rear-delt-fly-poster-transparent.webp';
+import closeGripBenchPressMp4 from '../assets/demos/close-grip-bench-press.mp4';
+import closeGripBenchPressWebp from '../assets/demos/close-grip-bench-press.webp';
+import closeGripBenchPressPoster from '../assets/demos/close-grip-bench-press-poster.webp';
+import closeGripBenchPressTransparentPoster from '../assets/demos/close-grip-bench-press-poster-transparent.webp';
+import inclineDumbbellPressMp4 from '../assets/demos/incline-dumbbell-press.mp4';
+import inclineDumbbellPressWebp from '../assets/demos/incline-dumbbell-press.webp';
+import inclineDumbbellPressPoster from '../assets/demos/incline-dumbbell-press-poster.webp';
+import inclineDumbbellPressTransparentPoster from '../assets/demos/incline-dumbbell-press-poster-transparent.webp';
+import hangingLegRaiseMp4 from '../assets/demos/hanging-leg-raise.mp4';
+import hangingLegRaiseWebp from '../assets/demos/hanging-leg-raise.webp';
+import hangingLegRaisePoster from '../assets/demos/hanging-leg-raise-poster.webp';
+import hangingLegRaiseTransparentPoster from '../assets/demos/hanging-leg-raise-poster-transparent.webp';
+import barbellFrontSquatMp4 from '../assets/demos/barbell-front-squat.mp4';
+import barbellFrontSquatWebp from '../assets/demos/barbell-front-squat.webp';
+import barbellFrontSquatPoster from '../assets/demos/barbell-front-squat-poster.webp';
+import barbellFrontSquatTransparentPoster from '../assets/demos/barbell-front-squat-poster-transparent.webp';
+import inclineBarbellPressMp4 from '../assets/demos/incline-barbell-press.mp4';
+import inclineBarbellPressWebp from '../assets/demos/incline-barbell-press.webp';
+import inclineBarbellPressPoster from '../assets/demos/incline-barbell-press-poster.webp';
+import inclineBarbellPressTransparentPoster from '../assets/demos/incline-barbell-press-poster-transparent.webp';
+import trapBarDeadliftMp4 from '../assets/demos/trap-bar-deadlift.mp4';
+import trapBarDeadliftWebp from '../assets/demos/trap-bar-deadlift.webp';
+import trapBarDeadliftPoster from '../assets/demos/trap-bar-deadlift-poster.webp';
+import trapBarDeadliftTransparentPoster from '../assets/demos/trap-bar-deadlift-poster-transparent.webp';
+import gobletSquatMp4 from '../assets/demos/goblet-squat.mp4';
+import gobletSquatWebp from '../assets/demos/goblet-squat.webp';
+import gobletSquatPoster from '../assets/demos/goblet-squat-poster.webp';
+import gobletSquatTransparentPoster from '../assets/demos/goblet-squat-poster-transparent.webp';
+import skullCrusherMp4 from '../assets/demos/skull-crusher.mp4';
+import skullCrusherWebp from '../assets/demos/skull-crusher.webp';
+import skullCrusherPoster from '../assets/demos/skull-crusher-poster.webp';
+import skullCrusherTransparentPoster from '../assets/demos/skull-crusher-poster-transparent.webp';
+import dumbbellPulloverMp4 from '../assets/demos/dumbbell-pullover.mp4';
+import dumbbellPulloverWebp from '../assets/demos/dumbbell-pullover.webp';
+import dumbbellPulloverPoster from '../assets/demos/dumbbell-pullover-poster.webp';
+import dumbbellPulloverTransparentPoster from '../assets/demos/dumbbell-pullover-poster-transparent.webp';
 
 /**
  * The demonstration loops, by exercise slug: a clay mannequin doing one rep in
@@ -180,6 +224,72 @@ const DEMOS: Readonly<Record<string, ExerciseDemo>> = {
     webp: legPressWebp,
     poster: legPressPoster,
     transparentPoster: legPressTransparentPoster,
+  },
+  'hammer-curl': {
+    mp4: hammerCurlMp4,
+    webp: hammerCurlWebp,
+    poster: hammerCurlPoster,
+    transparentPoster: hammerCurlTransparentPoster,
+  },
+  'rear-delt-fly': {
+    mp4: rearDeltFlyMp4,
+    webp: rearDeltFlyWebp,
+    poster: rearDeltFlyPoster,
+    transparentPoster: rearDeltFlyTransparentPoster,
+  },
+  'close-grip-bench-press': {
+    mp4: closeGripBenchPressMp4,
+    webp: closeGripBenchPressWebp,
+    poster: closeGripBenchPressPoster,
+    transparentPoster: closeGripBenchPressTransparentPoster,
+  },
+  'incline-dumbbell-press': {
+    mp4: inclineDumbbellPressMp4,
+    webp: inclineDumbbellPressWebp,
+    poster: inclineDumbbellPressPoster,
+    transparentPoster: inclineDumbbellPressTransparentPoster,
+  },
+  'hanging-leg-raise': {
+    mp4: hangingLegRaiseMp4,
+    webp: hangingLegRaiseWebp,
+    poster: hangingLegRaisePoster,
+    transparentPoster: hangingLegRaiseTransparentPoster,
+  },
+  'barbell-front-squat': {
+    mp4: barbellFrontSquatMp4,
+    webp: barbellFrontSquatWebp,
+    poster: barbellFrontSquatPoster,
+    transparentPoster: barbellFrontSquatTransparentPoster,
+  },
+  'incline-barbell-press': {
+    mp4: inclineBarbellPressMp4,
+    webp: inclineBarbellPressWebp,
+    poster: inclineBarbellPressPoster,
+    transparentPoster: inclineBarbellPressTransparentPoster,
+  },
+  'trap-bar-deadlift': {
+    mp4: trapBarDeadliftMp4,
+    webp: trapBarDeadliftWebp,
+    poster: trapBarDeadliftPoster,
+    transparentPoster: trapBarDeadliftTransparentPoster,
+  },
+  'goblet-squat': {
+    mp4: gobletSquatMp4,
+    webp: gobletSquatWebp,
+    poster: gobletSquatPoster,
+    transparentPoster: gobletSquatTransparentPoster,
+  },
+  'skull-crusher': {
+    mp4: skullCrusherMp4,
+    webp: skullCrusherWebp,
+    poster: skullCrusherPoster,
+    transparentPoster: skullCrusherTransparentPoster,
+  },
+  'dumbbell-pullover': {
+    mp4: dumbbellPulloverMp4,
+    webp: dumbbellPulloverWebp,
+    poster: dumbbellPulloverPoster,
+    transparentPoster: dumbbellPulloverTransparentPoster,
   },
 };
 

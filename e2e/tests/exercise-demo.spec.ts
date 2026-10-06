@@ -5,7 +5,7 @@ import { signIn } from './support/app.js';
 /**
  * The demonstration loop on an exercise's page (ADR-0102).
  *
- * Fifteen exercises have one (`WITH_LOOP` below); the rest do not. It plays in
+ * Twenty-six exercises have one (`WITH_LOOP` below); the rest do not. It plays in
  * the "How to do it" card, the MP4 in the dark theme and the transparent WebP
  * in the light one, the poster alone under reduced motion, and none of it is
  * fetched until somebody scrolls to it.
@@ -44,11 +44,22 @@ const WITH_LOOP = [
   ['chin-up', 'Chin-Up'],
   ['lat-pulldown', 'Lat Pulldown'],
   ['leg-press', 'Leg Press'],
+  ['hammer-curl', 'Hammer Curl'],
+  ['rear-delt-fly', 'Rear Delt Fly'],
+  ['close-grip-bench-press', 'Close-Grip Bench Press'],
+  ['incline-dumbbell-press', 'Incline Dumbbell Press'],
+  ['hanging-leg-raise', 'Hanging Leg Raise'],
+  ['barbell-front-squat', 'Front Squat'],
+  ['incline-barbell-press', 'Incline Barbell Bench Press'],
+  ['trap-bar-deadlift', 'Trap Bar Deadlift'],
+  ['goblet-squat', 'Goblet Squat'],
+  ['skull-crusher', 'Skull Crusher'],
+  ['dumbbell-pullover', 'Dumbbell Pullover'],
 ] as const;
 
 test('every exercise with a loop plays it', async ({ page }) => {
-  // Fifteen pages, each waiting for its video to start.
-  test.setTimeout(180_000);
+  // Twenty-six pages, each waiting for its video to start.
+  test.setTimeout(360_000);
   const user = await createUser('demo', { onboarded: true });
   await signIn(page, user);
   // A browser that cannot decode H.264 never plays the MP4: it takes the
@@ -84,8 +95,8 @@ test('an exercise without a loop keeps the card it had', async ({ page }) => {
   const user = await createUser('demo-none', { onboarded: true });
   await signIn(page, user);
 
-  // Same bench as the bench press, a different movement, and no loop.
-  await openHowTo(page, 'close-grip-bench-press', 'Close-Grip Bench Press');
+  // 3d-models has a standing press; this is the seated one, so no loop.
+  await openHowTo(page, 'dumbbell-shoulder-press', 'Dumbbell Shoulder Press');
   await expect(page.getByRole('img', { name: /demonstration$/ })).toHaveCount(0);
   await expect(page.locator('video')).toHaveCount(0);
   expect(await howToCard(page)).toEqual(['H2', 'OL']);

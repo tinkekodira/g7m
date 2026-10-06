@@ -25,6 +25,17 @@ const WITH_LOOP = [
   'chin-up',
   'lat-pulldown',
   'leg-press',
+  'hammer-curl',
+  'rear-delt-fly',
+  'close-grip-bench-press',
+  'incline-dumbbell-press',
+  'hanging-leg-raise',
+  'barbell-front-squat',
+  'incline-barbell-press',
+  'trap-bar-deadlift',
+  'goblet-squat',
+  'skull-crusher',
+  'dumbbell-pullover',
 ];
 
 describe('exerciseDemo', () => {
@@ -55,11 +66,15 @@ describe('exerciseDemo', () => {
 
   it('gives null for an exercise with no loop, so its page stays as it was', () => {
     expect(exerciseDemo('air-bike')).toBeNull();
-    // Same kit as the bench press, different movement: no borrowed loop.
-    expect(exerciseDemo('close-grip-bench-press')).toBeNull();
-    // Same dumbbells as the curl, different grip.
-    expect(exerciseDemo('hammer-curl')).toBeNull();
+    // 3d-models' loop is a standing press; this row is the seated one, with a
+    // bench in its kit and "sit with back support" as its first step.
+    expect(exerciseDemo('dumbbell-shoulder-press')).toBeNull();
     expect(exerciseDemo('')).toBeNull();
+  });
+
+  it('gives the hammer curl its own loop, not the supinated curl', () => {
+    // Same dumbbells, different grip: two movements, two loops.
+    expect(exerciseDemo('hammer-curl')?.webp).not.toBe(exerciseDemo('dumbbell-curl')?.webp);
   });
 
   it('matches on the slug, not the display name', () => {
