@@ -6496,3 +6496,88 @@ ADR-0098, before the loop existed.
   the bundle. It fails with one extra file in the folder.
 - `exercise-demo.spec.ts`: every one of the fifteen plays on its page, square
   and at most 360px, above its steps.
+
+## ADR-0104 — Eleven more exercises show a demonstration loop
+
+**Status:** accepted · **Date:** 2026-10-06 · **Phase:** 7
+
+`3d-models/mannequin` rendered batches 5 to 7: twelve more loops in the same
+kit, camera, light and format as ADR-0102. Eleven go into `exercise-demos.ts`
+the same way as before. The player, the format choice, the reduced-motion rule
+and the list rows are unchanged.
+
+| Exercise | Slug | Kit in the loop | Loop |
+|---|---|---|---|
+| Hammer Curl | `hammer-curl` | two hex dumbbells | 2.6 s |
+| Rear Delt Fly | `rear-delt-fly` | two hex dumbbells | 2.6 s |
+| Close-Grip Bench Press | `close-grip-bench-press` | flat bench press | 2.6 s |
+| Incline Dumbbell Press | `incline-dumbbell-press` | adjustable bench, two hex dumbbells | 2.6 s |
+| Hanging Leg Raise | `hanging-leg-raise` | wall pull-up bar | 2.8 s |
+| Front Squat | `barbell-front-squat` | squat rack | 2.6 s |
+| Incline Barbell Bench Press | `incline-barbell-press` | Olympic incline bench | 2.6 s |
+| Trap Bar Deadlift | `trap-bar-deadlift` | trap bar | 2.6 s |
+| Goblet Squat | `goblet-squat` | one hex dumbbell | 2.6 s |
+| Skull Crusher | `skull-crusher` | EZ bar on a flat bench | 2.6 s |
+| Dumbbell Pullover | `dumbbell-pullover` | one hex dumbbell on a flat bench | 2.8 s |
+
+Every file was checked against ADR-0102's contract before it was copied:
+720px square, H.264 at 15 fps with the frame count 3d-models gives, posters
+on `#1C1C1C`, WebPs transparent and looping forever. The 44 files are copied
+byte for byte and checked by SHA-256. The animated WebPs hold fewer frames
+than the MP4s (32–38 against 39–42) because the encoder merges identical
+frames at the hold points into one longer frame. Their durations still add up
+to the loop's length, and the fifteen loops already shipped do the same.
+
+The 60 files already in `src/assets/demos/` were compared with 3d-models'
+current renders. All match, so none is replaced.
+
+The hanging leg raise faces the camera, with its back to the wall, unlike the
+pull-up and chin-up. The pullover's range is short, because the figure's head
+stops the dumbbell. Both are as 3d-models rendered them.
+
+### Names
+
+3d-models asked by name. Three names differ in the catalogue, and the loop
+goes to the row that is the same movement:
+
+- **"Barbell Front Squat"** is `barbell-front-squat`, which the list calls
+  **Front Squat**.
+- **"Incline Barbell Press"** is `incline-barbell-press`, renamed **Incline
+  Barbell Bench Press** by ADR-0101. The slug did not change.
+- **"Dumbbell Pullover"** is the name in
+  `20260910100000_add_skull_crusher_and_pullovers.sql`, as asked.
+
+### Hammer Curl and the close-grip press now have loops of their own
+
+ADR-0102 and ADR-0103 pinned both to `null`, so that neither would borrow
+the bench press's or the dumbbell curl's loop. Each now has its own render,
+in its own grip, so the rule still holds. A test checks that the hammer curl
+and the dumbbell curl play different files.
+
+### The dumbbell shoulder press is left out
+
+3d-models' `dumbbell_shoulder_press` is a standing press. The catalogue's
+Dumbbell Shoulder Press is seated. Its first step is "Sit with back support
+and the dumbbells at ear height", one of its aliases is "seated db press",
+and its kit includes the incline bench. With that loop on the page, the
+steps would say "sit" right under a figure who is standing.
+
+Milan's call: leave it out until 3d-models renders the seated press on the
+adjustable bench. Its four files are not copied, because the folder test
+fails on any file that has no entry.
+
+**Rejected:** mapping it anyway, which puts a contradiction on the page.
+Also rejected: changing the row to a standing press to fit the render. Its
+steps, alias and kit all describe the seated press on purpose, and an
+exercise's description should not follow from whatever render happens to
+exist.
+
+### Tests
+
+- `exercise-demos.test.ts`: all twenty-six resolve to four files each, and
+  the folder test still maps every file to an entry. The shoulder press,
+  the air bike and an unknown slug give `null`. The hammer curl's loop is not
+  the dumbbell curl's.
+- `exercise-demo.spec.ts`: all twenty-six play on their pages, square and at
+  most 360px, above their steps. The timeout went from 180 s to 360 s for the
+  extra pages. The exercise that keeps its old card is now the shoulder press.
