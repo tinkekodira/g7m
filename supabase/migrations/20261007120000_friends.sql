@@ -293,7 +293,9 @@ as $$
 $$;
 
 -- One finished workout as a list shows it: no sets, just enough to name it,
--- date it and time it.
+-- date it and time it. `work` is each exercise with its count of completed
+-- working sets, in order — what the phone's `workoutTitle` needs to call an
+-- unnamed workout "Leg day" the same way it names your own.
 create function public.workout_summary(w public.workout_sessions)
 returns jsonb
 language sql
@@ -307,8 +309,16 @@ as $$
     'source', (w).source,
     'started_at', (w).started_at,
     'ended_at', (w).ended_at,
-    'exercise_ids', coalesce((
-      select jsonb_agg(se.exercise_id order by se.order_key, se.id)
+    'work', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'exercise_id', se.exercise_id,
+               'sets', (
+                 select count(*) from public.session_sets ss
+                  where ss.session_exercise_id = se.id
+                    and ss.is_completed
+                    and ss.set_type <> 'warmup'
+               )
+             ) order by se.order_key, se.id)
         from public.session_exercises se
        where se.session_id = (w).id
     ), '[]'::jsonb),

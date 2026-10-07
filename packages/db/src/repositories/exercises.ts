@@ -396,6 +396,34 @@ export class ExerciseRepository {
     return names;
   }
 
+  /**
+   * Every exercise's primary movers, as muscle and group slugs.
+   *
+   * What `workoutTitle` needs to name a workout this device did not log — a
+   * friend's, which arrives as exercises and set counts. Your own workouts
+   * get the same from `HistoryRepository.primaryWork`, which joins your sets.
+   */
+  async primaryMovers(): Promise<
+    ReadonlyMap<string, readonly { readonly muscle: string; readonly group: string }[]>
+  > {
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT em.exercise_id, m.slug AS muscle, mg.slug AS muscle_group
+         FROM exercise_muscles em
+         JOIN muscles m ON m.id = em.muscle_id
+         JOIN muscle_groups mg ON mg.id = m.muscle_group_id
+        WHERE em.role = 'primary'`,
+    );
+    const movers = new Map<string, { muscle: string; group: string }[]>();
+    for (const row of rows) {
+      const id = readString(row, 'exercise_id', '');
+      movers.set(id, [
+        ...(movers.get(id) ?? []),
+        { muscle: readString(row, 'muscle', ''), group: readString(row, 'muscle_group', '') },
+      ]);
+    }
+    return movers;
+  }
+
   async byId(id: string): Promise<Exercise | null> {
     const row = await this.db.getOptional<RawRow>('SELECT * FROM exercises WHERE id = ?', [id]);
     return row === null ? null : toExercise(row);
