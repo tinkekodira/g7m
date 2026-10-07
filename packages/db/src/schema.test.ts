@@ -42,6 +42,14 @@ const USER_TABLES = [
   'feedback',
 ];
 
+/**
+ * Tables that sit between two users, or that only the friend functions write.
+ * They break the owner `FOR ALL` rule on purpose — a request accepted by the
+ * person who sent it is the bug that rule would allow — so they have their own
+ * assertions in `friends.test.ts` instead (ADR-0105).
+ */
+const FRIEND_TABLES = ['friend_profiles', 'friendships'];
+
 describe('migrations', () => {
   it('apply cleanly from empty', async () => {
     const { rows } = await h.db.query<{ table_name: string }>(
@@ -49,11 +57,11 @@ describe('migrations', () => {
        where table_schema = 'public' and table_type = 'BASE TABLE'`,
     );
     const names = rows.map((r) => r.table_name).sort();
-    expect(names).toEqual([...REFERENCE_TABLES, ...USER_TABLES].sort());
+    expect(names).toEqual([...REFERENCE_TABLES, ...USER_TABLES, ...FRIEND_TABLES].sort());
   });
 
   it('give every table the id / created_at / updated_at convention', async () => {
-    for (const table of [...REFERENCE_TABLES, ...USER_TABLES]) {
+    for (const table of [...REFERENCE_TABLES, ...USER_TABLES, ...FRIEND_TABLES]) {
       const { rows } = await h.db.query<{ column_name: string }>(
         `select column_name from information_schema.columns
          where table_schema = 'public' and table_name = $1
@@ -76,7 +84,7 @@ describe('migrations', () => {
            on kcu.constraint_name = tc.constraint_name
         where tc.table_schema = 'public' and tc.constraint_type = 'PRIMARY KEY'`,
     );
-    for (const table of [...REFERENCE_TABLES, ...USER_TABLES]) {
+    for (const table of [...REFERENCE_TABLES, ...USER_TABLES, ...FRIEND_TABLES]) {
       const pk = rows.filter((r) => r.table_name === table).map((r) => r.column_name);
       expect(pk, `${table} primary key`).toEqual(['id']);
     }
