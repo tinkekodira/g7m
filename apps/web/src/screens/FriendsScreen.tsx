@@ -77,7 +77,7 @@ export function FriendsScreen() {
 
       {!online ? (
         <FriendsOffline />
-      ) : mine.data === null ? (
+      ) : mine.data?.hasProfile !== true ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : !named ? (
         <NamePrompt />

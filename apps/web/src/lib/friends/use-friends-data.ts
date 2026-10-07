@@ -72,6 +72,12 @@ export function useRemote<T>(
 }
 
 export interface MySide {
+  /**
+   * Whether the profile row is on this phone yet. Right after signing in it
+   * may still be on its way down, and "no name" must not be concluded from a
+   * row that has not arrived.
+   */
+  readonly hasProfile: boolean;
   readonly displayName: string | null;
   readonly unitSystem: UnitSystem;
   readonly weekStartsOn: WeekStart;
@@ -107,6 +113,7 @@ export function useMySide(): QueryState<MySide> {
 
     const name = profile?.displayName?.trim() ?? '';
     return {
+      hasProfile: profile !== null,
       displayName: name === '' ? null : name,
       unitSystem: profile?.unitSystem ?? 'metric',
       weekStartsOn: (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart,

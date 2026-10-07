@@ -161,6 +161,9 @@ export function FriendsOffline() {
   );
 }
 
+const MISSING_PROFILE =
+  'Your profile hasn’t reached this phone yet. Give it a moment and try again.';
+
 /**
  * The name friends will see, asked for once, before anything else.
  *
@@ -171,6 +174,7 @@ export function FriendsOffline() {
 export function NamePrompt() {
   const { write, busy, error } = useWrite();
   const [name, setName] = useState('');
+  const [missing, setMissing] = useState(false);
   const trimmed = name.trim();
 
   return (
@@ -184,7 +188,11 @@ export function NamePrompt() {
         onSubmit={(event) => {
           event.preventDefault();
           if (trimmed === '' || busy) return;
-          void write((r) => r.profile.update({ displayName: trimmed }));
+          void write((r) => r.profile.update({ displayName: trimmed })).then((updated) => {
+            // Null: no profile row on this phone to write to. Said rather
+            // than swallowed, so the button does not look broken.
+            setMissing(updated === null);
+          });
         }}
       >
         <TextField
@@ -199,9 +207,9 @@ export function NamePrompt() {
         <Button type="submit" fullWidth disabled={trimmed === '' || busy}>
           {busy ? 'Saving…' : 'Continue'}
         </Button>
-        {error !== null && (
+        {(error ?? (missing ? MISSING_PROFILE : null)) !== null && (
           <p role="alert" className="text-sm text-danger">
-            {error}
+            {error ?? MISSING_PROFILE}
           </p>
         )}
       </form>
