@@ -23,6 +23,7 @@ import {
 import type { SessionSummary } from '@g7m/db';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { ColumnChart } from '../components/Charts.js';
+import { HeaderLink } from '../components/HeaderLink.js';
 import {
   CalendarIcon,
   ChevronLeftIcon,
@@ -193,8 +194,11 @@ export function ProgressScreen() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="pt-6">
+      {/* A way back, now that Progress is a tile on Home rather than a tab
+          of its own (ADR-0105). */}
+      <header className="flex items-baseline justify-between gap-4 pt-6">
         <h1 className="text-2xl font-semibold text-primary">Progress</h1>
+        <HeaderLink to="/">Home</HeaderLink>
       </header>
 
       <SegmentedControl label="Period" options={PERIOD_OPTIONS} value={period} onChange={choose} />

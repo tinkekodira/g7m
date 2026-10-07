@@ -360,3 +360,58 @@ export function MessageIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/** Two people, one a step behind the other: friends. */
+export function FriendsIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="9" cy="8.5" r="3.5" />
+      <path d="M2.5 20c0-3.6 2.9-5.8 6.5-5.8s6.5 2.2 6.5 5.8" />
+      <path d="M15.5 5.2a3.5 3.5 0 0 1 0 6.6" />
+      <path d="M17.5 14.6c2.4.6 4 2.5 4 5.4" />
+    </Glyph>
+  );
+}
+
+/** A person with a plus beside them: add a friend. */
+export function AddFriendIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="10" cy="8.5" r="3.5" />
+      <path d="M3.5 20c0-3.6 2.9-5.8 6.5-5.8s6.5 2.2 6.5 5.8" />
+      <path d="M19 8v6M16 11h6" />
+    </Glyph>
+  );
+}
+
+/** Two sheets, one over the other: copy. */
+export function CopyIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2" />
+    </Glyph>
+  );
+}
+
+/** A box with an arrow leaving it: the share sheet. */
+export function ShareIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 15V3.5" />
+      <path d="m7.5 8 4.5-4.5L16.5 8" />
+      <path d="M8 11H6.5a1 1 0 0 0-1 1v7.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V12a1 1 0 0 0-1-1H16" />
+    </Glyph>
+  );
+}
+
+/** Three dots in a row: more options. */
+export function MoreIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="5.5" cy="12" r="1" fill="currentColor" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1" fill="currentColor" />
+    </Glyph>
+  );
+}
