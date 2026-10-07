@@ -29,20 +29,25 @@ const backend = await startFakeBackend(BACKEND_PORT);
 const people = await seed();
 
 const web = fileURLToPath(new URL('../apps/web/', import.meta.url));
+// Built under the app's own node_modules, which git, ESLint and Prettier all
+// ignore, so a preview build never shows up as something to commit or lint.
+// Inside apps/web on purpose: built outside the project root, the entry-chunk
+// budget in vite.config.ts measures the wrong chunk and fails the build.
+const out = 'node_modules/.cache/g7m-dev-fake';
 const command = preview
-  ? 'npx vite build --outDir dist-dev-fake --emptyOutDir && npx vite preview --outDir dist-dev-fake --host 127.0.0.1 --port 4381 --strictPort'
+  ? `npx vite build --outDir ${out} --emptyOutDir && npx vite preview --outDir ${out} --host 127.0.0.1 --port 4381 --strictPort`
   : 'npx vite --port 5173 --strictPort';
-const app = spawn(command, {
-  cwd: web,
-  shell: true,
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    VITE_SUPABASE_URL: BACKEND_URL,
-    VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-publishable-key-for-the-fake-backend',
-    VITE_POWERSYNC_URL: BACKEND_URL,
-  },
-});
+// vite-node runs this with NODE_ENV=development. Handed down, it makes the
+// preview build bundle React's development build and fail the entry budget,
+// so Vite is left to set it for itself.
+const env: NodeJS.ProcessEnv = {
+  ...process.env,
+  VITE_SUPABASE_URL: BACKEND_URL,
+  VITE_SUPABASE_PUBLISHABLE_KEY: 'e2e-publishable-key-for-the-fake-backend',
+  VITE_POWERSYNC_URL: BACKEND_URL,
+};
+delete env['NODE_ENV'];
+const app = spawn(command, { cwd: web, shell: true, stdio: 'inherit', env });
 
 process.stdout.write(`
   Fake backend on ${BACKEND_URL}, seeded. Sign in as any of these
