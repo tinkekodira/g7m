@@ -11,12 +11,23 @@ export async function signIn(page: Page, user: TestUser): Promise<void> {
   await expect(page.getByRole('navigation')).toBeVisible();
 }
 
-/** Go to a tab by the bar at the bottom of the screen. */
+/**
+ * Go to a tab by the bar at the bottom of the screen.
+ *
+ * Progress is a tile on Home now rather than a tab (ADR-0105), so it is
+ * reached the way a person reaches it: Home, then the tile.
+ */
 export async function openTab(
   page: Page,
-  tab: 'Learn' | 'Progress' | 'Home' | 'Profile' | 'Settings',
+  tab: 'Learn' | 'Friends' | 'Progress' | 'Home' | 'Profile' | 'Settings',
 ): Promise<void> {
-  await page.getByRole('navigation').getByRole('link', { name: tab }).click();
+  const bar = page.getByRole('navigation');
+  if (tab === 'Progress') {
+    await bar.getByRole('link', { name: 'Home' }).click();
+    await page.getByRole('link', { name: /^Progress/ }).click();
+    return;
+  }
+  await bar.getByRole('link', { name: tab }).click();
 }
 
 /** Open the logger, start a workout and add one exercise from the library. */

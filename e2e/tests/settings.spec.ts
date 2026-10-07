@@ -51,6 +51,7 @@ test('every tab opens without the crash screen', async ({ page }) => {
 
   const headings = {
     Learn: 'Learn',
+    Friends: 'Friends',
     Progress: 'Progress',
     Profile: 'Your profile',
     Settings: 'Settings',
