@@ -13,6 +13,7 @@ import { getDatabase, isSyncConfigured } from './powersync/database.js';
 import { useSyncStore } from './powersync/sync-store.js';
 import { exportFileName } from './save-file.js';
 import { describeExportCaveat, describeExportContents } from './account-words.js';
+import { fetchOverview } from './friends/api.js';
 
 export interface PreparedExport {
   readonly file: File;
@@ -43,9 +44,20 @@ export async function prepareExport(user: User): Promise<PreparedExport> {
     exportedAt: now,
   });
 
-  const file = new File([JSON.stringify(document, null, 2)], exportFileName(now), {
+  const friends = await friendsSection();
+  const file = new File([JSON.stringify({ ...document, friends }, null, 2)], exportFileName(now), {
     type: 'application/json',
   });
+
+  const caveats = [
+    describeExportCaveat({
+      syncConfigured: isSyncConfigured(),
+      hasSynced: database.currentStatus.hasSynced === true,
+    }),
+    friends === null
+      ? 'Your friend code and friends list need a connection, so they were left out.'
+      : null,
+  ].filter((caveat): caveat is string => caveat !== null);
 
   return {
     file,
@@ -54,11 +66,36 @@ export async function prepareExport(user: User): Promise<PreparedExport> {
       sets: data.tables.session_sets.length,
       weighIns: data.tables.body_metrics.filter((row) => row['weight_kg'] !== null).length,
     }),
-    caveat: describeExportCaveat({
-      syncConfigured: isSyncConfigured(),
-      hasSynced: database.currentStatus.hasSynced === true,
-    }),
+    caveat: caveats.length === 0 ? null : caveats.join(' '),
   };
+}
+
+/**
+ * Your friend code, whether you share, your friends and the requests waiting
+ * for you — the one part of the file that is not on the device (ADR-0105),
+ * so it is fetched, and left out with a word of explanation when it cannot
+ * be. Their names only: what your friends logged is theirs to export.
+ */
+async function friendsSection(): Promise<Record<string, unknown> | null> {
+  if (!globalThis.navigator.onLine) return null;
+  try {
+    const overview = await fetchOverview();
+    return {
+      friendCode: overview.me?.code ?? null,
+      shareTrainingWithFriends: overview.me?.sharing ?? null,
+      friends: overview.friends.map((friend) => ({
+        name: friend.name,
+        sharingWithYou: friend.sharing,
+      })),
+      requestsWaiting: overview.requests.map((request) => ({
+        name: request.name,
+        requestedAt: request.requestedAt.toISOString(),
+      })),
+    };
+  } catch (cause: unknown) {
+    console.warn('Could not add friends to the export.', cause);
+    return null;
+  }
 }
 
 /** `['google']`, `['email']` — how this account signs in, from what GoTrue recorded. */

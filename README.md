@@ -30,6 +30,11 @@ What it does:
   sets, workouts, active time, cardio minutes or calories, whichever you pick; a
   calendar of the days trained; and your best lifts and trained muscles on Your
   profile.
+- **Friends.** Add someone with a six-character code. See their week, their
+  streak and best lifts against yours, and their workouts. Start any of them as
+  your own workout, with your own weights. Friends are read live from the
+  server, never synced, and sharing can be switched off
+  ([ADR-0105](./DECISIONS.md#adr-0105--friends-read-live-from-postgres-never-through-sync)).
 - **Achievements.** 52 badges, from your first workout to a three-plate squat,
   a week of five workouts or a rowed 2K — and one secret. Past training counts,
   and a new one is celebrated with a banner the moment it is earned
@@ -153,6 +158,18 @@ pnpm --filter @g7m/desktop dev          # Windows or macOS native window
 
 The mobile and desktop commands build `apps/web` first and copy the output in —
 do not build the web app separately beforehand.
+
+To try the app with no Supabase project at all:
+
+```bash
+pnpm dev:fake              # the app on :5173 against the e2e fake backend
+pnpm dev:fake --preview    # a production build on :4381, for trying offline
+```
+
+It starts the browser tests' fake backend (PGlite with the real migrations)
+with four seeded accounts that are already friends and have trained; the
+command prints their emails and password. Everything is in memory and gone
+when it stops. It uses the browser tests' port, so stop it before `pnpm e2e`.
 
 To open the native projects in their own IDEs:
 

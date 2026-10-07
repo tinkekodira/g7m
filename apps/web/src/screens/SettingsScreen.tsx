@@ -20,9 +20,12 @@ import { useThemeStore } from '../lib/use-theme.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
+import { useOnline } from '../lib/use-online.js';
+import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
 import {
   DeviceIcon,
   DownloadIcon,
+  FriendsIcon,
   KettlebellIcon,
   MessageIcon,
   MoonIcon,
@@ -67,6 +70,7 @@ export function SettingsScreen() {
 
       <Appearance />
       <Units />
+      <FriendsSharing />
       <SendFeedback />
       <Account />
       <SyncPanel />
@@ -169,6 +173,83 @@ function Units() {
       {error !== null && (
         <p role="alert" className="mt-2 text-sm text-danger">
           {error}
+        </p>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Whether friends see your training.
+ *
+ * On by default — a friend has been accepted by you before they see anything
+ * — and off means they see your name and "Not sharing their training", and
+ * nothing else: no workouts, lifts, dots, streak or online status.
+ *
+ * The switch lives on the server, not on this phone, because it is the server
+ * that decides what a friend is sent (ADR-0105). So, like sending feedback, it
+ * needs a connection to change, and says so rather than pretending.
+ */
+function FriendsSharing() {
+  const online = useOnline();
+  const [sharing, setSharing] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!online) return;
+    let cancelled = false;
+    void supabase
+      .from('friend_profiles')
+      .select('share_training')
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error !== null) {
+          setFailure(describeDataError(error.message));
+          return;
+        }
+        const row = data as { share_training?: unknown } | null;
+        setSharing(row?.share_training !== false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [online]);
+
+  return (
+    <Panel title="Friends" icon={<FriendsIcon className="size-5" />}>
+      <Switch
+        checked={sharing ?? true}
+        disabled={!online || sharing === null || busy}
+        onChange={(next) => {
+          setBusy(true);
+          setFailure(null);
+          setSharing(next);
+          setTrainingSharing(next).then(
+            () => {
+              setBusy(false);
+            },
+            (cause: unknown) => {
+              setBusy(false);
+              setSharing(!next);
+              setFailure(cause instanceof FriendsError ? cause.message : 'That did not save.');
+            },
+          );
+        }}
+        label="Share my training with friends"
+        description={
+          sharing === false
+            ? 'Off: friends see your name, and that you’re not sharing.'
+            : 'Your workouts, best lifts, week and when you were last online.'
+        }
+      />
+      {!online && (
+        <p className="mt-2 text-sm text-warning">You need a connection to change this.</p>
+      )}
+      {failure !== null && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {failure}
         </p>
       )}
     </Panel>
@@ -694,23 +775,6 @@ const DANGER_OUTLINE =
   'border-danger/50 bg-elevated px-4 text-base font-medium text-danger transition-colors ' +
   'duration-150 hover:border-danger active:bg-surface focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-accent';
-
-/** Whether the browser thinks there is a network. A hint, not a promise — the request is the test. */
-function useOnline(): boolean {
-  const [online, setOnline] = useState(() => globalThis.navigator.onLine);
-  useEffect(() => {
-    const update = () => {
-      setOnline(globalThis.navigator.onLine);
-    };
-    globalThis.addEventListener('online', update);
-    globalThis.addEventListener('offline', update);
-    return () => {
-      globalThis.removeEventListener('online', update);
-      globalThis.removeEventListener('offline', update);
-    };
-  }, []);
-  return online;
-}
 
 function Panel({
   title,

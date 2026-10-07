@@ -36,6 +36,7 @@ The fake backend stands in for:
 - **Delete your account.** The account and every row it owned are removed from the server while another account's rows stay. The phone forgets whose database it was, signing in again is refused, and the next account on the phone starts empty. With no connection nothing is deleted anywhere, and trying again once connected works.
 - **Cardio.** A treadmill is found under the Cardio chip and logged as two bouts. The calorie estimate matches the ACSM equation worked by hand, and the second bout carries the first one's settings plus the machine's own figure. On the server, both bouts hold the machine's numbers with zero weight and reps. The workout page shows each bout in a display's words and the cardio totals, with no lifting numbers.
 - **Settings.** Light mode survives a reload, and pounds are saved to the server.
+- **Friends.** Two accounts on two phones. One is asked for a name, the other adds them by code, the request is accepted, and a workout logged on one phone shows on the other as today's dot and the last workout. The workout opens from the phone with no connection and starts as the viewer's own with the friend's numbers beside it. Then sharing is switched off and only the name is left.
 - **Every tab** opens without the crash screen.
 
 ## What the fake does and does not do
@@ -59,6 +60,8 @@ It does not attempt:
 A query the fake does not understand is an error, not a guess. PostgREST filters other than `eq` and sync rules of another shape both fail loudly.
 
 `/__e2e/…` routes exist for the tests: creating a user, running SQL to check what arrived, and cutting the connection. The app never calls them.
+
+`pnpm dev:fake` (`dev-fake.ts`) starts the same fake on its own, seeds it with four accounts that are friends and have trained, and points `vite` at it. It is for clicking through the app by hand. Stop it before `pnpm e2e`, which needs the same port.
 
 ## Writing a test
 

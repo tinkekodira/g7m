@@ -55,27 +55,27 @@ test('a finished workout is kept as a routine and started again', async ({ page 
 });
 
 /**
- * The quick access swap Milan asked for: the 3D model tile gives up its place
- * once there is a routine to put there, because the model has a tab of its own
- * and a saved routine does not.
+ * Home's last tile is Progress, routines or not: Progress gave its tab to
+ * Friends and lives on Home now (ADR-0105). The routines are reached from
+ * Profile, before and after one is saved.
  */
-test('the home tile becomes the routines once one is saved', async ({ page }) => {
+test('the home tile stays Progress once a routine is saved, and Profile has the routines', async ({
+  page,
+}) => {
   const user = await createUser('routine-tile', { onboarded: true });
   await signIn(page, user);
   await waitForCatalogue(page);
 
-  await expect(page.getByRole('link', { name: /3D model/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Your routines/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /^Progress/ })).toBeVisible();
 
   await startWith(page, 'Barbell Bench Press');
   await logSet(page, 1, '60', '8');
   await finishAndKeepAsRoutine(page, 'Bench Day');
 
   await openTab(page, 'Home');
-  await expect(page.getByRole('link', { name: /Your routines/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /3D model/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /^Progress/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Your routines/ })).toHaveCount(0);
 
-  // And Profile links to them whether or not Home does.
   await openTab(page, 'Profile');
   await expect(page.getByRole('link', { name: /Your routines/ })).toBeVisible();
 });

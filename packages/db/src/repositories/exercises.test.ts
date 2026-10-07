@@ -594,6 +594,51 @@ describe('primaryMuscleNames', () => {
   });
 });
 
+describe('primaryMovers', () => {
+  beforeEach(async () => {
+    await db.seed('muscle_groups', { id: 'g-chest', slug: 'chest', name: 'Chest' });
+    await db.seed('muscle_groups', { id: 'g-arms', slug: 'triceps', name: 'Triceps' });
+    await db.seed('muscles', {
+      id: 'm-pec',
+      slug: 'pectoralis-major',
+      common_name: 'Chest',
+      muscle_group_id: 'g-chest',
+    });
+    await db.seed('muscles', {
+      id: 'm-tri',
+      slug: 'triceps-brachii',
+      common_name: 'Triceps',
+      muscle_group_id: 'g-arms',
+    });
+    await seedExercise({ id: 'bench', slug: 'bench-press' });
+  });
+
+  it('gives every primary mover of an exercise, as muscle and group slugs', async () => {
+    await db.seed('exercise_muscles', {
+      id: 'xm-1',
+      exercise_id: 'bench',
+      muscle_id: 'm-pec',
+      role: 'primary',
+      recruitment_weight: 1,
+    });
+    await db.seed('exercise_muscles', {
+      id: 'xm-2',
+      exercise_id: 'bench',
+      muscle_id: 'm-tri',
+      role: 'secondary',
+      recruitment_weight: 0.5,
+    });
+
+    expect((await exercises.primaryMovers()).get('bench')).toEqual([
+      { muscle: 'pectoralis-major', group: 'chest' },
+    ]);
+  });
+
+  it('leaves out an exercise with no primary movers, which is how cardio reads', async () => {
+    expect((await exercises.primaryMovers()).has('bench')).toBe(false);
+  });
+});
+
 describe('filtering by whether it needs a gym', () => {
   /**
    * The street-workout case. Somebody training in a park does not want to tick

@@ -11,12 +11,12 @@ import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import {
   AlertIcon,
-  BodyIcon,
   CalendarIcon,
   ChevronRightIcon,
   ClipboardIcon,
   DumbbellIcon,
   PlayIcon,
+  ProgressIcon,
   SearchIcon,
   type IconProps,
 } from '../components/icons.js';
@@ -32,8 +32,8 @@ import { openSessionSummary, type OpenSession, type OpenSessionSummary } from '.
  *
  * The workout the app has built for today leads, and looks like it — it is
  * the reason most people open the app. Under it, four ways in: building your
- * own workout, the calendar of days trained, the exercise library and the 3D
- * model. The tab bar does the rest — your numbers are on Profile.
+ * own workout, the calendar of days trained, the exercise library and
+ * Progress. The tab bar does the rest — your numbers are on Profile.
  *
  * What this screen used to be — account, sync, storage and device panels from
  * when it existed to prove the plumbing worked — is on Settings now. The one
@@ -47,10 +47,6 @@ export function HomeScreen() {
   const today = useTodaysPlan(now);
   const review = useTrainingReview(now);
   const alarm = useSyncAlarm();
-  // Only whether there are any: the tiles need a yes or no, and reading the
-  // list itself would put a query behind the first paint for a boolean.
-  const routines = useCatalogue('routines', (r) => r.routines.list());
-  const hasRoutines = (routines.data ?? []).length > 0;
 
   const greeting = greetingFor(profile.data?.country ?? null, profile.data?.sex ?? null);
   const name = firstName(profile.data?.displayName ?? null);
@@ -105,7 +101,7 @@ export function HomeScreen() {
           Quick access
         </h2>
         <ul className="grid grid-cols-2 gap-3">
-          {tilesFor(open !== null, hasRoutines).map((tile, index) => (
+          {tilesFor(open !== null).map((tile, index) => (
             <li
               key={tile.to}
               className="rise"
@@ -371,14 +367,12 @@ const TILE_TONES = {
  * today's plan instead, which is otherwise out of reach until the workout is
  * finished.
  *
- * The last tile is the 3D model until there is a routine saved, and the
- * routines after that. Both are worth a tile and there is only room for one:
- * the model has a tab of its own in the bar below, where somebody who wants to
- * explore their anatomy will find it, and a saved routine is a workout waiting
- * to be started — which is what this screen is for. Nothing is lost and the
- * more useful of the two is in front.
+ * The last tile is always Progress. It gave its place in the tab bar to
+ * Friends, and Home is where a workout ends, which is when somebody wants to
+ * see how it went (ADR-0105). The routines are on Profile and the 3D model is
+ * on Learn, so neither is out of reach for not having a tile here.
  */
-function tilesFor(workoutOpen: boolean, hasRoutines: boolean): readonly Tile[] {
+function tilesFor(workoutOpen: boolean): readonly Tile[] {
   return [
     workoutOpen
       ? {
@@ -409,21 +403,13 @@ function tilesFor(workoutOpen: boolean, hasRoutines: boolean): readonly Tile[] {
       icon: SearchIcon,
       tone: 'neutral',
     },
-    hasRoutines
-      ? {
-          to: '/routines',
-          title: 'Your routines',
-          detail: 'Saved workouts',
-          icon: ClipboardIcon,
-          tone: 'accent',
-        }
-      : {
-          to: '/learn',
-          title: '3D model',
-          detail: 'See what trains what',
-          icon: BodyIcon,
-          tone: 'accent',
-        },
+    {
+      to: '/progress',
+      title: 'Progress',
+      detail: 'How your training is going',
+      icon: ProgressIcon,
+      tone: 'accent',
+    },
   ];
 }
 

@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { TABS, tabFor } from './navigation.js';
 
 describe('TABS', () => {
-  it('puts Home in the middle, with Profile beside it and Settings on the bar', () => {
-    const ids = TABS.map((tab) => tab.id);
-    expect(ids).toHaveLength(5);
-    expect(ids[2]).toBe('home');
-    expect(ids[3]).toBe('profile');
-    expect(ids).toContain('settings');
-    expect(ids).toContain('progress');
+  it('runs Learn, Friends, Home, Profile, Settings, with Home in the middle', () => {
+    expect(TABS.map((tab) => tab.id)).toEqual(['learn', 'friends', 'home', 'profile', 'settings']);
+  });
+
+  it('has no Progress tab: Progress is a tile on Home', () => {
+    expect(TABS.map((tab) => tab.id)).not.toContain('progress');
   });
 
   it('gives every tab a path the router knows how to find', () => {
@@ -23,14 +22,14 @@ describe('tabFor', () => {
   it('lights each tab on its own screen', () => {
     expect(tabFor('/')).toBe('home');
     expect(tabFor('/learn')).toBe('learn');
-    expect(tabFor('/progress')).toBe('progress');
+    expect(tabFor('/friends')).toBe('friends');
     expect(tabFor('/profile')).toBe('profile');
     expect(tabFor('/settings')).toBe('settings');
   });
 
   it('lights the tab a deeper screen belongs under', () => {
-    expect(tabFor('/progress/session/abc')).toBe('progress');
-    expect(tabFor('/progress/exercise/abc')).toBe('progress');
+    expect(tabFor('/friends/abc')).toBe('friends');
+    expect(tabFor('/friends/abc/session/def')).toBe('friends');
     expect(tabFor('/exercises')).toBe('learn');
     expect(tabFor('/exercises/barbell-bench-press')).toBe('learn');
     expect(tabFor('/you')).toBe('profile');
@@ -40,6 +39,12 @@ describe('tabFor', () => {
     expect(tabFor('/calendar')).toBe('home');
   });
 
+  it('lights Home for Progress and everything under it, since Home is where it is opened', () => {
+    expect(tabFor('/progress')).toBe('home');
+    expect(tabFor('/progress/session/abc')).toBe('home');
+    expect(tabFor('/progress/exercise/abc')).toBe('home');
+  });
+
   /** The logger is somewhere you are in, not somewhere you pass through. */
   it('has no tab for the workout itself', () => {
     expect(tabFor('/workout')).toBeNull();
@@ -47,13 +52,13 @@ describe('tabFor', () => {
   });
 
   it('does not mistake a longer word for a section', () => {
-    expect(tabFor('/progressive')).toBe('home');
+    expect(tabFor('/friendship')).toBe('home');
     expect(tabFor('/youth')).toBe('home');
     expect(tabFor('/workouts')).toBe('home');
   });
 
   it('ignores a trailing slash, and sends anything unknown home', () => {
-    expect(tabFor('/progress/')).toBe('progress');
+    expect(tabFor('/friends/')).toBe('friends');
     expect(tabFor('')).toBe('home');
     expect(tabFor('/nowhere')).toBe('home');
   });

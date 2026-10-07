@@ -31,6 +31,9 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
 import { buzz } from '../lib/haptics.js';
 import { readSnoozedAt, writeSnoozedAt } from '../lib/workout-notice.js';
+import { useAuthStore } from '../auth/auth-store.js';
+import { readFriendWorkoutNote } from '../lib/friends/cache.js';
+import { describeReference, friendName } from './friends-view.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ArrowUpIcon } from '../components/icons.js';
 import { UndoToast } from '../components/UndoToast.js';
@@ -140,6 +143,7 @@ export function WorkoutScreen() {
     setUndo(null);
   }, []);
 
+  const owner = useAuthStore((s) => s.session?.user.id ?? '');
   const state = useCatalogue<Workout | null>('workout', async (repositories) => {
     const session = await repositories.sessions.active();
     if (session === null) return null;
@@ -410,6 +414,9 @@ export function WorkoutScreen() {
   }
 
   const { session, profile, blocks } = workout;
+  // Started from a friend's workout? Their numbers ride beside yours as a
+  // guide, from a note kept on this phone (ADR-0105).
+  const friendNote = readFriendWorkoutNote(owner, session.id);
 
   /**
    * Where to go once the workout is finished or thrown away: home after a live
@@ -588,6 +595,17 @@ export function WorkoutScreen() {
           <ExerciseCard
             key={block.entry.id}
             block={block}
+            friendNote={(() => {
+              const reference = friendNote?.references[block.entry.exerciseId];
+              return reference === undefined
+                ? null
+                : describeReference(
+                    friendName(friendNote?.friendName ?? null),
+                    reference,
+                    unitSystem,
+                    block.exercise?.isTimeBased === true,
+                  );
+            })()}
             records={marks.bySet}
             unitSystem={unitSystem}
             busy={busy}
@@ -893,6 +911,7 @@ function BodyweightPrompt({
 
 function ExerciseCard({
   block,
+  friendNote,
   records,
   unitSystem,
   busy,
@@ -906,6 +925,8 @@ function ExerciseCard({
   onRemove,
 }: {
   readonly block: ExerciseBlock;
+  /** "Alex: 5 × 100 kg", on a workout started from a friend's. */
+  readonly friendNote: string | null;
   readonly records: ReadonlyMap<string, SetRecord>;
   readonly unitSystem: UnitSystem;
   readonly busy: boolean;
@@ -997,6 +1018,8 @@ function ExerciseCard({
           Remove
         </button>
       </div>
+
+      {friendNote !== null && <p className="-mt-1 mb-3 text-sm text-secondary">{friendNote}</p>}
 
       {block.sets.length === 0 ? (
         <p className="mb-3 text-sm text-muted">No sets yet.</p>

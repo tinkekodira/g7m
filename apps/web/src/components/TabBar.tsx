@@ -3,17 +3,17 @@ import { Link, useLocation } from 'react-router';
 import { cx } from '@g7m/ui';
 import { TABS, tabFor, type TabId } from './navigation.js';
 import {
+  FriendsIcon,
   HomeIcon,
   LearnIcon,
   ProfileIcon,
-  ProgressIcon,
   SettingsIcon,
   type IconProps,
 } from './icons.js';
 
 const ICONS: Record<TabId, ComponentType<IconProps>> = {
   learn: LearnIcon,
-  progress: ProgressIcon,
+  friends: FriendsIcon,
   home: HomeIcon,
   profile: ProfileIcon,
   settings: SettingsIcon,

@@ -12,6 +12,7 @@ import {
 } from '../lib/native/shell.js';
 import { authCodeFrom } from '../lib/native/shell-rules.js';
 import { forgetDeletedAccount, handOverDevice } from '../lib/powersync/database.js';
+import { forgetFriendsOnDevice } from '../lib/friends/cache.js';
 import { ACCOUNT_DELETED_NOTICE, describeDeletionError } from '../lib/account-words.js';
 import {
   INITIAL_AUTH_STATE,
@@ -216,6 +217,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     });
 
     const { error } = await supabase.auth.signOut();
+    // The friend workouts kept for offline use are somebody else's training;
+    // they leave with the account that opened them (ADR-0105).
+    forgetFriendsOnDevice();
 
     const unsent =
       handover.state === 'kept' && handover.pending > 0
@@ -261,6 +265,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.error('The account was deleted, but this device could not be cleared.', cause);
     });
     await supabase.auth.signOut({ scope: 'local' });
+    forgetFriendsOnDevice();
 
     set({ busy: false, error: null, notice: ACCOUNT_DELETED_NOTICE });
     return null;

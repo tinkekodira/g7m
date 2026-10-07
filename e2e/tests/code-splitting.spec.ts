@@ -34,7 +34,7 @@ test('every tab loads its own screen, and going back does not lose them', async 
   // Each of these is a separate file now. The bar itself must never blink:
   // it lives outside the boundary the screens load inside.
   for (const [tab, heading] of [
-    ['Progress', 'Progress'],
+    ['Friends', 'Friends'],
     ['Learn', 'Learn'],
     ['Profile', 'Your profile'],
     ['Settings', 'Settings'],

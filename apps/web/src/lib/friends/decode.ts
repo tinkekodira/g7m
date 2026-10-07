@@ -1,0 +1,310 @@
+/**
+ * What the friend functions send, as the app holds it, and the decoding in
+ * between — kept apart from `api.ts` so it can be tested without a Supabase
+ * client, which needs the build's environment to exist at all.
+ *
+ * Each reply is decoded field by field rather than cast. It crosses a network
+ * from a server that may be a migration ahead or behind the app, and a reply
+ * that has the wrong shape should become "the server said something we do not
+ * understand", not a `NaN` drawn on a friend's card.
+ */
+import { EMPTY_BOUT, type Bout, type LoadType, type SetType } from '@g7m/core';
+
+export interface WorkoutSummary {
+  readonly id: string;
+  readonly name: string | null;
+  /** `past` for a workout logged afterwards, whose clock times mean nothing. */
+  readonly source: string;
+  readonly startedAt: Date;
+  readonly endedAt: Date | null;
+  /** Each exercise in order, with its count of completed working sets. */
+  readonly work: readonly { readonly exerciseId: string; readonly sets: number }[];
+  /** When the first and last sets were ticked, for the duration. */
+  readonly firstSetAt: Date | null;
+  readonly lastSetAt: Date | null;
+}
+
+export interface FriendTraining {
+  readonly lastActiveAt: Date | null;
+  /** Their current goal's days per week, or null with no goal set. */
+  readonly daysPerWeek: number | null;
+  /** When each finished workout of the last year started, newest first. */
+  readonly trainedAt: readonly Date[];
+  /** Best kilograms by catalogue slug, for the three lifts every card shows. */
+  readonly bigThree: ReadonlyMap<string, number>;
+  readonly lastWorkout: WorkoutSummary | null;
+}
+
+export interface Friend {
+  readonly userId: string;
+  readonly name: string | null;
+  readonly sharing: boolean;
+  /** Null when they are not sharing. */
+  readonly training: FriendTraining | null;
+}
+
+export interface FriendRequest {
+  readonly id: string;
+  readonly userId: string;
+  readonly name: string | null;
+  readonly requestedAt: Date;
+}
+
+export interface FriendsOverview {
+  readonly me: { readonly code: string; readonly sharing: boolean } | null;
+  readonly requests: readonly FriendRequest[];
+  readonly friends: readonly Friend[];
+}
+
+export interface FriendBest {
+  readonly exerciseId: string;
+  readonly bestKg: number;
+  readonly lastAt: Date;
+}
+
+export interface FriendDetail {
+  readonly userId: string;
+  readonly name: string | null;
+  readonly training: FriendTraining;
+  readonly bests: readonly FriendBest[];
+  readonly recent: readonly WorkoutSummary[];
+}
+
+export interface FriendSessionSet {
+  readonly setType: SetType;
+  readonly loadType: LoadType;
+  readonly weightKg: number;
+  readonly reps: number;
+  readonly isCompleted: boolean;
+  readonly completedAt: Date | null;
+  readonly bout: Bout;
+}
+
+export interface FriendSessionExercise {
+  readonly exerciseId: string;
+  readonly sets: readonly FriendSessionSet[];
+}
+
+export interface FriendSession extends WorkoutSummary {
+  readonly exercises: readonly FriendSessionExercise[];
+}
+
+export const SEND_OUTCOMES = [
+  'sent',
+  'now_friends',
+  'own_code',
+  'unknown',
+  'invalid',
+  'already_friends',
+  'already_requested',
+  'too_many',
+] as const;
+export type SendOutcome = (typeof SEND_OUTCOMES)[number];
+
+export interface SendResult {
+  readonly outcome: SendOutcome;
+  readonly name: string | null;
+}
+
+/** A request that did not work, already in words somebody can read. */
+export class FriendsError extends Error {}
+
+// ---------------------------------------------------------------------------
+// Decoding
+// ---------------------------------------------------------------------------
+
+class Malformed extends FriendsError {
+  constructor(what: string) {
+    super(`The server sent something this version of the app does not understand (${what}).`);
+  }
+}
+
+type Json = Record<string, unknown>;
+
+function record(value: unknown): Json {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Malformed('expected an object');
+  }
+  return value as Json;
+}
+
+function list(value: unknown): readonly unknown[] {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value)) throw new Malformed('expected a list');
+  return value;
+}
+
+function string(value: unknown): string {
+  if (typeof value !== 'string') throw new Malformed('expected text');
+  return value;
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+function number(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function optionalNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = number(value, Number.NaN);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function date(value: unknown): Date {
+  const parsed = optionalDate(value);
+  if (parsed === null) throw new Malformed('expected a date');
+  return parsed;
+}
+
+function optionalDate(value: unknown): Date | null {
+  if (typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
+  if (typeof value === 'string' && (allowed as readonly string[]).includes(value)) {
+    return value as T;
+  }
+  throw new Malformed(`unexpected value ${JSON.stringify(value)}`);
+}
+
+const SET_TYPES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
+const LOAD_TYPES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
+
+export function decodeSendResult(value: unknown): SendResult {
+  const data = record(value);
+  return { outcome: oneOf(data['outcome'], SEND_OUTCOMES), name: optionalString(data['name']) };
+}
+
+export function decodeWorkoutSummary(value: unknown): WorkoutSummary {
+  const data = record(value);
+  return {
+    id: string(data['id']),
+    name: optionalString(data['name']),
+    source: typeof data['source'] === 'string' ? data['source'] : 'manual',
+    startedAt: date(data['started_at']),
+    endedAt: optionalDate(data['ended_at']),
+    work: list(data['work']).map((entry) => {
+      const exercise = record(entry);
+      return { exerciseId: string(exercise['exercise_id']), sets: number(exercise['sets'], 0) };
+    }),
+    firstSetAt: optionalDate(data['first_set_at']),
+    lastSetAt: optionalDate(data['last_set_at']),
+  };
+}
+
+export function decodeTraining(value: unknown): FriendTraining {
+  const data = record(value);
+  const bigThree = new Map<string, number>();
+  for (const entry of list(data['big_three'])) {
+    const lift = record(entry);
+    const kg = optionalNumber(lift['best_kg']);
+    if (kg !== null) bigThree.set(string(lift['slug']), kg);
+  }
+  const last = data['last_workout'];
+  return {
+    lastActiveAt: optionalDate(data['last_active_at']),
+    daysPerWeek: optionalNumber(data['days_per_week']),
+    trainedAt: list(data['trained_at']).flatMap((at) => {
+      const parsed = optionalDate(at);
+      return parsed === null ? [] : [parsed];
+    }),
+    bigThree,
+    lastWorkout: last === null || last === undefined ? null : decodeWorkoutSummary(last),
+  };
+}
+
+export function decodeOverview(value: unknown): FriendsOverview {
+  const data = record(value);
+  const me = data['me'];
+  return {
+    me:
+      me === null || me === undefined
+        ? null
+        : {
+            code: string(record(me)['code']),
+            sharing: record(me)['sharing'] !== false,
+          },
+    requests: list(data['requests']).map((entry) => {
+      const request = record(entry);
+      return {
+        id: string(request['id']),
+        userId: string(request['user_id']),
+        name: optionalString(request['name']),
+        requestedAt: date(request['requested_at']),
+      };
+    }),
+    friends: list(data['friends']).map((entry) => {
+      const friend = record(entry);
+      const sharing = friend['sharing'] === true;
+      const training = friend['training'];
+      return {
+        userId: string(friend['user_id']),
+        name: optionalString(friend['name']),
+        sharing,
+        training:
+          sharing && training !== null && training !== undefined ? decodeTraining(training) : null,
+      };
+    }),
+  };
+}
+
+export function decodeDetail(value: unknown): FriendDetail {
+  const data = record(value);
+  return {
+    userId: string(data['user_id']),
+    name: optionalString(data['name']),
+    training: decodeTraining(data['training']),
+    bests: list(data['bests']).map((entry) => {
+      const best = record(entry);
+      return {
+        exerciseId: string(best['exercise_id']),
+        bestKg: number(best['best_kg'], 0),
+        lastAt: date(best['last_at']),
+      };
+    }),
+    recent: list(data['recent']).map(decodeWorkoutSummary),
+  };
+}
+
+export function decodeSession(value: unknown): FriendSession {
+  const data = record(value);
+  return {
+    ...decodeWorkoutSummary(data),
+    exercises: list(data['exercises']).map((entry) => {
+      const exercise = record(entry);
+      return {
+        exerciseId: string(exercise['exercise_id']),
+        sets: list(exercise['sets']).map(decodeSet),
+      };
+    }),
+  };
+}
+
+function decodeSet(value: unknown): FriendSessionSet {
+  const set = record(value);
+  return {
+    setType: oneOf(set['set_type'], SET_TYPES),
+    loadType: oneOf(set['load_type'], LOAD_TYPES),
+    weightKg: number(set['weight_kg'], 0),
+    reps: number(set['reps'], 0),
+    isCompleted: set['is_completed'] === true,
+    completedAt: optionalDate(set['completed_at']),
+    bout: {
+      ...EMPTY_BOUT,
+      durationSeconds: optionalNumber(set['duration_seconds']),
+      distanceM: optionalNumber(set['distance_m']),
+      speedKmh: optionalNumber(set['speed_kmh']),
+      inclinePercent: optionalNumber(set['incline_percent']),
+      resistanceLevel: optionalNumber(set['resistance_level']),
+      avgWatts: optionalNumber(set['avg_watts']),
+      floors: optionalNumber(set['floors']),
+      caloriesKcal: optionalNumber(set['calories_kcal']),
+    },
+  };
+}
