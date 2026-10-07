@@ -144,10 +144,17 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
   expect(await oneRepMax(page, 'barbell-bench-press')).toBe('110 kg');
   expect(await totalWorkouts(page)).toBe('2');
 
-  const [todaysSession] = await sql<{ id: string }>(
-    `select id from public.workout_sessions
-      where user_id = $1 and started_at >= date_trunc('day', now())`,
-    [user.id],
+  // Waited for: the upload runs on the app's schedule, not the test's. This
+  // once passed only because a banner over Progress held a click up for five
+  // seconds, long enough for the upload to land.
+  const [todaysSession] = await eventually(
+    () =>
+      sql<{ id: string }>(
+        `select id from public.workout_sessions
+          where user_id = $1 and started_at >= date_trunc('day', now())`,
+        [user.id],
+      ),
+    (rows) => rows.length > 0,
   );
   if (todaysSession === undefined) throw new Error('The new workout never reached the server');
 
