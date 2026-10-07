@@ -12,6 +12,7 @@ import { UpdateBanner } from './components/UpdateBanner.js';
 import { RouteBoundary } from './components/ErrorBoundary.js';
 import { useNativeShell } from './lib/native/use-native-shell.js';
 import { lazyScreen, preloadWhenIdle } from './lib/lazy-screen.js';
+import { usePresence } from './lib/friends/use-presence.js';
 
 /**
  * Every screen but Home, in a file of its own. ADR-0078.
@@ -65,6 +66,12 @@ const RoutineDetailScreen = lazyScreen(
   () => import('./screens/RoutineDetailScreen.js'),
   'RoutineDetailScreen',
 );
+const FriendsScreen = lazyScreen(() => import('./screens/FriendsScreen.js'), 'FriendsScreen');
+const FriendScreen = lazyScreen(() => import('./screens/FriendScreen.js'), 'FriendScreen');
+const FriendSessionScreen = lazyScreen(
+  () => import('./screens/FriendSessionScreen.js'),
+  'FriendSessionScreen',
+);
 
 /**
  * The screens worth having ready before they are asked for: the four other
@@ -76,7 +83,7 @@ const RoutineDetailScreen = lazyScreen(
  * are opened deliberately, from a screen that is already up, and load fast
  * enough on demand.
  */
-const WARM = [LearnScreen, ProgressScreen, ProfileScreen, SettingsScreen, WorkoutScreen];
+const WARM = [LearnScreen, FriendsScreen, ProfileScreen, SettingsScreen, WorkoutScreen];
 
 /**
  * The two watchers that run everywhere, also loaded on demand.
@@ -264,6 +271,9 @@ function AppRoutes() {
   // The other tabs and the workout, fetched during the first quiet moment so
   // that the bar at the bottom stays as instant as it looks. ADR-0078.
   useEffect(() => preloadWhenIdle(WARM), []);
+  // "Online now" for friends: the app saying it is open, every few minutes
+  // at most. ADR-0105.
+  usePresence();
 
   return (
     <>
@@ -303,6 +313,9 @@ function AppScreens() {
         <Route path="/achievements" element={<AchievementsScreen />} />
         <Route path="/routines" element={<RoutinesScreen />} />
         <Route path="/routines/:routineId" element={<RoutineDetailScreen />} />
+        <Route path="/friends" element={<FriendsScreen />} />
+        <Route path="/friends/:friendId" element={<FriendScreen />} />
+        <Route path="/friends/:friendId/session/:sessionId" element={<FriendSessionScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>
