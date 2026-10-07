@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Cross-platform strength training app \u2014 3D anatomy explorer and offline-first workout logger.",
+  "description": "Cross-platform strength training app — 3D anatomy explorer and offline-first workout logger.",
   "packageManager": "pnpm@10.15.0",
   "pnpm": {
     "overrides": {
@@ -17,6 +17,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "dev": "pnpm --filter @g7m/web dev",
+    "dev:fake": "pnpm --filter @g7m/e2e dev:fake",
     "build": "pnpm --filter @g7m/web build",
     "preview": "pnpm --filter @g7m/web preview",
     "lint": "eslint .",
