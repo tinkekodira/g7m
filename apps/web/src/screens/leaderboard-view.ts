@@ -132,6 +132,11 @@ export interface BoardRowView {
   readonly rankText: string;
   readonly score: number;
   readonly scoreText: string;
+  /**
+   * First last week (or last month, on the month's board). Shared on a tie,
+   * and nobody's for a period in which nobody did anything.
+   */
+  readonly champion: boolean;
   /** Under your own name: how far the next place is. Null on everybody else's. */
   readonly note: string | null;
   /** The whole row in words. */
@@ -199,6 +204,21 @@ export function leaderboard(
     })),
   );
 
+  // Last period, ranked by the same rule, for its winner's crown. The friends
+  // are today's: a friend added since is in the running, one who has stopped
+  // sharing is not.
+  const champions = new Set(
+    rankBoard(
+      contenders.map((contender) => ({
+        id: contender.key,
+        score: boardScore(boardTotals(contender.workouts, spans.previous), stat, unitSystem),
+      })),
+    )
+      .filter((entry) => entry.rank === 1)
+      .map((entry) => entry.id),
+  );
+  const crowned = period === 'week' ? 'Won last week' : 'Won last month';
+
   const gap = boardGap(ranked, 'you');
   const note =
     gap === null
@@ -210,8 +230,10 @@ export function leaderboard(
     const name = contender?.name ?? 'You';
     const isYou = entry.id === 'you';
     const words = scoreWords(entry.score, stat, unitSystem);
-    const said =
+    const champion = champions.has(entry.id);
+    const placed =
       entry.rank === null ? `${name}: nothing yet` : `${ordinal(entry.rank)}, ${name}: ${words}`;
+    const said = champion ? `${placed}. ${crowned}` : placed;
     return {
       key: entry.id,
       userId: contender?.userId ?? null,
@@ -222,6 +244,7 @@ export function leaderboard(
       rankText: entry.rank === null ? '–' : String(entry.rank),
       score: entry.score,
       scoreText: scoreText(entry.score, stat, unitSystem),
+      champion,
       note: isYou ? note : null,
       description: isYou && note !== null ? `${said}. ${note}` : said,
     };

@@ -78,7 +78,7 @@ describe('the board', () => {
   it('describes each row for a screen reader', () => {
     const view = leaderboard([alex, jordan], mine, CONTEXT);
     expect(view.rows.map((row) => row.description)).toEqual([
-      '1st, Alex: 2 workouts',
+      '1st, Alex: 2 workouts. Won last week',
       '2nd, You: 1 workout. 1 workout behind Alex',
       'Jordan: nothing yet',
     ]);
@@ -143,6 +143,38 @@ describe('the gap under your name', () => {
   it('stays quiet when nobody has trained yet', () => {
     const view = leaderboard([friend('sam', 'Sam', [])], [], CONTEXT);
     expect(view.rows.find((row) => row.isYou)?.note).toBeNull();
+  });
+});
+
+describe('last period’s crown', () => {
+  it('goes to whoever was first last week, on this week’s board', () => {
+    const alex = friend('alex', 'Alex', [workout(LAST_WEEK)]);
+    const sam = friend('sam', 'Sam', [workout(MONDAY), workout(TUESDAY)]);
+    const view = leaderboard([alex, sam], [], CONTEXT);
+    expect(view.rows.filter((row) => row.champion).map((row) => row.name)).toEqual(['Alex']);
+    expect(view.rows.find((row) => row.name === 'Alex')?.description).toBe(
+      'Alex: nothing yet. Won last week',
+    );
+  });
+
+  it('goes to last month’s winner on the month’s board, and is shared on a tie', () => {
+    const september = local(2026, 9, 10);
+    const alex = friend('alex', 'Alex', [workout(september)]);
+    const sam = friend('sam', 'Sam', [workout(september, { sets: 3 })]);
+    const month = leaderboard([alex, sam], [], { ...CONTEXT, period: 'month' });
+    expect(month.rows.filter((row) => row.champion).map((row) => row.name)).toEqual([
+      'Alex',
+      'Sam',
+    ]);
+    expect(month.rows[0]?.description).toMatch(/Won last month$/);
+
+    const sets = leaderboard([alex, sam], [], { ...CONTEXT, period: 'month', stat: 'sets' });
+    expect(sets.rows.filter((row) => row.champion).map((row) => row.name)).toEqual(['Alex']);
+  });
+
+  it('goes to nobody after a period nobody trained in', () => {
+    const view = leaderboard([friend('alex', 'Alex', [workout(MONDAY)])], [], CONTEXT);
+    expect(view.rows.some((row) => row.champion)).toBe(false);
   });
 });
 

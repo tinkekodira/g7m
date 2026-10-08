@@ -9,6 +9,7 @@ import {
 } from '@g7m/core';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { CrownIcon } from '../components/icons.js';
 import { YourCode } from '../components/FriendParts.js';
 import { fetchLeaderboard } from '../lib/friends/api.js';
 import { useMyBoard, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
@@ -161,6 +162,7 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
             <span className="sr-only">{row.description}</span>
             <span aria-hidden className="block truncate text-base font-semibold text-primary">
               {row.name}
+              {row.champion && <Crown />}
             </span>
             {row.note !== null && (
               <span aria-hidden className="block truncate text-xs text-secondary">
@@ -176,6 +178,7 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
             className="block truncate text-base font-semibold text-primary after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
           >
             {row.name}
+            {row.champion && <Crown />}
           </Link>
         )}
       </span>
@@ -190,4 +193,12 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
       </span>
     </li>
   );
+}
+
+/**
+ * Last period's winner. Decorative: the row's description already says
+ * "Won last week", and the crown is not the only sign of it.
+ */
+function Crown() {
+  return <CrownIcon className="ml-1.5 inline size-4 align-[-2px] text-warning" />;
 }
