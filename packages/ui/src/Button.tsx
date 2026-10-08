@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.js';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-outline';
 export type ButtonSize = 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,6 +32,13 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-secondary hover:bg-elevated active:bg-surface disabled:text-muted',
   danger:
     'bg-danger text-on-danger hover:brightness-110 active:brightness-95 disabled:bg-strong disabled:text-muted',
+  // A destructive action that is not the point of its screen — Remove beside
+  // a measurement, Discard beside Finish. Red so it can never pass for the
+  // button beside it, but not filled: a red slab would shout louder than the
+  // thing people actually came to press.
+  'danger-outline':
+    'bg-elevated text-destructive border border-danger/60 hover:border-danger ' +
+    'active:bg-surface disabled:text-muted disabled:border-subtle',
 };
 
 export function Button({

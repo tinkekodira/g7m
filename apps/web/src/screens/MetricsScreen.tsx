@@ -558,7 +558,7 @@ function Readings({
               <p className="text-xs text-muted">{describeWhen(entry.recordedAt, now)}</p>
             </div>
             <Button
-              variant="secondary"
+              variant="danger-outline"
               size="md"
               disabled={busy}
               onClick={() => {

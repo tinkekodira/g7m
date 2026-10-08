@@ -65,8 +65,8 @@ export function canAddWeight(loadType: LoadType): boolean {
  * *added* printed as if it were 20 kg *lifted*. The sign carries the meaning:
  * `+` is added to the lifter, `−` is taken off them by an assistance machine.
  *
- * `show` formats a positive number of kilograms in the lifter's units, without
- * the unit — the hint has always been unit-less to stay short.
+ * `show` formats a positive number of kilograms in the lifter's units, with
+ * whatever unit suffix the caller wants ("100kg" in the workout's hint).
  */
 export function describePreviousSet(
   set: Pick<LoggedSet, 'loadType' | 'weightKg' | 'reps'>,

@@ -25,6 +25,7 @@ import {
   parseNumberField,
 } from '../screens/bout-copy.js';
 import { clearTimer, elapsedSeconds, readTimer, startTimer } from '../screens/bout-timer.js';
+import { RemoveExerciseButton } from './RemoveExerciseButton.js';
 
 /**
  * A cardio machine in a workout: bouts instead of sets. ADR-0069.
@@ -77,14 +78,7 @@ export function CardioCard({
           <h2 className="text-lg font-semibold text-primary">{name}</h2>
           <p className="text-xs text-muted">Cardio</p>
         </div>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onRemove}
-          className="inline-flex min-h-tap shrink-0 items-center rounded-control border border-subtle bg-elevated px-3 text-sm font-medium text-secondary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
-        >
-          Remove
-        </button>
+        <RemoveExerciseButton disabled={busy} onClick={onRemove} />
       </div>
 
       {bodyweightKg === null && (
@@ -413,7 +407,7 @@ function BoutRow({
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs text-muted underline-offset-4 hover:underline"
+          className="text-xs text-destructive underline-offset-4 hover:underline"
         >
           Remove
         </button>

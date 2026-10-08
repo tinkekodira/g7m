@@ -24,6 +24,11 @@ export const MIN_REST_SECONDS = 5;
 export const MAX_REST_SECONDS = 60 * 15;
 
 export interface RestInputs {
+  /**
+   * The lifter's own rest for this kind of lift — compound or isolation — set
+   * in Settings. Null, or left out, when they have not chosen one.
+   */
+  readonly chosenSeconds?: number | null;
   /** `exercises.default_rest_seconds`. Null for most rows. */
   readonly exerciseSeconds: number | null;
   /** `profiles.rest_seconds_default`. The lifter's blanket preference. */
@@ -34,7 +39,13 @@ export interface RestInputs {
 /**
  * The rest to start the timer at.
  *
- * **Precedence: the exercise, then the profile, then the mechanic.** The
+ * **Precedence: the lifter's own choice, then the exercise, then the
+ * profile, then the mechanic.** A time somebody typed into Settings for "every
+ * compound lift" is the one thing here that is a decision rather than a
+ * default, so nothing overrides it — a squat that insisted on its own 180
+ * after being told 120 would read as the setting not working.
+ *
+ * Below that, the
  * exercise wins because rest is a property of the movement — a heavy squat and
  * a lateral raise genuinely differ, and one number on a profile cannot say so.
  * The profile value is what fills in for the many exercises with no opinion,
@@ -47,6 +58,7 @@ export interface RestInputs {
  */
 export function restSecondsFor(inputs: RestInputs): number {
   const chosen =
+    usable(inputs.chosenSeconds ?? null) ??
     usable(inputs.exerciseSeconds) ??
     usable(inputs.profileSeconds) ??
     (inputs.mechanic === 'compound' ? REST_SECONDS_COMPOUND : REST_SECONDS_ISOLATION);

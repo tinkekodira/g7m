@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import type { RoutineExercise } from '@g7m/db';
-import { Button, TextField } from '@g7m/ui';
+import { Button, TextField, cx } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronDownIcon, ArrowUpIcon, TrashIcon } from '../components/icons.js';
 import { useWrite } from '../lib/db/use-catalogue.js';
@@ -256,7 +256,7 @@ function MovementRow({
         >
           <ChevronDownIcon className="size-5" />
         </IconButton>
-        <IconButton label={`Remove ${name}`} disabled={busy} onClick={onRemove}>
+        <IconButton label={`Remove ${name}`} danger disabled={busy} onClick={onRemove}>
           <TrashIcon className="size-5" />
         </IconButton>
       </div>
@@ -266,11 +266,14 @@ function MovementRow({
 
 function IconButton({
   label,
+  danger = false,
   disabled,
   onClick,
   children,
 }: {
   readonly label: string;
+  /** Red, for the one that takes something away. */
+  readonly danger?: boolean;
   readonly disabled: boolean;
   readonly onClick: () => void;
   readonly children: React.ReactNode;
@@ -281,7 +284,10 @@ function IconButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="flex size-tap items-center justify-center rounded-control text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:text-muted/40"
+      className={cx(
+        'flex size-tap items-center justify-center rounded-control active:bg-elevated focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:text-muted/40',
+        danger ? 'text-destructive' : 'text-secondary',
+      )}
     >
       {children}
     </button>

@@ -29,6 +29,8 @@ import {
 import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
+import { useRestSettingsStore } from '../lib/use-rest-settings.js';
+import { chosenRestSeconds } from '../lib/rest-settings.js';
 import { buzz } from '../lib/haptics.js';
 import { readSnoozedAt, writeSnoozedAt } from '../lib/workout-notice.js';
 import { useAuthStore } from '../auth/auth-store.js';
@@ -36,7 +38,9 @@ import { readFriendWorkoutNote } from '../lib/friends/cache.js';
 import { describeReference, friendName } from './friends-view.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ArrowUpIcon } from '../components/icons.js';
+import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
 import { UndoToast } from '../components/UndoToast.js';
+import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { formatWeightExact } from '../components/chart-scale.js';
 import { PlateLine } from '../components/PlateLine.js';
 import { CardioCard } from '../components/CardioCard.js';
@@ -74,7 +78,8 @@ interface ExerciseBlock {
    * by plates: 14 kg goes to 16, and 12.5 kg to 15. See `weightStepKg`.
    */
   readonly dumbbell: boolean;
-  readonly restSeconds: number;
+  /** Which of the lifter's two rest times in Settings applies to it. */
+  readonly mechanic: 'compound' | 'isolation';
   /** From finished sessions only, so today cannot be its own baseline. */
   readonly bests: ExerciseBests;
   /**
@@ -142,6 +147,13 @@ export function WorkoutScreen() {
   const forgetUndo = useCallback(() => {
     setUndo(null);
   }, []);
+  /**
+   * The exercise whose Remove was just pressed, waiting on "are you sure?".
+   * Its card's Remove sits where a thumb lands while scrolling back through
+   * the workout, and one stray tap took every set logged under it.
+   */
+  const [removing, setRemoving] = useState<ExerciseBlock | null>(null);
+  const restSettings = useRestSettingsStore();
 
   const owner = useAuthStore((s) => s.session?.user.id ?? '');
   const state = useCatalogue<Workout | null>('workout', async (repositories) => {
@@ -175,11 +187,7 @@ export function WorkoutScreen() {
           loadType: naturalLoadType(equipment.map((item) => item.category)),
           barbell: equipment.some((item) => item.slug === 'barbell'),
           dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
-          restSeconds: restSecondsFor({
-            exerciseSeconds: exercise?.defaultRestSeconds ?? null,
-            profileSeconds: profile?.restSecondsDefault ?? null,
-            mechanic: exercise?.mechanic ?? 'compound',
-          }),
+          mechanic: exercise?.mechanic ?? 'compound',
         };
       }),
     );
@@ -578,17 +586,7 @@ export function WorkoutScreen() {
               })();
             }}
             onRemove={() => {
-              void (async () => {
-                const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
-                if (removed === null) return;
-                setUndo({
-                  token: ++undoToken.current,
-                  message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
-                  restore: () => {
-                    void write((r) => r.sessions.restoreExercise(removed));
-                  },
-                });
-              })();
+              setRemoving(block);
             }}
           />
         ) : (
@@ -631,7 +629,19 @@ export function WorkoutScreen() {
               // have to be watched to be believed.
               buzz('tick');
               // Nothing to rest between when the sets happened days ago.
-              if (!past) setRest({ startedAt: new Date(), seconds: block.restSeconds });
+              // Worked out at the tick rather than when the screen loaded, so a
+              // time changed in Settings mid-workout is the next one used.
+              if (!past) {
+                setRest({
+                  startedAt: new Date(),
+                  seconds: restSecondsFor({
+                    chosenSeconds: chosenRestSeconds(restSettings, block.mechanic),
+                    exerciseSeconds: block.exercise?.defaultRestSeconds ?? null,
+                    profileSeconds: profile?.restSecondsDefault ?? null,
+                    mechanic: block.mechanic,
+                  }),
+                });
+              }
             }}
             onUncomplete={(setId) => {
               void write((r) => r.sessions.uncompleteSet(setId));
@@ -656,19 +666,7 @@ export function WorkoutScreen() {
               void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
             }}
             onRemove={() => {
-              void (async () => {
-                const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
-                if (removed === null) return;
-                setUndo({
-                  token: ++undoToken.current,
-                  // The count is the part worth a second look: an exercise takes
-                  // every set logged under it with it.
-                  message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
-                  restore: () => {
-                    void write((r) => r.sessions.restoreExercise(removed));
-                  },
-                });
-              })();
+              setRemoving(block);
             }}
           />
         ),
@@ -686,7 +684,7 @@ export function WorkoutScreen() {
           Finish workout
         </Button>
         <Button
-          variant="ghost"
+          variant="danger-outline"
           disabled={busy}
           onClick={() => {
             // Confirmed, because it is the one destructive action on the
@@ -700,6 +698,34 @@ export function WorkoutScreen() {
           Discard
         </Button>
       </div>
+
+      {removing !== null && (
+        <ConfirmDialog
+          title={`Remove ${removing.exercise?.name ?? 'this exercise'}?`}
+          detail={removalDetail(removing)}
+          confirmLabel="Remove"
+          onCancel={() => {
+            setRemoving(null);
+          }}
+          onConfirm={() => {
+            const block = removing;
+            setRemoving(null);
+            void (async () => {
+              const removed = await write((r) => r.sessions.removeExercise(block.entry.id));
+              if (removed === null) return;
+              setUndo({
+                token: ++undoToken.current,
+                // The count is the part worth a second look: an exercise takes
+                // every set logged under it with it.
+                message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
+                restore: () => {
+                  void write((r) => r.sessions.restoreExercise(removed));
+                },
+              });
+            })();
+          }}
+        />
+      )}
 
       {/*
         One stack, pinned above the home indicator, because both of these are
@@ -762,6 +788,15 @@ interface Undoable {
   readonly token: number;
   readonly message: string;
   readonly restore: () => void;
+}
+
+/** What goes with an exercise, said before it goes. */
+function removalDetail(block: ExerciseBlock): string {
+  const done = block.sets.filter((set) => set.isCompleted).length;
+  if (done === 0) return 'Nothing is logged on it yet.';
+  const word = block.exercise?.cardioKind != null ? 'bout' : 'set';
+  if (done === 1) return `The ${word} you logged on it goes with it.`;
+  return `The ${String(done)} ${word}s you logged on it go with it.`;
 }
 
 function removedMessage(name: string, sets: number): string {
@@ -1005,18 +1040,7 @@ function ExerciseCard({
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="min-w-0 text-lg font-semibold text-primary">{name}</h2>
-        {/* Bordered rather than a grey underline. The old one was the same
-            weight and colour as a caption, which on a screen whose other
-            controls are all filled or outlined read as a label rather than as
-            something to press — the same fault HeaderLink was built to fix. */}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onRemove}
-          className="inline-flex min-h-tap shrink-0 items-center rounded-control border border-subtle bg-elevated px-3 text-sm font-medium text-secondary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
-        >
-          Remove
-        </button>
+        <RemoveExerciseButton disabled={busy} onClick={onRemove} />
       </div>
 
       {friendNote !== null && <p className="-mt-1 mb-3 text-sm text-secondary">{friendNote}</p>}
@@ -1385,7 +1409,7 @@ function SetRow({
                 aria-label={`Delete ${title.toLowerCase()}`}
                 disabled={busy}
                 onClick={onRemove}
-                className="min-h-tap shrink-0 px-1 text-xs text-muted underline-offset-4 hover:underline"
+                className="min-h-tap shrink-0 px-1 text-xs text-destructive underline-offset-4 hover:underline"
               >
                 Delete
               </button>
@@ -1422,14 +1446,17 @@ function SetRow({
           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
             <span className="text-xs font-medium text-muted">{title}</span>
             {/* What you did last time, beside the row it belongs to. The whole
-            reason the positional match in `previousSetAt` exists. */}
-            <span className="numeric text-xs text-muted">
-              {previous === null
-                ? 'First time'
-                : `Last: ${describePreviousSet(previous, (kg) =>
-                    String(toDisplayWeight(kg, unitSystem).value),
-                  )}`}
-            </span>
+            reason the positional match in `previousSetAt` exists. Nothing at
+            all on a set with no history: "First time" sat over the tick
+            looking like a label for it. */}
+            {previous !== null && (
+              <span className="numeric text-xs text-muted">
+                {`Last: ${describePreviousSet(previous, (kg) => {
+                  const shown = toDisplayWeight(kg, unitSystem);
+                  return `${String(shown.value)}${shown.unit}`;
+                })}`}
+              </span>
+            )}
           </div>
 
           {/*
@@ -1530,7 +1557,7 @@ function SetRow({
               type="button"
               disabled={busy}
               onClick={onRemove}
-              className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
+              className="min-h-tap text-xs text-destructive underline-offset-4 hover:underline"
             >
               Delete
             </button>

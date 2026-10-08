@@ -10,6 +10,42 @@ import {
 } from './rest.js';
 
 describe('restSecondsFor', () => {
+  /** Settings' "compound lifts: 2:00" is a decision; everything else is a default. */
+  it("uses the lifter's own choice over everything else", () => {
+    expect(
+      restSecondsFor({
+        chosenSeconds: 120,
+        exerciseSeconds: 240,
+        profileSeconds: 60,
+        mechanic: 'compound',
+      }),
+    ).toBe(120);
+  });
+
+  it('ignores a choice that is not there', () => {
+    for (const chosenSeconds of [null, 0, Number.NaN]) {
+      expect(
+        restSecondsFor({
+          chosenSeconds,
+          exerciseSeconds: 240,
+          profileSeconds: 60,
+          mechanic: 'compound',
+        }),
+      ).toBe(240);
+    }
+  });
+
+  it("still clamps the lifter's own choice", () => {
+    expect(
+      restSecondsFor({
+        chosenSeconds: 99_999,
+        exerciseSeconds: null,
+        profileSeconds: null,
+        mechanic: 'isolation',
+      }),
+    ).toBe(MAX_REST_SECONDS);
+  });
+
   it('uses the exercise value when there is one', () => {
     expect(restSecondsFor({ exerciseSeconds: 240, profileSeconds: 60, mechanic: 'compound' })).toBe(
       240,

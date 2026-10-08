@@ -21,11 +21,20 @@
     <link rel="apple-touch-icon" href="/icon-180.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
 
-    <!-- iOS ignores the manifest for these. `black-translucent` lets the app
-         draw under the status bar, which is what viewport-fit=cover and the
-         safe-area padding in styles.css are already set up for. -->
+    <!-- iOS ignores the manifest for these.
+
+         The status bar is `default`, not `black-translucent`. Translucent let
+         the app draw under the status bar, but on iOS 26 it also makes the
+         home-screen web view one status-bar height *short* of the bottom of
+         the screen (WebKit bug 301108): the tab bar sat that far above the
+         home indicator, with an empty strip under it that nothing could paint
+         into, because it is outside the page. With `default`, iOS keeps the
+         status bar's strip for itself — coloured from theme-color, which
+         lib/theme.ts keeps in step with the app's own background — and runs
+         the page to the real bottom edge. The safe-area padding still works:
+         the top inset is simply zero. See DECISIONS.md ADR-0107. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="g7m" />
     <meta name="mobile-web-app-capable" content="yes" />
 

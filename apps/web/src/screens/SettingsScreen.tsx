@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { UnitSystem } from '@g7m/core';
+import { formatRest, type UnitSystem } from '@g7m/core';
 import { Button, SegmentedControl, Switch, TextareaField, TextField } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
 import { useAuthStore } from '../auth/auth-store.js';
@@ -17,12 +17,15 @@ import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useThemeStore } from '../lib/use-theme.js';
+import { useRestSettingsStore } from '../lib/use-rest-settings.js';
+import { REST_MAX_SECONDS, REST_MIN_SECONDS, REST_STEP_SECONDS } from '../lib/rest-settings.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
 import { useOnline } from '../lib/use-online.js';
 import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
 import {
+  ClockIcon,
   DeviceIcon,
   DownloadIcon,
   FriendsIcon,
@@ -70,6 +73,7 @@ export function SettingsScreen() {
 
       <Appearance />
       <Units />
+      <RestTimes />
       <FriendsSharing />
       <SendFeedback />
       <Account />
@@ -176,6 +180,120 @@ function Units() {
         </p>
       )}
     </Panel>
+  );
+}
+
+/**
+ * How long the rest timer runs: the lifter's own time for compound lifts and
+ * another for isolation lifts, or each exercise's own suggestion.
+ *
+ * Off by default, and off is what the timer always did — so nobody's rest
+ * changes until they come here and change it. On, the two times win over
+ * every exercise's own (`restSecondsFor`). Kept on this phone; see
+ * `rest-settings.ts` for why.
+ */
+function RestTimes() {
+  const custom = useRestSettingsStore((state) => state.custom);
+  const compound = useRestSettingsStore((state) => state.compound);
+  const isolation = useRestSettingsStore((state) => state.isolation);
+  const setCustom = useRestSettingsStore((state) => state.setCustom);
+  const setSeconds = useRestSettingsStore((state) => state.setSeconds);
+
+  return (
+    <Panel title="Rest timer">
+      <Switch
+        checked={custom}
+        onChange={setCustom}
+        icon={<IconChip tone="accent" icon={<ClockIcon className="size-5" />} />}
+        label="Set my own rest times"
+        description={
+          custom
+            ? 'One time for compound lifts, another for isolation lifts.'
+            : 'Off — each exercise uses its own suggested rest.'
+        }
+      />
+      {custom && (
+        <div className="mt-3 flex flex-col gap-3 border-t border-subtle pt-3">
+          <RestStepper
+            label="Compound lifts"
+            hint="Squats, presses, rows, deadlifts, pull-ups."
+            seconds={compound}
+            onChange={(next) => {
+              setSeconds('compound', next);
+            }}
+          />
+          <RestStepper
+            label="Isolation lifts"
+            hint="Curls, raises, extensions, flyes."
+            seconds={isolation}
+            onChange={(next) => {
+              setSeconds('isolation', next);
+            }}
+          />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * A rest time with a minus and a plus, read as `m:ss`.
+ *
+ * Not the shared Stepper: that one shows a plain number, and "180" is a sum
+ * to do where "3:00" is a time to read. Fifteen seconds a press, which is as
+ * fine as anybody counts rest.
+ */
+function RestStepper({
+  label,
+  hint,
+  seconds,
+  onChange,
+}: {
+  readonly label: string;
+  readonly hint: string;
+  readonly seconds: number;
+  readonly onChange: (seconds: number) => void;
+}) {
+  const button =
+    'flex size-tap shrink-0 items-center justify-center rounded-control border border-subtle bg-elevated text-xl text-primary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:text-muted/40';
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-base font-medium text-primary">{label}</p>
+        <p className="text-sm text-muted">{hint}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`${label} rest`}>
+        <button
+          type="button"
+          aria-label={`Shorter rest for ${label.toLowerCase()}`}
+          disabled={seconds <= REST_MIN_SECONDS}
+          onClick={() => {
+            onChange(seconds - REST_STEP_SECONDS);
+          }}
+          className={button}
+        >
+          −
+        </button>
+        <output
+          aria-live="polite"
+          className="numeric w-14 text-center text-lg font-semibold text-primary"
+        >
+          {formatRest(seconds)}
+        </output>
+        <button
+          type="button"
+          aria-label={`Longer rest for ${label.toLowerCase()}`}
+          disabled={seconds >= REST_MAX_SECONDS}
+          onClick={() => {
+            onChange(seconds + REST_STEP_SECONDS);
+          }}
+          className={button}
+        >
+          +
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -772,7 +890,7 @@ function DeleteAccount() {
 
 const DANGER_OUTLINE =
   'mt-3 inline-flex min-h-tap w-full items-center justify-center rounded-control border ' +
-  'border-danger/50 bg-elevated px-4 text-base font-medium text-danger transition-colors ' +
+  'border-danger/60 bg-elevated px-4 text-base font-medium text-destructive transition-colors ' +
   'duration-150 hover:border-danger active:bg-surface focus-visible:outline-2 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-accent';
 

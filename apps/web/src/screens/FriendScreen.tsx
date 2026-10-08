@@ -267,7 +267,7 @@ function FriendMenu({
             type="button"
             role="menuitem"
             onClick={remove}
-            className="flex min-h-tap w-full items-center rounded-control px-3 text-left text-base text-danger active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-tap w-full items-center rounded-control px-3 text-left text-base text-destructive active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
           >
             Remove friend
           </button>

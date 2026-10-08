@@ -496,7 +496,7 @@ function DayWorkouts({
                     onClick={() => {
                       onDelete(workout.sessionId);
                     }}
-                    className="-my-3 -mr-2 inline-flex min-h-tap min-w-tap items-center justify-center rounded-control text-danger active:bg-elevated disabled:opacity-50"
+                    className="-my-3 -mr-2 inline-flex min-h-tap min-w-tap items-center justify-center rounded-control text-destructive active:bg-elevated disabled:opacity-50"
                   >
                     <TrashIcon className="size-4" />
                   </button>
