@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  decodeChallengeAnswer,
+  decodeChallengeSend,
+  decodeChallenges,
   decodeDetail,
   decodeOverview,
   decodeSendResult,
@@ -129,5 +132,71 @@ describe('decodeDetail and decodeSession', () => {
         exercises: [{ exercise_id: 'e1', sets: [{ set_type: 'mystery', load_type: 'external' }] }],
       }),
     ).toThrow(FriendsError);
+  });
+});
+
+describe('decodeChallenges', () => {
+  const RUNNING = {
+    id: 'c1',
+    friend_id: 'alex',
+    name: 'Alex',
+    sent_by_me: true,
+    stat: 'sets',
+    ranking: 'improved',
+    status: 'active',
+    sent_at: '2026-10-05T09:00:00+00:00',
+    starts_at: '2026-10-05T18:00:00+00:00',
+    sharing: true,
+    workouts: [
+      {
+        started_at: '2026-10-06T17:00:00+00:00',
+        source: 'manual',
+        first_set_at: '2026-10-06T17:05:00+00:00',
+        last_set_at: '2026-10-06T18:00:00+00:00',
+        sets: 12,
+        lifted_kg: '4200.5',
+      },
+    ],
+  };
+
+  it('reads a running challenge and the friend’s workouts in it', () => {
+    const [challenge] = decodeChallenges({ challenges: [RUNNING] });
+    expect(challenge).toMatchObject({
+      id: 'c1',
+      friendId: 'alex',
+      sentByMe: true,
+      stat: 'sets',
+      ranking: 'improved',
+      status: 'active',
+      startsAt: new Date('2026-10-05T18:00:00Z'),
+      sharing: true,
+    });
+    expect(challenge?.workouts?.[0]).toMatchObject({ sets: 12, liftedKg: 4200.5 });
+  });
+
+  it('has no workouts for one still waiting, or a friend who stopped sharing', () => {
+    const [waiting, hidden] = decodeChallenges({
+      challenges: [
+        { ...RUNNING, status: 'pending', starts_at: null, workouts: undefined },
+        { ...RUNNING, sharing: false, workouts: undefined },
+      ],
+    });
+    expect(waiting).toMatchObject({ status: 'pending', startsAt: null, workouts: null });
+    expect(hidden).toMatchObject({ sharing: false, workouts: null });
+  });
+
+  it('refuses a stat, ranking or outcome it does not know', () => {
+    expect(() => decodeChallenges({ challenges: [{ ...RUNNING, stat: 'reps' }] })).toThrow(
+      FriendsError,
+    );
+    expect(() => decodeChallenges({ challenges: [{ ...RUNNING, ranking: 'loudest' }] })).toThrow(
+      FriendsError,
+    );
+    expect(decodeChallengeSend({ outcome: 'no_usual', name: 'Alex' })).toEqual({
+      outcome: 'no_usual',
+      name: 'Alex',
+    });
+    expect(decodeChallengeAnswer({ outcome: 'started' })).toBe('started');
+    expect(() => decodeChallengeAnswer({ outcome: 'maybe' })).toThrow(FriendsError);
   });
 });

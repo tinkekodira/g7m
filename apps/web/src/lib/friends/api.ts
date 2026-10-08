@@ -7,15 +7,22 @@
  * (ADR-0105). So this needs a connection, the screens say so when there is
  * none, and nothing here is kept in the local database.
  */
+import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { supabase } from '../supabase.js';
 import { describeDataError } from '../errors.js';
 import {
   FriendsError,
+  decodeChallengeAnswer,
+  decodeChallengeSend,
+  decodeChallenges,
   decodeDetail,
   decodeLeaderboard,
   decodeOverview,
   decodeSendResult,
   type BoardFriend,
+  type Challenge,
+  type ChallengeAnswerOutcome,
+  type ChallengeSendOutcome,
   type FriendDetail,
   type FriendsOverview,
   type SendResult,
@@ -82,4 +89,30 @@ export async function setTrainingSharing(enabled: boolean): Promise<void> {
 
 export async function touchLastActive(): Promise<void> {
   await rpc('touch_last_active');
+}
+
+/** Every challenge you are in that is waiting, running, or finished in the last week. */
+export async function fetchChallenges(): Promise<readonly Challenge[]> {
+  return decodeChallenges(await rpc('my_challenges'));
+}
+
+export async function sendChallenge(
+  friendId: string,
+  stat: LeaderboardStat,
+  ranking: LeaderboardRanking,
+): Promise<{ readonly outcome: ChallengeSendOutcome; readonly name: string | null }> {
+  return decodeChallengeSend(await rpc('send_challenge', { friend_id: friendId, stat, ranking }));
+}
+
+export async function answerChallenge(
+  challengeId: string,
+  accept: boolean,
+): Promise<ChallengeAnswerOutcome> {
+  return decodeChallengeAnswer(
+    await rpc('respond_to_challenge', { challenge_id: challengeId, accept }),
+  );
+}
+
+export async function withdrawChallenge(challengeId: string): Promise<void> {
+  await rpc('withdraw_challenge', { challenge_id: challengeId });
 }

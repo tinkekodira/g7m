@@ -40,4 +40,5 @@ export * from './achievements.js';
 export * from './add-weight.js';
 export * from './workout-title.js';
 export * from './friends.js';
+export * from './challenges.js';
 export * from './leaderboard.js';

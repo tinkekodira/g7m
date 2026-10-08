@@ -7079,3 +7079,115 @@ sync rules change.
   half of a month, because the old floor moves through the month.
 - `leaderboard.spec.ts`: Riley at 100% of a one-a-week usual, crowned for
   last week, and a new lifter with nothing to measure against.
+
+## ADR-0110 — One-to-one challenges
+
+**Status:** accepted · **Date:** 2026-10-08 · **Phase:** out of phase (new feature) · **Follows:** ADR-0105, ADR-0106, ADR-0109
+
+The person it is for: two friends who train at the same gym and want
+something riding on this week. One challenges the other on one stat, the
+other accepts, and for seven days the leaderboard tab shows who is ahead and
+by how much.
+
+### What a challenge is
+
+- **One friend, one stat**: workouts, weight, sets or time, counted by the
+  leaderboard's rules (ADR-0106), so a challenge and the board never disagree
+  about the same training.
+- **Most, or Most improved.** Most improved measures each person against
+  their own four weeks before the challenge began (ADR-0109), so a beginner
+  can fairly challenge somebody who lifts twice as much. Milan asked for both
+  in the first version.
+- **Seven days from the moment it is accepted.** Both start at zero at the
+  same instant. It is seven days of elapsed time, not local calendar days,
+  because two friends' timezones and week starts can differ and they must
+  agree on when it ends. A workout counts if it *started* inside the seven
+  days, as everywhere else, so one already under way when you accept does not
+  count. Rejected: the calendar week. A challenge sent on a Friday would get
+  two days, and two friends whose weeks start on different days would
+  disagree about the finish.
+- **One at a time between two people**, in either direction. Different
+  friends can each have their own. A new one can be sent once the last is
+  over.
+
+### The life of one
+
+1. **Sent** from the friend's page: a stat, Most or Most improved, and Send.
+2. **Waiting.** The friend sees it under **Requests**, which counts it in its
+   badge, with Accept and Decline. The sender sees "Waiting for Alex to
+   accept" and can take it back. Unanswered, it lapses after seven days
+   rather than blocking the pair for ever.
+3. **Declined** deletes it. The sender sees it gone and is never told in
+   words, as with a friend request (ADR-0105).
+4. **Running**, above the leaderboard: both scores, who is ahead and by how
+   much ("1 set behind Riley"), and the time left. Ranked by improvement, the
+   gap is said in the stat, as on the board: what the one behind has to do on
+   their own usual.
+5. **Finished**: "You won", "Riley won" or "A draw", shown for a week after,
+   so the result is seen.
+
+### Where the data lives
+
+The same shape as friendships (ADR-0105). There is one new table,
+`friend_challenges`, which is neither synced nor published and is in
+`UNSYNCED_TABLES`, so the sync rules do not change. Nobody can write it
+directly: the opponent being able to write it would let a challenger accept
+their own. Every read and write is a `security definer` function that takes
+the caller from the token and checks:
+
+- **an accepted friendship**, locked while a challenge is sent or answered,
+  so two sent at the same moment cannot both find the pair free;
+- **both sharing switches**, when it is sent and again when it is accepted,
+  because it is scored from both people's training. A friend who stops
+  sharing mid-challenge stops sending their workouts, and the card says it
+  can no longer be scored;
+- **a usual on both sides for Most improved**: a counted workout in the last
+  four weeks. Without one, any workout would be an infinite improvement.
+
+`my_challenges` sends, for a running or finished challenge, the friend's
+workouts from four weeks (and a day, for timezones) before it began until it
+ended. These are the same tallies `friends_leaderboard` sends and nothing a
+friend could not already see. Your own side is counted on the phone, so a
+workout you have just finished counts before it uploads. Removing a friend
+deletes every challenge between the two, and deleting an account takes its
+challenges with it.
+
+The challenge list is asked for again on every Friends sub-tab change, as the
+board is when it opens, so a friend's workout since the last look is counted.
+
+### Not done
+
+- No notification when you are challenged, overtaken or beaten. That needs
+  the native build (ADR-0077), like "Alex just overtook you" (ADR-0106).
+- No lifetime record between two friends ("You 3–1 Alex"). Challenges are
+  shown for a week after they end and then drop off the list. The rows stay,
+  so a record can be added later without a migration.
+
+### Deploy order
+
+1. `npx supabase db push`. The app calls the new functions as soon as the
+   Friends screen opens, and without them the challenge list fails to load.
+   The rest of the screen still works, but nothing can be challenged.
+2. Then merge. There is no sync-rules change.
+
+This branch is stacked on ADR-0109's (PR #134) for `usualScore`,
+`improvementScore` and the floor migration, and is rebased onto `main` once
+that merges.
+
+### Tests
+
+- `friends.test.ts` (Postgres): waiting then running from the accept; the
+  friend's workouts from four weeks before to the end; one at a time in
+  either direction; take back; only the opponent answers; a decline removes
+  it; lapsing after seven days; friends only; both sharing at send and at
+  accept; a usual for Most improved; unknown stats refused; no workouts after
+  sharing stops; the friendship ending; no direct writes; helpers out of
+  reach.
+- `challenges.test.ts` (core): the seven days across a clock change, what
+  counts inside them, scores both ways, and where you stand.
+- `challenges-view.test.ts`: every phase's words, the order of the list, the
+  countdown, and every refusal. `decode.test.ts`: the reply, and refusing a
+  stat, ranking or outcome it does not know.
+- `challenges.spec.ts`: accept one from Requests, fall a set behind, train,
+  go a set ahead; send one from a friend's page, be told Most improved needs
+  four weeks, send Most, and take it back.

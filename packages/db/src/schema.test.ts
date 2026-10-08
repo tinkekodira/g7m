@@ -48,7 +48,7 @@ const USER_TABLES = [
  * person who sent it is the bug that rule would allow — so they have their own
  * assertions in `friends.test.ts` instead (ADR-0105).
  */
-const FRIEND_TABLES = ['friend_profiles', 'friendships'];
+const FRIEND_TABLES = ['friend_challenges', 'friend_profiles', 'friendships'];
 
 describe('migrations', () => {
   it('apply cleanly from empty', async () => {

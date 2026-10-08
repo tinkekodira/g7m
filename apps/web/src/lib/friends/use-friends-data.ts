@@ -10,11 +10,12 @@
  * names and muscles to describe their workouts in. Nothing of yours is sent
  * anywhere to be compared — the comparison happens here.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BIG_THREE,
   DEFAULT_WEEK_START,
   bestLiftsByExercise,
+  boardSince,
   tallyWorkouts,
   type BestLift,
   type BoardWorkout,
@@ -23,6 +24,8 @@ import {
 } from '@g7m/core';
 import { useCatalogue, type QueryState } from '../db/use-catalogue.js';
 import type { Movers } from '../../screens/friends-view.js';
+import { challengeCards } from '../../screens/challenges-view.js';
+import type { Challenge } from './decode.js';
 
 export interface RemoteState<T> extends QueryState<T> {
   readonly reload: () => void;
@@ -138,5 +141,23 @@ export function useMySide(): QueryState<MySide> {
 export function useMyBoard(since: Date): QueryState<readonly BoardWorkout[]> {
   return useCatalogue(`friends-my-board-${since.toISOString()}`, async (repositories) =>
     tallyWorkouts(await repositories.history.boardSets(since)),
+  );
+}
+
+/** The cards for every challenge, or null while either half is loading. */
+export function useChallengeCards(
+  challenges: readonly Challenge[] | null,
+  unitSystem: UnitSystem,
+): ReturnType<typeof challengeCards> | null {
+  // The leaderboard's own history window, which reaches past the four weeks
+  // before any challenge still shown, so the two share one read.
+  const since = useMemo(() => boardSince(new Date()), []);
+  const mine = useMyBoard(since);
+  return useMemo(
+    () =>
+      challenges === null || mine.data === null
+        ? null
+        : challengeCards(challenges, mine.data, { now: new Date(), unitSystem }),
+    [challenges, mine.data, unitSystem],
   );
 }
