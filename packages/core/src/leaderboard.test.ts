@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  boardGap,
   boardScore,
   boardSince,
   boardSpans,
@@ -228,5 +229,46 @@ describe('ranking', () => {
       ['alex', null],
       ['sam', null],
     ]);
+  });
+});
+
+describe('the gap to the next place', () => {
+  const board = (scores: Record<string, number>) =>
+    rankBoard(Object.entries(scores).map(([id, score]) => ({ id, score })));
+
+  it('is the nearest score above yours', () => {
+    expect(boardGap(board({ alex: 9, sam: 6, you: 4 }), 'you')).toEqual({
+      kind: 'behind',
+      id: 'sam',
+      by: 2,
+    });
+  });
+
+  it('is the lowest score on the board when you have done nothing yet', () => {
+    expect(boardGap(board({ alex: 9, sam: 3, you: 0 }), 'you')).toEqual({
+      kind: 'behind',
+      id: 'sam',
+      by: 3,
+    });
+  });
+
+  it('says level when you share first place', () => {
+    expect(boardGap(board({ alex: 5, you: 5, sam: 1 }), 'you')).toEqual({
+      kind: 'level',
+      id: 'alex',
+    });
+  });
+
+  it('says by how much you lead', () => {
+    expect(boardGap(board({ you: 8, alex: 5, sam: 5 }), 'you')).toEqual({
+      kind: 'ahead',
+      id: 'alex',
+      by: 3,
+    });
+  });
+
+  it('has nothing to say when nobody has done anything, or you are alone', () => {
+    expect(boardGap(board({ you: 0, alex: 0 }), 'you')).toBeNull();
+    expect(boardGap(board({ you: 4 }), 'you')).toBeNull();
   });
 });

@@ -253,13 +253,43 @@ export function rankBoard<Id>(entries: readonly BoardEntry<Id>[]): RankedEntry<I
   const ranked: RankedEntry<Id>[] = [];
   for (const [index, entry] of sorted.entries()) {
     const above = ranked[index - 1];
-    const rank =
-      entry.score <= 0
-        ? null
-        : above?.score === entry.score
-          ? above.rank
-          : index + 1;
+    const rank = entry.score <= 0 ? null : above?.score === entry.score ? above.rank : index + 1;
     ranked.push({ ...entry, rank });
   }
   return ranked;
+}
+
+/**
+ * How far you are from the next place: the target for today.
+ *
+ * - `behind`: the nearest score above yours, and by how much. Doing nothing
+ *   yet, that is the lowest score on the board, which is the first one in
+ *   reach.
+ * - `level`: nobody above you, and somebody alongside — a shared first.
+ * - `ahead`: first on your own, and by how much over the next score down.
+ *
+ * Null when there is nothing to chase: nobody else on the board, or nobody,
+ * you included, has done anything yet.
+ */
+export type BoardGap<Id> =
+  | { readonly kind: 'behind'; readonly id: Id; readonly by: number }
+  | { readonly kind: 'level'; readonly id: Id }
+  | { readonly kind: 'ahead'; readonly id: Id; readonly by: number };
+
+export function boardGap<Id>(ranked: readonly RankedEntry<Id>[], you: Id): BoardGap<Id> | null {
+  const mine = ranked.find((entry) => entry.id === you);
+  if (mine === undefined) return null;
+  const others = ranked.filter((entry) => entry.id !== you);
+
+  // `ranked` is most first, so the last one above is the nearest.
+  const above = others.filter((entry) => entry.score > mine.score);
+  const nearest = above[above.length - 1];
+  if (nearest !== undefined)
+    return { kind: 'behind', id: nearest.id, by: nearest.score - mine.score };
+
+  if (mine.score <= 0) return null;
+  const alongside = others.find((entry) => entry.score === mine.score);
+  if (alongside !== undefined) return { kind: 'level', id: alongside.id };
+  const next = others.find((entry) => entry.score < mine.score);
+  return next === undefined ? null : { kind: 'ahead', id: next.id, by: mine.score - next.score };
 }

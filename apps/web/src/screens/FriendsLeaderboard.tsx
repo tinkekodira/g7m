@@ -134,7 +134,8 @@ export function FriendsLeaderboard({
 
 /**
  * One place on the board. A friend's row opens their page — the name is the
- * link, stretched over the row — and yours is marked rather than linked.
+ * link, stretched over the row — and yours is marked rather than linked, with
+ * the gap to the next place under your name.
  */
 function BoardRow({ row }: { readonly row: BoardRowView }) {
   return (
@@ -154,18 +155,25 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
         {row.rankText}
       </span>
       <Avatar name={row.avatarName} />
-      <span className="min-w-0 flex-1 truncate text-base font-semibold text-primary">
+      <span className="min-w-0 flex-1">
         {row.userId === null ? (
           <>
             <span className="sr-only">{row.description}</span>
-            <span aria-hidden>{row.name}</span>
+            <span aria-hidden className="block truncate text-base font-semibold text-primary">
+              {row.name}
+            </span>
+            {row.note !== null && (
+              <span aria-hidden className="block truncate text-xs text-secondary">
+                {row.note}
+              </span>
+            )}
           </>
         ) : (
           <Link
             to={`/friends/${row.userId}`}
             state={{ name: row.name }}
             aria-label={row.description}
-            className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
+            className="block truncate text-base font-semibold text-primary after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-accent"
           >
             {row.name}
           </Link>

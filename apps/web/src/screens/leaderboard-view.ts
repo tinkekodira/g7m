@@ -7,12 +7,14 @@
  * friend not sharing, the week where nobody has trained yet.
  */
 import {
+  boardGap,
   boardScore,
   boardSpans,
   boardTotals,
   daysBetween,
   formatMinutes,
   rankBoard,
+  type BoardGap,
   type BoardWorkout,
   type LeaderboardPeriod,
   type LeaderboardStat,
@@ -20,7 +22,7 @@ import {
   type WeekStart,
 } from '@g7m/core';
 import type { BoardFriend } from '../lib/friends/api.js';
-import { friendName } from './friends-view.js';
+import { NAMELESS, friendName } from './friends-view.js';
 
 export const STAT_OPTIONS: readonly { readonly value: LeaderboardStat; readonly label: string }[] =
   [
@@ -65,6 +67,37 @@ export function scoreWords(score: number, stat: LeaderboardStat, unitSystem: Uni
   }
 }
 
+/** An amount to make up: `2 workouts`, `1,200 kg`, `25m`. */
+export function amountText(by: number, stat: LeaderboardStat, unitSystem: UnitSystem): string {
+  switch (stat) {
+    case 'workouts':
+    case 'sets':
+      return scoreWords(by, stat, unitSystem);
+    case 'minutes':
+      return formatMinutes(by);
+    case 'lifted':
+      return scoreText(by, stat, unitSystem);
+  }
+}
+
+/** "2 sets behind Alex", "Level with Sam", "3 workouts ahead of Jordan". */
+export function describeGap(
+  gap: BoardGap<string>,
+  nameOf: (id: string) => string,
+  stat: LeaderboardStat,
+  unitSystem: UnitSystem,
+): string {
+  const who = nameOf(gap.id);
+  switch (gap.kind) {
+    case 'behind':
+      return `${amountText(gap.by, stat, unitSystem)} behind ${who}`;
+    case 'level':
+      return `Level with ${who}`;
+    case 'ahead':
+      return `${amountText(gap.by, stat, unitSystem)} ahead of ${who}`;
+  }
+}
+
 function ordinal(rank: number): string {
   const tens = rank % 100;
   if (tens >= 11 && tens <= 13) return `${String(rank)}th`;
@@ -99,6 +132,8 @@ export interface BoardRowView {
   readonly rankText: string;
   readonly score: number;
   readonly scoreText: string;
+  /** Under your own name: how far the next place is. Null on everybody else's. */
+  readonly note: string | null;
   /** The whole row in words. */
   readonly description: string;
 }
@@ -164,22 +199,31 @@ export function leaderboard(
     })),
   );
 
+  const gap = boardGap(ranked, 'you');
+  const note =
+    gap === null
+      ? null
+      : describeGap(gap, (id) => byKey.get(id)?.name ?? NAMELESS, stat, unitSystem);
+
   const rows = ranked.map((entry): BoardRowView => {
     const contender = byKey.get(entry.id);
     const name = contender?.name ?? 'You';
+    const isYou = entry.id === 'you';
     const words = scoreWords(entry.score, stat, unitSystem);
+    const said =
+      entry.rank === null ? `${name}: nothing yet` : `${ordinal(entry.rank)}, ${name}: ${words}`;
     return {
       key: entry.id,
       userId: contender?.userId ?? null,
       name,
       avatarName: contender?.avatarName ?? null,
-      isYou: entry.id === 'you',
+      isYou,
       rank: entry.rank,
       rankText: entry.rank === null ? '–' : String(entry.rank),
       score: entry.score,
       scoreText: scoreText(entry.score, stat, unitSystem),
-      description:
-        entry.rank === null ? `${name}: nothing yet` : `${ordinal(entry.rank)}, ${name}: ${words}`,
+      note: isYou ? note : null,
+      description: isYou && note !== null ? `${said}. ${note}` : said,
     };
   });
 

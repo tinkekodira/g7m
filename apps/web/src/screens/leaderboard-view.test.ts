@@ -79,7 +79,7 @@ describe('the board', () => {
     const view = leaderboard([alex, jordan], mine, CONTEXT);
     expect(view.rows.map((row) => row.description)).toEqual([
       '1st, Alex: 2 workouts',
-      '2nd, You: 1 workout',
+      '2nd, You: 1 workout. 1 workout behind Alex',
       'Jordan: nothing yet',
     ]);
   });
@@ -113,6 +113,36 @@ describe('the board', () => {
     expect(leaderboard([alex], mine, { ...CONTEXT, stat: 'lifted' }).footnote).toMatch(
       /count only the weight added/,
     );
+  });
+});
+
+describe('the gap under your name', () => {
+  const alex = friend('alex', 'Alex', [workout(MONDAY), workout(TUESDAY)]);
+  const sam = friend('sam', 'Sam', [workout(MONDAY, { liftedKg: 3800 })]);
+
+  it('names who is next above you and by how much', () => {
+    const view = leaderboard([alex, sam], [], CONTEXT);
+    const you = view.rows.find((row) => row.isYou);
+    expect(you?.note).toBe('1 workout behind Sam');
+    expect(you?.description).toBe('You: nothing yet. 1 workout behind Sam');
+    expect(view.rows.filter((row) => !row.isYou).map((row) => row.note)).toEqual([null, null]);
+  });
+
+  it('speaks in the stat’s own terms', () => {
+    const mine = [workout(MONDAY, { liftedKg: 2600 })];
+    const lifted = leaderboard([alex, sam], mine, { ...CONTEXT, stat: 'lifted' });
+    expect(lifted.rows.find((row) => row.isYou)?.note).toBe('1,200 kg behind Sam');
+
+    const ahead = leaderboard([sam], [workout(MONDAY), workout(TUESDAY)], CONTEXT);
+    expect(ahead.rows.find((row) => row.isYou)?.note).toBe('1 workout ahead of Sam');
+
+    const level = leaderboard([sam], [workout(TUESDAY)], { ...CONTEXT, stat: 'minutes' });
+    expect(level.rows.find((row) => row.isYou)?.note).toBe('Level with Sam');
+  });
+
+  it('stays quiet when nobody has trained yet', () => {
+    const view = leaderboard([friend('sam', 'Sam', [])], [], CONTEXT);
+    expect(view.rows.find((row) => row.isYou)?.note).toBeNull();
   });
 });
 
