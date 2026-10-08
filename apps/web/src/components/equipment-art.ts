@@ -61,6 +61,8 @@ import skiErgIcon from '../assets/equipment/ski-erg.png';
 import skiErgHero from '../assets/equipment/ski-erg-hero.webp';
 import stairClimberIcon from '../assets/equipment/stair-climber.png';
 import stairClimberHero from '../assets/equipment/stair-climber-hero.webp';
+import kettlebellIcon from '../assets/equipment/kettlebell.png';
+import kettlebellHero from '../assets/equipment/kettlebell-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -137,6 +139,7 @@ const SEATED_CABLE_ROW: EquipmentArt = { icon: seatedCableRowIcon, hero: seatedC
 const ROWING_MACHINE: EquipmentArt = { icon: rowingMachineIcon, hero: rowingMachineHero };
 const SKI_ERG: EquipmentArt = { icon: skiErgIcon, hero: skiErgHero };
 const STAIR_CLIMBER: EquipmentArt = { icon: stairClimberIcon, hero: stairClimberHero };
+const KETTLEBELL: EquipmentArt = { icon: kettlebellIcon, hero: kettlebellHero };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -185,6 +188,15 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'incline-dumbbell-curl': DUMBBELL,
   'farmer-carry': DUMBBELL,
   'dumbbell-pullover': DUMBBELL,
+
+  // One bell, standing up on its base. The goblet squat stays on the
+  // dumbbell: its steps allow either, and its loop holds a dumbbell.
+  'kettlebell-swing': KETTLEBELL,
+  'kettlebell-deadlift': KETTLEBELL,
+  'kettlebell-press': KETTLEBELL,
+  'kettlebell-clean': KETTLEBELL,
+  'kettlebell-snatch': KETTLEBELL,
+  'turkish-get-up': KETTLEBELL,
 
   // A fixed bar, not a stack-and-cable machine — separate from the lat pulldown.
   'pull-up': PULL_UP_BAR,

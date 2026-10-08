@@ -21,6 +21,7 @@
  * have anything to show, so leaving them out costs nothing today.
  */
 import type { Exercise } from '@g7m/db';
+import { favouritesFirst } from './favourites.js';
 
 export interface MuscleSections {
   /** Prime movers that work more than one joint. */
@@ -38,19 +39,30 @@ export interface MuscleSections {
  *
  * Order is preserved throughout: both queries come back sorted by recruitment
  * weight, so the exercise that trains a muscle hardest is already first and
- * re-sorting here would only lose that.
+ * re-sorting here would only lose that. The one exception is a starred
+ * exercise, which leads its own section (ADR-0108) and keeps that same order
+ * among the other starred ones. It never moves to another section: a starred
+ * face pull is still "also worked" for the rhomboids.
  */
 export function sectionsFor(
   primary: readonly Exercise[],
   secondary: readonly Exercise[],
+  favourites: ReadonlySet<string> = new Set(),
 ): MuscleSections {
-  const compound = primary.filter((exercise) => exercise.mechanic === 'compound');
-  const isolation = primary.filter((exercise) => exercise.mechanic === 'isolation');
+  const compound = favouritesFirst(
+    primary.filter((exercise) => exercise.mechanic === 'compound'),
+    favourites,
+  );
+  const isolation = favouritesFirst(
+    primary.filter((exercise) => exercise.mechanic === 'isolation'),
+    favourites,
+  );
+  const also = favouritesFirst(secondary, favourites);
 
   return {
     compound,
     isolation,
-    also: secondary,
+    also,
     // Counted from the lists that actually get drawn rather than from the
     // inputs. A prime mover whose mechanic matched neither bucket would
     // otherwise leave the panel claiming to have something and showing a gap.

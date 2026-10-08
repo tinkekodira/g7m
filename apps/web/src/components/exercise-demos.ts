@@ -102,6 +102,54 @@ import dumbbellPulloverMp4 from '../assets/demos/dumbbell-pullover.mp4';
 import dumbbellPulloverWebp from '../assets/demos/dumbbell-pullover.webp';
 import dumbbellPulloverPoster from '../assets/demos/dumbbell-pullover-poster.webp';
 import dumbbellPulloverTransparentPoster from '../assets/demos/dumbbell-pullover-poster-transparent.webp';
+import barbellHipThrustMp4 from '../assets/demos/barbell-hip-thrust.mp4';
+import barbellHipThrustWebp from '../assets/demos/barbell-hip-thrust.webp';
+import barbellHipThrustPoster from '../assets/demos/barbell-hip-thrust-poster.webp';
+import barbellHipThrustTransparentPoster from '../assets/demos/barbell-hip-thrust-poster-transparent.webp';
+import bulgarianSplitSquatMp4 from '../assets/demos/bulgarian-split-squat.mp4';
+import bulgarianSplitSquatWebp from '../assets/demos/bulgarian-split-squat.webp';
+import bulgarianSplitSquatPoster from '../assets/demos/bulgarian-split-squat-poster.webp';
+import bulgarianSplitSquatTransparentPoster from '../assets/demos/bulgarian-split-squat-poster-transparent.webp';
+import cableFlyMp4 from '../assets/demos/cable-fly.mp4';
+import cableFlyWebp from '../assets/demos/cable-fly.webp';
+import cableFlyPoster from '../assets/demos/cable-fly-poster.webp';
+import cableFlyTransparentPoster from '../assets/demos/cable-fly-poster-transparent.webp';
+import cableWoodchopMp4 from '../assets/demos/cable-woodchop.mp4';
+import cableWoodchopWebp from '../assets/demos/cable-woodchop.webp';
+import cableWoodchopPoster from '../assets/demos/cable-woodchop-poster.webp';
+import cableWoodchopTransparentPoster from '../assets/demos/cable-woodchop-poster-transparent.webp';
+import chestDipMp4 from '../assets/demos/chest-dip.mp4';
+import chestDipWebp from '../assets/demos/chest-dip.webp';
+import chestDipPoster from '../assets/demos/chest-dip-poster.webp';
+import chestDipTransparentPoster from '../assets/demos/chest-dip-poster-transparent.webp';
+import facePullMp4 from '../assets/demos/face-pull.mp4';
+import facePullWebp from '../assets/demos/face-pull.webp';
+import facePullPoster from '../assets/demos/face-pull-poster.webp';
+import facePullTransparentPoster from '../assets/demos/face-pull-poster-transparent.webp';
+import hackSquatMp4 from '../assets/demos/hack-squat.mp4';
+import hackSquatWebp from '../assets/demos/hack-squat.webp';
+import hackSquatPoster from '../assets/demos/hack-squat-poster.webp';
+import hackSquatTransparentPoster from '../assets/demos/hack-squat-poster-transparent.webp';
+import plankMp4 from '../assets/demos/plank.mp4';
+import plankWebp from '../assets/demos/plank.webp';
+import plankPoster from '../assets/demos/plank-poster.webp';
+import plankTransparentPoster from '../assets/demos/plank-poster-transparent.webp';
+import singleArmDumbbellRowMp4 from '../assets/demos/single-arm-dumbbell-row.mp4';
+import singleArmDumbbellRowWebp from '../assets/demos/single-arm-dumbbell-row.webp';
+import singleArmDumbbellRowPoster from '../assets/demos/single-arm-dumbbell-row-poster.webp';
+import singleArmDumbbellRowTransparentPoster from '../assets/demos/single-arm-dumbbell-row-poster-transparent.webp';
+import standingCalfRaiseMp4 from '../assets/demos/standing-calf-raise.mp4';
+import standingCalfRaiseWebp from '../assets/demos/standing-calf-raise.webp';
+import standingCalfRaisePoster from '../assets/demos/standing-calf-raise-poster.webp';
+import standingCalfRaiseTransparentPoster from '../assets/demos/standing-calf-raise-poster-transparent.webp';
+import straightArmPulldownMp4 from '../assets/demos/straight-arm-pulldown.mp4';
+import straightArmPulldownWebp from '../assets/demos/straight-arm-pulldown.webp';
+import straightArmPulldownPoster from '../assets/demos/straight-arm-pulldown-poster.webp';
+import straightArmPulldownTransparentPoster from '../assets/demos/straight-arm-pulldown-poster-transparent.webp';
+import tricepsPushdownMp4 from '../assets/demos/triceps-pushdown.mp4';
+import tricepsPushdownWebp from '../assets/demos/triceps-pushdown.webp';
+import tricepsPushdownPoster from '../assets/demos/triceps-pushdown-poster.webp';
+import tricepsPushdownTransparentPoster from '../assets/demos/triceps-pushdown-poster-transparent.webp';
 
 /**
  * The demonstration loops, by exercise slug: a clay mannequin doing one rep in
@@ -109,7 +157,7 @@ import dumbbellPulloverTransparentPoster from '../assets/demos/dumbbell-pullover
  *
  * Rendered in `3d-models/mannequin` with the icons' camera, lights and render
  * settings, and copied here byte for byte. Each loop is one rep at 15 fps,
- * 2.33–2.8 s depending on the lift, and seamless: the last frame leads into
+ * 2.33–2.9 s depending on the lift, and seamless: the last frame leads into
  * the first. The player takes each file's own length and assumes none.
  *
  * Unlike `equipment-art.ts` this is one entry per exercise, not per piece of
@@ -124,13 +172,13 @@ import dumbbellPulloverTransparentPoster from '../assets/demos/dumbbell-pullover
  * scrolls one into view, never at install.
  */
 export interface ExerciseDemo {
-  /** H.264, 720px square, opaque on `DEMO_MP4_BACKGROUND`. 100–210 KB. */
+  /** H.264, 720px square, opaque on `DEMO_MP4_BACKGROUND`. 80–210 KB. */
   readonly mp4: string;
-  /** Animated WebP, 720px square, transparent with a contact shadow. 1.0–2.8 MB. */
+  /** Animated WebP, 720px square, transparent with a contact shadow. 0.9–3.0 MB. */
   readonly webp: string;
   /** The first frame, opaque on `DEMO_MP4_BACKGROUND`. 10–30 KB. */
   readonly poster: string;
-  /** The same first frame, transparent with the contact shadow. 25–85 KB. */
+  /** The same first frame, transparent with the contact shadow. 25–90 KB. */
   readonly transparentPoster: string;
 }
 
@@ -290,6 +338,80 @@ const DEMOS: Readonly<Record<string, ExerciseDemo>> = {
     webp: dumbbellPulloverWebp,
     poster: dumbbellPulloverPoster,
     transparentPoster: dumbbellPulloverTransparentPoster,
+  },
+  'barbell-hip-thrust': {
+    mp4: barbellHipThrustMp4,
+    webp: barbellHipThrustWebp,
+    poster: barbellHipThrustPoster,
+    transparentPoster: barbellHipThrustTransparentPoster,
+  },
+  'bulgarian-split-squat': {
+    mp4: bulgarianSplitSquatMp4,
+    webp: bulgarianSplitSquatWebp,
+    poster: bulgarianSplitSquatPoster,
+    transparentPoster: bulgarianSplitSquatTransparentPoster,
+  },
+  'cable-fly': {
+    mp4: cableFlyMp4,
+    webp: cableFlyWebp,
+    poster: cableFlyPoster,
+    transparentPoster: cableFlyTransparentPoster,
+  },
+  'cable-woodchop': {
+    mp4: cableWoodchopMp4,
+    webp: cableWoodchopWebp,
+    poster: cableWoodchopPoster,
+    transparentPoster: cableWoodchopTransparentPoster,
+  },
+  // The chest-focused dip only: the loop leans forward over the bars, and the
+  // triceps dip is the upright one.
+  'chest-dip': {
+    mp4: chestDipMp4,
+    webp: chestDipWebp,
+    poster: chestDipPoster,
+    transparentPoster: chestDipTransparentPoster,
+  },
+  'face-pull': {
+    mp4: facePullMp4,
+    webp: facePullWebp,
+    poster: facePullPoster,
+    transparentPoster: facePullTransparentPoster,
+  },
+  'hack-squat': {
+    mp4: hackSquatMp4,
+    webp: hackSquatWebp,
+    poster: hackSquatPoster,
+    transparentPoster: hackSquatTransparentPoster,
+  },
+  plank: {
+    mp4: plankMp4,
+    webp: plankWebp,
+    poster: plankPoster,
+    transparentPoster: plankTransparentPoster,
+  },
+  'single-arm-dumbbell-row': {
+    mp4: singleArmDumbbellRowMp4,
+    webp: singleArmDumbbellRowWebp,
+    poster: singleArmDumbbellRowPoster,
+    transparentPoster: singleArmDumbbellRowTransparentPoster,
+  },
+  'standing-calf-raise': {
+    mp4: standingCalfRaiseMp4,
+    webp: standingCalfRaiseWebp,
+    poster: standingCalfRaisePoster,
+    transparentPoster: standingCalfRaiseTransparentPoster,
+  },
+  'straight-arm-pulldown': {
+    mp4: straightArmPulldownMp4,
+    webp: straightArmPulldownWebp,
+    poster: straightArmPulldownPoster,
+    transparentPoster: straightArmPulldownTransparentPoster,
+  },
+  'triceps-pushdown': {
+    mp4: tricepsPushdownMp4,
+    webp: tricepsPushdownWebp,
+    poster: tricepsPushdownPoster,
+    transparentPoster: tricepsPushdownTransparentPoster,
   },
 };
 

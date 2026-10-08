@@ -36,6 +36,18 @@ const WITH_LOOP = [
   'goblet-squat',
   'skull-crusher',
   'dumbbell-pullover',
+  'barbell-hip-thrust',
+  'bulgarian-split-squat',
+  'cable-fly',
+  'cable-woodchop',
+  'chest-dip',
+  'face-pull',
+  'hack-squat',
+  'plank',
+  'single-arm-dumbbell-row',
+  'standing-calf-raise',
+  'straight-arm-pulldown',
+  'triceps-pushdown',
 ];
 
 describe('exerciseDemo', () => {
@@ -70,6 +82,13 @@ describe('exerciseDemo', () => {
     // bench in its kit and "sit with back support" as its first step.
     expect(exerciseDemo('dumbbell-shoulder-press')).toBeNull();
     expect(exerciseDemo('')).toBeNull();
+  });
+
+  it('gives the chest dip its loop and leaves the triceps dip without one', () => {
+    // The loop leans forward over the bars. The triceps dip is done upright,
+    // so the same file on its page would show the other exercise.
+    expect(exerciseDemo('chest-dip')).not.toBeNull();
+    expect(exerciseDemo('triceps-dip')).toBeNull();
   });
 
   it('gives the hammer curl its own loop, not the supinated curl', () => {

@@ -5,7 +5,7 @@ import { signIn } from './support/app.js';
 /**
  * The demonstration loop on an exercise's page (ADR-0102).
  *
- * Twenty-six exercises have one (`WITH_LOOP` below); the rest do not. It plays in
+ * Thirty-eight exercises have one (`WITH_LOOP` below); the rest do not. It plays in
  * the "How to do it" card, the MP4 in the dark theme and the transparent WebP
  * in the light one, the poster alone under reduced motion, and none of it is
  * fetched until somebody scrolls to it.
@@ -55,11 +55,23 @@ const WITH_LOOP = [
   ['goblet-squat', 'Goblet Squat'],
   ['skull-crusher', 'Skull Crusher'],
   ['dumbbell-pullover', 'Dumbbell Pullover'],
+  ['barbell-hip-thrust', 'Barbell Hip Thrust'],
+  ['bulgarian-split-squat', 'Bulgarian Split Squat'],
+  ['cable-fly', 'Cable Fly'],
+  ['cable-woodchop', 'Cable Woodchop'],
+  ['chest-dip', 'Dips (Chest focused)'],
+  ['face-pull', 'Face Pull'],
+  ['hack-squat', 'Hack Squat'],
+  ['plank', 'Plank'],
+  ['single-arm-dumbbell-row', 'Single-Arm Dumbbell Row'],
+  ['standing-calf-raise', 'Standing Calf Raise'],
+  ['straight-arm-pulldown', 'Straight-Arm Pulldown'],
+  ['triceps-pushdown', 'Triceps Pushdown'],
 ] as const;
 
 test('every exercise with a loop plays it', async ({ page }) => {
-  // Twenty-six pages, each waiting for its video to start.
-  test.setTimeout(360_000);
+  // Thirty-eight pages, each waiting for its video to start.
+  test.setTimeout(540_000);
   const user = await createUser('demo', { onboarded: true });
   await signIn(page, user);
   // A browser that cannot decode H.264 never plays the MP4: it takes the

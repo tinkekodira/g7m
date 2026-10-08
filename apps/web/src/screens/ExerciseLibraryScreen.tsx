@@ -3,9 +3,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Chip, KitSlider, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
 import { ExerciseIcon } from '../components/ExerciseIcon.js';
+import { FavouriteMark } from '../components/Favourite.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { addedState } from './added-exercise.js';
+import { favouritesFirst } from './favourites.js';
 import {
   NO_FILTERS,
   hasFilters,
@@ -122,13 +124,21 @@ export function ExerciseLibraryScreen() {
   const criteria = toExerciseFilter(filters, groupIdBySlug, equipmentIdBySlug);
   const key = ready ? `${JSON.stringify(criteria)}|${filters.query}` : 'waiting';
 
+  /**
+   * The stars come in the same read as the list, so the list is drawn in its
+   * final order the first time rather than re-sorted a moment later. Starring
+   * on an exercise's page is a write, and every write re-runs this read, so
+   * the list is in the new order by the time you come back to it.
+   */
   const results = useCatalogue(key, async (repositories) => {
     if (!ready) return null;
-    const [exercises, muscles] = await Promise.all([
+    const [exercises, muscles, profile] = await Promise.all([
       repositories.exercises.browse(criteria, filters.query),
       repositories.exercises.primaryMuscleNames(),
+      repositories.profile.current(),
     ]);
-    return { exercises, muscles };
+    const favourites = new Set(profile?.favouriteExercises ?? []);
+    return { exercises: favouritesFirst(exercises, favourites), muscles, favourites };
   });
 
   const error = taxonomy.error ?? results.error;
@@ -276,6 +286,7 @@ export function ExerciseLibraryScreen() {
                   <ExerciseRow
                     exercise={exercise}
                     muscle={results.data?.muscles.get(exercise.id) ?? null}
+                    favourite={results.data?.favourites.has(exercise.slug) ?? false}
                     onAdd={
                       adding
                         ? () => {
@@ -302,11 +313,13 @@ export function ExerciseLibraryScreen() {
 function ExerciseRow({
   exercise,
   muscle,
+  favourite,
   onAdd,
   busy,
 }: {
   readonly exercise: Exercise;
   readonly muscle: string | null;
+  readonly favourite: boolean;
   /** Non-null while picking an exercise for a workout in progress. */
   readonly onAdd: (() => void) | null;
   readonly busy: boolean;
@@ -326,7 +339,10 @@ function ExerciseRow({
           growing the row and pushing the square off the left edge. The two
           lines are untouched; they have only moved right. */}
       <span className="flex min-w-0 flex-col">
-        <span className="text-base font-medium text-primary">{exercise.name}</span>
+        <span className="text-base font-medium text-primary">
+          {exercise.name}
+          {favourite && <FavouriteMark />}
+        </span>
         <span className="text-sm text-secondary">{detail}</span>
       </span>
     </>

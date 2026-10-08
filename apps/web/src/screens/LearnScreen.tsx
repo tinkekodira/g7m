@@ -4,6 +4,7 @@ import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
 import { useStageColor } from '../lib/use-theme.js';
+import { FavouriteMark } from '../components/Favourite.js';
 import { ChevronRightIcon, DumbbellIcon } from '../components/icons.js';
 import { Chip } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
@@ -26,6 +27,8 @@ const AnatomyViewer = lazy(() =>
 interface MuscleDetail {
   readonly muscle: Muscle;
   readonly sections: MuscleSections;
+  /** Slugs of the starred exercises, for the star after each name. */
+  readonly favourites: ReadonlySet<string>;
 }
 
 export function LearnScreen() {
@@ -87,12 +90,14 @@ export function LearnScreen() {
        * in the taxonomy as dead ends — the rhomboids among them, which eight
        * exercises work and none work first.
        */
-      const [primary, secondary] = await Promise.all([
+      const [primary, secondary, profile] = await Promise.all([
         repositories.exercises.forMuscle(muscle.id, 'primary'),
         repositories.exercises.forMuscle(muscle.id, 'secondary'),
+        repositories.profile.current(),
       ]);
 
-      return { muscle, sections: sectionsFor(primary, secondary) };
+      const favourites = new Set(profile?.favouriteExercises ?? []);
+      return { muscle, sections: sectionsFor(primary, secondary, favourites), favourites };
     },
   );
 
@@ -325,7 +330,7 @@ function MusclePanel({
     );
   }
 
-  const { muscle, sections } = detail;
+  const { muscle, sections, favourites } = detail;
 
   return (
     <section className="rounded-card bg-surface p-4">
@@ -348,8 +353,8 @@ function MusclePanel({
         <>
           {/* Compound first, and split rather than ranked: they are different
               kinds of answer to "what trains this", not better and worse. */}
-          <ExerciseGroup title="Compound" exercises={sections.compound} />
-          <ExerciseGroup title="Isolation" exercises={sections.isolation} />
+          <ExerciseGroup title="Compound" exercises={sections.compound} favourites={favourites} />
+          <ExerciseGroup title="Isolation" exercises={sections.isolation} favourites={favourites} />
           {/* A third section rather than more rows under the first two. These
               work the muscle without being the point of the lift, and merging
               them in would rank a face pull alongside a row for the rhomboids. */}
@@ -357,6 +362,7 @@ function MusclePanel({
             title="Also worked"
             hint="Worked here as a supporting muscle rather than the main one."
             exercises={sections.also}
+            favourites={favourites}
           />
         </>
       )}
@@ -368,11 +374,13 @@ function ExerciseGroup({
   title,
   hint,
   exercises,
+  favourites,
 }: {
   readonly title: string;
   /** One line under the heading, where the heading alone does not say enough. */
   readonly hint?: string;
   readonly exercises: readonly Exercise[];
+  readonly favourites: ReadonlySet<string>;
 }) {
   if (exercises.length === 0) return null;
   return (
@@ -388,7 +396,12 @@ function ExerciseGroup({
               to={`/exercises/${exercise.slug}`}
               className="flex min-h-tap items-center justify-between gap-3 rounded-control border border-subtle bg-elevated px-3 py-2 text-base text-primary active:opacity-80"
             >
-              <span className="min-w-0 truncate">{exercise.name}</span>
+              {/* The star outside the truncated name, so a long name loses
+                  its last letters rather than its star. */}
+              <span className="flex min-w-0 items-center">
+                <span className="min-w-0 truncate">{exercise.name}</span>
+                {favourites.has(exercise.slug) && <FavouriteMark />}
+              </span>
               <ChevronRightIcon className="size-5 shrink-0 text-muted" />
             </Link>
           </li>

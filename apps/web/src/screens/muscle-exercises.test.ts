@@ -65,4 +65,23 @@ describe('sectionsFor', () => {
     expect(sections.isolation).toEqual([]);
     expect(sections.empty).toBe(true);
   });
+
+  it('puts a starred exercise first in its own section, and only there', () => {
+    const starred = (name: string, slug: string, mechanic: 'compound' | 'isolation') =>
+      ({ name, slug, mechanic }) as unknown as Exercise;
+    const row = starred('Barbell Row', 'barbell-row', 'compound');
+    const pullUp = starred('Pull-Up', 'pull-up', 'compound');
+    const shrug = starred('Barbell Shrug', 'barbell-shrug', 'isolation');
+    const facePull = starred('Face Pull', 'face-pull', 'compound');
+
+    const sections = sectionsFor(
+      [row, pullUp, shrug],
+      [facePull],
+      new Set(['pull-up', 'face-pull']),
+    );
+    expect(sections.compound).toEqual([pullUp, row]);
+    expect(sections.isolation).toEqual([shrug]);
+    // Starred, and still a supporting exercise rather than a prime mover.
+    expect(sections.also).toEqual([facePull]);
+  });
 });

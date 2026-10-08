@@ -191,6 +191,11 @@ const profiles = new Table({
    * plays once per badge across devices. Earned is worked out, never stored.
    */
   achievements_seen: column.text,
+  /**
+   * Comma-separated slugs of the starred exercises, which come first in every
+   * exercise list. Null when nothing is starred. ADR-0108.
+   */
+  favourite_exercises: column.text,
   created_at: column.text,
   updated_at: column.text,
 });
