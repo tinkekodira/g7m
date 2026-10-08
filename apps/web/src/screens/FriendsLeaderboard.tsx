@@ -146,14 +146,25 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
         row.isYou && 'bg-accent-subtle',
       )}
     >
-      <span
-        aria-hidden
-        className={cx(
-          'numeric w-6 shrink-0 text-center text-lg font-bold',
-          row.rank === 1 ? 'text-accent' : row.rank === null ? 'text-muted' : 'text-primary',
+      <span aria-hidden className="flex w-7 shrink-0 flex-col items-center leading-none">
+        <span
+          className={cx(
+            'numeric text-lg font-bold',
+            row.rank === 1 ? 'text-accent' : row.rank === null ? 'text-muted' : 'text-primary',
+          )}
+        >
+          {row.rankText}
+        </span>
+        {row.moveText !== null && (
+          <span
+            className={cx(
+              'numeric mt-1 text-[11px] font-semibold',
+              row.move > 0 ? 'text-success' : 'text-danger/80',
+            )}
+          >
+            {row.moveText}
+          </span>
         )}
-      >
-        {row.rankText}
       </span>
       <Avatar name={row.avatarName} />
       <span className="min-w-0 flex-1">

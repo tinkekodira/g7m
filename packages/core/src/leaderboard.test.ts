@@ -7,6 +7,7 @@ import {
   boardTotals,
   liftedKg,
   rankBoard,
+  rankMoves,
   tallyWorkouts,
   type BoardSet,
   type BoardTotals,
@@ -270,5 +271,39 @@ describe('the gap to the next place', () => {
   it('has nothing to say when nobody has done anything, or you are alone', () => {
     expect(boardGap(board({ you: 0, alex: 0 }), 'you')).toBeNull();
     expect(boardGap(board({ you: 4 }), 'you')).toBeNull();
+  });
+});
+
+describe('places moved since yesterday', () => {
+  const board = (scores: Record<string, number>) =>
+    rankBoard(Object.entries(scores).map(([id, score]) => ({ id, score })));
+
+  it('counts places gained and lost', () => {
+    const moves = rankMoves(board({ you: 9, alex: 8, sam: 3 }), board({ alex: 8, sam: 3, you: 2 }));
+    expect(Object.fromEntries(moves)).toEqual({ you: 2, alex: -1, sam: -1 });
+  });
+
+  it('shows a first workout as a climb past whoever it passed', () => {
+    const moves = rankMoves(
+      board({ alex: 8, jordan: 5, sam: 3 }),
+      board({ alex: 8, sam: 3, jordan: 0 }),
+    );
+    // Jordan had no place, so was "third"; is now second.
+    expect(moves.get('jordan')).toBe(1);
+    expect(moves.get('sam')).toBe(-1);
+  });
+
+  it('never shows a fall from nowhere', () => {
+    const moves = rankMoves(
+      board({ alex: 8, sam: 6, jordan: 1 }),
+      board({ alex: 8, sam: 0, jordan: 0 }),
+    );
+    expect(moves.get('jordan')).toBe(0);
+    expect(moves.get('sam')).toBe(0);
+  });
+
+  it('moves nobody on the first day of a period', () => {
+    const moves = rankMoves(board({ alex: 3, you: 1, sam: 0 }), board({ alex: 0, you: 0, sam: 0 }));
+    expect([...moves.values()]).toEqual([0, 0, 0]);
   });
 });

@@ -293,3 +293,35 @@ export function boardGap<Id>(ranked: readonly RankedEntry<Id>[], you: Id): Board
   const next = others.find((entry) => entry.score < mine.score);
   return next === undefined ? null : { kind: 'ahead', id: next.id, by: mine.score - next.score };
 }
+
+/**
+ * Places moved since yesterday: positive up, negative down, zero for none.
+ *
+ * `yesterday` is the same board counted up to the start of today. Somebody
+ * with no place yesterday is taken to have been just below the last place, so
+ * their first workout of the week shows as a climb past whoever they passed —
+ * and only ever as a climb: nobody falls from nowhere. Nobody with no place
+ * today has moved. On the first day of a period nobody had a place yesterday,
+ * so nothing has moved, which is right: everybody started level this morning.
+ */
+export function rankMoves<Id>(
+  today: readonly RankedEntry<Id>[],
+  yesterday: readonly RankedEntry<Id>[],
+): Map<Id, number> {
+  const before = new Map(yesterday.map((entry) => [entry.id, entry.rank]));
+  const placedBefore = yesterday.filter((entry) => entry.rank !== null).length;
+
+  const moves = new Map<Id, number>();
+  for (const entry of today) {
+    if (entry.rank === null) {
+      moves.set(entry.id, 0);
+      continue;
+    }
+    const was = before.get(entry.id) ?? null;
+    moves.set(
+      entry.id,
+      was === null ? Math.max(0, placedBefore + 1 - entry.rank) : was - entry.rank,
+    );
+  }
+  return moves;
+}

@@ -14,6 +14,8 @@ import {
   daysBetween,
   formatMinutes,
   rankBoard,
+  rankMoves,
+  startOfDay,
   type BoardGap,
   type BoardWorkout,
   type LeaderboardPeriod,
@@ -137,6 +139,10 @@ export interface BoardRowView {
    * and nobody's for a period in which nobody did anything.
    */
   readonly champion: boolean;
+  /** Places moved since yesterday: positive up, negative down. */
+  readonly move: number;
+  /** "▲2", "▼1", or null for no move. */
+  readonly moveText: string | null;
   /** Under your own name: how far the next place is. Null on everybody else's. */
   readonly note: string | null;
   /** The whole row in words. */
@@ -204,6 +210,25 @@ export function leaderboard(
     })),
   );
 
+  // The same board as it stood at the end of yesterday, for the arrows.
+  const today = startOfDay(now);
+  const moves = rankMoves(
+    ranked,
+    rankBoard(
+      contenders.map((contender) => ({
+        id: contender.key,
+        score: boardScore(
+          boardTotals(contender.workouts, {
+            start: spans.current.start,
+            end: today < spans.current.start ? spans.current.start : today,
+          }),
+          stat,
+          unitSystem,
+        ),
+      })),
+    ),
+  );
+
   // Last period, ranked by the same rule, for its winner's crown. The friends
   // are today's: a friend added since is in the running, one who has stopped
   // sharing is not.
@@ -233,7 +258,12 @@ export function leaderboard(
     const champion = champions.has(entry.id);
     const placed =
       entry.rank === null ? `${name}: nothing yet` : `${ordinal(entry.rank)}, ${name}: ${words}`;
-    const said = champion ? `${placed}. ${crowned}` : placed;
+    const move = moves.get(entry.id) ?? 0;
+    const moved =
+      move === 0 ? null : `${move > 0 ? 'Up' : 'Down'} ${String(Math.abs(move))} since yesterday`;
+    const said = [placed, moved, champion ? crowned : null]
+      .filter((part) => part !== null)
+      .join('. ');
     return {
       key: entry.id,
       userId: contender?.userId ?? null,
@@ -245,6 +275,8 @@ export function leaderboard(
       score: entry.score,
       scoreText: scoreText(entry.score, stat, unitSystem),
       champion,
+      move,
+      moveText: move === 0 ? null : `${move > 0 ? '▲' : '▼'}${String(Math.abs(move))}`,
       note: isYou ? note : null,
       description: isYou && note !== null ? `${said}. ${note}` : said,
     };

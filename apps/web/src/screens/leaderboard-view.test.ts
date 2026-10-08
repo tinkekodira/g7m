@@ -178,6 +178,31 @@ describe('last period’s crown', () => {
   });
 });
 
+describe('arrows since yesterday', () => {
+  it('show who climbed and who was passed today', () => {
+    const today = local(2026, 10, 7, 9);
+    const alex = friend('alex', 'Alex', [workout(MONDAY)]);
+    const sam = friend('sam', 'Sam', [workout(TUESDAY), workout(today)]);
+    const view = leaderboard([alex, sam], [workout(MONDAY), workout(TUESDAY)], CONTEXT);
+    expect(view.rows.map((row) => [row.name, row.moveText])).toEqual([
+      ['Sam', '▲1'],
+      // Sam drew level with you: still first, so no arrow. Alex was second with Sam.
+      ['You', null],
+      ['Alex', '▼1'],
+    ]);
+    expect(view.rows[0]?.description).toBe('1st, Sam: 2 workouts. Up 1 since yesterday');
+  });
+
+  it('show nothing on the first day of the week', () => {
+    const monday = local(2026, 10, 5, 20);
+    const view = leaderboard([friend('alex', 'Alex', [workout(local(2026, 10, 5, 9))])], [], {
+      ...CONTEXT,
+      now: monday,
+    });
+    expect(view.rows.every((row) => row.moveText === null)).toBe(true);
+  });
+});
+
 describe('numbers', () => {
   it('shows each stat in its own terms', () => {
     expect(scoreText(12_450, 'lifted', 'metric')).toBe('12,450 kg');
