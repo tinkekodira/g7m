@@ -38,6 +38,11 @@
      in this theme; its own token because the light theme needs white here
      while its primary text is dark. */
   --text-on-danger: #faf9f5;
+  /* A destructive action written as text — Remove, Delete, Discard — rather
+     than filled. --danger is a fill: as text it is 2.8:1 on the page. This is
+     a plain red, kept well clear of the orange accent so it never reads as
+     "the thing to press". AA on every surface. */
+  --text-danger: #f87171;
 
   /* --- Accent --- */
   --accent: #d97757; /* primary actions, active states */
@@ -104,6 +109,8 @@
   --text-muted: #6a675f;
   --text-on-accent: #ffffff;
   --text-on-danger: #ffffff;
+  /* Redder than --danger, which sits too close to this theme's accent. */
+  --text-danger: #b3261e;
 
   --accent: #a84a28;
   --accent-hover: #973f1f;
@@ -141,6 +148,7 @@
   --color-muted: var(--text-muted);
   --color-on-accent: var(--text-on-accent);
   --color-on-danger: var(--text-on-danger);
+  --color-destructive: var(--text-danger);
   --color-stage: var(--bg-stage);
   --color-demo: var(--bg-demo);
 

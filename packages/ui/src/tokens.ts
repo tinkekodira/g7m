@@ -23,6 +23,7 @@ export const colorTokens = {
   'text-muted': '#99978f',
   'text-on-accent': '#1f1e1d',
   'text-on-danger': '#faf9f5',
+  'text-danger': '#f87171',
 
   accent: '#d97757',
   'accent-hover': '#e08a6e',
@@ -70,6 +71,7 @@ export const lightColorTokens = {
   'text-muted': '#6a675f',
   'text-on-accent': '#ffffff',
   'text-on-danger': '#ffffff',
+  'text-danger': '#b3261e',
 
   accent: '#a84a28',
   'accent-hover': '#973f1f',

@@ -230,6 +230,8 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   // The back set to an incline is what tells this press from the flat one.
   'incline-dumbbell-press': ADJUSTABLE_BENCH,
+  // The same bench at the same angle, lain on face down.
+  'chest-supported-dumbbell-row': ADJUSTABLE_BENCH,
 
   // A chest-supported T-bar station. The row is filed under `barbell` in the
   // equipment picker (a landmine does it too), but this is what it looks like.
@@ -238,8 +240,10 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'machine-chest-press': CHEST_PRESS_MACHINE,
   'pec-deck': PEC_DECK,
 
-  // A wall-mounted dip bar, not a free-standing dip station.
+  // A wall-mounted dip bar, not a free-standing dip station. Both dips: the
+  // lean is the difference, not the bars.
   'chest-dip': DIP_BAR,
+  'triceps-dip': DIP_BAR,
 
   treadmill: TREADMILL,
   'rowing-machine': ROWING_MACHINE,

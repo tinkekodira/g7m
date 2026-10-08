@@ -6814,3 +6814,88 @@ All three are worked out from the same tallies; nothing new is stored.
   for the native build (ADR-0077's "What this is not").
 - **Most improved** (against your own last four weeks) and **one-to-one
   challenges** are planned as their own pieces of work.
+
+## ADR-0107 — Workout polish: the gap under the tab bar, red for destructive, and rest by kind of lift
+
+**Status:** accepted · **Date:** 2026-10-08 · **Phase:** out of phase (fixes from testing)
+
+Six fixes from a round of testing on the phone, shipped together.
+
+### The empty strip under the tab bar
+
+On the installed iPhone app, every screen had a strip of about 60pt of empty
+page under the tab bar that could not be scrolled away. It was the status bar's
+height. With `apple-mobile-web-app-status-bar-style: black-translucent`, iOS 26
+sizes the home-screen web view one status-bar height short of the screen's
+bottom (WebKit bug 301108). `innerHeight`, `100%`, `dvh` and `lvh` all report
+the short value, and the strip is outside the page, so no CSS can paint into
+it.
+
+**Chosen:** the status bar is `default`. iOS keeps the status bar's strip for
+itself, coloured from `theme-color` (which `lib/theme.ts` already keeps in step
+with the theme), and the web view runs to the real bottom edge. The top safe
+area becomes zero, and `pt-safe-top` still pads by it.
+
+**Rejected:** measuring `screen.height − innerHeight` at runtime and stretching
+the layout by the difference. It depends on the bug's exact shape on each iOS
+release, and it misfires the day Apple fixes it. Several other web apps hit by
+the same bug made the same switch.
+
+### "First time" is gone, and the hint has its unit
+
+The line over each set said "First time" when there was no history. It sat
+right above the tick and read as that button's label. Now nothing shows until
+there is a last time, and then it reads "Last: 100kg × 8" (or lb).
+
+### Destructive actions are red
+
+A new token, `--text-danger` (`text-destructive` in Tailwind), is the red for a
+destructive action written as text. `--danger` is a fill. As text it is 2.8:1
+on the page, and in the light theme it sits too close to the accent. The new
+red is a plain red, clear of the orange accent, and AA on every surface in both
+themes (`tokens.test.ts`). It applies to the exercise card's Remove (now with a
+bin), Delete on a set or warm-up, Remove on a cardio bout, the routine editor's
+bin, the calendar's bin, Remove friend, and Delete my account. `Button` gains a
+`danger-outline` variant, red text on a red-edged button, for destructive
+actions that are not the point of their screen: Discard next to Finish workout,
+and Remove next to a body measurement. The filled red `danger` stays for the
+one action a screen exists to do, like Delete workout.
+
+### Removing an exercise asks first
+
+The exercise card's Remove sits where a thumb lands while scrolling back
+through a workout, and one stray tap took every set logged under it. It now
+opens a small in-app dialog ("Remove Bench Press? The 3 sets you logged on it
+go with it."), with Cancel focused. The undo toast after removing stays. This
+is in the app rather than `confirm()`, because on the installed iPhone app that
+is a grey system sheet headed with the site's address. The four existing
+`confirm()` calls are unchanged.
+
+### Rest by kind of lift
+
+Settings → Rest timer: one switch, then a time for **compound** and one for
+**isolation** lifts, in 15-second steps from 0:15 to 10:00. Off by default, and
+off is what the timer always did. On, the lifter's time wins over each
+exercise's own (`restSecondsFor`'s new first input). A time typed into Settings
+is a decision, and a squat that kept its own 180 after being told 120 would
+read as the setting being broken. The rest is worked out when the set is
+ticked, so a change made mid-workout applies to the next set.
+
+Kept on the device, the way the theme and the plate calculator are. A profile
+column would follow the lifter to a new phone, but it needs a migration and a
+sync-rules redeploy before the app can write it, and an app that ships ahead
+of either jams its own upload queue on the first write.
+
+### More exercises
+
+Migration `20261009120000`:
+
+- **The dip splits by lean.** `chest-dip` keeps its id and history and becomes
+  "Dips (Chest focused)". A new `triceps-dip` is "Dips (Triceps focused)",
+  upright with the triceps leading. "dip" and "dips" find both.
+- **Chest Supported Dumbbell Row**: dumbbells on an incline bench, with no
+  lower back involved. It wears the adjustable bench render.
+- **Kettlebells**: swing, deadlift, press, clean, snatch, Turkish get-up. The
+  `kettlebell` equipment row has existed since the first seed with nothing on
+  it. Sets are external load: the number is the bell's weight. None of them
+  has art yet.

@@ -53,7 +53,7 @@ describe('volumes', () => {
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(73);
+    expect(await count('select count(*) n from public.exercises')).toBe(81);
   });
 });
 
@@ -310,7 +310,6 @@ describe('equipment filtering, which the generator depends on', () => {
     expect(unused).toEqual([
       'decline-bench',
       'hip-thrust-machine',
-      'kettlebell',
       'power-rack',
       'resistance-bands',
       'smith-machine',

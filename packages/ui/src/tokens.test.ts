@@ -252,3 +252,25 @@ describe('the danger button, in either theme', () => {
     );
   });
 });
+
+describe('a destructive action written as text, in either theme', () => {
+  /** Remove, Delete, Discard: small text, so AA body on every surface. */
+  it('reads on every surface', () => {
+    for (const [tokens, label] of [
+      [colorTokens, 'dark'],
+      [lightColorTokens, 'light'],
+    ] as const) {
+      for (const surface of ['bg-base', 'bg-surface', 'bg-elevated'] as const) {
+        expect(
+          contrastRatio(tokens['text-danger'], tokens[surface]),
+          `${label} ${surface}`,
+        ).toBeGreaterThanOrEqual(WCAG.AA_BODY);
+      }
+    }
+  });
+
+  /** Why it exists: the fill colour is too dark to be read as text. */
+  it('is not the danger fill', () => {
+    expect(contrastRatio(colorTokens.danger, colorTokens['bg-base'])).toBeLessThan(WCAG.AA_BODY);
+  });
+});
