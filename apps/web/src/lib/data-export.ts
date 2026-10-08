@@ -13,7 +13,7 @@ import { getDatabase, isSyncConfigured } from './powersync/database.js';
 import { useSyncStore } from './powersync/sync-store.js';
 import { exportFileName } from './save-file.js';
 import { describeExportCaveat, describeExportContents } from './account-words.js';
-import { fetchOverview } from './friends/api.js';
+import { fetchChallenges, fetchOverview } from './friends/api.js';
 
 export interface PreparedExport {
   readonly file: File;
@@ -71,15 +71,16 @@ export async function prepareExport(user: User): Promise<PreparedExport> {
 }
 
 /**
- * Your friend code, whether you share, your friends and the requests waiting
- * for you — the one part of the file that is not on the device (ADR-0105),
+ * Your friend code, whether you share, your friends, the requests waiting
+ * for you and your challenges (ADR-0110) — the one part of the file that is
+ * not on the device (ADR-0105),
  * so it is fetched, and left out with a word of explanation when it cannot
  * be. Their names only: what your friends logged is theirs to export.
  */
 async function friendsSection(): Promise<Record<string, unknown> | null> {
   if (!globalThis.navigator.onLine) return null;
   try {
-    const overview = await fetchOverview();
+    const [overview, challenges] = await Promise.all([fetchOverview(), fetchChallenges()]);
     return {
       friendCode: overview.me?.code ?? null,
       shareTrainingWithFriends: overview.me?.sharing ?? null,
@@ -90,6 +91,14 @@ async function friendsSection(): Promise<Record<string, unknown> | null> {
       requestsWaiting: overview.requests.map((request) => ({
         name: request.name,
         requestedAt: request.requestedAt.toISOString(),
+      })),
+      challenges: challenges.map((challenge) => ({
+        with: challenge.name,
+        sentByYou: challenge.sentByMe,
+        stat: challenge.stat,
+        rankedBy: challenge.ranking,
+        sentAt: challenge.sentAt.toISOString(),
+        startedAt: challenge.startsAt?.toISOString() ?? null,
       })),
     };
   } catch (cause: unknown) {

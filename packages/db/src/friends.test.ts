@@ -278,7 +278,8 @@ describe('the tables themselves', () => {
   it('are kept out of the PowerSync publication', async () => {
     const { rows } = await h.db.query(
       `select 1 from pg_publication_tables
-        where pubname = 'powersync' and tablename in ('friend_profiles', 'friendships')`,
+        where pubname = 'powersync'
+          and tablename in ('friend_challenges', 'friend_profiles', 'friendships')`,
     );
     expect(rows).toHaveLength(0);
   });
@@ -816,6 +817,263 @@ describe('the leaderboard', () => {
       { user_id: alex, name: 'Alex', sharing: true, workouts: [] },
       { user_id: sam, name: 'Sam', sharing: false },
     ]);
+  });
+});
+
+describe('challenges', () => {
+  interface Challenge {
+    id: string;
+    friend_id: string;
+    name: string;
+    sent_by_me: boolean;
+    stat: string;
+    ranking: string;
+    status: string;
+    sent_at: string;
+    starts_at: string | null;
+    sharing: boolean;
+    workouts?: { started_at: string }[];
+  }
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+  const challenge = (from: string, to: string, stat = 'sets', ranking = 'most') =>
+    call<{ outcome: string; name?: string }>(from, 'public.send_challenge($1, $2, $3)', [
+      to,
+      stat,
+      ranking,
+    ]);
+  const answer = (as: string, id: string, accept: boolean) =>
+    call<{ outcome: string }>(as, 'public.respond_to_challenge($1, $2)', [id, accept]);
+  const challengesOf = async (user: string) =>
+    (await call<{ challenges: Challenge[] }>(user, 'public.my_challenges()')).challenges;
+  const onlyId = async (user: string) => {
+    const [first] = await challengesOf(user);
+    if (first === undefined) throw new Error('No challenge');
+    return first.id;
+  };
+
+  it('waits for an answer, then runs from the moment it is accepted', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    expect(await challenge(me, alex)).toEqual({ outcome: 'sent', name: 'Alex' });
+
+    const [mine] = await challengesOf(me);
+    expect(mine).toMatchObject({
+      friend_id: alex,
+      name: 'Alex',
+      sent_by_me: true,
+      stat: 'sets',
+      ranking: 'most',
+      status: 'pending',
+      starts_at: null,
+      sharing: true,
+    });
+    expect(mine?.workouts).toBeUndefined();
+    const [theirs] = await challengesOf(alex);
+    expect(theirs).toMatchObject({ friend_id: me, name: 'Me', sent_by_me: false });
+
+    expect((await answer(alex, await onlyId(alex), true)).outcome).toBe('started');
+    const [running] = await challengesOf(me);
+    expect(running?.status).toBe('active');
+    expect(Math.abs(new Date(running?.starts_at ?? 0).getTime() - Date.now())).toBeLessThan(60_000);
+  });
+
+  it('sends the friend’s workouts from four weeks before it began to its end', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await logWorkout(alex, daysAgo(40), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    await logWorkout(alex, daysAgo(20), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    await logWorkout(me, daysAgo(10), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    await challenge(me, alex, 'workouts', 'improved');
+    expect((await answer(alex, await onlyId(alex), true)).outcome).toBe('started');
+    await logWorkout(alex, new Date(Date.now() + 60_000).toISOString(), [
+      { slug: 'barbell-back-squat', weightKg: 100 },
+    ]);
+    await logWorkout(alex, new Date(Date.now() + 8 * 86_400_000).toISOString(), [
+      { slug: 'barbell-back-squat', weightKg: 100 },
+    ]);
+
+    // Twenty days ago and just now: not forty days ago, and not after it ended.
+    const [running] = await challengesOf(me);
+    expect(running?.workouts).toHaveLength(2);
+  });
+
+  it('is one at a time between two people, whichever of them sends it', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    const sam = await person('Sam');
+    await friends(me, alex);
+    await friends(me, sam);
+    expect((await challenge(me, alex)).outcome).toBe('sent');
+    expect((await challenge(me, alex, 'workouts')).outcome).toBe('already_live');
+    expect((await challenge(alex, me)).outcome).toBe('already_live');
+    // Another friend is another pair.
+    expect((await challenge(me, sam)).outcome).toBe('sent');
+
+    await answer(alex, await onlyId(alex), true);
+    expect((await challenge(alex, me)).outcome).toBe('already_live');
+
+    // Seven days on, it is over and another can start.
+    await h.db.query(
+      `update public.friend_challenges set starts_at = now() - interval '7 days 1 minute'
+        where challenger_id = $1 and opponent_id = $2`,
+      [me, alex],
+    );
+    expect((await challenge(alex, me)).outcome).toBe('sent');
+  });
+
+  it('can be taken back by the challenger while it waits, and by nobody else', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await challenge(me, alex);
+    const id = await onlyId(me);
+    const withdraw = (as: string) =>
+      call<{ outcome: string }>(as, 'public.withdraw_challenge($1)', [id]);
+
+    expect((await withdraw(alex)).outcome).toBe('not_found');
+    expect((await withdraw(me)).outcome).toBe('done');
+    expect(await challengesOf(me)).toEqual([]);
+    expect(await challengesOf(alex)).toEqual([]);
+    expect((await challenge(me, alex)).outcome).toBe('sent');
+  });
+
+  it('can only be answered by the person challenged, and a no removes it', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    const stranger = await person('Stranger');
+    await friends(me, alex);
+    await challenge(me, alex);
+    const id = await onlyId(me);
+
+    expect((await answer(me, id, true)).outcome).toBe('not_found');
+    expect((await answer(stranger, id, true)).outcome).toBe('not_found');
+    expect((await answer(alex, id, false)).outcome).toBe('declined');
+    expect(await challengesOf(me)).toEqual([]);
+    expect((await answer(alex, id, true)).outcome).toBe('not_found');
+  });
+
+  it('lapses when nobody answers it for seven days', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await challenge(me, alex);
+    const id = await onlyId(me);
+    await h.db.query(
+      `update public.friend_challenges set sent_at = now() - interval '8 days' where id = $1`,
+      [id],
+    );
+
+    expect(await challengesOf(alex)).toEqual([]);
+    expect((await answer(alex, id, true)).outcome).toBe('not_found');
+    expect((await challenge(me, alex)).outcome).toBe('sent');
+  });
+
+  it('is between friends who both share their training', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    const stranger = await person('Stranger');
+    await friends(me, alex);
+
+    expect((await challenge(me, stranger)).outcome).toBe('not_friends');
+    expect((await challenge(me, me)).outcome).toBe('not_friends');
+
+    await call(alex, 'public.set_training_sharing(false)');
+    expect(await challenge(me, alex)).toEqual({ outcome: 'not_sharing', name: 'Alex' });
+    await call(alex, 'public.set_training_sharing(true)');
+    await call(me, 'public.set_training_sharing(false)');
+    expect((await challenge(me, alex)).outcome).toBe('you_not_sharing');
+
+    // Accepting checks again: sharing can change while a challenge waits.
+    await call(me, 'public.set_training_sharing(true)');
+    await challenge(me, alex);
+    await call(alex, 'public.set_training_sharing(false)');
+    expect((await answer(alex, await onlyId(alex), true)).outcome).toBe('you_not_sharing');
+  });
+
+  it('needs four weeks of training on both sides to be won on improvement', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    expect((await challenge(me, alex, 'sets', 'improved')).outcome).toBe('you_no_usual');
+    await logWorkout(me, daysAgo(10), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    expect((await challenge(me, alex, 'sets', 'improved')).outcome).toBe('no_usual');
+    // A workout older than four weeks is no usual.
+    await logWorkout(alex, daysAgo(30), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    expect((await challenge(me, alex, 'sets', 'improved')).outcome).toBe('no_usual');
+    await logWorkout(alex, daysAgo(3), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    expect((await challenge(me, alex, 'sets', 'improved')).outcome).toBe('sent');
+  });
+
+  it('refuses a stat or a ranking it does not know', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    expect((await challenge(me, alex, 'reps')).outcome).toBe('invalid');
+    expect((await challenge(me, alex, 'sets', 'loudest')).outcome).toBe('invalid');
+  });
+
+  it('stops sending a friend’s workouts once they stop sharing', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await challenge(me, alex);
+    await answer(alex, await onlyId(alex), true);
+    await call(alex, 'public.set_training_sharing(false)');
+
+    const [running] = await challengesOf(me);
+    expect(running).toMatchObject({ status: 'active', sharing: false });
+    expect(running?.workouts).toBeUndefined();
+  });
+
+  it('ends when the friendship does', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await challenge(me, alex);
+    await call(alex, 'public.remove_friend($1)', [me]);
+
+    const { rows } = await h.db.query(
+      `select 1 from public.friend_challenges where $1 in (challenger_id, opponent_id)`,
+      [me],
+    );
+    expect(rows).toHaveLength(0);
+  });
+
+  it('cannot be written directly, or accepted by the challenger', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await expect(
+      h.actAs(me, () =>
+        h.db.query(
+          `insert into public.friend_challenges (challenger_id, opponent_id, stat, ranking)
+           values ($1, $2, 'sets', 'most')`,
+          [me, alex],
+        ),
+      ),
+    ).rejects.toThrow(/row-level security/i);
+
+    await challenge(me, alex);
+    await h.actAs(me, () =>
+      h.db.query(`update public.friend_challenges set status = 'active', starts_at = now()`),
+    );
+    const [waiting] = await challengesOf(me);
+    expect(waiting?.status).toBe('pending');
+  });
+
+  it('keeps its helpers out of reach', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    for (const sql of [
+      `public.has_usual('${alex}')`,
+      `public.lock_friendship('${me}', '${alex}')`,
+      `public.challenge_blocked('${me}', '${alex}', 'most')`,
+    ]) {
+      await expect(call(me, sql), sql).rejects.toThrow(/permission denied/i);
+    }
   });
 });
 

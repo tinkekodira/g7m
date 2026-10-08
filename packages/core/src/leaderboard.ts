@@ -284,6 +284,16 @@ export function improvementScore(score: number, usual: number): number | null {
   return Math.round((Math.max(0, score) / usual) * 100);
 }
 
+/**
+ * A gap in percentage points as something to train towards: how much more of
+ * the stat, on the usual of whoever has to make it up, would close it. Points
+ * themselves are nothing anybody can do in a gym; "1 more workout" is. Never
+ * less than 1, because a gap that exists takes something to close.
+ */
+export function pointsToAmount(points: number, usual: number): number {
+  return Math.max(1, Math.ceil((points / 100) * usual - 1e-9));
+}
+
 export interface BoardEntry<Id> {
   readonly id: Id;
   readonly score: number;

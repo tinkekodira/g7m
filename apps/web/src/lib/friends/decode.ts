@@ -8,7 +8,17 @@
  * that has the wrong shape should become "the server said something we do not
  * understand", not a `NaN` drawn on a friend's card.
  */
-import { EMPTY_BOUT, type BoardWorkout, type Bout, type LoadType, type SetType } from '@g7m/core';
+import {
+  EMPTY_BOUT,
+  LEADERBOARD_RANKINGS,
+  LEADERBOARD_STATS,
+  type BoardWorkout,
+  type Bout,
+  type LeaderboardRanking,
+  type LeaderboardStat,
+  type LoadType,
+  type SetType,
+} from '@g7m/core';
 
 export interface WorkoutSummary {
   readonly id: string;
@@ -115,6 +125,53 @@ export interface BoardFriend {
   /** Their finished workouts since the start of last month; empty when not sharing. */
   readonly workouts: readonly BoardWorkout[];
 }
+
+/** A challenge you are in, as `my_challenges` sends it (ADR-0110). */
+export interface Challenge {
+  readonly id: string;
+  readonly friendId: string;
+  readonly name: string | null;
+  /** You sent it; false when it was sent to you. */
+  readonly sentByMe: boolean;
+  readonly stat: LeaderboardStat;
+  readonly ranking: LeaderboardRanking;
+  /** Waiting to be accepted, or accepted (running, or finished in the last week). */
+  readonly status: 'pending' | 'active';
+  readonly sentAt: Date;
+  /** When it was accepted. Null while it waits. */
+  readonly startsAt: Date | null;
+  /** Whether the friend shares their training now. */
+  readonly sharing: boolean;
+  /**
+   * The friend's workouts from four weeks before it began to its end. Null
+   * while it waits, and when they are not sharing.
+   */
+  readonly workouts: readonly BoardWorkout[] | null;
+}
+
+export const CHALLENGE_SEND_OUTCOMES = [
+  'sent',
+  'already_live',
+  'not_friends',
+  'not_sharing',
+  'you_not_sharing',
+  'no_usual',
+  'you_no_usual',
+  'too_many',
+  'invalid',
+] as const;
+export type ChallengeSendOutcome = (typeof CHALLENGE_SEND_OUTCOMES)[number];
+
+export const CHALLENGE_ANSWER_OUTCOMES = [
+  'started',
+  'declined',
+  'not_found',
+  'not_sharing',
+  'you_not_sharing',
+  'no_usual',
+  'you_no_usual',
+] as const;
+export type ChallengeAnswerOutcome = (typeof CHALLENGE_ANSWER_OUTCOMES)[number];
 
 export class FriendsError extends Error {}
 
@@ -341,4 +398,43 @@ function decodeBoardWorkout(value: unknown): BoardWorkout {
     sets: number(data['sets'], 0),
     liftedKg: number(data['lifted_kg'], 0),
   };
+}
+
+export function decodeChallenges(value: unknown): readonly Challenge[] {
+  return list(record(value)['challenges']).map((entry) => {
+    const data = record(entry);
+    const status = oneOf(data['status'], ['pending', 'active'] as const);
+    const sent = data['workouts'];
+    return {
+      id: string(data['id']),
+      friendId: string(data['friend_id']),
+      name: optionalString(data['name']),
+      sentByMe: data['sent_by_me'] === true,
+      stat: oneOf(data['stat'], LEADERBOARD_STATS),
+      ranking: oneOf(data['ranking'], LEADERBOARD_RANKINGS),
+      status,
+      sentAt: date(data['sent_at']),
+      startsAt: status === 'active' ? date(data['starts_at']) : null,
+      sharing: data['sharing'] === true,
+      workouts:
+        status === 'active' && sent !== null && sent !== undefined
+          ? list(sent).map(decodeBoardWorkout)
+          : null,
+    };
+  });
+}
+
+export function decodeChallengeSend(value: unknown): {
+  readonly outcome: ChallengeSendOutcome;
+  readonly name: string | null;
+} {
+  const data = record(value);
+  return {
+    outcome: oneOf(data['outcome'], CHALLENGE_SEND_OUTCOMES),
+    name: optionalString(data['name']),
+  };
+}
+
+export function decodeChallengeAnswer(value: unknown): ChallengeAnswerOutcome {
+  return oneOf(record(value)['outcome'], CHALLENGE_ANSWER_OUTCOMES);
 }

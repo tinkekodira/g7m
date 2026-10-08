@@ -3,17 +3,31 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { describePresence, describeStreak, weekDots, weeklyStreak } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { ChallengeList, SendChallenge } from '../components/Challenges.js';
 import { FriendsOffline, PresenceLine, Streak, WeekDots } from '../components/FriendParts.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronRightIcon, MoreIcon } from '../components/icons.js';
 import { useOnline } from '../lib/use-online.js';
-import { fetchFriend, removeFriend, FriendsError, type FriendDetail } from '../lib/friends/api.js';
-import { useMySide, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
+import {
+  fetchChallenges,
+  fetchFriend,
+  removeFriend,
+  FriendsError,
+  type FriendDetail,
+} from '../lib/friends/api.js';
+import {
+  useChallengeCards,
+  useMySide,
+  useRemote,
+  type MySide,
+} from '../lib/friends/use-friends-data.js';
+import type { ChallengeCardView } from './challenges-view.js';
 import { headToHead, recentRows } from './friend-detail-view.js';
 import { friendName } from './friends-view.js';
 
 /**
- * One friend: their week, how your lifts compare, and their recent workouts.
+ * One friend: their week, a challenge with them (ADR-0110), how your lifts
+ * compare, and their recent workouts.
  *
  * Read from the server each time it is opened, like the list it came from. A
  * friend who stopped sharing — or is no longer a friend — gets nothing back
@@ -25,6 +39,8 @@ export function FriendScreen() {
   const online = useOnline();
   const mine = useMySide();
   const detail = useRemote(`friend:${friendId}`, online, () => fetchFriend(friendId));
+  const challenges = useRemote('friend-challenges', online, fetchChallenges);
+  const cards = useChallengeCards(challenges.data, mine.data?.unitSystem ?? 'metric');
   const passedName = (location.state as { name?: unknown } | null)?.name;
   const name =
     detail.data?.name ?? (typeof passedName === 'string' ? passedName : friendName(null));
@@ -52,13 +68,33 @@ export function FriendScreen() {
           </p>
         </section>
       ) : (
-        <FriendPage detail={detail.data} mine={mine.data} />
+        <FriendPage
+          detail={detail.data}
+          mine={mine.data}
+          challenges={
+            cards === null
+              ? null
+              : [...cards.incoming, ...cards.others].filter((card) => card.friendId === friendId)
+          }
+          onChallengesChanged={challenges.reload}
+        />
       )}
     </main>
   );
 }
 
-function FriendPage({ detail, mine }: { readonly detail: FriendDetail; readonly mine: MySide }) {
+function FriendPage({
+  detail,
+  mine,
+  challenges,
+  onChallengesChanged,
+}: {
+  readonly detail: FriendDetail;
+  readonly mine: MySide;
+  /** Your challenges with this friend; null while they load. */
+  readonly challenges: readonly ChallengeCardView[] | null;
+  readonly onChallengesChanged: () => void;
+}) {
   const name = friendName(detail.name);
   const now = useMemo(() => new Date(), []);
   const [chosen, setChosen] = useState<string | null>(null);
@@ -95,6 +131,18 @@ function FriendPage({ detail, mine }: { readonly detail: FriendDetail; readonly 
           <Streak streak={streak} />
         </div>
       </section>
+
+      {challenges !== null && (
+        <>
+          {challenges.length > 0 && (
+            <ChallengeList cards={challenges} onChanged={onChallengesChanged} />
+          )}
+          {/* One at a time: a new one once the last is over. */}
+          {challenges.every((card) => card.phase === 'finished') && (
+            <SendChallenge friendId={detail.userId} name={name} onSent={onChallengesChanged} />
+          )}
+        </>
+      )}
 
       <section
         aria-labelledby="head-to-head"

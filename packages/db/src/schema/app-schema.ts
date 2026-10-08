@@ -455,6 +455,10 @@ export const UNSYNCED_TABLES: Readonly<Record<string, string>> = {
     'Write-only from the app via PostgREST (ADR-0088), not read back on any device. ' +
     'Nothing to reconcile offline about a message that has not been sent, so it skips ' +
     'PowerSync the same way account deletion does.',
+  friend_challenges:
+    'Challenges between two friends (ADR-0110). Rows between two users, like friendships, ' +
+    'so not carried by the per-user bucket; read and written online through the challenge ' +
+    'functions.',
   friend_profiles:
     'Friend code, sharing switch and last-active time (ADR-0105). Read and written online ' +
     'through the friend functions; syncing it would put a write every few minutes into ' +

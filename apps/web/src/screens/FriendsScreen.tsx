@@ -11,16 +11,24 @@ import {
   WeekDots,
   YourCode,
 } from '../components/FriendParts.js';
+import { ChallengeList } from '../components/Challenges.js';
 import { AddFriendIcon, ChevronRightIcon } from '../components/icons.js';
 import { useOnline } from '../lib/use-online.js';
 import {
   answerFriendRequest,
+  fetchChallenges,
   fetchOverview,
   sendFriendRequest,
   FriendsError,
   type FriendsOverview,
 } from '../lib/friends/api.js';
-import { useMySide, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
+import {
+  useChallengeCards,
+  useMySide,
+  useRemote,
+  type MySide,
+} from '../lib/friends/use-friends-data.js';
+import type { ChallengeCardView } from './challenges-view.js';
 import { FriendsLeaderboard } from './FriendsLeaderboard.js';
 import {
   describeCodeProblem,
@@ -42,8 +50,9 @@ import {
  * rather than showing a list that might be days old. A workout you have
  * already opened is the one exception, on its own screen.
  *
- * Three sub-tabs: the friends themselves, the leaderboard (ADR-0106), and the
- * requests waiting for you.
+ * Three sub-tabs: the friends themselves, the leaderboard (ADR-0106) with
+ * your challenges above it (ADR-0110), and the requests and challenges
+ * waiting for your answer.
  */
 type SubTab = 'friends' | 'leaderboard' | 'requests';
 
@@ -60,7 +69,11 @@ export function FriendsScreen() {
 
   const named = mine.data?.displayName != null;
   const overview = useRemote('friends-overview', online && named, fetchOverview);
-  const requests = overview.data?.requests.length ?? 0;
+  // Asked again on every tab change, as the board is when it opens, so a
+  // friend's workout since the last look is counted.
+  const challenges = useRemote(`friends-challenges:${tab}`, online && named, fetchChallenges);
+  const cards = useChallengeCards(challenges.data, mine.data?.unitSystem ?? 'metric');
+  const requests = (overview.data?.requests.length ?? 0) + (cards?.incoming.length ?? 0);
   const code = overview.data?.me?.code ?? null;
 
   return (
@@ -107,9 +120,19 @@ export function FriendsScreen() {
           ) : tab === 'friends' ? (
             <FriendList overview={overview.data} mine={mine.data} />
           ) : tab === 'leaderboard' ? (
-            <FriendsLeaderboard mine={mine.data} code={code} />
+            <>
+              {overview.data.friends.length > 0 && cards !== null && (
+                <ChallengesSection cards={cards.others} onChanged={challenges.reload} />
+              )}
+              <FriendsLeaderboard mine={mine.data} code={code} />
+            </>
           ) : (
-            <RequestList overview={overview.data} onAnswered={overview.reload} />
+            <RequestList
+              overview={overview.data}
+              challenges={cards?.incoming ?? []}
+              onAnswered={overview.reload}
+              onChallengeAnswered={challenges.reload}
+            />
           )}
         </>
       )}
@@ -337,35 +360,74 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
   );
 }
 
+/**
+ * Your challenges, above the board: running, waiting on a friend, and
+ * finished in the last week. With none, a line saying where one starts.
+ */
+function ChallengesSection({
+  cards,
+  onChanged,
+}: {
+  readonly cards: readonly ChallengeCardView[];
+  readonly onChanged: () => void;
+}) {
+  if (cards.length === 0) {
+    return (
+      <p className="text-sm text-secondary">
+        Challenge a friend to a week: open their page and pick a stat.
+      </p>
+    );
+  }
+  return (
+    <section aria-labelledby="challenges-heading" className="flex flex-col gap-3">
+      <h2 id="challenges-heading" className="text-lg font-semibold text-primary">
+        Challenges
+      </h2>
+      <ChallengeList cards={cards} onChanged={onChanged} />
+    </section>
+  );
+}
+
 function RequestList({
   overview,
+  challenges,
   onAnswered,
+  onChallengeAnswered,
 }: {
   readonly overview: FriendsOverview;
+  readonly challenges: readonly ChallengeCardView[];
   readonly onAnswered: () => void;
+  readonly onChallengeAnswered: () => void;
 }) {
   const rows = useMemo(() => {
     const now = new Date();
     return overview.requests.map((request) => requestRow(request, now));
   }, [overview]);
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && challenges.length === 0) {
     return (
       <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
-        No requests waiting. When someone adds you with your code, it shows up here for you to
-        accept.
+        No requests waiting. When someone adds you with your code, or challenges you, it shows up
+        here for you to accept.
       </p>
     );
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {rows.map((row) => (
-        <li key={row.id}>
-          <RequestCard row={row} onAnswered={onAnswered} />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      {challenges.length > 0 && (
+        <ChallengeList cards={challenges} onChanged={onChallengeAnswered} />
+      )}
+      {rows.length > 0 && (
+        <ul className="flex flex-col gap-3">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <RequestCard row={row} onAnswered={onAnswered} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

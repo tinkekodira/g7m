@@ -14,6 +14,7 @@ import {
   daysBetween,
   formatMinutes,
   improvementScore,
+  pointsToAmount,
   rankBoard,
   rankMoves,
   startOfDay,
@@ -270,13 +271,9 @@ export function leaderboard(
       ? found
       : {
           ...found,
-          by: Math.max(
-            1,
-            Math.ceil(
-              (found.by / 100) *
-                usualOf(found.kind === 'behind' ? 'you' : found.id, spans.current) -
-                1e-9,
-            ),
+          by: pointsToAmount(
+            found.by,
+            usualOf(found.kind === 'behind' ? 'you' : found.id, spans.current),
           ),
         };
   const note =
