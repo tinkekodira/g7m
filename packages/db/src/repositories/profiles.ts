@@ -72,6 +72,8 @@ export interface Profile {
   readonly onboardedAt: Date | null;
   /** Keys of the achievements already celebrated, on any device. ADR-0072. */
   readonly achievementsSeen: readonly string[];
+  /** Slugs of the starred exercises, sorted. ADR-0108. */
+  readonly favouriteExercises: readonly string[];
 }
 
 /**
@@ -115,10 +117,14 @@ function toProfile(row: RawRow): Profile {
     weekStartsOn: readNumber(row, 'week_starts_on', 1),
     onboardedAt: readDate(row, 'onboarded_at'),
     achievementsSeen: parseKeys(readOptionalString(row, 'achievements_seen')),
+    favouriteExercises: parseKeys(readOptionalString(row, 'favourite_exercises')),
   };
 }
 
-/** An achievement key as the column's CHECK allows it. */
+/**
+ * An achievement key, or an exercise slug, as the columns' CHECKs allow it.
+ * Both lists share one shape, so one pattern serves both.
+ */
 const KEY = /^[a-z0-9-]+$/;
 
 function parseKeys(value: string | null): string[] {
@@ -239,6 +245,33 @@ export class ProfileRepository {
     await this.db.execute(
       'UPDATE profiles SET achievements_seen = ?, updated_at = ? WHERE user_id = ?',
       [[...merged].sort().join(','), toTimestamp(now()), userId],
+    );
+  }
+
+  /**
+   * Star an exercise, or take its star away.
+   *
+   * One slug at a time, read and changed here, for the same reason as
+   * `markAchievementsSeen`: a caller handing back a whole list could drop a
+   * star another screen added a moment before. A slug the column would refuse
+   * is ignored rather than written, since a refused profile row takes every
+   * other change to the profile with it. The last star removed writes null,
+   * because the CHECK has no empty list.
+   */
+  async setFavourite(slug: string, favourite: boolean): Promise<void> {
+    if (!KEY.test(slug)) return;
+    const { userId, now } = resolveContext(this.context);
+    const current = await this.current();
+    if (current === null) return;
+
+    const next = new Set(current.favouriteExercises);
+    if (favourite) next.add(slug);
+    else next.delete(slug);
+    if (next.size === current.favouriteExercises.length) return;
+
+    await this.db.execute(
+      'UPDATE profiles SET favourite_exercises = ?, updated_at = ? WHERE user_id = ?',
+      [next.size === 0 ? null : [...next].sort().join(','), toTimestamp(now()), userId],
     );
   }
 }

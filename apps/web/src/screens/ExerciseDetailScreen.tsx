@@ -14,12 +14,13 @@ import type { Exercise, MuscleRole } from '@g7m/db';
 import { cx } from '@g7m/ui';
 import { ExerciseDemo } from '../components/ExerciseDemo.js';
 import { ExerciseHero } from '../components/ExerciseHero.js';
+import { FavouriteButton } from '../components/Favourite.js';
 import { equipmentArt } from '../components/equipment-art.js';
 import { exerciseDemo } from '../components/exercise-demos.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ChevronRightIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
-import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { describeMark } from './review-copy.js';
 import { fieldLabel } from './bout-copy.js';
 
@@ -61,6 +62,7 @@ export function ExerciseDetailScreen() {
     const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
     return {
       exercise,
+      favourite: profile?.favouriteExercises.includes(exercise.slug) ?? false,
       equipment,
       // A hold is timed, and seconds are not reps: no estimate for a plank.
       strength: exercise.isTimeBased ? null : strengthEstimate(sets, now),
@@ -108,6 +110,7 @@ export function ExerciseDetailScreen() {
       ) : (
         <ExerciseDetail
           exercise={detail.data.exercise}
+          favourite={detail.data.favourite}
           muscles={detail.data.muscles}
           equipment={detail.data.equipment}
           strength={detail.data.strength}
@@ -134,6 +137,7 @@ const ROLE_LABELS: Record<MuscleRole, string> = {
 
 function ExerciseDetail({
   exercise,
+  favourite,
   muscles,
   equipment,
   strength,
@@ -142,6 +146,8 @@ function ExerciseDetail({
   heroed,
 }: {
   readonly exercise: Exercise;
+  /** Starred: a star by its name and first in every list. ADR-0108. */
+  readonly favourite: boolean;
   readonly muscles: readonly Involvement[];
   readonly equipment: readonly { readonly equipmentId: string; readonly name: string }[];
   readonly strength: StrengthEstimate | null;
@@ -150,6 +156,7 @@ function ExerciseDetail({
   /** The hero above carries the name and the aliases, so this must not. */
   readonly heroed: boolean;
 }) {
+  const { write, busy } = useWrite();
   return (
     <>
       <div>
@@ -163,17 +170,28 @@ function ExerciseDetail({
             )}
           </>
         )}
-        <div className={cx('flex flex-wrap gap-2', !heroed && 'mt-3')}>
-          <Badge>
-            {exercise.cardioKind !== null
-              ? 'Cardio'
-              : exercise.mechanic === 'compound'
-                ? 'Compound'
-                : 'Isolation'}
-          </Badge>
-          <Badge>{capitalise(exercise.difficulty)}</Badge>
-          {exercise.isUnilateral && <Badge>One side at a time</Badge>}
-          {exercise.isTimeBased && <Badge>Held for time</Badge>}
+        {/* Beside the badges rather than in the hero, so it sits in the same
+            place on every exercise, with a render behind the name or not. */}
+        <div className={cx('flex items-start justify-between gap-3', !heroed && 'mt-3')}>
+          <div className="flex flex-wrap gap-2 pt-2.5">
+            <Badge>
+              {exercise.cardioKind !== null
+                ? 'Cardio'
+                : exercise.mechanic === 'compound'
+                  ? 'Compound'
+                  : 'Isolation'}
+            </Badge>
+            <Badge>{capitalise(exercise.difficulty)}</Badge>
+            {exercise.isUnilateral && <Badge>One side at a time</Badge>}
+            {exercise.isTimeBased && <Badge>Held for time</Badge>}
+          </div>
+          <FavouriteButton
+            favourite={favourite}
+            disabled={busy}
+            onToggle={() => {
+              void write((r) => r.profile.setFavourite(exercise.slug, !favourite));
+            }}
+          />
         </div>
       </div>
 

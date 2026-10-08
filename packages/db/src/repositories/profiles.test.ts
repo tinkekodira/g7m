@@ -308,3 +308,60 @@ describe('achievements seen', () => {
     expect(row?.updated_at).toBe('2026-09-01T10:00:00.000Z');
   });
 });
+
+describe('favourite exercises', () => {
+  async function stored(): Promise<{ favourite_exercises: string | null; updated_at: string }> {
+    const row = await db.getOptional<{ favourite_exercises: string | null; updated_at: string }>(
+      'SELECT favourite_exercises, updated_at FROM profiles WHERE user_id = ?',
+      [USER],
+    );
+    if (row === null) throw new Error('No profile row.');
+    return row;
+  }
+
+  it('starts with none', async () => {
+    await seedProfile();
+    expect((await profiles.current())?.favouriteExercises).toEqual([]);
+  });
+
+  it('stars and unstars one exercise at a time, keeping the rest', async () => {
+    await seedProfile({ favourite_exercises: 'plank' });
+    await profiles.setFavourite('face-pull', true);
+    await profiles.setFavourite('barbell-back-squat', true);
+    expect((await profiles.current())?.favouriteExercises).toEqual([
+      'barbell-back-squat',
+      'face-pull',
+      'plank',
+    ]);
+
+    await profiles.setFavourite('plank', false);
+    const row = await stored();
+    expect(row.favourite_exercises).toBe('barbell-back-squat,face-pull');
+    expect(row.updated_at).toBe(NOW.toISOString());
+  });
+
+  it('writes null when the last star goes, since the column has no empty list', async () => {
+    await seedProfile({ favourite_exercises: 'plank' });
+    await profiles.setFavourite('plank', false);
+    expect((await stored()).favourite_exercises).toBeNull();
+    expect((await profiles.current())?.favouriteExercises).toEqual([]);
+  });
+
+  it('writes nothing when nothing changes', async () => {
+    await seedProfile({ favourite_exercises: 'plank' });
+    await profiles.setFavourite('plank', true);
+    await profiles.setFavourite('face-pull', false);
+    expect(await stored()).toEqual({
+      favourite_exercises: 'plank',
+      updated_at: '2026-09-01T10:00:00.000Z',
+    });
+  });
+
+  it('ignores a slug the column would refuse', async () => {
+    await seedProfile({ favourite_exercises: 'plank' });
+    await profiles.setFavourite('Face Pull', true);
+    await profiles.setFavourite('a,b', true);
+    await profiles.setFavourite('', true);
+    expect((await stored()).favourite_exercises).toBe('plank');
+  });
+});

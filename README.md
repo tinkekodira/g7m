@@ -21,6 +21,8 @@ What it does:
 - **Learn.** An interactive 3D body. Tap a muscle to see every exercise that
   trains it. The exercise library has search, filters by muscle, equipment and
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.
+  Star the exercises you use most and they come first in every list
+  ([ADR-0108](./DECISIONS.md#adr-0108--kettlebell-art-twelve-more-loops-and-favourite-exercises)).
 - **Coach.** Answer a few questions — height, weight, age, how active your week
   is, what you are training for — and Home has today's workout written for you.
   Prefer to program your own? Do that; it will still tell you how it is going

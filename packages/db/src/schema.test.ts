@@ -207,6 +207,23 @@ describe('achievements seen', () => {
   });
 });
 
+describe('favourite exercises', () => {
+  it('takes a comma-separated list of slugs, and nothing else', async () => {
+    const id = await h.createUser('ines@example.test');
+    const write = (value: string | null) =>
+      h.db.query(`update public.profiles set favourite_exercises = $1 where user_id = $2`, [
+        value,
+        id,
+      ]);
+
+    await write('barbell-back-squat,face-pull');
+    await write(null);
+    await expect(write('Face Pull')).rejects.toThrow(/favourite_exercises_shape/);
+    await expect(write('plank,')).rejects.toThrow(/favourite_exercises_shape/);
+    await expect(write('')).rejects.toThrow(/favourite_exercises_shape/);
+  });
+});
+
 describe('constraints that protect the domain', () => {
   async function insertExercise(overrides: Record<string, string>): Promise<void> {
     const base: Record<string, string> = {

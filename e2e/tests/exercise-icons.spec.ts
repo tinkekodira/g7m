@@ -102,6 +102,8 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Rowing Machine', 'rowing-machine'],
     ['Ski Erg', 'ski-erg'],
     ['Stair Climber', 'stair-climber'],
+    ['Kettlebell Swing', 'kettlebell'],
+    ['Turkish Get-Up', 'kettlebell'],
   ] as const) {
     await page.getByLabel('Search').fill(name);
     // Escaped: "Preacher Curl (EZ Bar)" carries brackets.

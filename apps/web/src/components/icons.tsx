@@ -425,3 +425,15 @@ export function MoreIcon(props: IconProps) {
     </Glyph>
   );
 }
+
+/**
+ * A five-pointed star: a favourite exercise. Outlined by default; pass
+ * `fill="currentColor"` for a starred one.
+ */
+export function StarIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="m12 3.6 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z" />
+    </Glyph>
+  );
+}
