@@ -33,6 +33,7 @@ function friend(userId: string, name: string | null, workouts: BoardWorkout[]): 
 }
 
 const CONTEXT: BoardContext = {
+  ranking: 'most',
   stat: 'workouts',
   period: 'week',
   now: NOW,
@@ -200,6 +201,81 @@ describe('arrows since yesterday', () => {
       now: monday,
     });
     expect(view.rows.every((row) => row.moveText === null)).toBe(true);
+  });
+});
+
+describe('most improved', () => {
+  const september = (...days: number[]) => days.map((day) => workout(local(2026, 9, day)));
+  // Usually four a week, and two so far this week: half a usual week.
+  const alex = friend('alex', 'Alex', [
+    ...september(7, 8, 9, 10, 14, 15, 16, 17, 21, 22, 23, 24, 28, 29, 30),
+    workout(local(2026, 10, 1)),
+    workout(MONDAY),
+    workout(TUESDAY),
+  ]);
+  // Five in the four weeks before this one, and two so far: 160% of usual.
+  const sam = friend('sam', 'Sam', [
+    ...september(8, 15, 22, 29, 30),
+    workout(MONDAY),
+    workout(TUESDAY),
+  ]);
+  // Nothing before this week.
+  const jordan = friend('jordan', 'Jordan', [workout(MONDAY)]);
+  // Usually two a week, and one so far.
+  const mine = [...september(7, 9, 14, 16, 21, 23, 28, 30), workout(MONDAY)];
+  const IMPROVED: BoardContext = { ...CONTEXT, ranking: 'improved' };
+
+  it('ranks each person against their own last four weeks', () => {
+    const view = leaderboard([alex, sam, jordan], mine, IMPROVED);
+    expect(view.rows.map((row) => [row.name, row.rankText, row.scoreText])).toEqual([
+      ['Sam', '1', '160%'],
+      ['Alex', '2', '50%'],
+      ['You', '2', '50%'],
+      ['Jordan', '–', 'New'],
+    ]);
+  });
+
+  it('crowns last week’s most improved, measured against the four weeks before it', () => {
+    // Last week Sam did two against a usual of three-quarters; the others a third more than usual.
+    const view = leaderboard([alex, sam, jordan], mine, IMPROVED);
+    expect(view.rows.filter((row) => row.champion).map((row) => row.name)).toEqual(['Sam']);
+    expect(view.rows.map((row) => row.description)).toEqual([
+      '1st, Sam: 160% of usual. Most improved last week',
+      '2nd, Alex: 50% of usual',
+      '2nd, You: 50% of usual. 3 workouts behind Sam',
+      'Jordan: new, nothing in the four weeks before this week to measure against',
+    ]);
+  });
+
+  it('says the gap as what the one behind has to do', () => {
+    // Three more of your workouts takes you from half a usual week to twice one.
+    const behind = leaderboard([sam], mine, IMPROVED);
+    expect(behind.rows.find((row) => row.isYou)?.note).toBe('3 workouts behind Sam');
+
+    // Sam's history as yours, 160% against Alex's 50%: on Alex's usual of four a
+    // week, Alex needs five more to draw level.
+    const ahead = leaderboard([alex], sam.workouts, IMPROVED);
+    expect(ahead.rows.find((row) => row.isYou)?.note).toBe('5 workouts ahead of Alex');
+  });
+
+  it('tells you when you have no usual yet', () => {
+    const view = leaderboard([alex], [workout(MONDAY)], IMPROVED);
+    const you = view.rows.find((row) => row.isYou);
+    expect(you).toMatchObject({ rankText: '–', scoreText: 'New' });
+    expect(you?.note).toBe('Nothing to measure against yet');
+    expect(you?.description).toBe('You: new. Nothing to measure against yet');
+  });
+
+  it('says what 100% means, and what the weight counts', () => {
+    expect(leaderboard([alex], mine, IMPROVED).footnote).toBe(
+      '100% is a usual week: a quarter of what each person did in the four weeks before it.',
+    );
+    expect(leaderboard([alex], mine, { ...IMPROVED, period: 'month' }).footnote).toMatch(
+      /^100% is a usual month/,
+    );
+    expect(leaderboard([alex], mine, { ...IMPROVED, stat: 'lifted' }).footnote).toMatch(
+      /^100% is a usual week.* count only the weight added to them\.$/,
+    );
   });
 });
 

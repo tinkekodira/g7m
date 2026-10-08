@@ -789,15 +789,17 @@ describe('the leaderboard', () => {
     ).toEqual(device);
   });
 
-  it('sends nothing older than last month, whatever is asked for', async () => {
+  it('sends nothing older than the month before last, whatever is asked for', async () => {
     const me = await person('Me');
     const alex = await person('Alex');
     await friends(me, alex);
     await logWorkout(alex, daysAgo(100), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    // Always inside the month before last or later: Most improved's four weeks reach this far.
+    await logWorkout(alex, daysAgo(50), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
     await logWorkout(alex, daysAgo(2), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
 
     const board = await call<Board>(me, 'public.friends_leaderboard($1)', [daysAgo(365)]);
-    expect(board.friends[0]?.workouts).toHaveLength(1);
+    expect(board.friends[0]?.workouts).toHaveLength(2);
   });
 
   it('lists every friend, sharing or not, and never you', async () => {

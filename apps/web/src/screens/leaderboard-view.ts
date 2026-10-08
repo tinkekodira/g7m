@@ -13,13 +13,17 @@ import {
   boardTotals,
   daysBetween,
   formatMinutes,
+  improvementScore,
   rankBoard,
   rankMoves,
   startOfDay,
+  usualScore,
   type BoardGap,
   type BoardWorkout,
   type LeaderboardPeriod,
+  type LeaderboardRanking,
   type LeaderboardStat,
+  type Span,
   type UnitSystem,
   type WeekStart,
 } from '@g7m/core';
@@ -33,6 +37,14 @@ export const STAT_OPTIONS: readonly { readonly value: LeaderboardStat; readonly 
     { value: 'sets', label: 'Sets' },
     { value: 'minutes', label: 'Time' },
   ];
+
+export const RANKING_OPTIONS: readonly {
+  readonly value: LeaderboardRanking;
+  readonly label: string;
+}[] = [
+  { value: 'most', label: 'Most' },
+  { value: 'improved', label: 'Most improved' },
+];
 
 export const PERIOD_OPTIONS: readonly {
   readonly value: LeaderboardPeriod;
@@ -162,6 +174,7 @@ export interface BoardView {
 }
 
 export interface BoardContext {
+  readonly ranking: LeaderboardRanking;
   readonly stat: LeaderboardStat;
   readonly period: LeaderboardPeriod;
   readonly now: Date;
@@ -184,8 +197,10 @@ export function leaderboard(
   mine: readonly BoardWorkout[],
   context: BoardContext,
 ): BoardView {
-  const { stat, period, now, unitSystem } = context;
+  const { ranking, stat, period, now, unitSystem } = context;
+  const improved = ranking === 'improved';
   const spans = boardSpans(period, now, context.weekStartsOn);
+  const periodWord = period === 'week' ? 'week' : 'month';
 
   // In name order going in, so a tie reads alphabetically and does not
   // shuffle between renders; rankBoard keeps that order within a tie.
@@ -203,29 +218,36 @@ export function leaderboard(
   ].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
 
   const byKey = new Map(contenders.map((contender) => [contender.key, contender]));
-  const ranked = rankBoard(
-    contenders.map((contender) => ({
-      id: contender.key,
-      score: boardScore(boardTotals(contender.workouts, spans.current), stat, unitSystem),
-    })),
-  );
+  const usualOf = (key: string, whole: Span): number =>
+    usualScore(byKey.get(key)?.workouts ?? [], whole, stat, unitSystem);
+
+  // One board: what each contender did in `counted`, which is all or part of
+  // the period `whole`. Ranked by improvement, that is a percentage of their
+  // usual for `whole`, and somebody with no usual is left off.
+  const board = (counted: Span, whole: Span) =>
+    rankBoard(
+      contenders.flatMap((contender) => {
+        const done = boardScore(boardTotals(contender.workouts, counted), stat, unitSystem);
+        const score = improved ? improvementScore(done, usualOf(contender.key, whole)) : done;
+        return score === null ? [] : [{ id: contender.key, score }];
+      }),
+    );
+
+  const ranked = board(spans.current, spans.current);
+  const placed = new Set(ranked.map((entry) => entry.id));
+  // Ranked by improvement, the people with nothing to measure against.
+  const unmeasured = contenders.filter((contender) => !placed.has(contender.key));
 
   // The same board as it stood at the end of yesterday, for the arrows.
   const today = startOfDay(now);
   const moves = rankMoves(
     ranked,
-    rankBoard(
-      contenders.map((contender) => ({
-        id: contender.key,
-        score: boardScore(
-          boardTotals(contender.workouts, {
-            start: spans.current.start,
-            end: today < spans.current.start ? spans.current.start : today,
-          }),
-          stat,
-          unitSystem,
-        ),
-      })),
+    board(
+      {
+        start: spans.current.start,
+        end: today < spans.current.start ? spans.current.start : today,
+      },
+      spans.current,
     ),
   );
 
@@ -233,54 +255,102 @@ export function leaderboard(
   // are today's: a friend added since is in the running, one who has stopped
   // sharing is not.
   const champions = new Set(
-    rankBoard(
-      contenders.map((contender) => ({
-        id: contender.key,
-        score: boardScore(boardTotals(contender.workouts, spans.previous), stat, unitSystem),
-      })),
-    )
+    board(spans.previous, spans.previous)
       .filter((entry) => entry.rank === 1)
       .map((entry) => entry.id),
   );
-  const crowned = period === 'week' ? 'Won last week' : 'Won last month';
+  const crowned = `${improved ? 'Most improved' : 'Won'} last ${periodWord}`;
 
+  // Ranked by improvement the gap is in percentage points, which nobody can
+  // train towards; it is said instead as what the one behind has to do to
+  // draw level, in their own usual's terms: "1 workout behind Sam".
   const gap = boardGap(ranked, 'you');
+  const inUnits = (found: BoardGap<string>): BoardGap<string> =>
+    !improved || found.kind === 'level'
+      ? found
+      : {
+          ...found,
+          by: Math.max(
+            1,
+            Math.ceil(
+              (found.by / 100) *
+                usualOf(found.kind === 'behind' ? 'you' : found.id, spans.current) -
+                1e-9,
+            ),
+          ),
+        };
   const note =
-    gap === null
-      ? null
-      : describeGap(gap, (id) => byKey.get(id)?.name ?? NAMELESS, stat, unitSystem);
+    gap !== null
+      ? describeGap(inUnits(gap), (id) => byKey.get(id)?.name ?? NAMELESS, stat, unitSystem)
+      : placed.has('you')
+        ? null
+        : 'Nothing to measure against yet';
 
-  const rows = ranked.map((entry): BoardRowView => {
-    const contender = byKey.get(entry.id);
+  const shown = (score: number) =>
+    improved ? `${String(score)}%` : scoreText(score, stat, unitSystem);
+  const said = (score: number) =>
+    improved ? `${String(score)}% of usual` : scoreWords(score, stat, unitSystem);
+
+  const row = (
+    key: string,
+    rank: number | null,
+    score: number,
+    move: number,
+    measured: boolean,
+  ): BoardRowView => {
+    const contender = byKey.get(key);
     const name = contender?.name ?? 'You';
-    const isYou = entry.id === 'you';
-    const words = scoreWords(entry.score, stat, unitSystem);
-    const champion = champions.has(entry.id);
-    const placed =
-      entry.rank === null ? `${name}: nothing yet` : `${ordinal(entry.rank)}, ${name}: ${words}`;
-    const move = moves.get(entry.id) ?? 0;
+    const isYou = key === 'you';
+    const champion = champions.has(key);
+    // Your own row says why under your name, so its description does not say it twice.
+    const where = !measured
+      ? isYou
+        ? `${name}: new`
+        : `${name}: new, nothing in the four weeks before this ${periodWord} to measure against`
+      : rank === null
+        ? `${name}: nothing yet`
+        : `${ordinal(rank)}, ${name}: ${said(score)}`;
     const moved =
       move === 0 ? null : `${move > 0 ? 'Up' : 'Down'} ${String(Math.abs(move))} since yesterday`;
-    const said = [placed, moved, champion ? crowned : null]
+    const words = [where, moved, champion ? crowned : null]
       .filter((part) => part !== null)
       .join('. ');
+    const mine = isYou ? note : null;
     return {
-      key: entry.id,
+      key,
       userId: contender?.userId ?? null,
       name,
       avatarName: contender?.avatarName ?? null,
       isYou,
-      rank: entry.rank,
-      rankText: entry.rank === null ? '–' : String(entry.rank),
-      score: entry.score,
-      scoreText: scoreText(entry.score, stat, unitSystem),
+      rank,
+      rankText: rank === null ? '–' : String(rank),
+      score,
+      scoreText: measured ? shown(score) : 'New',
       champion,
       move,
       moveText: move === 0 ? null : `${move > 0 ? '▲' : '▼'}${String(Math.abs(move))}`,
-      note: isYou ? note : null,
-      description: isYou && note !== null ? `${said}. ${note}` : said,
+      note: mine,
+      description: mine !== null ? `${words}. ${mine}` : words,
     };
-  });
+  };
+
+  const rows = [
+    ...ranked.map((entry) =>
+      row(entry.id, entry.rank, entry.score, moves.get(entry.id) ?? 0, true),
+    ),
+    ...unmeasured.map((contender) => row(contender.key, null, 0, 0, false)),
+  ];
+
+  const footnotes = [
+    improved
+      ? period === 'week'
+        ? '100% is a usual week: a quarter of what each person did in the four weeks before it.'
+        : '100% is a usual month: what each person did in the four weeks before it, stretched to the month’s length.'
+      : null,
+    stat === 'lifted'
+      ? 'Weight × reps on working sets. Bodyweight moves like pull-ups and dips count only the weight added to them.'
+      : null,
+  ].filter((line) => line !== null);
 
   const hidden = friends.filter((friend) => !friend.sharing);
   const notSharing =
@@ -294,10 +364,7 @@ export function leaderboard(
     rows,
     heading: `${period === 'week' ? 'This week' : 'This month'} · ${timeLeft(spans.current.end, now)}`,
     notSharing,
-    footnote:
-      stat === 'lifted'
-        ? 'Weight × reps on working sets. Bodyweight moves like pull-ups and dips count only the weight added to them.'
-        : null,
+    footnote: footnotes.length === 0 ? null : footnotes.join(' '),
     alone: friends.length === 0,
   };
 }
