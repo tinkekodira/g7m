@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { FRIEND_CODE_ALPHABET, bestLiftsByExercise } from '@g7m/core';
+import {
+  FRIEND_CODE_ALPHABET,
+  bestLiftsByExercise,
+  tallyWorkouts,
+  trainingMinutes,
+} from '@g7m/core';
 import { startHarness, type Harness } from './testing/pglite-harness.js';
 
 /**
@@ -86,6 +91,7 @@ interface LoggedSet {
   readonly setType?: string;
   readonly loadType?: string;
   readonly completed?: boolean;
+  readonly durationSeconds?: number;
 }
 
 /** A finished workout, written as the superuser: arranging the test, not testing it. */
@@ -93,14 +99,15 @@ async function logWorkout(
   user: string,
   startedAt: string,
   sets: readonly LoggedSet[],
-  options: { readonly finished?: boolean; readonly name?: string } = {},
+  options: { readonly finished?: boolean; readonly name?: string; readonly source?: string } = {},
 ): Promise<string> {
   const { rows } = await h.db.query<{ id: string }>(
-    `insert into public.workout_sessions (user_id, name, started_at, ended_at, notes, bodyweight_kg)
+    `insert into public.workout_sessions
+       (user_id, name, started_at, ended_at, notes, bodyweight_kg, source)
      values ($1, $2, $3::timestamptz, case when $4 then $3::timestamptz + interval '1 hour' end,
-             'private note', 81.5)
+             'private note', 81.5, $5)
      returning id`,
-    [user, options.name ?? null, startedAt, options.finished ?? true],
+    [user, options.name ?? null, startedAt, options.finished ?? true, options.source ?? 'manual'],
   );
   const session = rows[0]?.id ?? '';
   const slots = new Map<string, string>();
@@ -119,9 +126,9 @@ async function logWorkout(
     await h.db.query(
       `insert into public.session_sets
          (user_id, session_exercise_id, order_key, set_type, load_type, weight_kg, reps,
-          is_completed, completed_at)
+          is_completed, completed_at, duration_seconds)
        values ($1, $2, $3, $4, $5, $6, $7, $8,
-               case when $8 then $9::timestamptz + make_interval(mins => $10) end)`,
+               case when $8 then $9::timestamptz + make_interval(mins => $10) end, $11)`,
       [
         user,
         slot,
@@ -133,6 +140,7 @@ async function logWorkout(
         completed,
         startedAt,
         index * 3,
+        set.durationSeconds ?? null,
       ],
     );
   }
@@ -412,7 +420,7 @@ describe('what a friend can see', () => {
     return { id, session };
   }
 
-  const NOTHING = { inOverview: null, detail: null, session: null };
+  const NOTHING = { inOverview: null, onBoard: null, detail: null, session: null };
 
   /** Every friend function, as `viewer`, about `other`. */
   async function everything(viewer: string, other: string, session: string) {
@@ -420,8 +428,14 @@ describe('what a friend can see', () => {
       viewer,
       'public.friends_overview()',
     );
+    const board = await call<{ friends: { user_id: string }[] }>(
+      viewer,
+      'public.friends_leaderboard($1)',
+      [new Date(Date.now() - 7 * 86_400_000).toISOString()],
+    );
     return {
       inOverview: overview.friends.find((friend) => friend.user_id === other) ?? null,
+      onBoard: board.friends.find((friend) => friend.user_id === other) ?? null,
       detail: await call(viewer, 'public.friend_detail($1)', [other]),
       session: await call(viewer, 'public.friend_session($1, $2)', [other, session]),
     };
@@ -468,6 +482,7 @@ describe('what a friend can see', () => {
       since: expect.any(String) as unknown,
       sharing: false,
     });
+    expect(seen.onBoard).toEqual({ user_id: alex.id, name: 'Alex', sharing: false });
 
     // Turning it back on is all it takes.
     await call(alex.id, 'public.set_training_sharing(true)');
@@ -571,6 +586,7 @@ describe('what a friend can see', () => {
     for (const sql of [
       `public.training_summary('${alex.id}')`,
       `public.best_lifts('${alex.id}')`,
+      `public.board_workouts('${alex.id}', now() - interval '1 year')`,
       `public.shares_training_with('${me}', '${alex.id}')`,
       `public.create_friend_profile('${me}')`,
     ]) {
@@ -659,6 +675,145 @@ describe('best lifts', () => {
     );
     expect(fromServer).toEqual(fromDevice);
     expect(fromServer).toEqual({ 'barbell-back-squat': 125, 'barbell-bench-press': 105 });
+  });
+});
+
+describe('the leaderboard', () => {
+  interface Tally {
+    started_at: string;
+    source: string;
+    first_set_at: string | null;
+    last_set_at: string | null;
+    sets: number;
+    lifted_kg: number;
+  }
+  interface Board {
+    friends: { user_id: string; name: string; sharing: boolean; workouts?: Tally[] }[];
+  }
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+  it('counts a friend’s workouts by the rule the phone uses for its own', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+
+    await logWorkout(alex, daysAgo(2), [
+      { slug: 'barbell-bench-press', weightKg: 100 },
+      { slug: 'barbell-bench-press', weightKg: 60, reps: 8, setType: 'warmup' },
+      { slug: 'barbell-bench-press', weightKg: 150, reps: 1, completed: false },
+      { slug: 'barbell-back-squat', weightKg: 120, setType: 'amrap' },
+      { slug: 'pull-up', weightKg: 20, loadType: 'bodyweight_plus' },
+      { slug: 'pull-up', weightKg: 0, reps: 8, loadType: 'bodyweight' },
+      { slug: 'pull-up', weightKg: 30, reps: 6, loadType: 'assisted' },
+      { slug: 'treadmill', weightKg: 0, reps: 0, durationSeconds: 600 },
+    ]);
+    // A single half-hour bout: no sets, no weight, and thirty minutes of training.
+    await logWorkout(alex, daysAgo(3), [
+      { slug: 'treadmill', weightKg: 0, reps: 0, durationSeconds: 1800 },
+    ]);
+    await logWorkout(alex, daysAgo(4), [{ slug: 'barbell-back-squat', weightKg: 100 }], {
+      source: 'past',
+    });
+    // None of these is a workout on the board.
+    await logWorkout(alex, daysAgo(1), [{ slug: 'barbell-back-squat', weightKg: 200 }], {
+      finished: false,
+    });
+    await logWorkout(alex, daysAgo(1), [
+      { slug: 'barbell-back-squat', weightKg: 60, setType: 'warmup' },
+    ]);
+
+    const board = await call<Board>(me, 'public.friends_leaderboard($1)', [daysAgo(30)]);
+    const workouts = board.friends[0]?.workouts ?? [];
+    expect(workouts.map((tally) => [tally.source, tally.sets, tally.lifted_kg])).toEqual([
+      ['past', 1, 500],
+      ['manual', 0, 0],
+      ['manual', 5, 1200],
+    ]);
+    const minutes = (tally: Tally | undefined) =>
+      trainingMinutes([
+        tally?.first_set_at == null ? null : new Date(tally.first_set_at),
+        tally?.last_set_at == null ? null : new Date(tally.last_set_at),
+      ]);
+    expect(minutes(workouts[1])).toBe(30);
+
+    // And every row of Alex's through the phone's rule, as the phone reads its own.
+    const { rows } = await h.db.query<{
+      session_id: string;
+      started_at: Date;
+      source: string;
+      set_type: 'working';
+      load_type: 'external';
+      weight_kg: string;
+      reps: number;
+      is_completed: boolean;
+      completed_at: Date | null;
+      duration_seconds: number | null;
+      cardio_kind: string | null;
+    }>(
+      `select ws.id as session_id, ws.started_at, ws.source, ss.set_type, ss.load_type,
+              ss.weight_kg, ss.reps, ss.is_completed, ss.completed_at, ss.duration_seconds,
+              e.cardio_kind
+         from public.session_sets ss
+         join public.session_exercises se on se.id = ss.session_exercise_id
+         join public.workout_sessions ws on ws.id = se.session_id
+         join public.exercises e on e.id = se.exercise_id
+        where ss.user_id = $1 and ws.ended_at is not null
+        order by ws.started_at`,
+      [alex],
+    );
+    const device = tallyWorkouts(
+      rows.map((row) => ({
+        sessionId: row.session_id,
+        startedAt: new Date(row.started_at),
+        clockKnown: row.source !== 'past',
+        setType: row.set_type,
+        loadType: row.load_type,
+        weightKg: Number(row.weight_kg),
+        reps: row.reps,
+        isCompleted: row.is_completed,
+        completedAt: row.completed_at === null ? null : new Date(row.completed_at),
+        durationSeconds: row.duration_seconds,
+        cardio: row.cardio_kind !== null,
+      })),
+    );
+    expect(
+      workouts.map((tally) => ({
+        startedAt: new Date(tally.started_at),
+        clockKnown: tally.source !== 'past',
+        firstSetAt: tally.first_set_at === null ? null : new Date(tally.first_set_at),
+        lastSetAt: tally.last_set_at === null ? null : new Date(tally.last_set_at),
+        sets: tally.sets,
+        liftedKg: tally.lifted_kg,
+      })),
+    ).toEqual(device);
+  });
+
+  it('sends nothing older than last month, whatever is asked for', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    await logWorkout(alex, daysAgo(100), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+    await logWorkout(alex, daysAgo(2), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+
+    const board = await call<Board>(me, 'public.friends_leaderboard($1)', [daysAgo(365)]);
+    expect(board.friends[0]?.workouts).toHaveLength(1);
+  });
+
+  it('lists every friend, sharing or not, and never you', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    const sam = await person('Sam');
+    await friends(me, alex);
+    await friends(sam, me);
+    await call(sam, 'public.set_training_sharing(false)');
+    await logWorkout(me, daysAgo(1), [{ slug: 'barbell-back-squat', weightKg: 100 }]);
+
+    const board = await call<Board>(me, 'public.friends_leaderboard($1)', [daysAgo(30)]);
+    expect(board.friends).toEqual([
+      { user_id: alex, name: 'Alex', sharing: true, workouts: [] },
+      { user_id: sam, name: 'Sam', sharing: false },
+    ]);
   });
 });
 

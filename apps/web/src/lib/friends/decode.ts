@@ -8,7 +8,7 @@
  * that has the wrong shape should become "the server said something we do not
  * understand", not a `NaN` drawn on a friend's card.
  */
-import { EMPTY_BOUT, type Bout, type LoadType, type SetType } from '@g7m/core';
+import { EMPTY_BOUT, type BoardWorkout, type Bout, type LoadType, type SetType } from '@g7m/core';
 
 export interface WorkoutSummary {
   readonly id: string;
@@ -107,6 +107,15 @@ export interface SendResult {
 }
 
 /** A request that did not work, already in words somebody can read. */
+/** A friend on the leaderboard. */
+export interface BoardFriend {
+  readonly userId: string;
+  readonly name: string | null;
+  readonly sharing: boolean;
+  /** Their finished workouts since the start of last month; empty when not sharing. */
+  readonly workouts: readonly BoardWorkout[];
+}
+
 export class FriendsError extends Error {}
 
 // ---------------------------------------------------------------------------
@@ -306,5 +315,30 @@ function decodeSet(value: unknown): FriendSessionSet {
       floors: optionalNumber(set['floors']),
       caloriesKcal: optionalNumber(set['calories_kcal']),
     },
+  };
+}
+
+export function decodeLeaderboard(value: unknown): readonly BoardFriend[] {
+  return list(record(value)['friends']).map((entry) => {
+    const friend = record(entry);
+    const sharing = friend['sharing'] === true;
+    return {
+      userId: string(friend['user_id']),
+      name: optionalString(friend['name']),
+      sharing,
+      workouts: sharing ? list(friend['workouts']).map(decodeBoardWorkout) : [],
+    };
+  });
+}
+
+function decodeBoardWorkout(value: unknown): BoardWorkout {
+  const data = record(value);
+  return {
+    startedAt: date(data['started_at']),
+    clockKnown: data['source'] !== 'past',
+    firstSetAt: optionalDate(data['first_set_at']),
+    lastSetAt: optionalDate(data['last_set_at']),
+    sets: number(data['sets'], 0),
+    liftedKg: number(data['lifted_kg'], 0),
   };
 }

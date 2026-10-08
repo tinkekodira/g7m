@@ -15,7 +15,9 @@ import {
   BIG_THREE,
   DEFAULT_WEEK_START,
   bestLiftsByExercise,
+  tallyWorkouts,
   type BestLift,
+  type BoardWorkout,
   type UnitSystem,
   type WeekStart,
 } from '@g7m/core';
@@ -125,4 +127,16 @@ export function useMySide(): QueryState<MySide> {
       names: new Map(exercises.map((exercise) => [exercise.id, exercise.name])),
     };
   });
+}
+
+/**
+ * Your own finished workouts since `since`, tallied on this phone by the rule
+ * the server tallies a friend's. Yours come from here rather than from the
+ * server so a workout finished in a basement is on the board before it has
+ * uploaded.
+ */
+export function useMyBoard(since: Date): QueryState<readonly BoardWorkout[]> {
+  return useCatalogue(`friends-my-board-${since.toISOString()}`, async (repositories) =>
+    tallyWorkouts(await repositories.history.boardSets(since)),
+  );
 }

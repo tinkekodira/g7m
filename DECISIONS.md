@@ -6725,7 +6725,92 @@ Profile and the 3D model on Learn), and `/progress*` lights Home.
   your friends' names, requests waiting) when the server can be reached, and
   says it was left out when it cannot.
 - Deleting an account cascades its code, friendships and requests.
-- The leaderboard sub-tab is shown, greyed with "Soon", and not built.
+- The leaderboard sub-tab is shown, greyed with "Soon", and not built. (Built
+  in ADR-0106.)
 - `pnpm dev:fake` runs the app against the e2e fake backend with seeded
   friends (`e2e/dev-fake.ts`), so the feature can be tried without touching
   Supabase.
+
+## ADR-0106 — The friends leaderboard
+
+**Status:** accepted · **Date:** 2026-10-08 · **Phase:** out of phase (new feature)
+
+The greyed Leaderboard sub-tab on Friends (ADR-0105) is built: you and every
+friend who shares their training, ranked on one of **workouts, weight lifted,
+sets or time training**, over **this week or this month**.
+
+### Calendar periods that reset
+
+A week runs from the viewer's own week start, a month from the 1st, and both
+start again at zero. A rolling seven days never resets, so there is never a
+moment when everybody is level and never a finish; a calendar week has both,
+and it is what makes "last week's winner" a thing that exists. The heading
+says how long is left ("This week · 4 days left").
+
+### What is counted
+
+Each stat uses a rule the app already had, so the board never disagrees with
+the progress screen about the same training:
+
+- **Workouts**: finished, with at least one ticked working set.
+- **Sets**: ticked working sets of lifting. A cardio bout is not a set, as on
+  the Sets chart (ADR-0069).
+- **Time**: first ticked set to last, never how long a workout was open — and
+  the app already closes a forgotten workout at its last set (ADR-0077), so
+  nobody climbs by leaving one running. A bout's clock starts when the bout
+  began. A workout logged afterwards from the calendar has no clock and adds
+  no time; it counts for everything else.
+- **Weight**: load × reps on those sets, **external load only**. A weighted
+  pull-up counts its plate, and a bodyweight or assisted set counts nothing.
+  Counting the body would let anybody work out what a friend weighs (ten
+  pull-ups is ten bodyweights), and the friend screens never show a body
+  metric. Weight is ranked in whole kilograms or pounds, whichever the viewer
+  reads, so two totals that read the same are level — as with best lifts.
+
+A workout belongs to the period it started in. Ties share a place (1, 1, 3)
+and read alphabetically. Somebody who has done nothing has no place and sits
+at the bottom with a dash.
+
+### Who is on it, and where the numbers come from
+
+**Friends' numbers** come from one new function, `friends_leaderboard(since)`,
+in the shape of the others (ADR-0105): the caller from the token, only
+accepted friendships, and workouts only for a friend who shares. A friend who
+does not share is left off, and a line under the board says so. It sends one
+tally per finished workout (start, clock, sets, weight), not totals, because
+"this week" depends on the viewer's timezone and week start, which the server
+does not know. Nothing in it is new to a friend: `friend_session` already
+shows every set of these workouts.
+
+The phone asks from the start of last month, which covers this period and the
+last for either toggle, so one request serves every switch. The server sends
+nothing earlier than the start of last month (with a day's slack either side
+for timezones), whatever is asked for.
+
+**Your numbers** come from the phone (`HistoryRepository.boardSets`), so a
+workout you have just finished is on the board before it uploads. The rule
+exists twice — `board_workouts` in SQL, `tallyWorkouts` in core — and a schema
+test runs both over the same rows, as for best lifts.
+
+### Three things to make it a race
+
+- **The gap**, under your own name: "4,485 kg behind Sam", "Level with Alex",
+  "2 workouts ahead of Sam". With nothing logged yet it is the lowest score on
+  the board: the first place in reach.
+- **A crown** on last week's winner (last month's, on the month's board), for
+  the chosen stat, shared on a tie and nobody's after a period nobody trained
+  in. Today's friends compete for it: one added since is in, one who stopped
+  sharing is out.
+- **Arrows** for places moved since the end of yesterday. Somebody with no
+  place yesterday counts as just below the last place, so a first workout
+  shows as a climb and nobody falls from nowhere; on a period's first day
+  nothing has moved.
+
+All three are worked out from the same tallies; nothing new is stored.
+
+### Not done
+
+- "Alex just overtook you" needs a notification on a locked phone, which waits
+  for the native build (ADR-0077's "What this is not").
+- **Most improved** (against your own last four weeks) and **one-to-one
+  challenges** are planned as their own pieces of work.

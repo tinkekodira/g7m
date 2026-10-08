@@ -384,6 +384,16 @@ export function AddFriendIcon(props: IconProps) {
   );
 }
 
+/** A crown with three points: last period's winner on the leaderboard. */
+export function CrownIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M4 18 3 7.5l5 4.5 4-6.5 4 6.5 5-4.5L20 18Z" />
+      <path d="M4.5 21h15" />
+    </Glyph>
+  );
+}
+
 /** Two sheets, one over the other: copy. */
 export function CopyIcon(props: IconProps) {
   return (
