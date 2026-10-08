@@ -21,6 +21,7 @@ import {
   type FriendsOverview,
 } from '../lib/friends/api.js';
 import { useMySide, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
+import { FriendsLeaderboard } from './FriendsLeaderboard.js';
 import {
   describeCodeProblem,
   describeSendResult,
@@ -41,16 +42,20 @@ import {
  * rather than showing a list that might be days old. A workout you have
  * already opened is the one exception, on its own screen.
  *
- * Three sub-tabs, of which two work: the leaderboard is shown, greyed, so the
- * place it will be is already familiar, and is not built.
+ * Three sub-tabs: the friends themselves, the leaderboard (ADR-0106), and the
+ * requests waiting for you.
  */
-type SubTab = 'friends' | 'requests';
+type SubTab = 'friends' | 'leaderboard' | 'requests';
+
+function subTab(value: string | null): SubTab {
+  return value === 'requests' || value === 'leaderboard' ? value : 'friends';
+}
 
 export function FriendsScreen() {
   const online = useOnline();
   const mine = useMySide();
   const [params, setParams] = useSearchParams();
-  const tab: SubTab = params.get('tab') === 'requests' ? 'requests' : 'friends';
+  const tab = subTab(params.get('tab'));
   const [adding, setAdding] = useState(false);
 
   const named = mine.data?.displayName != null;
@@ -101,6 +106,8 @@ export function FriendsScreen() {
             overview.error === null && <p className="text-sm text-muted">Loading…</p>
           ) : tab === 'friends' ? (
             <FriendList overview={overview.data} mine={mine.data} />
+          ) : tab === 'leaderboard' ? (
+            <FriendsLeaderboard mine={mine.data} code={code} />
           ) : (
             <RequestList overview={overview.data} onAnswered={overview.reload} />
           )}
@@ -120,10 +127,7 @@ export function FriendsScreen() {
   );
 }
 
-/**
- * Friends | Leaderboard | Requests. Tabs in the ARIA sense: one is selected,
- * and the leaderboard is there but disabled, with "Soon" saying why.
- */
+/** Friends | Leaderboard | Requests. Tabs in the ARIA sense: one is selected. */
 function SubTabs({
   value,
   requests,
@@ -158,15 +162,13 @@ function SubTabs({
       <button
         type="button"
         role="tab"
-        aria-selected={false}
-        aria-disabled
-        disabled
-        className={cx(tabClass(false), 'cursor-not-allowed text-muted/60')}
+        aria-selected={value === 'leaderboard'}
+        className={tabClass(value === 'leaderboard')}
+        onClick={() => {
+          onChange('leaderboard');
+        }}
       >
         Leaderboard
-        <span className="rounded-full bg-elevated px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase">
-          Soon
-        </span>
       </button>
       <button
         type="button"

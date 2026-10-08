@@ -14,6 +14,7 @@
  */
 import {
   isCardioKind,
+  type BoardSet,
   type HistoricalSet,
   type LoggedBout,
   type MuscleShare,
@@ -156,6 +157,45 @@ export class HistoryRepository {
       parameters,
     );
     return rows.map(toHistoricalSet);
+  }
+
+  /**
+   * Every ticked working set of every finished workout started since `from`,
+   * bouts included, for the friends leaderboard: `tallyWorkouts` in core turns
+   * them into the same per-workout tallies the server sends for a friend.
+   */
+  async boardSets(from: Date): Promise<BoardSet[]> {
+    const { userId } = resolveContext(this.context);
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT ws.id AS session_id, ws.started_at, ws.source,
+              ss.set_type, ss.load_type, ss.weight_kg, ss.reps, ss.is_completed,
+              ss.completed_at, ss.duration_seconds, e.cardio_kind
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
+         -- LEFT: a set whose exercise has not synced yet still counts.
+         LEFT JOIN exercises e ON e.id = se.exercise_id
+        WHERE ss.user_id = ?
+          AND ss.is_completed = 1
+          AND ss.set_type <> 'warmup'
+          AND ws.ended_at IS NOT NULL
+          AND ${instant('ws.started_at')} >= ${INSTANT_PARAMETER}
+        ORDER BY ${instant('ws.started_at')} ASC, ws.id ASC, se.order_key ASC, ss.order_key ASC`,
+      [userId, toTimestamp(from)],
+    );
+    return rows.map((row) => ({
+      sessionId: readString(row, 'session_id', ''),
+      startedAt: new Date(readString(row, 'started_at', '')),
+      clockKnown: readEnum(row, 'source', SESSION_SOURCES, 'manual') !== 'past',
+      setType: readEnum(row, 'set_type', SET_TYPE_VALUES, 'working'),
+      loadType: readEnum(row, 'load_type', LOAD_TYPE_VALUES, 'external'),
+      weightKg: readNumber(row, 'weight_kg', 0),
+      reps: readNumber(row, 'reps', 0),
+      isCompleted: readBoolean(row, 'is_completed'),
+      completedAt: readDate(row, 'completed_at'),
+      durationSeconds: readOptionalNumber(row, 'duration_seconds'),
+      cardio: readOptionalString(row, 'cardio_kind') !== null,
+    }));
   }
 
   /**

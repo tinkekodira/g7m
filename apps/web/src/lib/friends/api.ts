@@ -12,8 +12,10 @@ import { describeDataError } from '../errors.js';
 import {
   FriendsError,
   decodeDetail,
+  decodeLeaderboard,
   decodeOverview,
   decodeSendResult,
+  type BoardFriend,
   type FriendDetail,
   type FriendsOverview,
   type SendResult,
@@ -34,6 +36,14 @@ async function rpc(name: string, args?: Record<string, unknown>): Promise<unknow
 
 export async function fetchOverview(): Promise<FriendsOverview> {
   return decodeOverview(await rpc('friends_overview'));
+}
+
+/**
+ * Every friend, with the workouts of those who share since `since` — the
+ * start of last month, worked out on this phone in its own timezone.
+ */
+export async function fetchLeaderboard(since: Date): Promise<readonly BoardFriend[]> {
+  return decodeLeaderboard(await rpc('friends_leaderboard', { since: since.toISOString() }));
 }
 
 /** Null when they are not a friend sharing their training — or no longer one. */

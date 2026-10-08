@@ -147,6 +147,81 @@ describe('completedSets', () => {
   });
 });
 
+describe('boardSets', () => {
+  it('reads the ticked working sets of finished workouts since a moment, bouts and all', async () => {
+    await db.seed('exercises', {
+      id: 'rower',
+      slug: 'rowing-machine',
+      name: 'Rowing Machine',
+      cardio_kind: 'rower',
+    });
+    await loggedSession('2026-09-01T10:00:00.000Z', 'bench', [{ weightKg: 90, reps: 5 }]);
+
+    clock = new Date('2026-09-07T10:00:00.000Z');
+    const session = await sessions.start({ bodyweightKg: 80 });
+    const bench = await sessions.addExercise(session.id, 'bench');
+    const warmup = await sessions.addSet(bench.id, {
+      weightKg: 60,
+      reps: 8,
+      loadType: 'external',
+      setType: 'warmup',
+    });
+    await sessions.completeSet(warmup.id);
+    const working = await sessions.addSet(bench.id, {
+      weightKg: 100,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.completeSet(working.id);
+    const rower = await sessions.addExercise(session.id, 'rower');
+    const bout = await sessions.addSet(rower.id, {
+      weightKg: 0,
+      reps: 0,
+      loadType: 'external',
+      setType: 'working',
+      bout: { durationSeconds: 480 },
+    });
+    await sessions.completeSet(bout.id);
+    await sessions.finish(session.id);
+
+    clock = new Date('2026-09-09T10:00:00.000Z');
+    const past = await sessions.start({
+      source: 'past',
+      startedAt: new Date('2026-09-08T18:00:00.000Z'),
+    });
+    const squat = await sessions.addExercise(past.id, 'squat');
+    const logged = await sessions.addSet(squat.id, {
+      weightKg: 140,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.completeSet(logged.id);
+    await sessions.finish(past.id);
+
+    await loggedSession('2026-09-10T10:00:00.000Z', 'bench', [{ weightKg: 105, reps: 5 }], {
+      finish: false,
+    });
+
+    const sets = await history.boardSets(new Date('2026-09-05T00:00:00.000Z'));
+    expect(
+      sets.map((set) => [
+        set.sessionId,
+        set.weightKg,
+        set.cardio,
+        set.clockKnown,
+        set.durationSeconds,
+      ]),
+    ).toEqual([
+      [session.id, 100, false, true, null],
+      [session.id, 0, true, true, 480],
+      [past.id, 140, false, false, null],
+    ]);
+    expect(sets[0]?.completedAt).toEqual(new Date('2026-09-07T10:00:00.000Z'));
+  });
+});
+
 describe('muscleShares', () => {
   it('groups the whole table by exercise', async () => {
     await db.seed('exercise_muscles', {
