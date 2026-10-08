@@ -69,3 +69,32 @@ test('the leaderboard: a set behind last week’s winner, then a set ahead', asy
   await expect(page.getByText('1 set ahead of Riley', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: '2nd, Riley: 1 set. Won last week' })).toBeVisible();
 });
+
+test('most improved: measured against your own last four weeks', async ({ page }) => {
+  test.setTimeout(120_000);
+  const casey = await createUser('improved-casey', { onboarded: true, displayName: 'Casey' });
+  const riley = await createUser('improved-riley', { onboarded: true, displayName: 'Riley' });
+  await sql(
+    `insert into public.friendships (requester_id, addressee_id, status, responded_at)
+     values ($1, $2, 'accepted', now())`,
+    [riley.id, casey.id],
+  );
+  // The same moment one to four weeks ago always falls in the four weeks before
+  // this week, whatever day it starts on: one a week is Riley's usual, and one
+  // so far this week is 100% of it. Last week's one, against the three before
+  // it, was a third more than usual.
+  for (const weeks of [1, 2, 3, 4]) {
+    await rileyTrained(riley.id, new Date(Date.now() - weeks * 7 * 86_400_000));
+  }
+  await rileyTrained(riley.id, new Date(Date.now() - 60_000));
+
+  await signIn(page, casey);
+  await openBoard(page);
+  await page.getByRole('radio', { name: 'Most improved' }).click();
+  await expect(
+    page.getByRole('link', { name: '1st, Riley: 100% of usual. Most improved last week' }),
+  ).toBeVisible();
+  // Casey has never trained, so has nothing to be measured against yet.
+  await expect(page.getByText('Nothing to measure against yet', { exact: true })).toBeVisible();
+  await expect(page.getByText('100% is a usual week', { exact: false })).toBeVisible();
+});

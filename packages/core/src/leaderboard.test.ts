@@ -5,10 +5,13 @@ import {
   boardSince,
   boardSpans,
   boardTotals,
+  improvementScore,
   liftedKg,
   rankBoard,
   rankMoves,
   tallyWorkouts,
+  usualScore,
+  usualSpan,
   type BoardSet,
   type BoardTotals,
   type BoardWorkout,
@@ -184,14 +187,62 @@ describe('periods', () => {
     });
   });
 
-  it('asks for enough history to cover last week and last month, whichever is earlier', () => {
-    expect(boardSince(NOW)).toEqual(local(2026, 9, 1, 0));
-    // Early in a month last week reaches back into the month before; last month is earlier still.
+  it('asks for enough history to cover the four weeks before last week and last month', () => {
+    expect(boardSince(NOW)).toEqual(local(2026, 8, 1, 0));
+    // Early in a month, last week's four weeks reach furthest back of all the weeks.
     const early = local(2026, 10, 2, 9);
-    expect(boardSince(early).getTime()).toBeLessThanOrEqual(
-      boardSpans('week', early, 1).previous.start.getTime(),
-    );
-    expect(boardSince(local(2026, 1, 15))).toEqual(local(2025, 12, 1, 0));
+    for (const weekStart of [0, 1, 2, 3, 4, 5, 6] as const) {
+      expect(boardSince(early).getTime()).toBeLessThanOrEqual(
+        usualSpan(boardSpans('week', early, weekStart).previous).start.getTime(),
+      );
+    }
+    // Last month's four weeks begin inside the month before it, which is as far back as it asks.
+    const march = local(2027, 3, 31, 23);
+    expect(usualSpan(boardSpans('month', march, 1).previous).start).toEqual(local(2027, 1, 4, 0));
+    expect(boardSince(march)).toEqual(local(2027, 1, 1, 0));
+    expect(boardSince(local(2026, 1, 15))).toEqual(local(2025, 11, 1, 0));
+  });
+});
+
+describe('most improved', () => {
+  const week = boardSpans('week', NOW, 1).current;
+  const month = boardSpans('month', NOW, 1).current;
+
+  it('measures a period against the four weeks before it began', () => {
+    expect(usualSpan(week)).toEqual({ start: local(2026, 9, 7, 0), end: local(2026, 10, 5, 0) });
+    expect(usualSpan(month)).toEqual({ start: local(2026, 9, 3, 0), end: local(2026, 10, 1, 0) });
+  });
+
+  it('takes a usual week as a quarter of those four weeks', () => {
+    // Eight workouts in the four weeks: two a week is usual.
+    const workouts = [7, 9, 14, 16, 21, 23, 28, 30].map((day) => workout(local(2026, 9, day)));
+    expect(usualScore(workouts, week, 'workouts', 'metric')).toBe(2);
+    // This week's own workouts and anything older than four weeks are not part of it.
+    const more = [...workouts, workout(local(2026, 10, 6)), workout(local(2026, 9, 6))];
+    expect(usualScore(more, week, 'workouts', 'metric')).toBe(2);
+  });
+
+  it('stretches four weeks to a month’s length', () => {
+    const workouts = [7, 14, 21, 28].map((day) => workout(local(2026, 9, day)));
+    // October has 31 days: four workouts in 28 days is 31/7 of one in 31.
+    expect(usualScore(workouts, month, 'workouts', 'metric')).toBeCloseTo((4 * 31) / 28);
+  });
+
+  it('counts a usual in the stat being ranked', () => {
+    const workouts = [workout(local(2026, 9, 10), { sets: 20, liftedKg: 6000 })];
+    expect(usualScore(workouts, week, 'sets', 'metric')).toBe(5);
+    expect(usualScore(workouts, week, 'lifted', 'metric')).toBe(1500);
+  });
+
+  it('gives this period as a whole percentage of usual', () => {
+    expect(improvementScore(3, 2)).toBe(150);
+    expect(improvementScore(1, 3)).toBe(33);
+    expect(improvementScore(0, 2)).toBe(0);
+  });
+
+  it('cannot measure somebody with no usual', () => {
+    expect(improvementScore(4, 0)).toBeNull();
+    expect(improvementScore(0, 0)).toBeNull();
   });
 });
 

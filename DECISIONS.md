@@ -7004,3 +7004,78 @@ exercise, so the exercise's own page is enough.
 - `favourites.spec.ts` checks stars and order in the full list, under Back,
   in a search and in the workout picker, then unstars and checks the order
   returns. It also checks a star survives a reload.
+
+## ADR-0109 — Most improved: each person against their own last four weeks
+
+**Status:** accepted · **Date:** 2026-10-08 · **Phase:** out of phase (new feature) · **Follows:** ADR-0106
+
+The leaderboard gets a **Rank by** control above the other two: **Most**, the
+board ADR-0106 built, or **Most improved**. The person it is for is the friend
+who trains less than everybody else. On the Most board they come last every
+week, however hard they work. Most improved ranks each person against
+themselves, so a beginner who does three workouts where they usually do two
+beats somebody who did five where they usually do six.
+
+### What "usual" is
+
+A person's usual is what they did in the **four weeks before the period
+began**, scaled to the period's length: a quarter of it for a week, and for a
+31-day month 31/28 of it. It is counted in whichever stat is chosen, by the
+same rules as the Most board, so weight still counts external load only.
+
+The score is this period so far as a whole percentage of usual: 100% is a
+usual week, 150% half as much again. It is ranked in whole percent, as it
+reads, so two people who both say "120%" are level.
+
+- **Early in the week everybody is low.** That is fair, because everybody is
+  measured the same way, and on Sunday night 100% means exactly what it says.
+  Rejected: measuring each of the four weeks only up to the same point in the
+  week. A lifter who trains on Saturdays would have no usual on a Tuesday, and
+  a Tuesday workout would be an infinite improvement.
+- **Nobody is measured against nothing.** Somebody with no workouts in the
+  four weeks before, whether new or back after a month off, has no usual. Any
+  workout at all would be an infinite improvement for them. They are listed at
+  the bottom as **New**, unranked, and under your own name it says "Nothing to
+  measure against yet". A single workout in the four weeks is enough to be
+  ranked from the next period on.
+- **Rejected: ranking by the change in raw numbers.** "+2 workouts" puts the
+  strong lifter back on top. Only a ratio lets a beginner win.
+
+### The rest of the board, unchanged in meaning
+
+- **The gap** under your name is said as what the one behind has to *do*, not
+  in percentage points, which nobody can train towards: "3 workouts behind
+  Sam" is how many more of your workouts bring you level with Sam's
+  percentage, on your usual. When you lead, it is how many more of theirs it
+  would take them.
+- **The crown** goes to last period's most improved ("Most improved last
+  week"), measured against the four weeks before *that* period.
+- **The arrows** compare with the same board at the end of yesterday.
+- A footnote says what 100% means.
+
+### The server sends one month more
+
+Last period's crown is measured against the four weeks before last period.
+The furthest back that reaches is inside the month before last, so the phone
+now asks from the start of the month before last (`boardSince`). Migration
+`20261011120000` moves `friends_leaderboard`'s floor back by the same month.
+Nothing else in the function changes, and what is sent is still one small
+tally per workout.
+
+**Deploy order does not matter here.** The app ahead of the migration only
+gets the old floor, so early in a month the usual and the crown are counted
+from too little until `npx supabase db push` runs. Nothing breaks, and no
+sync rules change.
+
+### Tests
+
+- `leaderboard.test.ts`: the four weeks, a usual week and a usual month, a
+  usual in each stat, whole percent, no usual. `boardSince` reaches the four
+  weeks before last week for all seven week starts, and before last month.
+- `leaderboard-view.test.ts`: the ranking, the beginner on top, New at the
+  bottom, the crown, the gap in workouts both ways, and the footnotes.
+- `friends.test.ts`: a workout fifty days ago is now sent, and one a hundred
+  days ago still is not. Against the old floor this is red only in the first
+  half of a month, because the old floor moves through the month.
+- `leaderboard.spec.ts`: Riley at 100% of a one-a-week usual, crowned for
+  last week, and a new lifter with nothing to measure against.

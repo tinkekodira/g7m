@@ -29,7 +29,7 @@ import { kgToLb, type UnitSystem } from './units.js';
 import { countsTowardVolume, type LoggedSet } from './load.js';
 import { periodWindow, startOfMonth, type Span } from './periods.js';
 import { trainingMinutes } from './progress.js';
-import type { WeekStart } from './week.js';
+import { daysBetween, type WeekStart } from './week.js';
 
 export const LEADERBOARD_STATS = ['workouts', 'lifted', 'sets', 'minutes'] as const;
 export type LeaderboardStat = (typeof LEADERBOARD_STATS)[number];
@@ -43,6 +43,18 @@ export function isLeaderboardStat(value: unknown): value is LeaderboardStat {
 
 export function isLeaderboardPeriod(value: unknown): value is LeaderboardPeriod {
   return (LEADERBOARD_PERIODS as readonly unknown[]).includes(value);
+}
+
+/**
+ * What a place is won by: the most done, or the most improved — this period
+ * against your own usual, so somebody who trains less than everybody else can
+ * still come first by training more than they themselves usually do.
+ */
+export const LEADERBOARD_RANKINGS = ['most', 'improved'] as const;
+export type LeaderboardRanking = (typeof LEADERBOARD_RANKINGS)[number];
+
+export function isLeaderboardRanking(value: unknown): value is LeaderboardRanking {
+  return (LEADERBOARD_RANKINGS as readonly unknown[]).includes(value);
 }
 
 /** One finished workout, as the board counts it. */
@@ -216,15 +228,60 @@ export function boardSpans(
 }
 
 /**
- * How far back the board needs workouts from: the start of last month.
+ * How far back the board needs workouts from: the start of the month before
+ * last.
  *
- * That covers every span either period can ask for — last week begins at
- * most thirteen days before this month does, and last month is at least
- * twenty-eight days long — so one request serves every toggle.
+ * That covers every span any toggle can ask for. The furthest back is Most
+ * improved's crown, which measures last period against the four weeks before
+ * it: last month began at least twenty-eight days after the month before it
+ * did, and last week begins at most thirteen days before this month, so the
+ * four weeks before it begin no earlier than forty-one days before this month.
+ * One request serves every toggle.
  */
 export function boardSince(now: Date): Date {
   const thisMonth = startOfMonth(now);
-  return new Date(thisMonth.getFullYear(), thisMonth.getMonth() - 1, 1);
+  return new Date(thisMonth.getFullYear(), thisMonth.getMonth() - 2, 1);
+}
+
+/** How many days of your own training "usual" is taken from. */
+export const USUAL_DAYS = 28;
+
+/** The four weeks before a period began: what Most improved measures it against. */
+export function usualSpan(period: Span): Span {
+  const start = new Date(period.start);
+  start.setDate(start.getDate() - USUAL_DAYS);
+  return { start, end: period.start };
+}
+
+/**
+ * Somebody's usual for a whole period, in the stat's own units: what they did
+ * in the four weeks before it began, scaled to its length. A week's usual is a
+ * quarter of those four weeks; a 31-day month's is 31/28 of them.
+ *
+ * Zero when they did nothing in those four weeks.
+ */
+export function usualScore(
+  workouts: readonly BoardWorkout[],
+  period: Span,
+  stat: LeaderboardStat,
+  unitSystem: UnitSystem,
+): number {
+  const before = boardScore(boardTotals(workouts, usualSpan(period)), stat, unitSystem);
+  return (before * daysBetween(period.start, period.end)) / USUAL_DAYS;
+}
+
+/**
+ * A score as a whole percentage of usual: 100 is a usual period, 150 half as
+ * much again. Ranked in whole percent, as it reads, so two people who both say
+ * "120%" are level.
+ *
+ * Null with no usual to measure against: somebody new, or back after a month
+ * off. Any workout at all would be an infinite improvement, so they are not
+ * ranked until something of theirs falls in the four weeks before a period.
+ */
+export function improvementScore(score: number, usual: number): number | null {
+  if (!Number.isFinite(usual) || usual <= 0) return null;
+  return Math.round((Math.max(0, score) / usual) * 100);
 }
 
 export interface BoardEntry<Id> {

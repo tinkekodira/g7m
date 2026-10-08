@@ -3,8 +3,10 @@ import { Link, useSearchParams } from 'react-router';
 import {
   boardSince,
   isLeaderboardPeriod,
+  isLeaderboardRanking,
   isLeaderboardStat,
   type LeaderboardPeriod,
+  type LeaderboardRanking,
   type LeaderboardStat,
 } from '@g7m/core';
 import { SegmentedControl, cx } from '@g7m/ui';
@@ -15,6 +17,7 @@ import { fetchLeaderboard } from '../lib/friends/api.js';
 import { useMyBoard, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
 import {
   PERIOD_OPTIONS,
+  RANKING_OPTIONS,
   STAT_OPTIONS,
   leaderboard,
   type BoardRowView,
@@ -22,14 +25,15 @@ import {
 
 /**
  * Friends' leaderboard: you and every friend who shares, ranked on one stat
- * over this week or this month (ADR-0106).
+ * over this week or this month (ADR-0106) — by the most done, or by the most
+ * improved on their own last four weeks (ADR-0109).
  *
  * One request fetches everything either toggle can show — every friend's
  * workouts since the start of last month — so switching stat or period is
  * instant once loaded. Your own row comes from this phone, so a workout you
  * just finished is on the board before it has uploaded.
  *
- * The stat and period live in the address, like the sub-tab, so going into a
+ * The ranking, stat and period live in the address, like the sub-tab, so going into a
  * friend's page and back lands on the same board.
  */
 export function FriendsLeaderboard({
@@ -40,8 +44,10 @@ export function FriendsLeaderboard({
   readonly code: string | null;
 }) {
   const [params, setParams] = useSearchParams();
+  const askedRanking = params.get('rank');
   const askedStat = params.get('stat');
   const askedPeriod = params.get('period');
+  const ranking: LeaderboardRanking = isLeaderboardRanking(askedRanking) ? askedRanking : 'most';
   const stat: LeaderboardStat = isLeaderboardStat(askedStat) ? askedStat : 'workouts';
   const period: LeaderboardPeriod = isLeaderboardPeriod(askedPeriod) ? askedPeriod : 'week';
 
@@ -56,6 +62,7 @@ export function FriendsLeaderboard({
   const view = useMemo(() => {
     if (friends.data === null || myBoard.data === null) return null;
     return leaderboard(friends.data, myBoard.data, {
+      ranking,
       stat,
       period,
       now: new Date(),
@@ -63,9 +70,9 @@ export function FriendsLeaderboard({
       unitSystem: mine.unitSystem,
       myName: mine.displayName,
     });
-  }, [friends.data, myBoard.data, stat, period, mine]);
+  }, [friends.data, myBoard.data, ranking, stat, period, mine]);
 
-  const choose = (key: 'stat' | 'period', value: string) => {
+  const choose = (key: 'rank' | 'stat' | 'period', value: string) => {
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -80,6 +87,14 @@ export function FriendsLeaderboard({
 
   return (
     <section aria-label="Leaderboard" className="flex flex-col gap-3">
+      <SegmentedControl
+        label="Rank by"
+        options={RANKING_OPTIONS}
+        value={ranking}
+        onChange={(value) => {
+          choose('rank', value);
+        }}
+      />
       <SegmentedControl
         label="Stat"
         options={STAT_OPTIONS}
