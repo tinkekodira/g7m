@@ -144,10 +144,10 @@ test('the challenge form: options share the track, the highlight fits its option
   /** Each group: its options' widths, and the highlight's gaps to the chosen one and the track. */
   const measure = () =>
     form.evaluate((section) =>
-      [...section.querySelectorAll('[role="radiogroup"]')].map((group) => {
+      Array.from(section.querySelectorAll('[role="radiogroup"]'), (group) => {
         const track = group.getBoundingClientRect();
         const indicator = group.querySelector('[aria-hidden]')!.getBoundingClientRect();
-        const radios = [...group.querySelectorAll('[role="radio"]')];
+        const radios = Array.from(group.querySelectorAll('[role="radio"]'));
         const chosen = radios
           .find((radio) => radio.getAttribute('aria-checked') === 'true')!
           .getBoundingClientRect();
