@@ -7191,3 +7191,31 @@ that merges.
 - `challenges.spec.ts`: accept one from Requests, fall a set behind, train,
   go a set ahead; send one from a friend's page, be told Most improved needs
   four weeks, send Most, and take it back.
+
+## ADR-0111 — History numbers sets the way the logger does
+
+**Status:** accepted · **Date:** 2026-10-09 · **Phase:** out of phase (fix) · **Follows:** ADR-0079
+
+The person it is for: someone who warmed up for a squat, then opens the
+workout afterwards. The logger called the working set "Set 1". The workout's
+page called it "Set 6", because it counted the five warm-ups in front of it,
+and called each warm-up just "Warm-up".
+
+### What changed
+
+- `numberSets` moved out of `WorkoutScreen` into `screens/set-numbers.ts`,
+  with `setTitle`. The logger and `SessionBody` (your workout's page and a
+  friend's) both number from it: warm-ups counted apart, working sets from 1.
+- The history now reads "Warm-up 1 … Warm-up 5, Set 1", the same words the
+  logger used for the same rows.
+
+This is the first of the supersets and dropsets stack. A drop will need a
+third kind of label, and it should be added once, in this file.
+
+### Tests
+
+- `set-numbers.test.ts`: warm-ups apart, the first working set marked, a
+  warm-up after the working sets began, and other set kinds called sets.
+- `warmup.spec.ts`: ramp a squat, finish, and the workout's page shows
+  "Set 1" and "Warm-up 1" to "Warm-up 5", never "Set 6". Red on the old
+  `SessionBody`.

@@ -10,6 +10,7 @@ import {
   type UnitSystem,
 } from '@g7m/core';
 import { boutSummary } from '../screens/bout-copy.js';
+import { numberSets, setTitle } from '../screens/set-numbers.js';
 import { formatWeightTotal } from './chart-scale.js';
 
 /**
@@ -157,13 +158,15 @@ export function SessionBody({
             <p className="text-sm text-muted">No sets logged.</p>
           ) : (
             <ul className="flex flex-col">
-              {block.sets.map((set, index) => (
+              {/* Numbered the way the logger numbers them, warm-ups apart, so
+                  the set called "Set 1" mid-workout is not "Set 3" here. */}
+              {numberSets(block.sets).map(({ set, number }) => (
                 <li
                   key={set.id}
                   className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
                 >
                   <span className="text-sm text-secondary">
-                    {set.setType === 'warmup' ? 'Warm-up' : `Set ${String(index + 1)}`}
+                    {setTitle(set.setType, number)}
                     {/* A set that was written down and never done is part of
                         the record of what happened, and hiding it would make
                         the list disagree with the totals above. */}

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { createUser } from './support/backend.js';
-import { logSet, signIn, startWith, waitForCatalogue } from './support/app.js';
+import { createUser, eventually, sql } from './support/backend.js';
+import { finishWorkout, logSet, signIn, startWith, waitForCatalogue } from './support/app.js';
 
 /**
  * The warm-up ramp.
@@ -82,6 +82,39 @@ test('warm-up sets do not count toward the workout total', async ({ page }) => {
     await page.getByRole('button', { name: `Complete warm-up ${String(index)}` }).click();
   }
   await expect(page.getByText(/500 kg lifted/)).toBeVisible();
+});
+
+/**
+ * The finished workout's page numbers sets the way the logger did. It used to
+ * count every row, so the working set the logger called "Set 1" came back from
+ * history as "Set 6" behind its five warm-ups.
+ */
+test('history numbers warm-ups apart from the working set', async ({ page }) => {
+  const user = await createUser('warmup-history', { onboarded: true });
+  await signIn(page, user);
+  await waitForCatalogue(page);
+
+  await startWith(page, 'Barbell Back Squat');
+  await logSet(page, 1, '100', '5');
+  await page.getByRole('button', { name: 'Warm-up', exact: true }).click();
+  for (let index = 1; index <= 5; index++) {
+    await page.getByRole('button', { name: `Complete warm-up ${String(index)}` }).click();
+  }
+  await finishWorkout(page);
+
+  // Waited for: the upload runs on the app's schedule, not the test's.
+  const [session] = await eventually(
+    () =>
+      sql<{ id: string }>('select id from public.workout_sessions where user_id = $1', [user.id]),
+    (rows) => rows.length > 0,
+  );
+  if (session === undefined) throw new Error('The workout never reached the server');
+
+  await page.goto(`/#/progress/session/${session.id}`);
+  await expect(page.getByText('Set 1', { exact: true })).toBeVisible();
+  await expect(page.getByText('Warm-up 1', { exact: true })).toBeVisible();
+  await expect(page.getByText('Warm-up 5', { exact: true })).toBeVisible();
+  await expect(page.getByText('Set 6', { exact: true })).toHaveCount(0);
 });
 
 /** A percentage of "your own bodyweight" is not a weight anybody can load. */
