@@ -11,7 +11,11 @@ export { Chip } from './Chip.js';
 export { KitSlider, type KitPosition, type KitSliderProps } from './KitSlider.js';
 export type { ChipProps } from './Chip.js';
 export { SegmentedControl } from './SegmentedControl.js';
-export type { SegmentedControlProps, SegmentedOption } from './SegmentedControl.js';
+export type {
+  SegmentedControlProps,
+  SegmentedOption,
+  SegmentedVariant,
+} from './SegmentedControl.js';
 export { Stepper } from './Stepper.js';
 export type { StepperProps } from './Stepper.js';
 export { Switch } from './Switch.js';

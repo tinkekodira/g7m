@@ -118,3 +118,80 @@ test('challenging a friend from their page, and taking it back', async ({ page }
   await expect(page.getByRole('region', { name: 'Challenge Jordan' })).toBeVisible();
   await expect(page.getByRole('article', { name: 'Most weight lifted' })).toHaveCount(0);
 });
+
+/**
+ * The challenge form on the narrowest common phone. A label wider than its
+ * share once widened its option, so the highlight (always 1/n of the track)
+ * spilled past "Workouts" and sat off its centre. Measured on the live page.
+ */
+test('the challenge form: options share the track, the highlight fits its option', async ({
+  page,
+}) => {
+  const casey = await createUser('challenge-fit-casey', { onboarded: true, displayName: 'Casey' });
+  const jordan = await createUser('challenge-fit-jordan', {
+    onboarded: true,
+    displayName: 'Jordan',
+  });
+  await befriend(casey.id, jordan.id);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await signIn(page, casey);
+  await openTab(page, 'Friends');
+  await page.getByRole('link', { name: 'Jordan' }).click();
+  const form = page.getByRole('region', { name: 'Challenge Jordan' });
+  await expect(form.getByRole('radio', { name: 'Workouts' })).toBeVisible();
+
+  /** Each group: its options' widths, and the highlight's gaps to the chosen one and the track. */
+  const measure = () =>
+    form.evaluate((section) =>
+      Array.from(section.querySelectorAll('[role="radiogroup"]'), (group) => {
+        const track = group.getBoundingClientRect();
+        const indicator = group.querySelector('[aria-hidden]')!.getBoundingClientRect();
+        const radios = Array.from(group.querySelectorAll('[role="radio"]'));
+        const chosen = radios
+          .find((radio) => radio.getAttribute('aria-checked') === 'true')!
+          .getBoundingClientRect();
+        return {
+          widths: radios.map((radio) => Math.round(radio.getBoundingClientRect().width)),
+          offCentre: Math.abs(
+            indicator.left + indicator.width / 2 - (chosen.left + chosen.width / 2),
+          ),
+          widthGap: Math.abs(indicator.width - chosen.width),
+          top: indicator.top - track.top,
+          bottom: track.bottom - indicator.bottom,
+          height: track.height,
+        };
+      }),
+    );
+
+  const fits = async () => {
+    await expect
+      .poll(async () => {
+        const groups = await measure();
+        return groups.every(
+          (g) =>
+            Math.max(...g.widths) - Math.min(...g.widths) <= 1 &&
+            g.offCentre <= 1 &&
+            g.widthGap <= 1 &&
+            Math.abs(g.top - g.bottom) <= 1,
+        );
+      })
+      .toBe(true);
+  };
+
+  await fits();
+  await form.getByRole('radio', { name: 'Time' }).click();
+  await form.getByRole('radio', { name: 'Most improved' }).click();
+  await fits();
+
+  // Both controls the height of the button under them.
+  const button = await form.getByRole('button', { name: 'Send challenge' }).boundingBox();
+  for (const group of await measure())
+    expect(Math.abs(group.height - button!.height)).toBeLessThanOrEqual(1);
+
+  // Nothing pushes the page sideways.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBe(0);
+});
