@@ -7372,3 +7372,81 @@ Two decisions inside this:
     pull-up;
   - `supersets.spec.ts`: pick two, a round with the rest after it, Ungroup; a
     routine that keeps the superset; Time today 30 pairs the plan.
+
+## ADR-0113 — The friend card shows each person's best lifts
+
+**Status:** accepted · **Date:** 2026-10-09 · **Phase:** out of phase (change) · **Follows:** ADR-0105
+
+The people it is for:
+
+- A friend who has never deadlifted. Their card showed a dash under
+  "Deadlift" for ever, and a friend who did none of the three got three
+  dashes: a row that says nothing.
+- Somebody whose proudest lift is a 140 kg hip thrust. The card had no place
+  for it.
+
+The card's three columns were the same three lifts for everybody: squat,
+bench, deadlift. They are now **each person's own heaviest three**, under the
+caption "Best lifts".
+
+### The rule (`cardLifts` in core)
+
+- Heaviest first. A tie goes to the lift trained most recently, then by id,
+  so the card never reshuffles.
+- **No more than two leg lifts.** Legs move the most weight for nearly
+  everybody, so a plain top three is a row of leg numbers on every card, and
+  the bench would almost never appear. A leg lift is one whose primary movers
+  are all quads, hamstrings, glutes, calves or adductors (`isLegLift`), so the
+  hip thrust, RDL, squats, leg press, lunges and calf raises count.
+- **Deadlifts are not legs.** Conventional, trap-bar and kettlebell deadlifts
+  are always free to take a place. By muscles alone the trap-bar deadlift
+  (glutes as its only primary mover) would count as legs, so the three are
+  named outright.
+- **The cap gives way when there is nothing else.** Somebody who has logged
+  only leg lifts gets their third leg lift, not a dash.
+- Fewer than three lifts shows what there is. None shows "No lifts logged
+  yet".
+
+Milan's choices: heaviest three of anything, with the two-leg cap; deadlift
+not counted as legs; the fill rather than a dash.
+
+### The comparison
+
+The small "+10 / −5 / Level" beside their number is still the gap from your
+side. It shows only when you have logged that exercise too. Otherwise their
+number stands alone, and head-to-head on their page stays the place to compare
+the lifts you share.
+
+### Names
+
+A column is a third of a phone. Where the gym has a shorter name than the
+catalogue, the card uses it (`cardLiftName`): Squat, Bench, Deadlift, RDL,
+OHP, Hip Thrust, DB Bench, Cable Row and so on, in Title Case like the
+catalogue. A name with no shorter form anyone would recognise, like "Lat
+Pulldown", is shown in full and wraps. Each column is centred, so a wrapped
+name sits under itself.
+
+### Where it is decided
+
+On the phone, as ADR-0105 split it: the server sends facts, the phone has the
+rules. `training_summary` gains `bests`: every exercise's best and when it
+was last lifted, the same rows `friend_detail` already sent for head-to-head,
+so nothing is shared that was not before. The phone already has the
+catalogue's muscles, so the leg rule needs no copy in SQL. `big_three` stays
+in the reply, so a phone still on the old app keeps its three columns until
+it updates.
+
+### Tests
+
+- **Core:** `cardLifts` covers the cap (leg press, squat, RDL, bench → leg
+  press, squat, bench), the deadlift beside two leg lifts, the hip thrust,
+  the fill, fewer than three, ties, and a best that is not a weight. It goes
+  red with the cap at three. `isLegLift` covers deadlifts and a lift with no
+  movers. `cardLiftName` covers a short name and the fallback.
+- **Postgres:** `training_summary` sends `bests`, heaviest first, alongside
+  `big_three`.
+- **Web:** decoding `bests` (a best with no weight dropped). The card's own
+  lifts, the gap only for a lift you share, the cap, a shortened name, and
+  no lifts.
+- **e2e:** `friends.spec.ts`: Blake logs only a bench, and Alex's card shows
+  "Best lifts" with one column, 60 kg under "Bench", and no "Deadlift".

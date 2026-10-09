@@ -27,8 +27,25 @@ const NOW = local(2026, 10, 7, 18);
 const MOVERS: Movers = new Map([
   ['squat', [{ muscle: 'quadriceps', group: 'quads' }]],
   ['leg-press', [{ muscle: 'quadriceps', group: 'quads' }]],
+  ['rdl', [{ muscle: 'biceps-femoris', group: 'hamstrings' }]],
+  ['bench', [{ muscle: 'pectoralis-major', group: 'chest' }]],
+  ['pulldown', [{ muscle: 'latissimus-dorsi', group: 'back' }]],
   ['treadmill', []],
 ]);
+
+const CATALOGUE: readonly (readonly [id: string, slug: string, name: string])[] = [
+  ['squat', 'barbell-back-squat', 'Barbell Back Squat'],
+  ['leg-press', 'leg-press', 'Leg Press'],
+  ['rdl', 'romanian-deadlift', 'Romanian Deadlift'],
+  ['bench', 'barbell-bench-press', 'Barbell Bench Press'],
+  ['pulldown', 'lat-pulldown', 'Lat Pulldown'],
+];
+
+const best = (exerciseId: string, bestKg: number) => ({
+  exerciseId,
+  bestKg,
+  lastAt: local(2026, 10, 6, 17),
+});
 
 const summary = (over: Partial<WorkoutSummary> = {}): WorkoutSummary => ({
   id: 's1',
@@ -49,10 +66,7 @@ const training = (over: Partial<FriendTraining> = {}): FriendTraining => ({
   lastActiveAt: new Date(NOW.getTime() - 60_000),
   daysPerWeek: 2,
   trainedAt: [local(2026, 10, 6, 17), local(2026, 9, 28), local(2026, 9, 30)],
-  bigThree: new Map([
-    ['barbell-back-squat', 140],
-    ['barbell-bench-press', 100],
-  ]),
+  bests: [best('squat', 140), best('bench', 100), best('pulldown', 70)],
   lastWorkout: summary(),
   ...over,
 });
@@ -61,12 +75,15 @@ const CONTEXT: CardContext = {
   now: NOW,
   weekStartsOn: 1,
   unitSystem: 'metric',
-  myBigThree: new Map([
-    ['barbell-back-squat', 150],
-    ['barbell-bench-press', 100],
-    ['conventional-deadlift', 180],
-  ]),
+  myBests: new Map(
+    [best('squat', 150), best('bench', 100), best('deadlift', 180)].map((mine) => [
+      mine.exerciseId,
+      mine,
+    ]),
+  ),
   movers: MOVERS,
+  names: new Map(CATALOGUE.map(([id, , name]) => [id, name])),
+  slugs: new Map(CATALOGUE.map(([id, slug]) => [id, slug])),
 };
 
 describe('summaryTitle', () => {
@@ -157,16 +174,40 @@ describe('friendCard', () => {
     ]);
     // Last week had two days, this week has one so far: one week, not broken.
     expect(card.streak).toBe('1 week');
+    // Their own lifts, heaviest first; a gap only where you have done it too.
     expect(card.lifts?.map((lift) => [lift.label, lift.theirs, lift.delta?.text ?? null])).toEqual([
       ['Squat', '140 kg', '+10'],
       ['Bench', '100 kg', 'Level'],
-      ['Deadlift', '—', null],
+      ['Lat Pulldown', '70 kg', null],
     ]);
+    expect(card.lifts?.map((lift) => lift.exerciseId)).toEqual(['squat', 'bench', 'pulldown']);
     expect(card.lastWorkout).toMatchObject({
       sessionId: 's1',
       when: 'Yesterday',
       duration: '1h 18m',
     });
+  });
+
+  it('keeps a third leg lift off the card when there is an upper-body one', () => {
+    const card = friendCard(
+      friend({
+        training: training({
+          bests: [best('leg-press', 250), best('squat', 140), best('rdl', 120), best('bench', 90)],
+        }),
+      }),
+      CONTEXT,
+    );
+    expect(card.lifts?.map((lift) => lift.label)).toEqual(['Leg Press', 'Squat', 'Bench']);
+  });
+
+  it('shortens a long name the gym has a short one for', () => {
+    const card = friendCard(friend({ training: training({ bests: [best('rdl', 120)] }) }), CONTEXT);
+    expect(card.lifts?.map((lift) => lift.label)).toEqual(['RDL']);
+  });
+
+  it('shows no lifts, rather than dashes, for somebody who has logged none', () => {
+    const card = friendCard(friend({ training: training({ bests: [] }) }), CONTEXT);
+    expect(card.lifts).toEqual([]);
   });
 
   it('gives a friend who is not sharing a name and nothing else', () => {

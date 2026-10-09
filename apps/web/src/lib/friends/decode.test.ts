@@ -27,6 +27,10 @@ const TRAINING = {
   days_per_week: 3,
   trained_at: ['2026-10-06T17:00:00+00:00', 'not a date'],
   big_three: [{ slug: 'barbell-bench-press', best_kg: 102.5 }],
+  bests: [
+    { exercise_id: 'e1', best_kg: 102.5, last_at: '2026-10-06T17:00:00+00:00' },
+    { exercise_id: 'e2', best_kg: null, last_at: '2026-10-06T17:00:00+00:00' },
+  ],
   last_workout: SUMMARY,
 };
 
@@ -45,7 +49,9 @@ describe('decodeOverview', () => {
     expect(overview.me).toEqual({ code: 'K7PX4M', sharing: true });
     expect(overview.requests[0]?.requestedAt.toISOString()).toBe('2026-10-07T09:00:00.000Z');
     const [alex, quiet] = overview.friends;
-    expect(alex?.training?.bigThree.get('barbell-bench-press')).toBe(102.5);
+    expect(alex?.training?.bests).toEqual([
+      { exerciseId: 'e1', bestKg: 102.5, lastAt: new Date('2026-10-06T17:00:00Z') },
+    ]);
     expect(alex?.training?.trainedAt).toHaveLength(1);
     expect(alex?.training?.lastWorkout?.work).toEqual([{ exerciseId: 'e1', sets: 3 }]);
     expect(quiet).toEqual({ userId: 'u4', name: null, sharing: false, training: null });

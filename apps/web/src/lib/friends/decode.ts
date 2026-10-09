@@ -40,8 +40,8 @@ export interface FriendTraining {
   readonly daysPerWeek: number | null;
   /** When each finished workout of the last year started, newest first. */
   readonly trainedAt: readonly Date[];
-  /** Best kilograms by catalogue slug, for the three lifts every card shows. */
-  readonly bigThree: ReadonlyMap<string, number>;
+  /** Their best on every lift they have done, for the card to choose its three from. */
+  readonly bests: readonly FriendBest[];
   readonly lastWorkout: WorkoutSummary | null;
 }
 
@@ -266,14 +266,17 @@ export function decodeWorkoutSummary(value: unknown): WorkoutSummary {
   };
 }
 
+function decodeBest(value: unknown): FriendBest {
+  const best = record(value);
+  return {
+    exerciseId: string(best['exercise_id']),
+    bestKg: number(best['best_kg'], 0),
+    lastAt: date(best['last_at']),
+  };
+}
+
 export function decodeTraining(value: unknown): FriendTraining {
   const data = record(value);
-  const bigThree = new Map<string, number>();
-  for (const entry of list(data['big_three'])) {
-    const lift = record(entry);
-    const kg = optionalNumber(lift['best_kg']);
-    if (kg !== null) bigThree.set(string(lift['slug']), kg);
-  }
   const last = data['last_workout'];
   return {
     lastActiveAt: optionalDate(data['last_active_at']),
@@ -282,7 +285,10 @@ export function decodeTraining(value: unknown): FriendTraining {
       const parsed = optionalDate(at);
       return parsed === null ? [] : [parsed];
     }),
-    bigThree,
+    // A best with no weight is no best; the card would show it as a dash.
+    bests: list(data['bests'])
+      .map(decodeBest)
+      .filter((best) => best.bestKg > 0),
     lastWorkout: last === null || last === undefined ? null : decodeWorkoutSummary(last),
   };
 }
@@ -328,14 +334,7 @@ export function decodeDetail(value: unknown): FriendDetail {
     userId: string(data['user_id']),
     name: optionalString(data['name']),
     training: decodeTraining(data['training']),
-    bests: list(data['bests']).map((entry) => {
-      const best = record(entry);
-      return {
-        exerciseId: string(best['exercise_id']),
-        bestKg: number(best['best_kg'], 0),
-        lastAt: date(best['last_at']),
-      };
-    }),
+    bests: list(data['bests']).map(decodeBest),
     recent: list(data['recent']).map(decodeWorkoutSummary),
   };
 }

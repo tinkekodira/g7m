@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BIG_THREE,
   DEFAULT_STREAK_DAYS_PER_WEEK,
   FRIEND_CODE_ALPHABET,
   bestLiftsByExercise,
+  cardLiftName,
+  cardLifts,
   checkFriendCode,
   compareLifts,
   describeDot,
   describePresence,
   describeStreak,
   describeWorkoutDay,
+  isLegLift,
   normaliseFriendCode,
   sharedLifts,
   weekDots,
@@ -295,13 +297,97 @@ describe('sharedLifts', () => {
       defaultId: null,
     });
   });
+});
 
-  it('knows the three lifts every card shows', () => {
-    expect(BIG_THREE.map((lift) => lift.slug)).toEqual([
-      'barbell-back-squat',
-      'barbell-bench-press',
-      'conventional-deadlift',
-    ]);
+describe('isLegLift', () => {
+  it('is a lift whose primary movers are all in the legs and hips', () => {
+    expect(isLegLift('barbell-back-squat', ['quads', 'glutes'])).toBe(true);
+    expect(isLegLift('barbell-hip-thrust', ['glutes'])).toBe(true);
+    expect(isLegLift('romanian-deadlift', ['hamstrings'])).toBe(true);
+    expect(isLegLift('standing-calf-raise', ['calves'])).toBe(true);
+  });
+
+  it('never counts a deadlift, whatever its muscles say', () => {
+    expect(isLegLift('conventional-deadlift', ['back', 'glutes'])).toBe(false);
+    expect(isLegLift('trap-bar-deadlift', ['glutes'])).toBe(false);
+    expect(isLegLift('kettlebell-deadlift', ['glutes', 'hamstrings'])).toBe(false);
+  });
+
+  it('is not an upper-body lift, nor one with nothing to go on', () => {
+    expect(isLegLift('barbell-bench-press', ['chest'])).toBe(false);
+    expect(isLegLift('farmer-carry', ['forearms', 'traps'])).toBe(false);
+    expect(isLegLift('treadmill', [])).toBe(false);
+    expect(isLegLift(undefined, ['quads'])).toBe(true);
+  });
+});
+
+describe('cardLifts', () => {
+  const lift = (exerciseId: string, bestKg: number, day = 1) => ({
+    exerciseId,
+    bestKg,
+    lastAt: local(2026, 10, day),
+  });
+  const LEGS = new Set(['squat', 'leg-press', 'rdl', 'hip-thrust', 'lunge']);
+  const isLeg = (id: string) => LEGS.has(id);
+
+  it('takes the heaviest three, but no more than two of them legs', () => {
+    expect(
+      cardLifts(
+        [lift('bench', 100), lift('squat', 140), lift('rdl', 120), lift('leg-press', 250)],
+        isLeg,
+      ),
+    ).toEqual(['leg-press', 'squat', 'bench']);
+  });
+
+  it('leaves the deadlift free to take a place beside two leg lifts', () => {
+    expect(
+      cardLifts(
+        [lift('leg-press', 250), lift('deadlift', 180), lift('squat', 140), lift('bench', 100)],
+        isLeg,
+      ),
+    ).toEqual(['leg-press', 'deadlift', 'squat']);
+  });
+
+  it('shows a hip thrust somebody is proud of', () => {
+    expect(
+      cardLifts(
+        [lift('hip-thrust', 140), lift('squat', 80), lift('rdl', 70), lift('bench', 50)],
+        isLeg,
+      ),
+    ).toEqual(['hip-thrust', 'squat', 'bench']);
+  });
+
+  it('fills with a third leg lift when there is nothing else', () => {
+    expect(cardLifts([lift('hip-thrust', 140), lift('squat', 80), lift('rdl', 70)], isLeg)).toEqual(
+      ['hip-thrust', 'squat', 'rdl'],
+    );
+  });
+
+  it('shows fewer than three when there are fewer, and none when there are none', () => {
+    expect(cardLifts([lift('bench', 60)], isLeg)).toEqual(['bench']);
+    expect(cardLifts([], isLeg)).toEqual([]);
+  });
+
+  it('breaks a tie by the lift trained most recently', () => {
+    expect(cardLifts([lift('row', 80, 1), lift('bench', 80, 5), lift('press', 50)], isLeg)).toEqual(
+      ['bench', 'row', 'press'],
+    );
+  });
+
+  it('ignores a best that is not a weight', () => {
+    expect(cardLifts([lift('bench', 0), lift('row', Number.NaN)], isLeg)).toEqual([]);
+  });
+});
+
+describe('cardLiftName', () => {
+  it('uses the name the gym uses, where it is shorter', () => {
+    expect(cardLiftName('romanian-deadlift', 'Romanian Deadlift')).toBe('RDL');
+    expect(cardLiftName('barbell-bench-press', 'Barbell Bench Press')).toBe('Bench');
+  });
+
+  it('keeps the catalogue name where there is no shorter one', () => {
+    expect(cardLiftName('lat-pulldown', 'Lat Pulldown')).toBe('Lat Pulldown');
+    expect(cardLiftName(undefined, 'Leg Press')).toBe('Leg Press');
   });
 });
 
