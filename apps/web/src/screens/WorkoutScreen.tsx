@@ -56,6 +56,7 @@ import {
 } from './workout-timer.js';
 import { addedExerciseId, exerciseAnchor, exerciseToReveal } from './added-exercise.js';
 import { dayTitle } from './calendar-view.js';
+import { numberSets, setTitle } from './set-numbers.js';
 
 /**
  * The logger.
@@ -1146,36 +1147,6 @@ function ExerciseCard({
   );
 }
 
-/**
- * Which number each set wears, counting warm-ups and working sets separately.
- *
- * A ramp put in front of a working set must not renumber it: adding four
- * warm-ups to an exercise turned "Set 1" into "Set 5", which is the app
- * disagreeing with every training program ever written. Warm-ups get their own
- * count, and the tick's accessible name follows the same rule — "Complete
- * warm-up 2" and "Complete set 1" are different things to be told.
- *
- * `isFirstWorking` marks the row whose weight the warm-up button ramps to.
- */
-function numberSets(
-  sets: readonly SessionSet[],
-): { set: SessionSet; number: number; isFirstWorking: boolean }[] {
-  let warmups = 0;
-  let working = 0;
-  let seenWorking = false;
-
-  return sets.map((set) => {
-    if (set.setType === 'warmup') {
-      warmups += 1;
-      return { set, number: warmups, isFirstWorking: false };
-    }
-    working += 1;
-    const first = !seenWorking;
-    seenWorking = true;
-    return { set, number: working, isFirstWorking: first };
-  });
-}
-
 /** Whichever of two moments is later, either of which may be missing. */
 function laterOf(a: Date | null, b: Date | null): Date | null {
   if (a === null) return b;
@@ -1350,7 +1321,7 @@ function SetRow({
   };
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
-  const title = set.setType === 'warmup' ? `Warm-up ${String(number)}` : `Set ${String(number)}`;
+  const title = setTitle(set.setType, number);
   const tickLabel = `${set.isCompleted ? 'Undo' : 'Complete'} ${
     set.setType === 'warmup' ? 'warm-up' : 'set'
   } ${String(number)}`;
