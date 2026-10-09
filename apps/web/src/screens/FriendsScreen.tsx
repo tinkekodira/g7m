@@ -121,10 +121,20 @@ export function FriendsScreen() {
             <FriendList overview={overview.data} mine={mine.data} />
           ) : tab === 'leaderboard' ? (
             <>
-              {overview.data.friends.length > 0 && cards !== null && (
+              {overview.data.friends.length > 0 && cards !== null && cards.others.length > 0 && (
                 <ChallengesSection cards={cards.others} onChanged={challenges.reload} />
               )}
-              <FriendsLeaderboard mine={mine.data} code={code} />
+              <FriendsLeaderboard mine={mine.data} code={code}>
+                {/* With no challenges yet, where one starts — under the board
+                    rather than above it, so the board comes first. */}
+                {overview.data.friends.length > 0 &&
+                  cards !== null &&
+                  cards.others.length === 0 && (
+                    <p className="text-xs text-muted">
+                      Challenge a friend to a week: open their page and pick a stat.
+                    </p>
+                  )}
+              </FriendsLeaderboard>
             </>
           ) : (
             <RequestList
@@ -371,13 +381,6 @@ function ChallengesSection({
   readonly cards: readonly ChallengeCardView[];
   readonly onChanged: () => void;
 }) {
-  if (cards.length === 0) {
-    return (
-      <p className="text-sm text-secondary">
-        Challenge a friend to a week: open their page and pick a stat.
-      </p>
-    );
-  }
   return (
     <section aria-labelledby="challenges-heading" className="flex flex-col gap-3">
       <h2 id="challenges-heading" className="text-lg font-semibold text-primary">

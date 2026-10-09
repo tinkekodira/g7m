@@ -62,6 +62,14 @@
   --badge-cardio: #6f9fd8;
   --badge-secret: #a88bd9;
 
+  /* --- Leaderboard places ---
+     The edge round first, second and third. Decorative, never text on its
+     own: the rank number says the same. Darker in the light theme, where
+     silver on white would vanish. */
+  --medal-gold: #cfab35;
+  --medal-silver: #b4b5b9;
+  --medal-bronze: #c27a38;
+
   /* --- Anatomy model --- */
   --muscle-idle: #4a4844;
   --muscle-hover: #d97757;
@@ -124,6 +132,10 @@
   --badge-cardio: #2e6aa8;
   --badge-secret: #6b4aa5;
 
+  --medal-gold: #9c7a14;
+  --medal-silver: #86878c;
+  --medal-bronze: #a0612a;
+
   --bg-stage: #e6e2d9;
 
   /* The page colour, a step down from the white card. The transparent WebP
@@ -163,6 +175,10 @@
 
   --color-badge-cardio: var(--badge-cardio);
   --color-badge-secret: var(--badge-secret);
+
+  --color-medal-gold: var(--medal-gold);
+  --color-medal-silver: var(--medal-silver);
+  --color-medal-bronze: var(--medal-bronze);
 
   --color-muscle-idle: var(--muscle-idle);
   --color-muscle-hover: var(--muscle-hover);
