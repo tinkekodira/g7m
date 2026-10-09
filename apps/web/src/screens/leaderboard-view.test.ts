@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BoardWorkout } from '@g7m/core';
 import type { BoardFriend } from '../lib/friends/api.js';
 import {
+  boardSummary,
   leaderboard,
   scoreText,
   scoreWords,
@@ -106,10 +107,8 @@ describe('the board', () => {
   });
 
   it('says how long the period has left, and what the weight counts', () => {
-    expect(leaderboard([alex], mine, CONTEXT).heading).toBe('This week · 5 days left');
-    expect(leaderboard([alex], mine, { ...CONTEXT, period: 'month' }).heading).toBe(
-      'This month · 25 days left',
-    );
+    expect(leaderboard([alex], mine, CONTEXT).left).toBe('5 days left');
+    expect(leaderboard([alex], mine, { ...CONTEXT, period: 'month' }).left).toBe('25 days left');
     expect(leaderboard([alex], mine, CONTEXT).footnote).toBeNull();
     expect(leaderboard([alex], mine, { ...CONTEXT, stat: 'lifted' }).footnote).toMatch(
       /count only the weight added/,
@@ -144,6 +143,36 @@ describe('the gap under your name', () => {
   it('stays quiet when nobody has trained yet', () => {
     const view = leaderboard([friend('sam', 'Sam', [])], [], CONTEXT);
     expect(view.rows.find((row) => row.isYou)?.note).toBeNull();
+  });
+});
+
+describe('the bars and the pinned summary', () => {
+  const alex = friend('alex', 'Alex', [workout(MONDAY), workout(TUESDAY)]);
+  const sam = friend('sam', 'Sam', [workout(MONDAY)]);
+
+  it('measures each bar against the leader, and gives no bar without a place', () => {
+    const view = leaderboard([alex, sam], [], CONTEXT);
+    expect(view.rows.map((row) => [row.name, row.share])).toEqual([
+      ['Alex', 1],
+      ['Sam', 0.5],
+      ['You', null],
+    ]);
+  });
+
+  it('says your place and the gap to the next one', () => {
+    expect(leaderboard([alex, sam], [workout(MONDAY)], CONTEXT).standing).toEqual({
+      place: 'You’re #2',
+      gap: '1 workout behind Alex',
+    });
+    expect(leaderboard([alex, sam], [], CONTEXT).standing).toEqual({
+      place: 'No place yet',
+      gap: '1 workout behind Sam',
+    });
+  });
+
+  it('sums up the three choices in the controls’ own words', () => {
+    expect(boardSummary('most', 'workouts', 'week')).toBe('Most workouts this week');
+    expect(boardSummary('improved', 'lifted', 'month')).toBe('Most improved: weight this month');
   });
 });
 

@@ -50,3 +50,36 @@ textarea,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* A friend's avatar in a colour of their own (Avatar's `tint`). The hue comes
+   from their name; lightness and chroma are fixed per theme, so every hue
+   sits at the same weight and the initial keeps its contrast (about 7:1 in
+   the dark theme, 6:1 in the light). */
+.avatar-tint {
+  background-color: oklch(0.33 0.05 var(--avatar-hue));
+  color: oklch(0.87 0.08 var(--avatar-hue));
+  box-shadow: inset 0 0 0 1px oklch(0.5 0.07 var(--avatar-hue) / 0.5);
+}
+
+:root[data-theme='light'] .avatar-tint {
+  background-color: oklch(0.93 0.035 var(--avatar-hue));
+  color: oklch(0.42 0.1 var(--avatar-hue));
+  box-shadow: inset 0 0 0 1px oklch(0.72 0.07 var(--avatar-hue) / 0.5);
+}
+
+/* First, second and third on the leaderboard: a thin metal edge, lighter at
+   the top left and darker at the bottom right, so it reads as metal rather
+   than as a coloured outline. The fill is set by the row (`--place-fill`),
+   so your own row keeps its accent wash inside the edge. */
+.place-edge {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--place-fill), var(--place-fill)) padding-box,
+    linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--place-metal) 65%, white),
+        var(--place-metal) 45%,
+        color-mix(in oklab, var(--place-metal) 70%, black)
+      )
+      border-box;
+}

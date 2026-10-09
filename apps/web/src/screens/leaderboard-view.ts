@@ -55,6 +55,29 @@ export const PERIOD_OPTIONS: readonly {
   { value: 'month', label: 'This month' },
 ];
 
+const STAT_NOUNS: Record<LeaderboardStat, string> = {
+  workouts: 'workouts',
+  lifted: 'weight',
+  sets: 'sets',
+  minutes: 'time',
+};
+
+/**
+ * The three choices as one line, for the filter bar while it is shut: "Most
+ * workouts this week", "Most improved: sets this month". Uses the controls'
+ * own words, so the bar and what opens under it agree.
+ */
+export function boardSummary(
+  ranking: LeaderboardRanking,
+  stat: LeaderboardStat,
+  period: LeaderboardPeriod,
+): string {
+  const when = period === 'week' ? 'this week' : 'this month';
+  return ranking === 'most'
+    ? `Most ${STAT_NOUNS[stat]} ${when}`
+    : `Most improved: ${STAT_NOUNS[stat]} ${when}`;
+}
+
 /** The score as the row shows it: `5`, `12,450 kg`, `3h 5m`. */
 export function scoreText(score: number, stat: LeaderboardStat, unitSystem: UnitSystem): string {
   switch (stat) {
@@ -148,6 +171,11 @@ export interface BoardRowView {
   readonly score: number;
   readonly scoreText: string;
   /**
+   * The score as a fraction of the leader's, 0 to 1, for the bar under it.
+   * Null for anybody without a place, who has no bar.
+   */
+  readonly share: number | null;
+  /**
    * First last week (or last month, on the month's board). Shared on a tie,
    * and nobody's for a period in which nobody did anything.
    */
@@ -164,8 +192,13 @@ export interface BoardRowView {
 
 export interface BoardView {
   readonly rows: readonly BoardRowView[];
-  /** "This week · 5 days left". */
-  readonly heading: string;
+  /** "5 days left", or "Last day". */
+  readonly left: string;
+  /**
+   * Your place and the gap to the next one, for the summary pinned above the
+   * tab bar: "You’re #2" and "1 workout behind Sam". The gap is your row's note.
+   */
+  readonly standing: { readonly place: string; readonly gap: string | null };
   /** Friends not sharing, who are not on the board. Null when there are none. */
   readonly notSharing: string | null;
   /** What the weight counts, said once under the list. Null for the other stats. */
@@ -283,6 +316,8 @@ export function leaderboard(
         ? null
         : 'Nothing to measure against yet';
 
+  const top = ranked.find((entry) => entry.rank !== null)?.score ?? 0;
+
   const shown = (score: number) =>
     improved ? `${String(score)}%` : scoreText(score, stat, unitSystem);
   const said = (score: number) =>
@@ -323,6 +358,7 @@ export function leaderboard(
       rankText: rank === null ? '–' : String(rank),
       score,
       scoreText: measured ? shown(score) : 'New',
+      share: rank === null || top <= 0 ? null : Math.min(1, score / top),
       champion,
       move,
       moveText: move === 0 ? null : `${move > 0 ? '▲' : '▼'}${String(Math.abs(move))}`,
@@ -359,7 +395,14 @@ export function leaderboard(
 
   return {
     rows,
-    heading: `${period === 'week' ? 'This week' : 'This month'} · ${timeLeft(spans.current.end, now)}`,
+    left: timeLeft(spans.current.end, now),
+    standing: {
+      place: (() => {
+        const rank = rows.find((entry) => entry.isYou)?.rank ?? null;
+        return rank === null ? 'No place yet' : `You’re #${String(rank)}`;
+      })(),
+      gap: note,
+    },
     notSharing,
     footnote: footnotes.length === 0 ? null : footnotes.join(' '),
     alone: friends.length === 0,

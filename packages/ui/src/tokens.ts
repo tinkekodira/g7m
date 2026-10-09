@@ -37,6 +37,10 @@ export const colorTokens = {
   'badge-cardio': '#6f9fd8',
   'badge-secret': '#a88bd9',
 
+  'medal-gold': '#cfab35',
+  'medal-silver': '#b4b5b9',
+  'medal-bronze': '#c27a38',
+
   'muscle-idle': '#4a4844',
   'muscle-hover': '#d97757',
   'muscle-selected': '#e8a184',
@@ -84,6 +88,10 @@ export const lightColorTokens = {
 
   'badge-cardio': '#2e6aa8',
   'badge-secret': '#6b4aa5',
+
+  'medal-gold': '#9c7a14',
+  'medal-silver': '#86878c',
+  'medal-bronze': '#a0612a',
 
   'bg-stage': '#e6e2d9',
   'bg-demo': '#f5f3ee',

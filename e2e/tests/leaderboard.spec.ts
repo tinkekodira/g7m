@@ -38,7 +38,10 @@ async function rileyTrained(userId: string, startedAt: Date): Promise<void> {
 async function openBoard(page: Page): Promise<void> {
   await openTab(page, 'Friends');
   await page.getByRole('tab', { name: 'Leaderboard' }).click();
+  // The choices sit behind one bar that says what the board shows.
+  await page.getByRole('button', { name: /^Most workouts this week/ }).click();
   await page.getByRole('radio', { name: 'Sets' }).click();
+  await expect(page.getByRole('button', { name: /^Most sets this week/ })).toBeVisible();
 }
 
 test('the leaderboard: a set behind last week’s winner, then a set ahead', async ({ page }) => {
