@@ -106,3 +106,38 @@ test('the coach pairs exercises up when time today is short', async ({ page }) =
   await page.getByRole('button', { name: 'Start this workout' }).click();
   await expect(page.getByRole('region', { name: 'Superset' }).first()).toBeVisible();
 });
+
+test('the Superset card keeps one line and even padding on a narrow phone', async ({ page }) => {
+  const user = await createUser('superset-card', { onboarded: true });
+  await page.setViewportSize({ width: 320, height: 640 });
+  await signIn(page, user);
+  await page.getByRole('link', { name: /Start your own workout/ }).click();
+  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await page.getByRole('link', { name: '+ Add an exercise' }).click();
+
+  const toggle = page.getByRole('switch', { name: /^Superset/ });
+  // The card you see is the section round the switch, not the switch itself.
+  const card = page.locator('section').filter({ has: toggle });
+  for (const description of ['Back to back, then rest.', 'Pick in workout order.']) {
+    if (description.startsWith('Pick')) await toggle.click();
+    // The real words first: measuring before they load measures an empty box.
+    const line = toggle.getByText(description, { exact: true });
+    await expect(line).toBeVisible();
+
+    const lines = await line.evaluate(
+      (element: HTMLElement) =>
+        element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight),
+    );
+    expect(lines).toBeLessThan(1.5);
+
+    // The name and the line under it, against the card's edges.
+    const outer = await card.boundingBox();
+    const block = await line.locator('..').boundingBox();
+    if (outer === null || block === null) throw new Error('The Superset card is not on screen');
+    const top = block.y - outer.y;
+    const bottom = outer.y + outer.height - (block.y + block.height);
+    const left = block.x - outer.x;
+    expect(Math.abs(top - bottom)).toBeLessThanOrEqual(1);
+    expect(Math.abs(top - left)).toBeLessThanOrEqual(1);
+  }
+});
