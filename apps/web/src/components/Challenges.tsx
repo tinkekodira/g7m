@@ -59,7 +59,7 @@ export function ChallengeCard({
   return (
     <article aria-labelledby={titleId} className="rounded-card border border-subtle bg-surface p-4">
       <div className="flex items-center gap-3">
-        <Avatar name={card.avatarName} />
+        <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
           <h3 id={titleId} className="truncate text-base font-semibold text-primary">
             {card.title}
