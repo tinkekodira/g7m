@@ -72,15 +72,15 @@ bucket_definitions:
         WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, routine_id, exercise_id, order_key, target_sets, target_rep_low,
-        target_rep_high, created_at, updated_at FROM routine_exercises WHERE user_id =
-        bucket.user_id
+        target_rep_high, superset_id, created_at, updated_at FROM routine_exercises WHERE
+        user_id = bucket.user_id
       - >-
         SELECT id, user_id, name, started_at, ended_at, notes, source, routine_id,
         generation_metadata, bodyweight_kg, created_at, updated_at FROM workout_sessions WHERE
         user_id = bucket.user_id
       - >-
-        SELECT id, user_id, session_id, exercise_id, order_key, notes, created_at, updated_at
-        FROM session_exercises WHERE user_id = bucket.user_id
+        SELECT id, user_id, session_id, exercise_id, order_key, notes, superset_id, created_at,
+        updated_at FROM session_exercises WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, session_exercise_id, order_key, set_type, load_type, weight_kg,
         reps, rpe, is_completed, completed_at, duration_seconds, distance_m, speed_kmh,

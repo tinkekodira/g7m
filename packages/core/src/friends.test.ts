@@ -367,6 +367,26 @@ describe('workoutToCopy', () => {
     ]);
   });
 
+  it('keeps their supersets, and only real ones', () => {
+    const copied = workoutToCopy([
+      { exerciseId: 'curl', supersetId: 'g', sets: [set()] },
+      { exerciseId: 'pushdown', supersetId: 'g', sets: [set()] },
+      { exerciseId: 'raise', supersetId: 'lonely', sets: [set()] },
+      { exerciseId: 'squat', sets: [set()] },
+    ]);
+    expect(copied.map((exercise) => exercise.superset)).toEqual(['g', 'g', null, null]);
+  });
+
+  it('copies a set with a drop on it as one set', () => {
+    const [copied] = workoutToCopy([
+      {
+        exerciseId: 'curl',
+        sets: [set(), set(), set({ setType: 'dropset', weightKg: 80, reps: 12 })],
+      },
+    ]);
+    expect(copied?.workingSets).toBe(2);
+  });
+
   it('shows their heaviest working set as the reference, more reps breaking a tie', () => {
     const [copied] = workoutToCopy([
       {

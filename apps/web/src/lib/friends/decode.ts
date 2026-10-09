@@ -93,6 +93,8 @@ export interface FriendSessionSet {
 export interface FriendSessionExercise {
   readonly exerciseId: string;
   readonly sets: readonly FriendSessionSet[];
+  /** Shared by the exercises they did as one superset. Null from an older server. */
+  readonly supersetId: string | null;
 }
 
 export interface FriendSession extends WorkoutSummary {
@@ -347,6 +349,7 @@ export function decodeSession(value: unknown): FriendSession {
       return {
         exerciseId: string(exercise['exercise_id']),
         sets: list(exercise['sets']).map(decodeSet),
+        supersetId: optionalString(exercise['superset_id']),
       };
     }),
   };

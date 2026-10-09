@@ -34,7 +34,7 @@ import { paceTarget, type ExperienceLevel, type TrainingGoal } from './goals.js'
 import { prescriptionFor } from './programming.js';
 import type { HistoricalSet } from './progress.js';
 import { weightTrend, type Sex, type WeighIn } from './body.js';
-import { countsTowardVolume } from './load.js';
+import { countsTowardVolume, isTopSet } from './load.js';
 import { judgeLift, liftImprovement, type LiftMark } from './lift-progress.js';
 
 /**
@@ -210,7 +210,14 @@ export function reviewTraining(input: ReviewInput): Review {
 
   const found: Observation[] = [
     ...consistency(sessions, weeks, input.daysPerWeek),
-    ...groupBalance(counted, input.groupsByExercise, weeks, prescription.weeklySetsPerGroup),
+    // Sets per group, so a drop is not one: the generator prescribes against
+    // the same count (`setsByGroupSince`), and the two must agree.
+    ...groupBalance(
+      counted.filter(isTopSet),
+      input.groupsByExercise,
+      weeks,
+      prescription.weeklySetsPerGroup,
+    ),
     ...lifts(counted, input.exerciseNames, input.timedExercises ?? new Set(), input.now),
     ...pace(input),
   ];

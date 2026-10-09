@@ -8,7 +8,8 @@
  * that workout" depends on the viewer's timezone and week start, which the
  * server does not know, and the rules are the part worth testing.
  */
-import { countsTowardVolume, type LoadType, type SetType } from './load.js';
+import { countsAsSet, countsTowardVolume, isTopSet, type LoadType, type SetType } from './load.js';
+import { workoutUnits } from './superset.js';
 import { daysBetween, startOfDay, startOfWeek, weekKey, dateKey, type WeekStart } from './week.js';
 import { toDisplayWeight, type DisplayWeight, type UnitSystem } from './units.js';
 
@@ -397,10 +398,18 @@ export interface FriendSet {
 export interface FriendExercise {
   readonly exerciseId: string;
   readonly sets: readonly FriendSet[];
+  /** Shared by the exercises they did as one superset. Absent from older servers. */
+  readonly supersetId?: string | null;
 }
 
 export interface CopiedExercise {
   readonly exerciseId: string;
+  /**
+   * Their superset, kept: the exercises sharing it are copied side by side and
+   * should be started as one superset. Null for straight sets — including a
+   * "superset" of one, which is what a group reads as once its partner is gone.
+   */
+  readonly superset: string | null;
   /** How many working sets to write. Never fewer than one. */
   readonly workingSets: number;
   /**
@@ -421,20 +430,30 @@ export interface CopiedExercise {
  * would hand the viewer more work than their friend did.
  */
 export function workoutToCopy(exercises: readonly FriendExercise[]): readonly CopiedExercise[] {
+  const grouped = new Set(
+    workoutUnits(exercises, (exercise) => exercise.supersetId ?? null).flatMap((unit) =>
+      unit.kind === 'superset' ? unit.members : [],
+    ),
+  );
   return exercises.map((exercise) => {
-    const done = exercise.sets.filter((set) => countsTowardVolume(set));
-    const planned = exercise.sets.filter((set) => set.setType !== 'warmup');
-    const reference = done.reduce<FriendSet | null>(
-      (top, set) =>
-        top === null ||
-        set.weightKg > top.weightKg ||
-        (set.weightKg === top.weightKg && set.reps > top.reps)
-          ? set
-          : top,
-      null,
-    );
+    // Their drops are part of their sets, so three sets with a drop on the
+    // last is three sets to copy, not four.
+    const done = exercise.sets.filter((set) => countsAsSet(set));
+    const planned = exercise.sets.filter((set) => isTopSet(set));
+    const reference = exercise.sets
+      .filter((set) => countsTowardVolume(set))
+      .reduce<FriendSet | null>(
+        (top, set) =>
+          top === null ||
+          set.weightKg > top.weightKg ||
+          (set.weightKg === top.weightKg && set.reps > top.reps)
+            ? set
+            : top,
+        null,
+      );
     return {
       exerciseId: exercise.exerciseId,
+      superset: grouped.has(exercise) ? (exercise.supersetId ?? null) : null,
       workingSets: Math.max(1, done.length > 0 ? done.length : planned.length),
       reference,
     };

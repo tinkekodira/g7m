@@ -51,3 +51,11 @@ export function exerciseToReveal(state: unknown, entryIds: readonly string[]): s
 export function exerciseAnchor(entryId: string): string {
   return `exercise-${entryId}`;
 }
+
+/**
+ * The DOM id a set row carries, so a superset can bring the next exercise's
+ * set into view after a tick.
+ */
+export function setAnchor(setId: string): string {
+  return `set-${setId}`;
+}

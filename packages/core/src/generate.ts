@@ -17,6 +17,8 @@
  */
 import type { LoadType } from './load.js';
 import { FOCUS_GROUPS, type Prescription, type SessionFocus } from './programming.js';
+import { estimateSessionSeconds } from './estimate.js';
+import { pairForTime } from './session-time.js';
 import { roundToIncrement } from './units.js';
 import { daysBetween } from './week.js';
 
@@ -79,6 +81,12 @@ export interface PlanInput {
   /** Working sets done in the trailing week, by muscle group slug. */
   readonly setsThisWeekByGroup: ReadonlyMap<string, number>;
   readonly now: Date;
+  /**
+   * How long the lifter has today, in minutes. Null or absent for no limit,
+   * which plans exactly as before; a limit only ever pairs exercises up, and
+   * cuts one only when pairing is not enough.
+   */
+  readonly sessionMinutes?: number | null;
 }
 
 /**
@@ -107,6 +115,14 @@ export interface PlannedExercise {
   readonly suggestedKg: number | null;
   /** The muscle group this exercise was chosen to cover. */
   readonly groupSlug: string;
+  /** Every group it trains as a primary mover, for telling what pairs with it. */
+  readonly groupSlugs: readonly string[];
+  readonly mechanic: 'compound' | 'isolation' | 'unknown';
+  /**
+   * Shared by the exercises to be done as one superset — 'A', 'B' — and null
+   * for straight sets. Only ever set when the session had to fit a time.
+   */
+  readonly superset: string | null;
   readonly reason: LoadReason;
   /**
    * The exercises this one beat, best first, each planned in full.
@@ -125,6 +141,12 @@ export interface PlannedSession {
   readonly totalSets: number;
   /** Groups skipped because the week's target is already met, in order. */
   readonly restedGroups: readonly string[];
+  /** About how long it will take, in whole minutes. */
+  readonly estimatedMinutes: number;
+  /** Whether exercises were paired up to fit `sessionMinutes`. */
+  readonly pairedForTime: boolean;
+  /** Left out because even paired up they would not fit, by name. */
+  readonly trimmedForTime: readonly string[];
 }
 
 /** Training the same lift on consecutive days is not a program, it is a mistake. */
@@ -224,11 +246,27 @@ export function planSession(input: PlanInput): PlannedSession {
     setsLeft -= Math.min(setsPerExercise, setsLeft);
   }
 
+  // Fitted to the time there is, if anybody said. Last, so that what is being
+  // fitted is the plan the rules above would have written anyway.
+  const minutes = input.sessionMinutes ?? null;
+  const fitted =
+    minutes !== null && minutes > 0
+      ? pairForTime(exercises, minutes * 60)
+      : {
+          exercises,
+          trimmed: [],
+          paired: false,
+          estimatedSeconds: estimateSessionSeconds(exercises) ?? 0,
+        };
+
   return {
     focus: input.focus,
-    exercises,
-    totalSets: exercises.reduce((total, entry) => total + entry.sets, 0),
+    exercises: fitted.exercises,
+    totalSets: fitted.exercises.reduce((total, entry) => total + entry.sets, 0),
     restedGroups,
+    estimatedMinutes: Math.round(fitted.estimatedSeconds / 60),
+    pairedForTime: fitted.paired,
+    trimmedForTime: fitted.trimmed.map((entry) => entry.name),
   };
 }
 
@@ -420,6 +458,9 @@ function plan(
     loadType: candidate.loadType,
     suggestedKg,
     groupSlug: group,
+    groupSlugs: candidate.groupSlugs,
+    mechanic: candidate.mechanic,
+    superset: null,
     reason,
     alternatives: alternatives.map((option) => plan(option, group, sets, input, seen, [])),
   };

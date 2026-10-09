@@ -677,3 +677,110 @@ describe('when nobody is signed in', () => {
     await expect(anonymous.start()).rejects.toThrow(/signed-in user/);
   });
 });
+
+describe('supersets', () => {
+  it('adds the picked exercises together, sharing one superset', async () => {
+    const session = await sessions.start();
+    await sessions.addExercise(session.id, 'squat');
+    const added = await sessions.addExercises(session.id, ['curl', 'pushdown'], {
+      superset: true,
+    });
+
+    const listed = await sessions.exercisesFor(session.id);
+    expect(listed.map((entry) => entry.exerciseId)).toEqual(['squat', 'curl', 'pushdown']);
+    expect(listed[0]?.supersetId).toBeNull();
+    expect(added[0]?.supersetId).not.toBeNull();
+    expect(listed[1]?.supersetId).toBe(added[0]?.supersetId);
+    expect(listed[2]?.supersetId).toBe(added[0]?.supersetId);
+  });
+
+  /** One exercise is not a superset; it goes in as an ordinary one. */
+  it('adds a single exercise as an ordinary one, switch or no switch', async () => {
+    const session = await sessions.start();
+    const [only] = await sessions.addExercises(session.id, ['curl'], { superset: true });
+    expect(only?.supersetId).toBeNull();
+    expect(await sessions.addExercises(session.id, [])).toEqual([]);
+  });
+
+  it('ungroups without touching the sets', async () => {
+    const session = await sessions.start();
+    const [curl, pushdown] = await sessions.addExercises(session.id, ['curl', 'pushdown'], {
+      superset: true,
+    });
+    if (curl === undefined || pushdown === undefined || curl.supersetId === null) {
+      throw new Error('setup');
+    }
+    await sessions.addSet(curl.id, template());
+
+    await sessions.ungroup(session.id, curl.supersetId);
+    const listed = await sessions.exercisesFor(session.id);
+    expect(listed.map((entry) => entry.supersetId)).toEqual([null, null]);
+    expect(await sessions.setsFor(curl.id)).toHaveLength(1);
+  });
+
+  /** Undo puts it back in its pair, which is what makes it an undo. */
+  it('restores a removed exercise into its superset', async () => {
+    const session = await sessions.start();
+    const [curl] = await sessions.addExercises(session.id, ['curl', 'pushdown'], {
+      superset: true,
+    });
+    if (curl === undefined) throw new Error('setup');
+    const removed = await sessions.removeExercise(curl.id);
+    if (removed === null) throw new Error('setup');
+    await sessions.restoreExercise(removed);
+    const listed = await sessions.exercisesFor(session.id);
+    expect(listed[0]?.supersetId).toBe(curl.supersetId);
+  });
+});
+
+describe('drop sets', () => {
+  it('puts a drop directly under its set, ahead of the sets waiting below', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const first = await sessions.addSet(entry.id, template());
+    const second = await sessions.addSet(entry.id, template());
+
+    const drop = await sessions.insertSetAfter(
+      entry.id,
+      first.id,
+      template({ weightKg: 80, setType: 'dropset' }),
+    );
+    const again = await sessions.insertSetAfter(
+      entry.id,
+      drop?.id ?? '',
+      template({ weightKg: 65, setType: 'dropset' }),
+    );
+
+    const listed = await sessions.setsFor(entry.id);
+    expect(listed.map((set) => set.id)).toEqual([first.id, drop?.id, again?.id, second.id]);
+    expect(listed[1]).toMatchObject({ setType: 'dropset', weightKg: 80, isCompleted: false });
+    expect(await rawSet(drop?.id ?? '')).toMatchObject({ completed_at: null, is_completed: 0 });
+  });
+
+  it('appends when the set it comes off is the last one', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const only = await sessions.addSet(entry.id, template());
+    const drop = await sessions.insertSetAfter(entry.id, only.id, template({ setType: 'dropset' }));
+    expect((await sessions.setsFor(entry.id)).map((set) => set.id)).toEqual([only.id, drop?.id]);
+    expect(await sessions.insertSetAfter(entry.id, 'nowhere', template())).toBeNull();
+  });
+
+  it('removes a set with its drops, and puts them all back in place', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const top = await sessions.addSet(entry.id, template());
+    const drop = await sessions.insertSetAfter(entry.id, top.id, template({ setType: 'dropset' }));
+    const next = await sessions.addSet(entry.id, template());
+    await sessions.completeSet(top.id);
+
+    const removed = await sessions.removeSets([top.id, drop?.id ?? '', 'nowhere']);
+    expect(removed).toHaveLength(2);
+    expect((await sessions.setsFor(entry.id)).map((set) => set.id)).toEqual([next.id]);
+
+    await sessions.restoreSets(removed);
+    const listed = await sessions.setsFor(entry.id);
+    expect(listed.map((set) => set.id)).toEqual([top.id, drop?.id, next.id]);
+    expect(listed[0]?.isCompleted).toBe(true);
+  });
+});

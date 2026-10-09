@@ -145,6 +145,43 @@ export function countsTowardVolume(set: Pick<LoggedSet, 'setType' | 'isCompleted
   return set.isCompleted && set.setType !== 'warmup';
 }
 
+/**
+ * Whether a set is a set in its own right rather than preparation for one or
+ * a continuation of one: not a warm-up, and not a drop.
+ *
+ * A drop is the same set carried on with lighter weight — the plates come off
+ * and the lifter keeps going with no rest. It is what "last week's set three"
+ * means to prefill, what the weight advice should judge and where the effort
+ * question belongs, so every rule that reads "the set" reads this one, and a
+ * trailing drop at 64 kg never passes itself off as the 80 kg set it hung from.
+ */
+export function isTopSet(set: Pick<LoggedSet, 'setType'>): boolean {
+  return set.setType !== 'warmup' && set.setType !== 'dropset';
+}
+
+/**
+ * Whether a set counts as one in a tally of sets: done, and a top set.
+ *
+ * A heavy set and the two drops off it are **one set** — that is how lifters
+ * count them, and counting three would let anybody climb the leaderboard's
+ * sets board by stripping plates. The drops' weight still counts toward
+ * volume (`countsTowardVolume`): it was lifted.
+ *
+ * Deliberately independent of order, so the server can say the same thing in
+ * one line — `is_completed and set_type not in ('warmup', 'dropset')` — and the
+ * leaderboard's two tallies cannot drift apart over which drop belongs where.
+ * One consequence, accepted: a drop ticked under a top set left unticked
+ * counts no set at all. Its volume still counts.
+ */
+export function countsAsSet(set: Pick<LoggedSet, 'setType' | 'isCompleted'>): boolean {
+  return set.isCompleted && isTopSet(set);
+}
+
+/** How many sets a list of them comes to, drops folded into their sets. */
+export function countSets(sets: readonly Pick<LoggedSet, 'setType' | 'isCompleted'>[]): number {
+  return sets.filter(countsAsSet).length;
+}
+
 /** Load × reps for one set, or `null` when the load is unknown. */
 export function setVolumeKg(set: LoggedSet, bodyweightKg: number | null): number | null {
   if (!countsTowardVolume(set)) return 0;

@@ -694,6 +694,31 @@ describe('the leaderboard', () => {
 
   const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
+  it('sends a friend’s superset, and counts their drops as part of a set', async () => {
+    const me = await person('Me');
+    const alex = await person('Alex');
+    await friends(me, alex);
+    const session = await logWorkout(alex, daysAgo(1), [
+      { slug: 'barbell-bench-press', weightKg: 100 },
+      { slug: 'barbell-bench-press', weightKg: 80, reps: 8, setType: 'dropset' },
+      { slug: 'pull-up', weightKg: 0, reps: 8, loadType: 'bodyweight' },
+    ]);
+    const group = '6f1c2b8e-7d3a-4c5b-9e1f-0a2b3c4d5e6f';
+    await h.db.query('update public.session_exercises set superset_id = $1 where session_id = $2', [
+      group,
+      session,
+    ]);
+
+    const detail = await call<{
+      work: { exercise_id: string; sets: number }[];
+      exercises: { superset_id: string | null; sets: { set_type: string }[] }[];
+    }>(me, 'public.friend_session($1, $2)', [alex, session]);
+    expect(detail.exercises.map((exercise) => exercise.superset_id)).toEqual([group, group]);
+    // The drop is sent, as a drop, and the title's count is one bench set.
+    expect(detail.exercises[0]?.sets.map((set) => set.set_type)).toEqual(['working', 'dropset']);
+    expect(detail.work.map((exercise) => exercise.sets)).toEqual([1, 1]);
+  });
+
   it('counts a friend’s workouts by the rule the phone uses for its own', async () => {
     const me = await person('Me');
     const alex = await person('Alex');
@@ -701,6 +726,8 @@ describe('the leaderboard', () => {
 
     await logWorkout(alex, daysAgo(2), [
       { slug: 'barbell-bench-press', weightKg: 100 },
+      // A drop off the bench: its 640 kg is lifted, but it is not another set.
+      { slug: 'barbell-bench-press', weightKg: 80, reps: 8, setType: 'dropset' },
       { slug: 'barbell-bench-press', weightKg: 60, reps: 8, setType: 'warmup' },
       { slug: 'barbell-bench-press', weightKg: 150, reps: 1, completed: false },
       { slug: 'barbell-back-squat', weightKg: 120, setType: 'amrap' },
@@ -729,7 +756,7 @@ describe('the leaderboard', () => {
     expect(workouts.map((tally) => [tally.source, tally.sets, tally.lifted_kg])).toEqual([
       ['past', 1, 500],
       ['manual', 0, 0],
-      ['manual', 5, 1200],
+      ['manual', 5, 1840],
     ]);
     const minutes = (tally: Tally | undefined) =>
       trainingMinutes([

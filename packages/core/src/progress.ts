@@ -5,7 +5,13 @@
  * in `@g7m/db`, and the screens that draw them live in the app — this is the
  * arithmetic in the middle, which is the part with decisions in it.
  */
-import { countsTowardVolume, effectiveLoadKg, setVolumeKg, type LoggedSet } from './load.js';
+import {
+  countsAsSet,
+  countsTowardVolume,
+  effectiveLoadKg,
+  setVolumeKg,
+  type LoggedSet,
+} from './load.js';
 import { estimateOneRepMax, type OneRepMaxEstimate } from './one-rep-max.js';
 import { weekKey, type WeekStart } from './week.js';
 
@@ -112,7 +118,8 @@ export function weeklyVolume(
     if (bucket === undefined) continue;
     if (!countsTowardVolume(set)) continue;
 
-    bucket.sets += 1;
+    // Drops add their weight to the week, not another set to its count.
+    if (countsAsSet(set)) bucket.sets += 1;
     bucket.sessions.add(set.sessionId);
     const volume = setVolumeKg(set, set.bodyweightKg);
     if (volume !== null) bucket.volumeKg += volume;

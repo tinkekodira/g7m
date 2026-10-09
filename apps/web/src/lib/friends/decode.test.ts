@@ -125,6 +125,18 @@ describe('decodeDetail and decodeSession', () => {
     expect(bout?.bout).toMatchObject({ durationSeconds: 600, caloriesKcal: 90, distanceM: null });
   });
 
+  it('reads a superset, and an older server that sends none', () => {
+    const session = decodeSession({
+      ...SUMMARY,
+      exercises: [
+        { exercise_id: 'e1', superset_id: 'g1', sets: [] },
+        { exercise_id: 'e2', superset_id: 'g1', sets: [] },
+        { exercise_id: 'e3', sets: [] },
+      ],
+    });
+    expect(session.exercises.map((exercise) => exercise.supersetId)).toEqual(['g1', 'g1', null]);
+  });
+
   it('refuses a set type it has never heard of', () => {
     expect(() =>
       decodeSession({

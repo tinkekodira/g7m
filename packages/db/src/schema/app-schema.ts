@@ -231,6 +231,8 @@ const routineExercises = new Table(
     target_sets: column.integer,
     target_rep_low: column.integer,
     target_rep_high: column.integer,
+    /** Shared by the movements planned as one superset. ADR-0112. */
+    superset_id: column.text,
     created_at: column.text,
     updated_at: column.text,
   },
@@ -268,6 +270,8 @@ const sessionExercises = new Table(
     exercise_id: column.text,
     order_key: column.text,
     notes: column.text,
+    /** Shared by the exercises done as one superset. ADR-0112. */
+    superset_id: column.text,
     created_at: column.text,
     updated_at: column.text,
   },
