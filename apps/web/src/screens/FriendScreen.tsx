@@ -118,7 +118,7 @@ function FriendPage({
     <>
       <section className="rounded-card border border-subtle bg-surface p-5">
         <div className="flex items-center gap-4">
-          <Avatar name={detail.name} size="lg" />
+          <Avatar name={detail.name} size="lg" tint />
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-bold text-primary">{name}</h1>
             <PresenceLine presence={describePresence(detail.training.lastActiveAt, now)} />
