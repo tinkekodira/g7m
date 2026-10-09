@@ -96,6 +96,7 @@ export function FriendsLeaderboard({
         left={view !== null && !view.alone ? view.left : null}
       >
         <SegmentedControl
+          variant="quiet"
           label="Rank by"
           options={RANKING_OPTIONS}
           value={ranking}
@@ -104,6 +105,7 @@ export function FriendsLeaderboard({
           }}
         />
         <SegmentedControl
+          variant="quiet"
           label="Stat"
           options={STAT_OPTIONS}
           value={stat}
@@ -112,6 +114,7 @@ export function FriendsLeaderboard({
           }}
         />
         <SegmentedControl
+          variant="quiet"
           label="Period"
           options={PERIOD_OPTIONS}
           value={period}
