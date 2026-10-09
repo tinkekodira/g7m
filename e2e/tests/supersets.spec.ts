@@ -106,3 +106,35 @@ test('the coach pairs exercises up when time today is short', async ({ page }) =
   await page.getByRole('button', { name: 'Start this workout' }).click();
   await expect(page.getByRole('region', { name: 'Superset' }).first()).toBeVisible();
 });
+
+test('the Superset card keeps one line and even padding on a narrow phone', async ({ page }) => {
+  const user = await createUser('superset-card', { onboarded: true });
+  await page.setViewportSize({ width: 320, height: 640 });
+  await signIn(page, user);
+  await page.getByRole('link', { name: /Start your own workout/ }).click();
+  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await page.getByRole('link', { name: '+ Add an exercise' }).click();
+
+  const toggle = page.getByRole('switch', { name: /^Superset/ });
+  for (const description of ['Back to back, then rest.', 'Pick in workout order.']) {
+    if (description.startsWith('Pick')) await toggle.click();
+    // Wait for the real words before measuring anything (local-e2e-is-not-ci).
+    const line = toggle.getByText(description);
+    await expect(line).toBeVisible();
+    const box = await toggle.evaluate((card, text) => {
+      const words = [...card.querySelectorAll('span')].find((s) => s.textContent === text)!;
+      const block = words.parentElement!.getBoundingClientRect();
+      const outer = card.getBoundingClientRect();
+      return {
+        lines:
+          words.getBoundingClientRect().height / parseFloat(getComputedStyle(words).lineHeight),
+        top: block.top - outer.top,
+        bottom: outer.bottom - block.bottom,
+        left: block.left - outer.left,
+      };
+    }, description);
+    expect(box.lines).toBeLessThan(1.5);
+    expect(Math.abs(box.top - box.bottom)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.top - box.left)).toBeLessThanOrEqual(1);
+  }
+});

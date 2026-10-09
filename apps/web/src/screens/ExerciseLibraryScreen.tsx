@@ -202,14 +202,14 @@ export function ExerciseLibraryScreen() {
       </header>
 
       {picking && (
-        <section className="rounded-card bg-surface px-4">
+        <section className="rounded-card bg-surface">
+          {/* The padding is on the switch, not the card, so the whole card is
+              the tap target. Both descriptions are kept to one line at 320px,
+              so the card does not change height when it is flipped. */}
           <Switch
+            className="rounded-card p-4"
             label="Superset"
-            description={
-              superset
-                ? 'Pick two or more, in the order you will do them.'
-                : 'Do two or more exercises back to back, resting after the round.'
-            }
+            description={superset ? 'Pick in workout order.' : 'Back to back, then rest.'}
             checked={superset}
             onChange={(on) => {
               setSuperset(on);
