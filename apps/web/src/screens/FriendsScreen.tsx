@@ -36,6 +36,7 @@ import {
   friendCard,
   requestRow,
   sortFriends,
+  type CardLift,
   type FriendCardView,
   type Message,
   type RequestView,
@@ -239,8 +240,10 @@ function FriendList({
         now,
         weekStartsOn: mine.weekStartsOn,
         unitSystem: mine.unitSystem,
-        myBigThree: mine.bigThree,
+        myBests: mine.bests,
         movers: mine.movers,
+        names: mine.names,
+        slugs: mine.slugs,
       }),
     );
   }, [overview, mine]);
@@ -275,7 +278,7 @@ function FriendList({
 
 /**
  * One friend, calmly: who and whether they are around, this week's dots and
- * the streak, the three lifts against yours, and their last workout.
+ * the streak, their best lifts against yours, and their last workout.
  *
  * The whole card opens their page — the name is the link, stretched over the
  * card — and the last workout is a link of its own on top of that, so the two
@@ -314,36 +317,7 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
             <Streak streak={card.streak} />
           </div>
 
-          {card.lifts !== null && (
-            <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-subtle pt-3">
-              {card.lifts.map((lift) => (
-                <div key={lift.label}>
-                  <dt className="text-xs text-muted">{lift.label}</dt>
-                  <dd className="numeric flex flex-wrap items-baseline gap-x-1.5">
-                    <span className="sr-only">{lift.description}</span>
-                    <span aria-hidden className="text-base font-semibold text-primary">
-                      {lift.theirs}
-                    </span>
-                    {lift.delta !== null && (
-                      <span
-                        aria-hidden
-                        className={cx(
-                          'text-xs font-medium',
-                          lift.delta.standing === 'ahead'
-                            ? 'text-success'
-                            : lift.delta.standing === 'behind'
-                              ? 'text-danger/80'
-                              : 'text-muted',
-                        )}
-                      >
-                        {lift.delta.text}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
+          {card.lifts !== null && <BestLifts lifts={card.lifts} />}
 
           {card.lastWorkout !== null && (
             <Link
@@ -367,6 +341,55 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
         </>
       )}
     </article>
+  );
+}
+
+/**
+ * Their heaviest lifts, three columns under one caption (ADR-0113): their
+ * number, and beside it the gap from your side when you have done the lift
+ * too. Each column is centred, so a name too long for one line wraps under
+ * itself rather than off to one side.
+ */
+function BestLifts({ lifts }: { readonly lifts: readonly CardLift[] }) {
+  const captionId = useId();
+  return (
+    <div className="mt-3 border-t border-subtle pt-3">
+      <p id={captionId} className="text-xs text-muted">
+        Best lifts
+      </p>
+      {lifts.length === 0 ? (
+        <p className="mt-1 text-sm text-secondary">No lifts logged yet</p>
+      ) : (
+        <dl aria-labelledby={captionId} className="mt-2 grid grid-cols-3 gap-2">
+          {lifts.map((lift) => (
+            <div key={lift.exerciseId} className="flex flex-col items-center text-center">
+              <dt className="text-xs text-secondary">{lift.label}</dt>
+              <dd className="numeric mt-0.5 flex flex-wrap items-baseline justify-center gap-x-1.5">
+                <span className="sr-only">{lift.description}</span>
+                <span aria-hidden className="text-base font-semibold text-primary">
+                  {lift.theirs}
+                </span>
+                {lift.delta !== null && (
+                  <span
+                    aria-hidden
+                    className={cx(
+                      'text-xs font-medium',
+                      lift.delta.standing === 'ahead'
+                        ? 'text-success'
+                        : lift.delta.standing === 'behind'
+                          ? 'text-danger/80'
+                          : 'text-muted',
+                    )}
+                  >
+                    {lift.delta.text}
+                  </span>
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 

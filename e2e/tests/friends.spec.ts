@@ -109,6 +109,14 @@ test('two friends: add by code, accept, see the training, do the workout, stop s
   await expect(card.getByText('Online now')).toBeVisible();
   const lastWorkout = card.getByRole('link', { name: /Last workout/ });
   await expect(lastWorkout).toContainText('Today');
+  // Blake's best lifts are Blake's own: the bench just logged, and no columns
+  // of dashes for a squat and deadlift Blake has never done.
+  const bestLifts = card.getByRole('definition');
+  await expect(card.getByText('Best lifts')).toBeVisible();
+  await expect(bestLifts).toHaveCount(1);
+  await expect(bestLifts).toContainText('60 kg');
+  await expect(card.getByText('Bench', { exact: true })).toBeVisible();
+  await expect(card.getByText('Deadlift')).toHaveCount(0);
 
   // 6. Alex opens it...
   await lastWorkout.click();

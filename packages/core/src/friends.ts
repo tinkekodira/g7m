@@ -184,13 +184,6 @@ export function describeStreak(weeks: number): string | null {
 // Best lifts
 // ---------------------------------------------------------------------------
 
-/** The three lifts every friend card compares, by catalogue slug. */
-export const BIG_THREE = [
-  { slug: 'barbell-back-squat', label: 'Squat' },
-  { slug: 'barbell-bench-press', label: 'Bench' },
-  { slug: 'conventional-deadlift', label: 'Deadlift' },
-] as const;
-
 /** The lift head-to-head opens on, when both people have done it. */
 export const HEAD_TO_HEAD_DEFAULT_SLUG = 'barbell-bench-press';
 
@@ -238,6 +231,140 @@ export function bestLiftsByExercise(sets: readonly BestLiftSet[]): Map<string, B
     });
   }
   return bests;
+}
+
+// ---------------------------------------------------------------------------
+// The card's best lifts
+// ---------------------------------------------------------------------------
+
+/** How many lifts a friend card shows. */
+export const CARD_LIFT_COUNT = 3;
+
+/** Of those, how many may be leg lifts before an upper-body lift gets a turn. */
+export const CARD_MAX_LEG_LIFTS = 2;
+
+/** The muscle groups that make a lift a leg lift. */
+const LEG_GROUPS: ReadonlySet<string> = new Set([
+  'quads',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'adductors',
+]);
+
+/**
+ * Deadlifts are never leg lifts, whatever their muscles say. In the gym a
+ * deadlift is its own thing, and the trap-bar one lists only the glutes as a
+ * primary mover, which would otherwise make it legs. The Romanian deadlift is
+ * not here: it is a hamstring lift, and counts as one.
+ */
+const NEVER_LEGS: ReadonlySet<string> = new Set([
+  'conventional-deadlift',
+  'trap-bar-deadlift',
+  'kettlebell-deadlift',
+]);
+
+/**
+ * Whether an exercise is a leg lift, for the card's cap: every primary mover
+ * is in the legs or hips, and it is not a deadlift. An exercise with no
+ * primary movers is not one — there is nothing to say it is.
+ */
+export function isLegLift(slug: string | undefined, primaryGroups: readonly string[]): boolean {
+  if (slug !== undefined && NEVER_LEGS.has(slug)) return false;
+  return primaryGroups.length > 0 && primaryGroups.every((group) => LEG_GROUPS.has(group));
+}
+
+export interface CardLiftCandidate {
+  readonly exerciseId: string;
+  readonly bestKg: number;
+  readonly lastAt: Date;
+}
+
+/**
+ * The lifts a friend card shows: their heaviest three, with no more than two
+ * leg lifts among them.
+ *
+ * Legs move the most weight for nearly everybody, so a plain top three would
+ * be a row of leg numbers on every card and the bench would never appear. The
+ * cap makes room for something else — but only when there is something else:
+ * somebody who has logged nothing but leg lifts gets their third leg lift, not
+ * a dash. ADR-0113.
+ *
+ * Heaviest first. A tie goes to the lift trained most recently, then by id, so
+ * the card never reshuffles between visits.
+ */
+export function cardLifts(
+  bests: readonly CardLiftCandidate[],
+  isLeg: (exerciseId: string) => boolean,
+): readonly string[] {
+  const ranked = bests
+    .filter((best) => Number.isFinite(best.bestKg) && best.bestKg > 0)
+    .sort(
+      (a, b) =>
+        b.bestKg - a.bestKg ||
+        b.lastAt.getTime() - a.lastAt.getTime() ||
+        a.exerciseId.localeCompare(b.exerciseId),
+    );
+
+  const chosen = new Set<string>();
+  let legs = 0;
+  for (const best of ranked) {
+    if (chosen.size === CARD_LIFT_COUNT) break;
+    if (isLeg(best.exerciseId)) {
+      if (legs === CARD_MAX_LEG_LIFTS) continue;
+      legs += 1;
+    }
+    chosen.add(best.exerciseId);
+  }
+  // Nothing else to make room for: fill from the leg lifts the cap passed over.
+  for (const best of ranked) {
+    if (chosen.size === CARD_LIFT_COUNT) break;
+    chosen.add(best.exerciseId);
+  }
+
+  return ranked.filter((best) => chosen.has(best.exerciseId)).map((best) => best.exerciseId);
+}
+
+/**
+ * The names a card column has room for, where the gym has a shorter one than
+ * the catalogue. Anything not here is shown in full and wraps — "Lat Pulldown"
+ * has no shorter name anybody would recognise.
+ */
+const CARD_LIFT_NAMES: Readonly<Record<string, string>> = {
+  'barbell-back-squat': 'Squat',
+  'barbell-bench-press': 'Bench',
+  'conventional-deadlift': 'Deadlift',
+  'romanian-deadlift': 'RDL',
+  'overhead-press': 'OHP',
+  'barbell-hip-thrust': 'Hip Thrust',
+  'trap-bar-deadlift': 'Trap Bar DL',
+  'incline-barbell-press': 'Incline Bench',
+  'close-grip-bench-press': 'CG Bench',
+  'dumbbell-bench-press': 'DB Bench',
+  'incline-dumbbell-press': 'Incline DB Press',
+  'dumbbell-shoulder-press': 'Shoulder Press',
+  'machine-chest-press': 'Chest Press',
+  'bulgarian-split-squat': 'Split Squat',
+  'single-arm-dumbbell-row': 'DB Row',
+  'chest-supported-dumbbell-row': 'Supported DB Row',
+  'seated-cable-row': 'Cable Row',
+  'seated-row-machine': 'Machine Row',
+  'standing-calf-raise': 'Calf Raise',
+  'seated-calf-raise': 'Seated Calf',
+  'barbell-shrug': 'Shrug',
+  'preacher-curl': 'Preacher Curl',
+  'barbell-preacher-curl': 'Preacher Curl',
+  'dumbbell-preacher-curl': 'Preacher Curl',
+  'kettlebell-swing': 'KB Swing',
+  'kettlebell-deadlift': 'KB Deadlift',
+  'kettlebell-press': 'KB Press',
+  'kettlebell-clean': 'KB Clean',
+  'kettlebell-snatch': 'KB Snatch',
+};
+
+/** What a card column calls a lift: the gym's short name, or the catalogue's. */
+export function cardLiftName(slug: string | undefined, name: string): string {
+  return (slug === undefined ? undefined : CARD_LIFT_NAMES[slug]) ?? name;
 }
 
 // ---------------------------------------------------------------------------

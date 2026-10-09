@@ -12,8 +12,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BIG_THREE,
   DEFAULT_WEEK_START,
+  HEAD_TO_HEAD_DEFAULT_SLUG,
   bestLiftsByExercise,
   boardSince,
   tallyWorkouts,
@@ -89,13 +89,13 @@ export interface MySide {
   readonly bodyweightKg: number | null;
   /** Your best on every lift you have done, by exercise id. */
   readonly bests: ReadonlyMap<string, BestLift>;
-  /** Your best on each of the three card lifts, by slug. */
-  readonly bigThree: ReadonlyMap<string, number>;
   /** The bench press's id, which head-to-head opens on. */
   readonly benchId: string | null;
   readonly movers: Movers;
   /** Every exercise's display name, by id. */
   readonly names: ReadonlyMap<string, string>;
+  /** Every exercise's catalogue slug, by id. */
+  readonly slugs: ReadonlyMap<string, string>;
 }
 
 export function useMySide(): QueryState<MySide> {
@@ -103,19 +103,12 @@ export function useMySide(): QueryState<MySide> {
     const [profile, sets, ids, movers, exercises] = await Promise.all([
       repositories.profile.current(),
       repositories.history.completedSets(),
-      repositories.exercises.idsBySlug(BIG_THREE.map((lift) => lift.slug)),
+      repositories.exercises.idsBySlug([HEAD_TO_HEAD_DEFAULT_SLUG]),
       repositories.exercises.primaryMovers(),
       repositories.exercises.list(),
     ]);
 
     const bests = bestLiftsByExercise(sets);
-    const bigThree = new Map<string, number>();
-    for (const lift of BIG_THREE) {
-      const id = ids.get(lift.slug);
-      const best = id === undefined ? undefined : bests.get(id);
-      if (best !== undefined) bigThree.set(lift.slug, best.bestKg);
-    }
-
     const name = profile?.displayName?.trim() ?? '';
     return {
       hasProfile: profile !== null,
@@ -124,10 +117,10 @@ export function useMySide(): QueryState<MySide> {
       weekStartsOn: (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart,
       bodyweightKg: profile?.bodyweightKg ?? null,
       bests,
-      bigThree,
-      benchId: ids.get('barbell-bench-press') ?? null,
+      benchId: ids.get(HEAD_TO_HEAD_DEFAULT_SLUG) ?? null,
       movers,
       names: new Map(exercises.map((exercise) => [exercise.id, exercise.name])),
+      slugs: new Map(exercises.map((exercise) => [exercise.id, exercise.slug])),
     };
   });
 }

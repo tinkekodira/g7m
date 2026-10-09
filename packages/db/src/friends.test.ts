@@ -498,10 +498,14 @@ describe('what a friend can see', () => {
 
     const seen = await everything(me, alex.id, alex.session);
     const card = seen.inOverview as unknown as {
-      training: Record<string, unknown> & { big_three: { slug: string; best_kg: number }[] };
+      training: Record<string, unknown> & {
+        big_three: { slug: string; best_kg: number }[];
+        bests: { exercise_id: string; best_kg: number; last_at: string }[];
+      };
     };
     expect(Object.keys(card).sort()).toEqual(['name', 'sharing', 'since', 'training', 'user_id']);
     expect(Object.keys(card.training).sort()).toEqual([
+      'bests',
       'big_three',
       'days_per_week',
       'last_active_at',
@@ -516,6 +520,13 @@ describe('what a friend can see', () => {
         { slug: 'barbell-back-squat', best_kg: 140 },
       ]),
     );
+    // Every best, heaviest first, for the card to choose its three from.
+    expect(card.training.bests.map((best) => best.best_kg)).toEqual([140, 102.5]);
+    expect(Object.keys(card.training.bests[0] ?? {}).sort()).toEqual([
+      'best_kg',
+      'exercise_id',
+      'last_at',
+    ]);
 
     // Nothing anywhere in the replies about a body, an email, a goal or a note.
     const everythingSaid = JSON.stringify(seen);

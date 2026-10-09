@@ -8,17 +8,20 @@
  * workout logged after the fact that has no duration worth stating.
  */
 import {
-  BIG_THREE,
+  cardLiftName,
+  cardLifts,
   compareLifts,
   describePresence,
   describeStreak,
   describeWorkoutDay,
   formatMinutes,
+  isLegLift,
   trainingMinutes,
   weekDots,
   weeklyStreak,
   workoutTitle,
   toDisplayWeight,
+  type BestLift,
   type FriendCodeCheck,
   type PrimaryWork,
   type Presence,
@@ -27,7 +30,13 @@ import {
   type WeekDot,
   type WeekStart,
 } from '@g7m/core';
-import type { Friend, FriendRequest, SendResult, WorkoutSummary } from '../lib/friends/api.js';
+import type {
+  Friend,
+  FriendRequest,
+  FriendTraining,
+  SendResult,
+  WorkoutSummary,
+} from '../lib/friends/api.js';
 
 /** Every exercise's primary movers, from the local catalogue. */
 export type Movers = ReadonlyMap<
@@ -88,10 +97,11 @@ export interface LiftCell {
 }
 
 /**
- * One of the three lifts on a card: their best, and how yours compares.
+ * One of the lifts on a card: their best, and how yours compares.
  *
  * The number shown is theirs — it is their card — and the small figure beside
- * it is the gap from your side, so "+10" means you lift ten more.
+ * it is the gap from your side, so "+10" means you lift ten more. With no best
+ * of yours on that exercise there is no gap to show, only their number.
  */
 export function liftCell(
   label: string,
@@ -129,6 +139,11 @@ export function liftCell(
   };
 }
 
+/** A lift on a card, with the exercise it is, to key the column by. */
+export interface CardLift extends LiftCell {
+  readonly exerciseId: string;
+}
+
 export interface FriendCardView {
   readonly userId: string;
   readonly name: string;
@@ -138,7 +153,8 @@ export interface FriendCardView {
   readonly presence: Presence | null;
   readonly dots: readonly WeekDot[] | null;
   readonly streak: string | null;
-  readonly lifts: readonly LiftCell[] | null;
+  /** Their best lifts, heaviest first; empty when they have none. Null when not sharing. */
+  readonly lifts: readonly CardLift[] | null;
   readonly lastWorkout: {
     readonly sessionId: string;
     readonly title: string;
@@ -151,9 +167,42 @@ export interface CardContext {
   readonly now: Date;
   readonly weekStartsOn: WeekStart;
   readonly unitSystem: UnitSystem;
-  /** Your bests on the three lifts, by slug. */
-  readonly myBigThree: ReadonlyMap<string, number>;
+  /** Your best on every lift you have done, by exercise id. */
+  readonly myBests: ReadonlyMap<string, BestLift>;
   readonly movers: Movers;
+  /** Every exercise's display name and catalogue slug, by id. */
+  readonly names: ReadonlyMap<string, string>;
+  readonly slugs: ReadonlyMap<string, string>;
+}
+
+/**
+ * The lifts a card shows: their heaviest three, no more than two of them leg
+ * lifts (`cardLifts`, ADR-0113), each named as short as the gym would say it.
+ */
+function cardLiftCells(
+  bests: FriendTraining['bests'],
+  context: CardContext,
+  who: string,
+): CardLift[] {
+  const theirs = new Map(bests.map((best) => [best.exerciseId, best.bestKg]));
+  const isLeg = (exerciseId: string): boolean =>
+    isLegLift(
+      context.slugs.get(exerciseId),
+      (context.movers.get(exerciseId) ?? []).map((mover) => mover.group),
+    );
+  return cardLifts(bests, isLeg).map((exerciseId) => ({
+    exerciseId,
+    ...liftCell(
+      cardLiftName(
+        context.slugs.get(exerciseId),
+        context.names.get(exerciseId) ?? 'Unknown exercise',
+      ),
+      theirs.get(exerciseId) ?? null,
+      context.myBests.get(exerciseId)?.bestKg ?? null,
+      context.unitSystem,
+      who,
+    ),
+  }));
 }
 
 export function friendCard(friend: Friend, context: CardContext): FriendCardView {
@@ -184,15 +233,7 @@ export function friendCard(friend: Friend, context: CardContext): FriendCardView
     streak: describeStreak(
       weeklyStreak(training.trainedAt, training.daysPerWeek, context.now, context.weekStartsOn),
     ),
-    lifts: BIG_THREE.map((lift) =>
-      liftCell(
-        lift.label,
-        training.bigThree.get(lift.slug) ?? null,
-        context.myBigThree.get(lift.slug) ?? null,
-        context.unitSystem,
-        name,
-      ),
-    ),
+    lifts: cardLiftCells(training.bests, context, name),
     lastWorkout:
       last === null
         ? null
