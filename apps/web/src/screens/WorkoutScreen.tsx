@@ -3,8 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { Button, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
+  afterTick,
   bestsFrom,
   canAddWeight,
+  canDrop,
+  dropTemplate,
+  dropsOf,
+  finalTopSet,
+  isTopSet,
+  roundRestSeconds,
+  workoutUnits,
   dateKey,
   describePreviousSet,
   formatRest,
@@ -54,9 +62,9 @@ import {
   restRemaining,
   shouldAskStillTraining,
 } from './workout-timer.js';
-import { addedExerciseId, exerciseAnchor, exerciseToReveal } from './added-exercise.js';
+import { addedExerciseId, exerciseAnchor, exerciseToReveal, setAnchor } from './added-exercise.js';
 import { dayTitle } from './calendar-view.js';
-import { numberSets, setTitle } from './set-numbers.js';
+import { isDropRow, numberSets, rowTitle, tickLabel } from './set-numbers.js';
 
 /**
  * The logger.
@@ -479,6 +487,196 @@ export function WorkoutScreen() {
   const needsBodyweight =
     session.bodyweightKg === null && blocks.some((block) => block.loadType !== 'external');
 
+  /** How long this exercise rests after a set, by the lifter's own settings. */
+  const restFor = (block: ExerciseBlock): number =>
+    // Worked out at the tick rather than when the screen loaded, so a time
+    // changed in Settings mid-workout is the next one used.
+    restSecondsFor({
+      chosenSeconds: chosenRestSeconds(restSettings, block.mechanic),
+      exerciseSeconds: block.exercise?.defaultRestSeconds ?? null,
+      profileSeconds: profile?.restSecondsDefault ?? null,
+      mechanic: block.mechanic,
+    });
+
+  /** The exercises in order, with supersets grouped (ADR-0112). */
+  const units = workoutUnits(blocks, (block) => block.entry.supersetId);
+  const groupOf = (block: ExerciseBlock): readonly ExerciseBlock[] | null => {
+    for (const unit of units) {
+      if (unit.kind === 'superset' && unit.members.includes(block)) return unit.members;
+    }
+    return null;
+  };
+
+  /**
+   * What happens after a tick: the buzz, and the rest — or, in a superset, the
+   * next exercise.
+   *
+   * A superset rests after the round, not after each set. Mid-round the timer
+   * holds and the next exercise's set is brought into view; once the round is
+   * done the rest runs for as long as the longest of its exercises needs.
+   */
+  const afterComplete = (block: ExerciseBlock, setId: string): void => {
+    // Answers the finger already on the glass, so the tick does not have to
+    // be watched to be believed.
+    buzz('tick');
+    const group = groupOf(block);
+    if (group === null) {
+      // Nothing to rest between when the sets happened days ago.
+      if (!past) setRest({ startedAt: new Date(), seconds: restFor(block) });
+      return;
+    }
+    const after = afterTick(
+      group.map((member) => ({
+        entryId: member.entry.id,
+        sets: member.sets.map((set) => (set.id === setId ? { ...set, isCompleted: true } : set)),
+      })),
+      setId,
+    );
+    if (after.next !== null) revealSet(after.next.setId);
+    if (after.rest === 'hold') setRest(null);
+    else if (!past) {
+      setRest({ startedAt: new Date(), seconds: roundRestSeconds(group.map(restFor)) });
+    }
+  };
+
+  const renderBlock = (block: ExerciseBlock) =>
+    block.exercise?.cardioKind != null ? (
+      <CardioCard
+        key={block.entry.id}
+        name={block.exercise.name}
+        kind={block.exercise.cardioKind}
+        sets={block.sets}
+        anchorId={exerciseAnchor(block.entry.id)}
+        unitSystem={unitSystem}
+        bodyweightKg={session.bodyweightKg ?? profile?.bodyweightKg ?? null}
+        past={past}
+        busy={busy}
+        onAddBout={() => {
+          // The next interval usually repeats the last one's settings, so
+          // they carry over; its calories are its own.
+          const last = block.sets.at(-1)?.bout;
+          void write((r) =>
+            r.sessions.addSet(block.entry.id, {
+              weightKg: 0,
+              reps: 0,
+              loadType: 'external',
+              setType: 'working',
+              bout: last === undefined ? {} : { ...last, caloriesKcal: null },
+            }),
+          );
+        }}
+        onSave={(setId, bout) => {
+          void write((r) => r.sessions.updateSet(setId, { bout }));
+        }}
+        onComplete={(setId, bout) => {
+          void write((r) => r.sessions.completeSet(setId, { bout }));
+          buzz('tick');
+        }}
+        onUncomplete={(setId) => {
+          void write((r) => r.sessions.uncompleteSet(setId));
+        }}
+        onRemoveBout={(setId) => {
+          void (async () => {
+            const removed = await write((r) => r.sessions.removeSet(setId));
+            if (removed === null) return;
+            setUndo({
+              token: ++undoToken.current,
+              message: 'Bout removed.',
+              restore: () => {
+                void write((r) => r.sessions.restoreSet(removed));
+              },
+            });
+          })();
+        }}
+        onRemove={() => {
+          setRemoving(block);
+        }}
+      />
+    ) : (
+      <ExerciseCard
+        key={block.entry.id}
+        block={block}
+        friendNote={(() => {
+          const reference = friendNote?.references[block.entry.exerciseId];
+          return reference === undefined
+            ? null
+            : describeReference(
+                friendName(friendNote?.friendName ?? null),
+                reference,
+                unitSystem,
+                block.exercise?.isTimeBased === true,
+              );
+        })()}
+        records={marks.bySet}
+        unitSystem={unitSystem}
+        busy={busy}
+        onAddSet={() => {
+          void write((r) =>
+            r.sessions.addSet(
+              block.entry.id,
+              nextSetTemplate({
+                current: block.sets,
+                previous: block.previous,
+                repLow: block.exercise?.defaultRepLow ?? 8,
+                loadType: block.loadType,
+              }),
+            ),
+          );
+        }}
+        onWarmUp={(sets) => {
+          void write((r) => r.sessions.prependSets(block.entry.id, sets));
+        }}
+        onComplete={(setId, changes) => {
+          void write((r) => r.sessions.completeSet(setId, changes));
+          afterComplete(block, setId);
+        }}
+        onDrop={(set) => {
+          const template = dropTemplate(set, {
+            barbell: block.barbell,
+            dumbbell: block.dumbbell,
+            unitSystem,
+          });
+          if (template === null) return;
+          // No rest between drops: the plates come off and the set goes
+          // on. The rest starts when the last drop is ticked.
+          setRest(null);
+          void write((r) => r.sessions.insertSetAfter(block.entry.id, set.id, template));
+        }}
+        onUncomplete={(setId) => {
+          void write((r) => r.sessions.uncompleteSet(setId));
+        }}
+        onSave={(setId, changes) => {
+          void write((r) => r.sessions.updateSet(setId, changes));
+        }}
+        onRemoveSet={(setId) => {
+          // A set takes its drops with it: a drop left hanging from
+          // nothing would read as a set of its own. One undo puts the
+          // whole chain back.
+          const drops = dropsOf(block.sets, setId);
+          const isDrop = block.sets.find((set) => set.id === setId)?.setType === 'dropset';
+          void (async () => {
+            const removed = await write((r) =>
+              r.sessions.removeSets([setId, ...drops.map((set) => set.id)]),
+            );
+            if (removed === null || removed.length === 0) return;
+            setUndo({
+              token: ++undoToken.current,
+              message: setRemovedMessage(isDrop, removed.length - 1),
+              restore: () => {
+                void write((r) => r.sessions.restoreSets(removed));
+              },
+            });
+          })();
+        }}
+        onRateEffort={(setId, repsInReserve) => {
+          void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
+        }}
+        onRemove={() => {
+          setRemoving(block);
+        }}
+      />
+    );
+
   return (
     <Shell>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
@@ -537,139 +735,37 @@ export function WorkoutScreen() {
         </p>
       )}
 
-      {blocks.map((block) =>
-        block.exercise?.cardioKind != null ? (
-          <CardioCard
-            key={block.entry.id}
-            name={block.exercise.name}
-            kind={block.exercise.cardioKind}
-            sets={block.sets}
-            anchorId={exerciseAnchor(block.entry.id)}
-            unitSystem={unitSystem}
-            bodyweightKg={session.bodyweightKg ?? profile?.bodyweightKg ?? null}
-            past={past}
-            busy={busy}
-            onAddBout={() => {
-              // The next interval usually repeats the last one's settings, so
-              // they carry over; its calories are its own.
-              const last = block.sets.at(-1)?.bout;
-              void write((r) =>
-                r.sessions.addSet(block.entry.id, {
-                  weightKg: 0,
-                  reps: 0,
-                  loadType: 'external',
-                  setType: 'working',
-                  bout: last === undefined ? {} : { ...last, caloriesKcal: null },
-                }),
-              );
-            }}
-            onSave={(setId, bout) => {
-              void write((r) => r.sessions.updateSet(setId, { bout }));
-            }}
-            onComplete={(setId, bout) => {
-              void write((r) => r.sessions.completeSet(setId, { bout }));
-              buzz('tick');
-            }}
-            onUncomplete={(setId) => {
-              void write((r) => r.sessions.uncompleteSet(setId));
-            }}
-            onRemoveBout={(setId) => {
-              void (async () => {
-                const removed = await write((r) => r.sessions.removeSet(setId));
-                if (removed === null) return;
-                setUndo({
-                  token: ++undoToken.current,
-                  message: 'Bout removed.',
-                  restore: () => {
-                    void write((r) => r.sessions.restoreSet(removed));
-                  },
-                });
-              })();
-            }}
-            onRemove={() => {
-              setRemoving(block);
-            }}
-          />
+      {units.map((unit) =>
+        unit.kind === 'single' ? (
+          renderBlock(unit.item)
         ) : (
-          <ExerciseCard
-            key={block.entry.id}
-            block={block}
-            friendNote={(() => {
-              const reference = friendNote?.references[block.entry.exerciseId];
-              return reference === undefined
-                ? null
-                : describeReference(
-                    friendName(friendNote?.friendName ?? null),
-                    reference,
-                    unitSystem,
-                    block.exercise?.isTimeBased === true,
-                  );
-            })()}
-            records={marks.bySet}
-            unitSystem={unitSystem}
+          <SupersetFrame
+            key={unit.supersetId}
+            count={unit.members.length}
             busy={busy}
-            onAddSet={() => {
-              void write((r) =>
-                r.sessions.addSet(
-                  block.entry.id,
-                  nextSetTemplate({
-                    current: block.sets,
-                    previous: block.previous,
-                    repLow: block.exercise?.defaultRepLow ?? 8,
-                    loadType: block.loadType,
-                  }),
-                ),
-              );
+            onUngroup={() => {
+              void write((r) => r.sessions.ungroup(session.id, unit.supersetId));
             }}
-            onWarmUp={(sets) => {
-              void write((r) => r.sessions.prependSets(block.entry.id, sets));
+            onAddRound={() => {
+              // One more set of each, prefilled as "Add set" would, so the
+              // next round is ready before the rest is over.
+              void write(async (r) => {
+                for (const member of unit.members) {
+                  await r.sessions.addSet(
+                    member.entry.id,
+                    nextSetTemplate({
+                      current: member.sets,
+                      previous: member.previous,
+                      repLow: member.exercise?.defaultRepLow ?? 8,
+                      loadType: member.loadType,
+                    }),
+                  );
+                }
+              });
             }}
-            onComplete={(setId, changes) => {
-              void write((r) => r.sessions.completeSet(setId, changes));
-              // Answers the finger already on the glass, so the tick does not
-              // have to be watched to be believed.
-              buzz('tick');
-              // Nothing to rest between when the sets happened days ago.
-              // Worked out at the tick rather than when the screen loaded, so a
-              // time changed in Settings mid-workout is the next one used.
-              if (!past) {
-                setRest({
-                  startedAt: new Date(),
-                  seconds: restSecondsFor({
-                    chosenSeconds: chosenRestSeconds(restSettings, block.mechanic),
-                    exerciseSeconds: block.exercise?.defaultRestSeconds ?? null,
-                    profileSeconds: profile?.restSecondsDefault ?? null,
-                    mechanic: block.mechanic,
-                  }),
-                });
-              }
-            }}
-            onUncomplete={(setId) => {
-              void write((r) => r.sessions.uncompleteSet(setId));
-            }}
-            onSave={(setId, changes) => {
-              void write((r) => r.sessions.updateSet(setId, changes));
-            }}
-            onRemoveSet={(setId) => {
-              void (async () => {
-                const removed = await write((r) => r.sessions.removeSet(setId));
-                if (removed === null) return;
-                setUndo({
-                  token: ++undoToken.current,
-                  message: 'Set removed.',
-                  restore: () => {
-                    void write((r) => r.sessions.restoreSet(removed));
-                  },
-                });
-              })();
-            }}
-            onRateEffort={(setId, repsInReserve) => {
-              void write((r) => r.sessions.updateSet(setId, { rpe: rirToRpe(repsInReserve) }));
-            }}
-            onRemove={() => {
-              setRemoving(block);
-            }}
-          />
+          >
+            {unit.members.map(renderBlock)}
+          </SupersetFrame>
         ),
       )}
 
@@ -798,6 +894,73 @@ function removalDetail(block: ExerciseBlock): string {
   const word = block.exercise?.cardioKind != null ? 'bout' : 'set';
   if (done === 1) return `The ${word} you logged on it goes with it.`;
   return `The ${String(done)} ${word}s you logged on it go with it.`;
+}
+
+/** "Set removed, with 2 drops.": a set takes its drops with it, and says so. */
+function setRemovedMessage(isDrop: boolean, drops: number): string {
+  if (isDrop) return 'Drop removed.';
+  if (drops === 0) return 'Set removed.';
+  return `Set removed, with ${String(drops)} ${drops === 1 ? 'drop' : 'drops'}.`;
+}
+
+/**
+ * Bring a set into view: the next exercise's, after a tick in a superset.
+ *
+ * `nearest`, so nothing moves when it is already on screen — the lifter may be
+ * about to take a drop on the set just done, and a page that jumped away from
+ * it would be in the way.
+ */
+function revealSet(setId: string): void {
+  const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  document
+    .getElementById(setAnchor(setId))
+    ?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'nearest' });
+}
+
+/**
+ * A superset: its exercises in one frame, so it reads as one thing to do.
+ *
+ * Ungroup splits it back into ordinary exercises and keeps every set; it is
+ * the only edit a superset has, because building one is the picker's job.
+ * "Add round" adds the next set of each, which is how a superset grows.
+ */
+function SupersetFrame({
+  count,
+  busy,
+  onUngroup,
+  onAddRound,
+  children,
+}: {
+  readonly count: number;
+  readonly busy: boolean;
+  readonly onUngroup: () => void;
+  readonly onAddRound: () => void;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <section
+      aria-label="Superset"
+      className="flex flex-col gap-3 rounded-card border-l-4 border-accent pl-2"
+    >
+      <div className="flex items-center justify-between gap-3 px-2">
+        <p className="text-xs font-semibold tracking-wide text-accent uppercase">
+          Superset · {String(count)} exercises
+        </p>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onUngroup}
+          className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
+        >
+          Ungroup
+        </button>
+      </div>
+      {children}
+      <Button variant="secondary" fullWidth disabled={busy} onClick={onAddRound}>
+        Add round
+      </Button>
+    </section>
+  );
 }
 
 function removedMessage(name: string, sets: number): string {
@@ -959,6 +1122,7 @@ function ExerciseCard({
   onRemoveSet,
   onRateEffort,
   onRemove,
+  onDrop,
 }: {
   readonly block: ExerciseBlock;
   /** "Alex: 5 × 100 kg", on a workout started from a friend's. */
@@ -974,8 +1138,11 @@ function ExerciseCard({
   readonly onRemoveSet: (setId: string) => void;
   readonly onRateEffort: (setId: string, repsInReserve: number) => void;
   readonly onRemove: () => void;
+  /** Take a drop off this ticked set: a lighter row under it, no rest. */
+  readonly onDrop: (set: SessionSet) => void;
 }) {
   const name = block.exercise?.name ?? 'Unknown exercise';
+  const kit = { barbell: block.barbell, dumbbell: block.dumbbell, unitSystem };
   const [skipped, setSkipped] = useState(false);
 
   /**
@@ -1010,18 +1177,21 @@ function ExerciseCard({
     [firstWorking, workingKg, block.barbell, block.dumbbell, unitSystem],
   );
   const offersWarmup = !hasWarmup && ramp.length > 0;
+  const numbered = numberSets(block.sets);
 
   // Asked once, at the end, about the last set only. Once per set would be
   // four questions for one exercise, which is three too many with a bar in
   // your hands — and it is the last set that decides whether to add weight.
-  const awaiting = skipped ? null : unratedFinalSet(block.sets);
+  // The last *top* set: a drop is taken to failure, so its answer is always
+  // none, and it is the heavy set's effort the next weight is chosen from.
+  const awaiting = skipped ? null : finalTopSet(block.sets);
 
   /**
    * "That was too easy": the top of the rep range, on the last set, once the
    * exercise is done (ADR-0076). Shown here rather than as a toast because it
    * is about this exercise, and it is read on the way to the next one.
    */
-  const lastWorking = [...block.sets].reverse().find((set) => set.setType !== 'warmup');
+  const lastWorking = [...block.sets].reverse().find(isTopSet);
   const advice = weightAdvice({
     sets: block.sets,
     repHigh: block.exercise?.defaultRepHigh ?? null,
@@ -1050,42 +1220,76 @@ function ExerciseCard({
         <p className="mb-3 text-sm text-muted">No sets yet.</p>
       ) : (
         <ul className="mb-3 flex flex-col gap-3">
-          {numberSets(block.sets).map(({ set, number, isFirstWorking }) => (
-            <li key={set.id}>
-              <SetRow
-                // Remounting on id keeps the draft state below honest: a new
-                // set must not inherit the half-typed numbers of the last one.
+          {numbered.map((entry, index) => {
+            const { set, number, isFirstWorking } = entry;
+            const drop = isDropRow(entry);
+            // A drop is offered off the last row of a chain once it is
+            // ticked — the set itself, or its latest drop — so pressing it
+            // again chains another drop rather than starting a second one.
+            const next = numbered[index + 1];
+            const chainEnd = next === undefined || !isDropRow(next);
+            const offersDrop =
+              set.isCompleted &&
+              chainEnd &&
+              set.setType !== 'warmup' &&
+              canDrop(set.loadType) &&
+              dropTemplate(set, kit) !== null;
+            return (
+              <li
                 key={set.id}
-                number={number}
-                {...(isFirstWorking ? { onDraftWeight: setDraftKg } : {})}
-                set={set}
-                record={records.get(set.id) ?? null}
-                exerciseName={name}
-                // Counted among working sets, so a ramp in front does not slide
-                // every "Last:" hint down by the number of warm-ups. A warm-up
-                // has no last time worth quoting.
-                previous={
-                  set.setType === 'warmup' ? null : previousSetAt(block.previous, number - 1)
+                id={setAnchor(set.id)}
+                // Room under the row for the bars pinned to the bottom, so a
+                // set brought into view is not brought in underneath them.
+                className={
+                  drop ? 'ml-4 scroll-mb-40 border-l-2 border-accent/40 pl-3' : 'scroll-mb-40'
                 }
-                barbell={block.barbell}
-                dumbbell={block.dumbbell}
-                unitSystem={unitSystem}
-                busy={busy}
-                onComplete={(changes) => {
-                  onComplete(set.id, changes);
-                }}
-                onUncomplete={() => {
-                  onUncomplete(set.id);
-                }}
-                onSave={(changes) => {
-                  onSave(set.id, changes);
-                }}
-                onRemove={() => {
-                  onRemoveSet(set.id);
-                }}
-              />
-            </li>
-          ))}
+              >
+                <SetRow
+                  // Remounting on id keeps the draft state below honest: a new
+                  // set must not inherit the half-typed numbers of the last one.
+                  key={set.id}
+                  title={rowTitle(entry)}
+                  tick={tickLabel(entry)}
+                  {...(isFirstWorking ? { onDraftWeight: setDraftKg } : {})}
+                  {...(offersDrop
+                    ? {
+                        onDrop: () => {
+                          onDrop(set);
+                        },
+                      }
+                    : {})}
+                  set={set}
+                  record={records.get(set.id) ?? null}
+                  exerciseName={name}
+                  // Counted among working sets, so a ramp in front does not slide
+                  // every "Last:" hint down by the number of warm-ups. A warm-up
+                  // has no last time worth quoting, and nor does a drop: last
+                  // week's set two is not what this drop is aiming at.
+                  previous={
+                    set.setType === 'warmup' || drop
+                      ? null
+                      : previousSetAt(block.previous, number - 1)
+                  }
+                  barbell={block.barbell}
+                  dumbbell={block.dumbbell}
+                  unitSystem={unitSystem}
+                  busy={busy}
+                  onComplete={(changes) => {
+                    onComplete(set.id, changes);
+                  }}
+                  onUncomplete={() => {
+                    onUncomplete(set.id);
+                  }}
+                  onSave={(changes) => {
+                    onSave(set.id, changes);
+                  }}
+                  onRemove={() => {
+                    onRemoveSet(set.id);
+                  }}
+                />
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -1157,18 +1361,6 @@ function laterOf(a: Date | null, b: Date | null): Date | null {
 /** `16 kg`, `35 lb`: a weight with its unit, for a sentence rather than a field. */
 function showWeight(kg: number, unitSystem: UnitSystem): string {
   return `${String(toDisplayWeight(kg, unitSystem).value)} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
-}
-
-/**
- * The set worth asking about, or null.
- *
- * Only once every set is ticked — asking mid-exercise interrupts the thing it
- * is measuring — and only if nobody has answered already.
- */
-function unratedFinalSet(sets: readonly SessionSet[]): SessionSet | null {
-  if (sets.length === 0 || !sets.every((entry) => entry.isCompleted)) return null;
-  const last = sets[sets.length - 1];
-  return last?.rpe === null ? last : null;
 }
 
 /**
@@ -1247,7 +1439,8 @@ const EFFORT_ANSWERS = [
  * fighting the field for the value while somebody was still typing in it.
  */
 function SetRow({
-  number,
+  title,
+  tick,
   set,
   record,
   exerciseName,
@@ -1261,9 +1454,14 @@ function SetRow({
   onUncomplete,
   onSave,
   onRemove,
+  onDrop,
 }: {
-  /** Its place among sets of its own kind — warm-ups counted apart. */
-  readonly number: number;
+  /** "Set 2", "Warm-up 1", "Drop": from `rowTitle`, warm-ups and drops counted apart. */
+  readonly title: string;
+  /** What the tick says it does, from `tickLabel`. */
+  readonly tick: string;
+  /** Offered on a ticked set that can come down: a drop goes under it. */
+  readonly onDrop?: () => void;
   /**
    * Told what is in the weight field, for the one row the warm-up ramp reads.
    * A set is only written on the tick, so the card cannot see a typed weight
@@ -1321,10 +1519,6 @@ function SetRow({
   };
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
-  const title = setTitle(set.setType, number);
-  const tickLabel = `${set.isCompleted ? 'Undo' : 'Complete'} ${
-    set.setType === 'warmup' ? 'warm-up' : 'set'
-  } ${String(number)}`;
   /** A row that is a number to read rather than a number to type. */
   const compact = set.isCompleted || set.setType === 'warmup';
 
@@ -1385,9 +1579,20 @@ function SetRow({
                 Delete
               </button>
             )}
+            {onDrop !== undefined && (
+              <button
+                type="button"
+                aria-label={`Drop after ${title.toLowerCase()}`}
+                disabled={busy}
+                onClick={onDrop}
+                className="min-h-tap shrink-0 px-2 text-sm font-semibold text-accent underline-offset-4 hover:underline"
+              >
+                Drop
+              </button>
+            )}
             <button
               type="button"
-              aria-label={tickLabel}
+              aria-label={tick}
               aria-pressed={set.isCompleted}
               disabled={busy}
               onClick={() => {
@@ -1473,7 +1678,7 @@ function SetRow({
 
             <button
               type="button"
-              aria-label={tickLabel}
+              aria-label={tick}
               aria-pressed={false}
               disabled={busy}
               onClick={() => {

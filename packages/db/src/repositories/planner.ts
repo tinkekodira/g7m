@@ -36,11 +36,15 @@ import {
 /**
  * Only these count towards a group's weekly volume.
  *
- * Warm-ups do not, and neither does an incomplete set. This matches
+ * Warm-ups do not, and neither does an incomplete set, and neither does a
+ * drop: it is part of the set it came off (`countsAsSet` in core), so a set
+ * with two drops is one set towards the week, and the last set's effort and
+ * the top weight are read from the set, not from the lighter drop after it.
+ * Otherwise this matches
  * `countsTowardVolume` in `@g7m/core` — the two have to agree, or the app
  * prescribes work against a total the progress screen does not show.
  */
-const COUNTED_SETS = "ss.is_completed = 1 AND ss.set_type <> 'warmup'";
+const COUNTED_SETS = "ss.is_completed = 1 AND ss.set_type NOT IN ('warmup', 'dropset')";
 
 /**
  * Sessions kept per exercise.

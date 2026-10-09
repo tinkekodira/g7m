@@ -347,6 +347,8 @@ interface WorkoutDetail {
     readonly sets: readonly {
       readonly id: string;
       readonly warmup: boolean;
+      /** A drop off the set before it, said so on the chip. */
+      readonly drop: boolean;
       readonly loadType: 'external' | 'bodyweight' | 'bodyweight_plus' | 'assisted';
       readonly weightKg: number;
       readonly reps: number;
@@ -408,6 +410,7 @@ function DayWorkouts({
                   .map((set) => ({
                     id: set.id,
                     warmup: set.setType === 'warmup',
+                    drop: set.setType === 'dropset',
                     loadType: set.loadType,
                     weightKg: set.weightKg,
                     reps: set.reps,
@@ -524,6 +527,7 @@ function DayWorkouts({
                             )}
                           >
                             {set.warmup && 'Warm-up · '}
+                            {set.drop && 'Drop · '}
                             {describeMark(set, block.timed, show)}
                           </li>
                         ))}

@@ -108,6 +108,16 @@ describe('tallying your own workouts', () => {
     ]);
   });
 
+  /** A set and the drops off it are one set; every kilo in them was lifted. */
+  it('counts a set with drops as one set, and all of its weight', () => {
+    const tallies = tallyWorkouts([
+      set({ completedAt: at(5) }),
+      set({ setType: 'dropset', weightKg: 80, reps: 8, completedAt: at(6) }),
+      set({ setType: 'dropset', weightKg: 60, reps: 8, completedAt: at(7) }),
+    ]);
+    expect(tallies[0]).toMatchObject({ sets: 1, liftedKg: 500 + 640 + 480 });
+  });
+
   it('starts the clock when a bout began, not when it was ticked', () => {
     const [tally] = tallyWorkouts([
       set({ cardio: true, weightKg: 0, reps: 0, durationSeconds: 1800, completedAt: at(30) }),

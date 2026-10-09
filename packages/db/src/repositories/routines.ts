@@ -21,7 +21,13 @@
  * reorder the same routine offline both upload one changed row and neither
  * destroys the other's work.
  */
-import { orderKeyBetween, initialOrderKeys, sortByOrder } from '@g7m/core';
+import {
+  orderKeyBetween,
+  orderKeysBetween,
+  initialOrderKeys,
+  sortByOrder,
+  workoutUnits,
+} from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
@@ -54,6 +60,8 @@ export interface RoutineExercise {
   readonly targetSets: number;
   readonly targetRepLow: number;
   readonly targetRepHigh: number;
+  /** Shared by the movements planned as one superset. ADR-0112. */
+  readonly supersetId: string | null;
 }
 
 /** A routine and the movements in it, in the order they are trained. */
@@ -68,6 +76,13 @@ export interface RoutineExerciseInput {
   readonly targetSets?: number;
   readonly targetRepLow?: number;
   readonly targetRepHigh?: number;
+  /**
+   * Any key shared by movements to be planned as one superset — a session's
+   * superset id, when a workout is saved as a routine. Never stored as given:
+   * each group gets a new id, so a routine's superset and the workout's it was
+   * copied from are not the same group.
+   */
+  readonly group?: string | null;
 }
 
 function toRoutine(row: RawRow, exerciseCount = 0): Routine {
@@ -89,6 +104,7 @@ function toRoutineExercise(row: RawRow): RoutineExercise {
     targetSets: readNumber(row, 'target_sets', 3),
     targetRepLow: readNumber(row, 'target_rep_low', 8),
     targetRepHigh: readNumber(row, 'target_rep_high', 12),
+    supersetId: readOptionalString(row, 'superset_id'),
   };
 }
 
@@ -178,8 +194,14 @@ export class RoutineRepository {
 
     const exercises = input.exercises ?? [];
     const keys = initialOrderKeys(exercises.length);
+    const groups = this.freshGroups(exercises);
     for (const [index, exercise] of exercises.entries()) {
-      await this.insertExercise(id, exercise, keys[index] ?? orderKeyBetween(null, null));
+      await this.insertExercise(
+        id,
+        exercise,
+        keys[index] ?? orderKeyBetween(null, null),
+        groups.get(exercise) ?? null,
+      );
     }
 
     return {
@@ -209,14 +231,18 @@ export class RoutineRepository {
     const rows = await this.db.getAll<RawRow>(
       `SELECT se.exercise_id AS exercise_id,
               se.order_key   AS order_key,
+              se.superset_id AS superset_id,
               COUNT(ss.id)   AS working_sets,
               MIN(ss.reps)   AS rep_low,
               MAX(ss.reps)   AS rep_high
          FROM session_exercises se
+         -- Top sets only: a drop is part of the set it came off, so three sets
+         -- with a drop on the last is a routine of three, and the drop's
+         -- twelve light reps are not the top of the rep range.
          JOIN session_sets ss
            ON ss.session_exercise_id = se.id
           AND ss.is_completed = 1
-          AND ss.set_type <> 'warmup'
+          AND ss.set_type NOT IN ('warmup', 'dropset')
         WHERE se.session_id = ? AND se.user_id = ?
         GROUP BY se.id
         ORDER BY se.order_key ASC`,
@@ -231,6 +257,10 @@ export class RoutineRepository {
         targetSets: readNumber(row, 'working_sets', 3),
         targetRepLow: low,
         targetRepHigh: high,
+        // Kept, so a superset trained is a superset next time. An exercise
+        // left out above can leave its partner alone; `create` reads that as
+        // an ordinary movement.
+        group: readOptionalString(row, 'superset_id'),
       };
     });
 
@@ -289,6 +319,60 @@ export class RoutineRepository {
     return this.insertExercise(routineId, exercise, orderKeyBetween(last, null));
   }
 
+  /**
+   * Add movements to the end of a routine, in the order given — as a superset
+   * when asked and there are at least two. The picker's "Superset" switch.
+   */
+  async addExercises(
+    routineId: string,
+    inputs: readonly RoutineExerciseInput[],
+    options: { readonly superset?: boolean } = {},
+  ): Promise<RoutineExercise[]> {
+    if (inputs.length === 0) return [];
+    const { newId } = resolveContext(this.context);
+    const existing = await this.exercisesFor(routineId);
+    const keys = orderKeysBetween(existing.at(-1)?.orderKey ?? null, null, inputs.length);
+    const supersetId = options.superset === true && inputs.length >= 2 ? newId() : null;
+
+    const written: RoutineExercise[] = [];
+    for (const [index, input] of inputs.entries()) {
+      const row = await this.insertExercise(routineId, input, keys[index] ?? 'a0', supersetId);
+      if (row !== null) written.push(row);
+    }
+    return written;
+  }
+
+  /** Split a superset back into ordinary movements. */
+  async ungroup(routineId: string, supersetId: string): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(
+      `UPDATE routine_exercises SET superset_id = NULL, updated_at = ?
+        WHERE routine_id = ? AND superset_id = ? AND user_id = ?`,
+      [toTimestamp(now()), routineId, supersetId, userId],
+    );
+  }
+
+  /**
+   * Write new order keys, all at once: a superset moved as a block, from
+   * `planMove` in core. One transaction, so another device never sees half a
+   * group moved past an exercise and the other half left behind it.
+   */
+  async reorder(
+    writes: readonly { readonly id: string; readonly orderKey: string }[],
+  ): Promise<void> {
+    if (writes.length === 0) return;
+    const { userId, now } = resolveContext(this.context);
+    const at = toTimestamp(now());
+    await this.db.writeTransaction(async (tx) => {
+      for (const write of writes) {
+        await tx.execute(
+          'UPDATE routine_exercises SET order_key = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+          [write.orderKey, at, write.id, userId],
+        );
+      }
+    });
+  }
+
   /** Take a movement out. The sets already trained under it are untouched. */
   async removeExercise(routineExerciseId: string): Promise<void> {
     const { userId } = resolveContext(this.context);
@@ -325,10 +409,29 @@ export class RoutineRepository {
     );
   }
 
+  /**
+   * A new superset id for each group of movements that will sit together,
+   * keyed by the movement. Only a run of two or more next to each other is a
+   * group, by the same rule the screens read them with.
+   */
+  private freshGroups(
+    exercises: readonly RoutineExerciseInput[],
+  ): Map<RoutineExerciseInput, string> {
+    const { newId } = resolveContext(this.context);
+    const groups = new Map<RoutineExerciseInput, string>();
+    for (const unit of workoutUnits(exercises, (exercise) => exercise.group ?? null)) {
+      if (unit.kind !== 'superset') continue;
+      const id = newId();
+      for (const member of unit.members) groups.set(member, id);
+    }
+    return groups;
+  }
+
   private async insertExercise(
     routineId: string,
     exercise: RoutineExerciseInput,
     orderKey: string,
+    supersetId: string | null = null,
   ): Promise<RoutineExercise | null> {
     const { userId, newId, now } = resolveContext(this.context);
     if (exercise.exerciseId === '') return null;
@@ -347,6 +450,7 @@ export class RoutineRepository {
       targetSets,
       low,
       high,
+      supersetId,
       at,
       at,
     ];
@@ -354,8 +458,8 @@ export class RoutineRepository {
     await this.db.execute(
       `INSERT INTO routine_exercises
          (id, user_id, routine_id, exercise_id, order_key,
-          target_sets, target_rep_low, target_rep_high, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          target_sets, target_rep_low, target_rep_high, superset_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       parameters,
     );
 
@@ -367,6 +471,7 @@ export class RoutineRepository {
       targetSets,
       targetRepLow: low,
       targetRepHigh: high,
+      supersetId,
     };
   }
 }

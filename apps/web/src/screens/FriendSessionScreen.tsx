@@ -176,7 +176,11 @@ function FriendWorkout({
   const blocks: SessionBlock[] = useMemo(
     () =>
       session.exercises.map((exercise, index) => ({
-        entry: { id: String(index), exerciseId: exercise.exerciseId },
+        entry: {
+          id: String(index),
+          exerciseId: exercise.exerciseId,
+          supersetId: exercise.supersetId,
+        },
         exercise: catalogue.data?.get(exercise.exerciseId) ?? null,
         sets: exercise.sets.map((set, number) => ({
           ...set,

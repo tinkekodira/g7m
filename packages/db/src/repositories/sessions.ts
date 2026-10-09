@@ -87,6 +87,13 @@ export interface SessionExercise {
   readonly exerciseId: string;
   readonly orderKey: string;
   readonly notes: string | null;
+  /**
+   * Shared by the exercises done as one superset, null for straight sets.
+   * Which ones are grouped is worked out from this and the order
+   * (`workoutUnits` in core), so a group whose partner is gone reads as an
+   * ordinary exercise without anybody having to tidy it up. ADR-0112.
+   */
+  readonly supersetId: string | null;
 }
 
 export interface SessionSet {
@@ -181,6 +188,7 @@ function toSessionExercise(row: RawRow): SessionExercise {
     exerciseId: readString(row, 'exercise_id', ''),
     orderKey: readString(row, 'order_key', ''),
     notes: readOptionalString(row, 'notes'),
+    supersetId: readOptionalString(row, 'superset_id'),
   };
 }
 
@@ -410,22 +418,70 @@ export class SessionRepository {
 
   /** Add an exercise to the end of a workout. */
   async addExercise(sessionId: string, exerciseId: string): Promise<SessionExercise> {
+    const [entry] = await this.addExercises(sessionId, [exerciseId]);
+    if (entry === undefined) throw new Error('No exercise was added.');
+    return entry;
+  }
+
+  /**
+   * Add exercises to the end of a workout, in the order given.
+   *
+   * With `superset`, they share one new superset id: the picker's "Superset"
+   * switch, a routine's superset started, a friend's copied, the coach's pair.
+   * Only two or more make a superset — one exercise on its own is added as an
+   * ordinary one rather than as a group nobody could see.
+   *
+   * One transaction, so the group arrives on the server whole: half a
+   * superset uploaded either side of a lost connection would read, on another
+   * phone, as one ordinary exercise and then, a moment later, as a pair.
+   */
+  async addExercises(
+    sessionId: string,
+    exerciseIds: readonly string[],
+    options: { readonly superset?: boolean } = {},
+  ): Promise<SessionExercise[]> {
+    if (exerciseIds.length === 0) return [];
     const { userId, newId, now } = resolveContext(this.context);
     const existing = await this.exercisesFor(sessionId);
-    const last = existing.at(-1);
-    const orderKey =
-      last === undefined ? (initialOrderKeys(1)[0] ?? 'a0') : orderKeyBetween(last.orderKey, null);
+    const keys = orderKeysBetween(existing.at(-1)?.orderKey ?? null, null, exerciseIds.length);
+    const supersetId = options.superset === true && exerciseIds.length >= 2 ? newId() : null;
 
-    const id = newId();
     const at = toTimestamp(now());
-    await this.db.execute(
-      `INSERT INTO session_exercises
-         (id, user_id, session_id, exercise_id, order_key, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
-      [id, userId, sessionId, exerciseId, orderKey, at, at],
-    );
+    const written: SessionExercise[] = exerciseIds.map((exerciseId, index) => ({
+      id: newId(),
+      sessionId,
+      exerciseId,
+      orderKey: keys[index] ?? 'a0',
+      notes: null,
+      supersetId,
+    }));
 
-    return { id, sessionId, exerciseId, orderKey, notes: null };
+    await this.db.writeTransaction(async (tx) => {
+      for (const entry of written) {
+        await tx.execute(
+          `INSERT INTO session_exercises
+             (id, user_id, session_id, exercise_id, order_key, notes, superset_id,
+              created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+          [entry.id, userId, sessionId, entry.exerciseId, entry.orderKey, supersetId, at, at],
+        );
+      }
+    });
+
+    return written;
+  }
+
+  /**
+   * Split a superset back into ordinary exercises. Their sets are untouched;
+   * only the grouping goes.
+   */
+  async ungroup(sessionId: string, supersetId: string): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(
+      `UPDATE session_exercises SET superset_id = NULL, updated_at = ?
+        WHERE session_id = ? AND superset_id = ? AND user_id = ?`,
+      [toTimestamp(now()), sessionId, supersetId, userId],
+    );
   }
 
   /**
@@ -485,8 +541,9 @@ export class SessionRepository {
     await this.db.writeTransaction(async (tx) => {
       await tx.execute(
         `INSERT INTO session_exercises
-           (id, user_id, session_id, exercise_id, order_key, notes, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (id, user_id, session_id, exercise_id, order_key, notes, superset_id,
+            created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           removed.exercise.id,
           userId,
@@ -494,6 +551,9 @@ export class SessionRepository {
           removed.exercise.exerciseId,
           removed.exercise.orderKey,
           removed.exercise.notes,
+          // Back in its superset, which is what makes this an undo: the pair
+          // it was taken out of reads as a pair again.
+          removed.exercise.supersetId,
           toTimestamp(removed.createdAt),
           at,
         ],
@@ -546,6 +606,47 @@ export class SessionRepository {
       isCompleted: false,
       completedAt: null,
       bout: cleanBout({ ...EMPTY_BOUT, ...template.bout }),
+    };
+
+    await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
+    return set;
+  }
+
+  /**
+   * Add a set directly after another one: a drop, under the set it came off.
+   *
+   * `addSet` appends, which would put a drop after any sets already waiting
+   * below — and a drop belongs to the nearest top set above it (ADR-0112), so
+   * an appended one would hang from the wrong set. The key goes between the
+   * set and whatever follows it.
+   */
+  async insertSetAfter(
+    sessionExerciseId: string,
+    afterSetId: string,
+    template: SetTemplate,
+  ): Promise<SessionSet | null> {
+    const { userId, newId, now } = resolveContext(this.context);
+    const existing = await this.setsFor(sessionExerciseId);
+    const index = existing.findIndex((entry) => entry.id === afterSetId);
+    const after = existing[index];
+    if (after === undefined) return null;
+    // The first set that sorts strictly later. A tie on the key — two devices
+    // minting the same one — is skipped, and the new set lands after it.
+    const next = existing.slice(index + 1).find((entry) => entry.orderKey > after.orderKey);
+
+    const at = toTimestamp(now());
+    const set: SessionSet = {
+      id: newId(),
+      sessionExerciseId,
+      orderKey: orderKeyBetween(after.orderKey, next?.orderKey ?? null),
+      setType: template.setType,
+      loadType: template.loadType,
+      weightKg: weightFor(template.loadType, template.weightKg),
+      reps: Math.max(0, Math.trunc(template.reps)),
+      rpe: null,
+      isCompleted: false,
+      completedAt: null,
+      bout: cleanBout({ ...EMPTY_BOUT }),
     };
 
     await this.db.execute(INSERT_SET, setValues({ set, createdAt: now() }, userId, at));
@@ -704,6 +805,36 @@ export class SessionRepository {
 
     await this.db.execute('DELETE FROM session_sets WHERE id = ? AND user_id = ?', [setId, userId]);
     return toRemovedSet(row);
+  }
+
+  /**
+   * Delete several sets at once — a set and the drops hanging from it — and
+   * hand back what it takes to put them all back with one undo.
+   */
+  async removeSets(setIds: readonly string[]): Promise<RemovedSet[]> {
+    const { userId } = resolveContext(this.context);
+    const removed: RemovedSet[] = [];
+    await this.db.writeTransaction(async (tx) => {
+      for (const setId of setIds) {
+        const row = await tx.getOptional<RawRow>(
+          'SELECT * FROM session_sets WHERE id = ? AND user_id = ?',
+          [setId, userId],
+        );
+        if (row === null) continue;
+        await tx.execute('DELETE FROM session_sets WHERE id = ? AND user_id = ?', [setId, userId]);
+        removed.push(toRemovedSet(row));
+      }
+    });
+    return removed;
+  }
+
+  /** Put back sets taken by `removeSets`, together. */
+  async restoreSets(removed: readonly RemovedSet[]): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    const at = toTimestamp(now());
+    await this.db.writeTransaction(async (tx) => {
+      for (const entry of removed) await tx.execute(INSERT_SET, setValues(entry, userId, at));
+    });
   }
 
   /**

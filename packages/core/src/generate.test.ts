@@ -631,3 +631,37 @@ describe('suggestForNeglected', () => {
     ).toEqual([]);
   });
 });
+
+describe('fitting the time there is', () => {
+  it('plans as before when there is no limit', () => {
+    const plan = planSession(input());
+    expect(plan.pairedForTime).toBe(false);
+    expect(plan.exercises.every((entry) => entry.superset === null)).toBe(true);
+    expect(plan.trimmedForTime).toEqual([]);
+    expect(plan.estimatedMinutes).toBeGreaterThan(0);
+  });
+
+  it('changes nothing when the plan already fits', () => {
+    const open = planSession(input());
+    const roomy = planSession(input({ sessionMinutes: 240 }));
+    expect(roomy.exercises.map((entry) => entry.exerciseId)).toEqual(
+      open.exercises.map((entry) => entry.exerciseId),
+    );
+    expect(roomy.pairedForTime).toBe(false);
+  });
+
+  it('pairs exercises up rather than cutting them when time is short', () => {
+    const open = planSession(input());
+    const short = planSession(input({ sessionMinutes: open.estimatedMinutes - 5 }));
+    expect(short.pairedForTime).toBe(true);
+    expect(short.trimmedForTime).toEqual([]);
+    expect(short.exercises).toHaveLength(open.exercises.length);
+    expect(short.estimatedMinutes).toBeLessThanOrEqual(open.estimatedMinutes - 5);
+  });
+
+  it('cuts from the end only when pairing is not enough', () => {
+    const tight = planSession(input({ sessionMinutes: 15 }));
+    expect(tight.trimmedForTime.length).toBeGreaterThan(0);
+    expect(tight.exercises.length).toBeGreaterThan(0);
+  });
+});

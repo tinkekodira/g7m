@@ -293,7 +293,9 @@ export class HistoryRepository {
               counted.set_count, counted.bout_count, counted.first_set_at, counted.last_set_at
          FROM workout_sessions ws
          JOIN (SELECT se2.session_id,
-                      COUNT(*) AS set_count,
+                      -- A drop is part of the set it came off, not another
+                      -- set; it still makes the workout one that counts.
+                      SUM(CASE WHEN ss.set_type = 'dropset' THEN 0 ELSE 1 END) AS set_count,
                       SUM(CASE WHEN e2.cardio_kind IS NOT NULL THEN 1 ELSE 0 END) AS bout_count,
                       -- A bout started its time before it was ticked, so
                       -- the workout's training began then: a treadmill
@@ -360,7 +362,7 @@ export class HistoryRepository {
         WHERE ws.user_id = ?
           ${sessionId === undefined ? '' : 'AND ws.id = ?'}
           AND ss.is_completed = 1
-          AND ss.set_type <> 'warmup'
+          AND ss.set_type NOT IN ('warmup', 'dropset')
         GROUP BY se.session_id, se.exercise_id, m.slug, mg.slug`,
       params,
     );

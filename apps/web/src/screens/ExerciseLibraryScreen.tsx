@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Chip, KitSlider, TextField, type KitPosition } from '@g7m/ui';
+import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise } from '@g7m/db';
 import { ExerciseIcon } from '../components/ExerciseIcon.js';
 import { FavouriteMark } from '../components/Favourite.js';
@@ -8,6 +8,7 @@ import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { addedState } from './added-exercise.js';
 import { favouritesFirst } from './favourites.js';
+import { canConfirm, selectionNumber, toggleSelected } from './superset-picker.js';
 import {
   NO_FILTERS,
   hasFilters,
@@ -50,6 +51,18 @@ export function ExerciseLibraryScreen() {
    */
   const routineId = params.get('routine');
   const picking = adding || routineId !== null;
+
+  /**
+   * The Superset switch, and what has been picked with it on, in tap order.
+   *
+   * Off, a tap adds one exercise and goes back, as it always has. On, a tap
+   * picks, and Confirm adds the picked exercises together as one superset
+   * (ADR-0112). Held here rather than in the URL: the filters above rewrite
+   * the URL on every keystroke, and searching for the second exercise must
+   * not drop the first.
+   */
+  const [superset, setSuperset] = useState(false);
+  const [picked, setPicked] = useState<readonly Exercise[]>([]);
 
   /**
    * Replace rather than push.
@@ -95,6 +108,38 @@ export function ExerciseLibraryScreen() {
         }),
       );
       await navigate(`/routines/${routineId}`);
+    })();
+  };
+
+  const addSuperset = (): void => {
+    if (!canConfirm(picked)) return;
+    void (async () => {
+      if (routineId !== null) {
+        await write((r) =>
+          r.routines.addExercises(
+            routineId,
+            picked.map((exercise) => ({
+              exerciseId: exercise.id,
+              targetRepLow: exercise.defaultRepLow,
+              targetRepHigh: exercise.defaultRepHigh,
+            })),
+            { superset: true },
+          ),
+        );
+        await navigate(`/routines/${routineId}`);
+        return;
+      }
+      const session = await write((r) => r.sessions.active());
+      if (session == null) return;
+      const entries = await write((r) =>
+        r.sessions.addExercises(
+          session.id,
+          picked.map((exercise) => exercise.id),
+          { superset: true },
+        ),
+      );
+      const first = entries?.[0];
+      await navigate('/workout', first === undefined ? undefined : { state: addedState(first.id) });
     })();
   };
 
@@ -155,6 +200,24 @@ export function ExerciseLibraryScreen() {
           {picking ? 'Back' : 'Home'}
         </HeaderLink>
       </header>
+
+      {picking && (
+        <section className="rounded-card bg-surface px-4">
+          <Switch
+            label="Superset"
+            description={
+              superset
+                ? 'Pick two or more, in the order you will do them.'
+                : 'Do two or more exercises back to back, resting after the round.'
+            }
+            checked={superset}
+            onChange={(on) => {
+              setSuperset(on);
+              if (!on) setPicked([]);
+            }}
+          />
+        </section>
+      )}
 
       <TextField
         label="Search"
@@ -288,17 +351,24 @@ export function ExerciseLibraryScreen() {
                     muscle={results.data?.muscles.get(exercise.id) ?? null}
                     favourite={results.data?.favourites.has(exercise.slug) ?? false}
                     onAdd={
-                      adding
+                      superset
                         ? () => {
-                            addToWorkout(exercise);
+                            setPicked((current) => toggleSelected(current, exercise));
                           }
-                        : routineId !== null
+                        : adding
                           ? () => {
-                              addToRoutine(exercise);
+                              addToWorkout(exercise);
                             }
-                          : null
+                          : routineId !== null
+                            ? () => {
+                                addToRoutine(exercise);
+                              }
+                            : null
                     }
-                    busy={busy}
+                    picked={superset ? selectionNumber(picked, exercise.id) : null}
+                    // A treadmill has no sets to alternate with anything.
+                    busy={busy || (superset && exercise.cardioKind !== null)}
+                    selecting={superset}
                   />
                 </li>
               ))}
@@ -306,6 +376,22 @@ export function ExerciseLibraryScreen() {
           )}
         </>
       )}
+
+      {/* Floating, so it is there whichever exercise was picked last, however
+          far down the list. Room is left under the list for it. */}
+      {superset && canConfirm(picked) && (
+        <div className="pb-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-subtle bg-elevated">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
+            <p className="min-w-0 truncate text-sm text-secondary">
+              {picked.map((exercise) => exercise.name).join(' + ')}
+            </p>
+            <Button disabled={busy} onClick={addSuperset} className="shrink-0">
+              Confirm ({String(picked.length)})
+            </Button>
+          </div>
+        </div>
+      )}
+      {superset && canConfirm(picked) && <div aria-hidden className="h-20" />}
     </main>
   );
 }
@@ -316,6 +402,8 @@ function ExerciseRow({
   favourite,
   onAdd,
   busy,
+  picked = null,
+  selecting = false,
 }: {
   readonly exercise: Exercise;
   readonly muscle: string | null;
@@ -323,6 +411,10 @@ function ExerciseRow({
   /** Non-null while picking an exercise for a workout in progress. */
   readonly onAdd: (() => void) | null;
   readonly busy: boolean;
+  /** Its place in the superset being picked, or null when it is not in it. */
+  readonly picked?: number | null;
+  /** Taps pick rather than add, so the row says whether it is picked. */
+  readonly selecting?: boolean;
 }) {
   const detail = (
     exercise.cardioKind !== null
@@ -357,9 +449,21 @@ function ExerciseRow({
         type="button"
         disabled={busy}
         onClick={onAdd}
-        className="flex min-h-tap w-full items-center gap-3 rounded-card bg-surface px-4 py-3 text-left active:bg-elevated disabled:opacity-60"
+        {...(selecting ? { 'aria-pressed': picked !== null } : {})}
+        className={`flex min-h-tap w-full items-center gap-3 rounded-card px-4 py-3 text-left active:bg-elevated disabled:opacity-60 ${
+          picked !== null ? 'bg-accent-subtle ring-2 ring-accent' : 'bg-surface'
+        }`}
       >
         {body}
+        {/* The order it will be done in, which is the order it was picked. */}
+        {picked !== null && (
+          <span
+            aria-hidden
+            className="numeric ml-auto flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-on-accent"
+          >
+            {picked}
+          </span>
+        )}
       </button>
     );
   }

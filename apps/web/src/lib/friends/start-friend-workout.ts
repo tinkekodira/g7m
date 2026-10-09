@@ -15,7 +15,13 @@
  * The session is `manual`. Where it came from changes nothing about how it
  * runs, and `source` is what the app reads to decide that (ADR-0105).
  */
-import { naturalLoadType, nextSetTemplate, workoutToCopy, type SetTemplate } from '@g7m/core';
+import {
+  naturalLoadType,
+  nextSetTemplate,
+  workoutToCopy,
+  workoutUnits,
+  type SetTemplate,
+} from '@g7m/core';
 import type { WorkoutSession } from '@g7m/db';
 import type { Repositories } from '../db/repositories.js';
 import type { FriendSession } from './api.js';
@@ -40,9 +46,24 @@ export async function startFriendWorkout(
     bodyweightKg: input.bodyweightKg,
   });
 
+  // Their supersets are yours too: the exercises they did as one go in as one,
+  // under a new id of this session's own (ADR-0112).
+  const slots: { exercise: (typeof copied)[number]; id: string }[] = [];
+  for (const unit of workoutUnits(copied, (exercise) => exercise.superset)) {
+    const exercises = unit.kind === 'single' ? [unit.item] : unit.members;
+    const added = await repositories.sessions.addExercises(
+      session.id,
+      exercises.map((exercise) => exercise.exerciseId),
+      { superset: unit.kind === 'superset' },
+    );
+    for (const [index, exercise] of exercises.entries()) {
+      const entry = added[index];
+      if (entry !== undefined) slots.push({ exercise, id: entry.id });
+    }
+  }
+
   const references: Record<string, FriendReference> = {};
-  for (const exercise of copied) {
-    const slot = await repositories.sessions.addExercise(session.id, exercise.exerciseId);
+  for (const { exercise, id: slotId } of slots) {
     if (exercise.reference !== null) {
       references[exercise.exerciseId] = {
         reps: exercise.reference.reps,
@@ -68,7 +89,7 @@ export async function startFriendWorkout(
         repLow: detail?.defaultRepLow ?? 8,
         loadType,
       });
-      await repositories.sessions.addSet(slot.id, {
+      await repositories.sessions.addSet(slotId, {
         weightKg: template.weightKg,
         reps: template.reps,
         loadType: template.loadType,

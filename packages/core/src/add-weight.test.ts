@@ -74,3 +74,27 @@ describe('when the weight is ready to go up', () => {
     ).toBe(15);
   });
 });
+
+describe('after a drop set', () => {
+  /**
+   * Twelve reps on the drop at 10 kg say nothing about the 14 kg set it came
+   * off, which only managed eight.
+   */
+  it('judges the set the drop came off', () => {
+    expect(
+      weightAdvice({ sets: [set(8), set(12, { setType: 'dropset', weightKg: 10 })], ...STEP }),
+    ).toBeNull();
+    expect(
+      weightAdvice({ sets: [set(12), set(9, { setType: 'dropset', weightKg: 10 })], ...STEP }),
+    ).toEqual({ weightKg: 14, nextKg: 16, reps: 12 });
+  });
+
+  it('waits for an unticked drop like any other set still to come', () => {
+    expect(
+      weightAdvice({
+        sets: [set(12), set(9, { setType: 'dropset', weightKg: 10, isCompleted: false })],
+        ...STEP,
+      }),
+    ).toBeNull();
+  });
+});

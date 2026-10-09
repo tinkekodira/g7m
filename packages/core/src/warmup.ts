@@ -119,15 +119,7 @@ export function warmupSets(input: WarmupInput): SetTemplate[] {
    */
   const working = toDisplayWeight(workingKg, unitSystem).value;
   const kit = barbell ? plateKit(unitSystem) : null;
-  const step =
-    kit === null
-      ? toDisplayWeight(weightStepKg({ dumbbell, currentKg: workingKg, unitSystem }), unitSystem)
-          .value
-      : (kit.plates[kit.plates.length - 1] ?? 1.25) * 2;
-  // What the lightest lift on this equipment weighs. The bar is a real floor —
-  // nothing lighter can go on it — where a dumbbell's is only the smallest
-  // rung of its rack.
-  const floor = kit === null ? step : kit.bar;
+  const { floor, step } = loadingFor({ barbell, dumbbell, unitSystem, currentKg: workingKg });
   if (!(step > 0) || working <= floor) return [];
 
   const rungs = LADDERS[warmupRungs(working / floor)] ?? [];
@@ -151,6 +143,34 @@ export function warmupSets(input: WarmupInput): SetTemplate[] {
   }
 
   return sets;
+}
+
+/**
+ * What a piece of equipment can be set to, in the lifter's own units.
+ *
+ * The step is what it moves by — a pair of the smallest plate on a barbell, a
+ * rung of the rack for a dumbbell, the stepper's increment for everything
+ * else. The floor is the lightest lift there is on it. The bar is a real
+ * floor, since nothing lighter can go on it, where a dumbbell's is only the
+ * smallest rung of its rack.
+ *
+ * Shared by the warm-up ramp, which climbs to a weight, and the drop set,
+ * which comes down from one: both have to land on a loading that exists.
+ */
+export function loadingFor(input: {
+  readonly barbell: boolean;
+  readonly dumbbell: boolean;
+  readonly unitSystem: UnitSystem;
+  /** The weight it is at now, in kilograms. A dumbbell's step depends on it. */
+  readonly currentKg: number;
+}): { readonly floor: number; readonly step: number; readonly hasBar: boolean } {
+  const { barbell, dumbbell, unitSystem, currentKg } = input;
+  const kit = barbell ? plateKit(unitSystem) : null;
+  const step =
+    kit === null
+      ? toDisplayWeight(weightStepKg({ dumbbell, currentKg, unitSystem }), unitSystem).value
+      : (kit.plates[kit.plates.length - 1] ?? 1.25) * 2;
+  return { floor: kit === null ? step : kit.bar, step, hasBar: kit !== null };
 }
 
 /** Whether a ramp means anything for this load type. */

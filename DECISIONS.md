@@ -7219,3 +7219,156 @@ third kind of label, and it should be added once, in this file.
 - `warmup.spec.ts`: ramp a squat, finish, and the workout's page shows
   "Set 1" and "Warm-up 1" to "Warm-up 5", never "Set 6". Red on the old
   `SessionBody`.
+
+## ADR-0112 — Supersets and drop sets
+
+**Status:** accepted · **Date:** 2026-10-09 · **Phase:** out of phase (new feature) · **Follows:** ADR-0037, ADR-0079, ADR-0106, ADR-0111
+
+The people it is for:
+
+- Somebody who finishes a heavy set of curls and grabs the lighter dumbbells
+  straight away. That is a **drop set**.
+- Somebody who alternates bench and rows with no rest between them, and rests
+  after the pair. That is a **superset**.
+
+The app could record neither. `set_type = 'dropset'` had been in the schema
+since the start, with no way to make one, and nothing grouped exercises at
+all.
+
+Milan's choices, in one PR because he asked for it that way:
+
+- drops come off a set;
+- a set with its drops counts as one set;
+- supersets are linked and guided;
+- a Superset switch in "Add an exercise";
+- Ungroup is the only edit;
+- everywhere at once;
+- the coach pairs exercises only when time is short, and the time comes from
+  today's plan.
+
+### Drop sets
+
+- **"Drop" on a ticked set.** It adds a row directly under that set, about a
+  fifth lighter, on a weight the equipment can be set to (`dropTemplate`).
+  Nearest rather than down, unlike a warm-up: from the 15 kg dumbbells, a
+  fifth off is 12, and the 12.5s are right there. Pressing Drop on the drop
+  chains another.
+- **Who can drop:** external weight, and a weighted dip, whose last drop is
+  plain bodyweight. Not plain bodyweight, and not assisted — less weight on an
+  assistance machine is more help, which is the opposite control.
+- **No rest between drops.** Pressing Drop stops the rest timer, and ticking a
+  drop starts it, so the rest runs after the last drop.
+- **No schema change.** A drop belongs to the nearest top set above it.
+  `sessions.insertSetAfter` puts it there rather than appending.
+- **Deleting a set takes its drops with it**, with one undo: a drop hanging
+  from nothing would read as a set of its own.
+
+### A set with its drops is one set
+
+`countsAsSet` and `isTopSet` sit beside `countsTowardVolume` in `load.ts`. A
+drop's weight is volume: it was lifted. It is not another set, so a heavy set
+and two drops are **one set** in all of these:
+
+- the leaderboard's sets and challenges;
+- the week's sets per muscle and the review's balance;
+- the generator's deficit;
+- the history list's count and the workout's own "Sets";
+- a routine saved from the workout;
+- a friend's workout copied.
+
+Rules that mean "the set" read the top set, not a trailing drop: prefill and
+"last time", "try more weight next time", the effort question, and the
+generator's last top weight and RPE.
+
+The server says the same with `set_type not in ('warmup', 'dropset')` in
+`board_workouts` and `workout_summary`. The rule ignores order, so the two
+tallies cannot drift over which drop belongs where.
+
+Two decisions inside this:
+
+- **Accepted gap:** a drop ticked under a set left unticked counts no set,
+  though its volume counts.
+- **Records:** drops stay eligible. They are real lifts, and cannot be heavier
+  than the set they came off.
+
+### Supersets
+
+- **Storage:** `superset_id uuid` on `session_exercises` and
+  `routine_exercises`, shared by the members. Nothing else is stored.
+- **No FK, CHECK or index.** It references no row. That the members sit
+  together, and that there are two or more, are rules across rows. Nothing
+  looks a row up by it.
+- **Rejected: a `supersets` table.** It would be a parent with nothing to say
+  about itself.
+- **Rejected: a group number per workout.** Two phones offline would both make
+  "group 1".
+- **Grouping is read, never trusted.** `workoutUnits` takes only a run of two
+  or more *next to each other* as a superset. A group whose partner was
+  removed, or that two devices' reorders split, reads as ordinary exercises.
+  Undo restores the id, so a removed member comes back into its pair.
+- **Making one.** A Superset switch in "Add an exercise", in the workout and
+  in the routine builder. With it on, a tap picks, numbered in tap order, and
+  cardio cannot be picked. A floating Confirm appears at two.
+  `addExercises(..., { superset: true })` writes the group in one transaction.
+- **Guided rounds.** Round *n* is each member's *n*-th top set; warm-ups are
+  not in it. A tick mid-round holds the rest timer and brings the next
+  member's set into view (`afterTick`). The scroll is `nearest`, so a set
+  already on screen does not move. After the round, the rest runs for the
+  longest of the members' rests. "Add round" adds a set to each member.
+- **Ungroup** keeps every set.
+- **Routines.** A superset is framed, with its own up and down. Its members
+  move only inside it (`planMove`, one transaction via `routines.reorder`).
+  Starting a routine, saving a workout as one, copying a friend's workout and
+  starting the coach's plan each write the group under a new id of their own.
+- **Friends.** `friend_session` sends `superset_id`; older phones ignore it.
+
+### The coach pairs up only when time is short
+
+- **Time today** is a row on today's plan: 30 · 45 · 60 · 90 · No limit. It
+  is kept on the device, like the rest times. No limit, the default, plans
+  exactly as before.
+- **The estimate.** `estimateSessionSeconds` (the Home card's model) counts a
+  superset once per round, with a 20-second walk between stations.
+- **Pairing.** Over the limit, `pairForTime` pairs greedily: antagonists first,
+  then later exercises before earlier ones. It cuts from the end only once
+  nothing more pairs.
+- **What can pair** (`compatiblePair`):
+  - different muscles;
+  - never a heavy compound (top of the range 6 or under);
+  - two compounds only as antagonists, and never two leg lifts.
+- **Swaps.** `startPlannedWorkout` checks a pair again after any swap. A pair
+  that no longer fits starts as straight sets.
+
+### Deploy order
+
+1. `npx supabase db push` (`20261013120000_supersets_and_drop_sets.sql`).
+2. Redeploy the sync rules: `superset_id` is a new synced column. A build that
+   writes it before both are live jams its own upload queue (see the warning
+   in ADR-0107's deploy notes).
+3. Then merge.
+
+### Tests
+
+- **Core:**
+  - `dropsets.test.ts`: kg and lb bars, the dumbbell racks, a machine, a
+    weighted dip, the bar floor, chains, the effort set;
+  - `superset.test.ts`: units, rounds, `afterTick` with uneven members, drops
+    and warm-ups, block moves, tied keys;
+  - `session-time.test.ts`: superset timing, pairing rules, fitting and
+    cutting;
+  - drop cases in prefill, advice, leaderboard, friends and the generator.
+- **Repositories, on real SQLite:** add as a superset, ungroup, restore into
+  the pair, insert a drop between, remove and restore a chain. In routines: a
+  saved workout keeps its superset under a new id, half a superset saves as
+  an ordinary movement, and a drop is not a target set.
+- **Postgres:** the leaderboard parity test with a drop (sets unchanged,
+  lifted up, phone and server agree); `friend_session` sends the superset and
+  counts the drop in the bench, not as a second set.
+- **Web:** `set-numbers` (drops, tick labels, a drop with no set), the
+  superset picker, Time today storage, decoding a friend's superset.
+- **e2e:**
+  - `dropsets.spec.ts`: drop twice, the rest timer, back up to 100 for set 2,
+    one set and 1,960 kg on the server, the drops in history; no drop on a
+    pull-up;
+  - `supersets.spec.ts`: pick two, a round with the rest after it, Ungroup; a
+    routine that keeps the superset; Time today 30 pairs the plan.

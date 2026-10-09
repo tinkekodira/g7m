@@ -13,11 +13,13 @@
 import { useMemo } from 'react';
 import {
   chooseFocus,
+  compatiblePair,
   FOCUS_LABELS,
   planSession,
   prescriptionFor,
   splitFor,
   startOfDay,
+  workoutUnits,
   type PlannedExercise,
   type PlannedSession,
   type UnitSystem,
@@ -25,6 +27,7 @@ import {
 import type { Goal, Profile, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
 import type { Repositories } from './repositories.js';
+import { useSessionTimeStore } from '../use-session-time.js';
 
 /**
  * The window the weekly targets are measured over.
@@ -56,6 +59,9 @@ export interface TodaysPlan {
 export function useTodaysPlan(now: Date): TodaysPlan {
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const goal = useCatalogue('goal-current', (r) => r.goals.current());
+  // Time today, from the plan screen. Read here so Home's card and the plan
+  // describe the same session, paired or not (ADR-0112).
+  const sessionMinutes = useSessionTimeStore((state) => state.minutes);
 
   // Anchored to the start of today so the keys are stable for the day rather
   // than changing every render and re-querying forever.
@@ -96,8 +102,17 @@ export function useTodaysPlan(now: Date): TodaysPlan {
       history: performances.data,
       setsThisWeekByGroup: weekSets.data,
       now,
+      sessionMinutes,
     });
-  }, [goal.data, catalogue.data, performances.data, weekSets.data, profile.data, now]);
+  }, [
+    goal.data,
+    catalogue.data,
+    performances.data,
+    weekSets.data,
+    profile.data,
+    now,
+    sessionMinutes,
+  ]);
 
   return {
     profile: profile.data,
@@ -136,10 +151,39 @@ export async function startPlannedWorkout(
     bodyweightKg: input.bodyweightKg,
   });
 
-  for (const exercise of input.exercises) {
-    const slot = await repositories.sessions.addExercise(session.id, exercise.exerciseId);
+  // The coach's pairs, kept where they still make sense. A pair is the slot's,
+  // not the exercise's: an alternative swapped in carries no superset of its
+  // own, so it takes its slot's — and is checked again, because the press it
+  // replaced may have been fine beside a row where it is not.
+  const slotted = input.exercises.map((exercise, index) => ({
+    exercise,
+    superset: input.plan.exercises[index]?.superset ?? null,
+  }));
+  const slots: { exercise: PlannedExercise; id: string }[] = [];
+  for (const unit of workoutUnits(slotted, (entry) => entry.superset)) {
+    const members = unit.kind === 'single' ? [unit.item] : unit.members;
+    const exercises = members.map((entry) => entry.exercise);
+    const [first, second] = exercises;
+    const paired =
+      unit.kind === 'superset' &&
+      exercises.length === 2 &&
+      first !== undefined &&
+      second !== undefined &&
+      compatiblePair(first, second);
+    const added = await repositories.sessions.addExercises(
+      session.id,
+      exercises.map((exercise) => exercise.exerciseId),
+      { superset: paired },
+    );
+    for (const [index, exercise] of exercises.entries()) {
+      const entry = added[index];
+      if (entry !== undefined) slots.push({ exercise, id: entry.id });
+    }
+  }
+
+  for (const { exercise, id: slotId } of slots) {
     for (let index = 0; index < exercise.sets; index++) {
-      await repositories.sessions.addSet(slot.id, {
+      await repositories.sessions.addSet(slotId, {
         weightKg: exercise.suggestedKg ?? 0,
         reps: exercise.repLow,
         loadType: exercise.loadType,

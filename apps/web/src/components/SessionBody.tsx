@@ -1,16 +1,18 @@
 import { Link } from 'react-router';
 import {
   boutCalories,
+  countSets,
   formatDuration,
   toDisplayWeight,
   totalVolumeKg,
   trainingMinutes,
+  workoutUnits,
   type Bout,
   type CardioKind,
   type UnitSystem,
 } from '@g7m/core';
 import { boutSummary } from '../screens/bout-copy.js';
-import { numberSets, setTitle } from '../screens/set-numbers.js';
+import { isDropRow, numberSets, rowTitle } from '../screens/set-numbers.js';
 import { formatWeightTotal } from './chart-scale.js';
 
 /**
@@ -28,7 +30,12 @@ export interface SessionExercise {
 }
 
 export interface SessionBlock {
-  readonly entry: { readonly id: string; readonly exerciseId: string };
+  readonly entry: {
+    readonly id: string;
+    readonly exerciseId: string;
+    /** Shared by the exercises done as one superset (ADR-0112). */
+    readonly supersetId?: string | null;
+  };
   readonly exercise: SessionExercise | null;
   readonly sets: readonly {
     readonly id: string;
@@ -93,8 +100,6 @@ export function SessionBody({
         .map((set) => set.completedAt),
     ),
   );
-  const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
-
   // What the cardio came to: time on the machines and calories, from the bouts
   // that were done. The lifting numbers above say nothing about a treadmill.
   const hasLifts = blocks.some((block) => block.exercise?.cardioKind == null);
@@ -115,7 +120,9 @@ export function SessionBody({
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <Stat label="Date" value={startedAt.toLocaleDateString()} />
           {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
-          {hasLifts && <Stat label="Sets" value={String(volume.countedSets)} />}
+          {/* Drops folded into their sets: a set with two drops is one set,
+              as it is on the leaderboard (ADR-0112). */}
+          {hasLifts && <Stat label="Sets" value={String(countSets(allSets))} />}
           {hasLifts && (
             <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
           )}
@@ -132,60 +139,113 @@ export function SessionBody({
         )}
       </section>
 
-      {blocks.map((block) => (
-        <section key={block.entry.id} className="rounded-card bg-surface p-4">
-          <h2 className="mb-3 text-lg font-semibold text-primary">
-            {block.exercise === null ? (
-              'Unknown exercise'
-            ) : (
-              <Link
-                to={linkTo(block.entry.exerciseId, block.exercise)}
-                className="underline-offset-4 hover:underline"
-              >
-                {block.exercise.name}
-              </Link>
-            )}
-          </h2>
+      {workoutUnits(blocks, (block) => block.entry.supersetId ?? null).map((unit) =>
+        unit.kind === 'single' ? (
+          <ExerciseSection
+            key={unit.item.entry.id}
+            block={unit.item}
+            unitSystem={unitSystem}
+            bodyweightKg={bodyweightKg}
+            linkTo={linkTo}
+          />
+        ) : (
+          // One frame, so a superset reads as the one thing it was.
+          <section
+            key={unit.supersetId}
+            aria-label="Superset"
+            className="flex flex-col gap-3 rounded-card border-l-4 border-accent pl-2"
+          >
+            <p className="px-2 text-xs font-semibold tracking-wide text-accent uppercase">
+              Superset
+            </p>
+            {unit.members.map((block) => (
+              <ExerciseSection
+                key={block.entry.id}
+                block={block}
+                unitSystem={unitSystem}
+                bodyweightKg={bodyweightKg}
+                linkTo={linkTo}
+              />
+            ))}
+          </section>
+        ),
+      )}
+    </>
+  );
+}
 
-          {block.exercise?.cardioKind != null ? (
-            <BoutList
-              kind={block.exercise.cardioKind}
-              sets={block.sets}
-              unitSystem={unitSystem}
-              bodyweightKg={bodyweightKg}
-            />
-          ) : block.sets.length === 0 ? (
-            <p className="text-sm text-muted">No sets logged.</p>
-          ) : (
-            <ul className="flex flex-col">
-              {/* Numbered the way the logger numbers them, warm-ups apart, so
+/** One exercise of a finished workout, with every set of it. */
+function ExerciseSection({
+  block,
+  unitSystem,
+  bodyweightKg,
+  linkTo,
+}: {
+  readonly block: SessionBlock;
+  readonly unitSystem: UnitSystem;
+  readonly bodyweightKg: number | null;
+  readonly linkTo: (exerciseId: string, exercise: SessionExercise) => string;
+}) {
+  const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
+  return (
+    <section className="rounded-card bg-surface p-4">
+      <h2 className="mb-3 text-lg font-semibold text-primary">
+        {block.exercise === null ? (
+          'Unknown exercise'
+        ) : (
+          <Link
+            to={linkTo(block.entry.exerciseId, block.exercise)}
+            className="underline-offset-4 hover:underline"
+          >
+            {block.exercise.name}
+          </Link>
+        )}
+      </h2>
+
+      {block.exercise?.cardioKind != null ? (
+        <BoutList
+          kind={block.exercise.cardioKind}
+          sets={block.sets}
+          unitSystem={unitSystem}
+          bodyweightKg={bodyweightKg}
+        />
+      ) : block.sets.length === 0 ? (
+        <p className="text-sm text-muted">No sets logged.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {/* Numbered the way the logger numbers them, warm-ups apart, so
                   the set called "Set 1" mid-workout is not "Set 3" here. */}
-              {numberSets(block.sets).map(({ set, number }) => (
-                <li
-                  key={set.id}
-                  className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
-                >
-                  <span className="text-sm text-secondary">
-                    {setTitle(set.setType, number)}
-                    {/* A set that was written down and never done is part of
+          {/* A drop is indented under the set it came off: it is part of
+                  that set, not one of its own (ADR-0112). */}
+          {numberSets(block.sets).map((entry) => {
+            const { set } = entry;
+            return (
+              <li
+                key={set.id}
+                className={`flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0 ${
+                  isDropRow(entry) ? 'ml-4 border-l-2 border-l-accent/40 pl-3' : ''
+                }`}
+              >
+                <span className="text-sm text-secondary">
+                  {rowTitle(entry)}
+                  {/* A set that was written down and never done is part of
                         the record of what happened, and hiding it would make
                         the list disagree with the totals above. */}
-                    {!set.isCompleted && <span className="text-muted"> · skipped</span>}
-                  </span>
-                  <span className="numeric text-sm text-primary">
-                    {set.loadType === 'bodyweight'
-                      ? 'Bodyweight'
-                      : `${String(toDisplayWeight(set.weightKg, unitSystem).value)} ${unit}`}
-                    {' × '}
-                    {set.reps}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ))}
-    </>
+                  {!set.isCompleted && <span className="text-muted"> · skipped</span>}
+                </span>
+                <span className="numeric text-sm text-primary">
+                  {set.loadType === 'bodyweight'
+                    ? 'Bodyweight'
+                    : `${String(toDisplayWeight(set.weightKg, unitSystem).value)} ${unit}`}
+                  {' × '}
+                  {set.reps}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

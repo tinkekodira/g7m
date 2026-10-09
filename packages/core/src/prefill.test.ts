@@ -216,3 +216,29 @@ describe('hasBeatenPrevious', () => {
     ).toBe(false);
   });
 });
+
+describe('drop sets', () => {
+  const drop = (weightKg: number) => template({ weightKg, setType: 'dropset' });
+
+  /** After a set and its drops, the next set goes back up to the set, not the last drop. */
+  it('offers the set the drops came off, not the lightest drop', () => {
+    const next = nextSetTemplate({
+      ...EMPTY,
+      current: [template({ weightKg: 100 }), drop(80), drop(65)],
+    });
+    expect(next).toEqual(template({ weightKg: 100 }));
+  });
+
+  it('lines last week up set for set, with its drops left out', () => {
+    const previous = [template({ weightKg: 100 }), drop(80), template({ weightKg: 102.5 })];
+    expect(previousSetAt(previous, 1)).toEqual(template({ weightKg: 102.5 }));
+    expect(
+      nextSetTemplate({ ...EMPTY, current: [template({ weightKg: 100 })], previous }).weightKg,
+    ).toBe(102.5);
+  });
+
+  it('does not count last week’s drops as reps to beat', () => {
+    const previous = [template({ weightKg: 100, reps: 5 }), drop(80)];
+    expect(hasBeatenPrevious([template({ weightKg: 100, reps: 6 })], previous)).toBe(true);
+  });
+});

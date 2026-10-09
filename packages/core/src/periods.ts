@@ -15,7 +15,7 @@
  * that contains a clock change still has seven midnights in it.
  */
 import { boutCalories, type LoggedBout } from './cardio.js';
-import { countsTowardVolume, setVolumeKg } from './load.js';
+import { countsAsSet, countsTowardVolume, setVolumeKg } from './load.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
 import { DEFAULT_WEEK_START, dateKey, startOfWeek, type WeekStart } from './week.js';
 
@@ -339,6 +339,8 @@ export function chartBuckets(
     case 'sets':
       for (const set of input.sets) {
         if (!countsTowardVolume(set)) continue;
+        // A drop is volume, never a set of its own.
+        if (metric === 'sets' && !countsAsSet(set)) continue;
         add(set.performedAt, metric === 'sets' ? 1 : (setVolumeKg(set, set.bodyweightKg) ?? 0));
       }
       break;

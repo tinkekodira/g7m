@@ -10,7 +10,7 @@
  * Pure, and separate from the repository that fetches the history, because the
  * rule is the interesting part and the query is not.
  */
-import type { LoadType, SetType } from './load.js';
+import { isTopSet, type LoadType, type SetType } from './load.js';
 
 export interface SetTemplate {
   readonly weightKg: number;
@@ -61,8 +61,10 @@ export function nextSetTemplate(context: PrefillContext): SetTemplate {
   const lastLogged = context.current.at(-1);
   if (lastLogged?.setType === 'warmup') return { ...lastLogged };
 
-  const currentWorking = context.current.filter((entry) => entry.setType !== 'warmup');
-  const previousWorking = context.previous.filter((entry) => entry.setType !== 'warmup');
+  // Top sets only. A drop is the set before it carried on lighter, so it is
+  // neither last week's "set three" nor the load the lifter chose today.
+  const currentWorking = context.current.filter(isTopSet);
+  const previousWorking = context.previous.filter(isTopSet);
   const lastWorking = currentWorking.at(-1);
 
   if (lastWorking !== undefined) {
@@ -113,7 +115,7 @@ function isSameLoad(a: SetTemplate, b: SetTemplate): boolean {
  * the comparison that means something.
  */
 export function previousSetAt(previous: readonly SetTemplate[], index: number): SetTemplate | null {
-  const working = previous.filter((entry) => entry.setType !== 'warmup');
+  const working = previous.filter(isTopSet);
   return working[index] ?? null;
 }
 
@@ -129,8 +131,8 @@ export function hasBeatenPrevious(
   current: readonly SetTemplate[],
   previous: readonly SetTemplate[],
 ): boolean {
-  const currentWorking = current.filter((entry) => entry.setType !== 'warmup');
-  const previousWorking = previous.filter((entry) => entry.setType !== 'warmup');
+  const currentWorking = current.filter(isTopSet);
+  const previousWorking = previous.filter(isTopSet);
   if (previousWorking.length === 0) return false;
 
   const currentReps = totalReps(currentWorking);

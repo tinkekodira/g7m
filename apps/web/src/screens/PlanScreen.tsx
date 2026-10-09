@@ -5,14 +5,26 @@ import {
   GOAL_LABELS,
   formatRest,
   toDisplayWeight,
+  workoutUnits,
   type LoadReason,
   type PlannedExercise,
   type UnitSystem,
 } from '@g7m/core';
-import { Button } from '@g7m/ui';
+import { Button, SegmentedControl } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useWrite } from '../lib/db/use-catalogue.js';
 import { startPlannedWorkout, useTodaysPlan } from '../lib/db/use-todays-plan.js';
+import { SESSION_MINUTES } from '../lib/session-time-settings.js';
+import { useSessionTimeStore } from '../lib/use-session-time.js';
+
+/**
+ * "Time today", as the segmented control's values. Strings, because that is
+ * what a radio group carries; `none` is no limit.
+ */
+const TIME_OPTIONS = [
+  ...SESSION_MINUTES.map((minutes) => ({ value: String(minutes), label: String(minutes) })),
+  { value: 'none', label: 'No limit' },
+] as const;
 
 /**
  * Today's session, generated.
@@ -37,6 +49,8 @@ export function PlanScreen() {
   const { profile, goal, noGoal, ready, plan, unitSystem, error } = useTodaysPlan(now);
 
   const { write, busy } = useWrite();
+  const sessionMinutes = useSessionTimeStore((state) => state.minutes);
+  const setSessionMinutes = useSessionTimeStore((state) => state.setMinutes);
 
   // Which alternative is showing for each slot. Empty means the generator's
   // own choice, which is the case for every slot until somebody taps.
@@ -68,6 +82,25 @@ export function PlanScreen() {
     if (started !== null) void navigate('/workout');
   }
 
+  /** One slot of the plan, with its swap, numbered by its place in the whole plan. */
+  const row = (slot: PlannedExercise) => (
+    <PlannedRow
+      key={slot.exerciseId}
+      index={(plan?.exercises ?? []).indexOf(slot)}
+      slot={slot}
+      choice={swaps.get(slot.exerciseId) ?? 0}
+      unitSystem={unitSystem}
+      onSwap={() => {
+        setSwaps((previous) => {
+          const next = new Map(previous);
+          const options = 1 + slot.alternatives.length;
+          next.set(slot.exerciseId, ((previous.get(slot.exerciseId) ?? 0) + 1) % options);
+          return next;
+        });
+      }}
+    />
+  );
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6 pb-2">
@@ -96,11 +129,38 @@ export function PlanScreen() {
         <WeekDone rested={plan.restedGroups} />
       ) : (
         <>
+          {/* How long there is today. The coach pairs exercises into
+              supersets only when the plan will not fit it (ADR-0112). */}
+          <section className="rounded-card bg-surface p-4">
+            <p className="mb-2 text-sm font-medium text-primary">Time today (minutes)</p>
+            <SegmentedControl
+              label="Time today"
+              options={TIME_OPTIONS}
+              value={sessionMinutes === null ? 'none' : String(sessionMinutes)}
+              onChange={(value) => {
+                const minutes = SESSION_MINUTES.find((option) => String(option) === value);
+                setSessionMinutes(minutes ?? null);
+              }}
+            />
+          </section>
+
           <section className="rounded-card bg-accent px-4 py-3 text-on-accent">
             <p className="text-xs uppercase opacity-80">{FOCUS_LABELS[plan.focus]}</p>
             <p className="text-xl font-semibold">
               {chosen.length} exercises · {totalSets(chosen)} working sets
             </p>
+            <p className="numeric mt-1 text-sm opacity-90">
+              {plan.pairedForTime && sessionMinutes !== null
+                ? `Paired up to fit ${String(sessionMinutes)} min — about ${String(plan.estimatedMinutes)} min`
+                : `About ${String(plan.estimatedMinutes)} min`}
+            </p>
+            {plan.trimmedForTime.length > 0 && (
+              // Said, because a missing exercise with no reason reads as the
+              // app forgetting it. Only after pairing could not make room.
+              <p className="mt-1 text-sm opacity-90">
+                Left out to fit the time: {listOf(plan.trimmedForTime)}.
+              </p>
+            )}
             {plan.restedGroups.length > 0 && (
               // The adaptation, said out loud. Somebody who does not know why
               // their chest is missing today assumes the app forgot.
@@ -111,23 +171,22 @@ export function PlanScreen() {
           </section>
 
           <ol className="flex flex-col gap-3">
-            {plan.exercises.map((slot, index) => (
-              <PlannedRow
-                key={slot.exerciseId}
-                index={index}
-                slot={slot}
-                choice={swaps.get(slot.exerciseId) ?? 0}
-                unitSystem={unitSystem}
-                onSwap={() => {
-                  setSwaps((previous) => {
-                    const next = new Map(previous);
-                    const options = 1 + slot.alternatives.length;
-                    next.set(slot.exerciseId, ((previous.get(slot.exerciseId) ?? 0) + 1) % options);
-                    return next;
-                  });
-                }}
-              />
-            ))}
+            {workoutUnits(plan.exercises, (slot) => slot.superset).map((unit) =>
+              unit.kind === 'single' ? (
+                row(unit.item)
+              ) : (
+                <li
+                  key={unit.supersetId}
+                  aria-label="Superset"
+                  className="flex flex-col gap-3 rounded-card border-l-4 border-accent pl-2"
+                >
+                  <p className="px-2 text-xs font-semibold tracking-wide text-accent uppercase">
+                    Superset · rest after each round
+                  </p>
+                  <ol className="flex flex-col gap-3">{unit.members.map(row)}</ol>
+                </li>
+              ),
+            )}
           </ol>
 
           <Button

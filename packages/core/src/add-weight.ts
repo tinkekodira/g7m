@@ -26,7 +26,7 @@
  * It is a nudge, not a prescription: nothing here writes anything, and the
  * lifter is the one who decides. ADR-0076.
  */
-import { countsTowardVolume, type LoggedSet } from './load.js';
+import { countsTowardVolume, isTopSet, type LoggedSet } from './load.js';
 
 /**
  * Never suggest more weight below this, whatever the exercise's range says.
@@ -60,10 +60,13 @@ export function weightAdvice(input: {
 }): WeightAdvice | null {
   const working = input.sets.filter((set) => set.setType !== 'warmup');
   // Mid-exercise is the wrong moment: there may be another set coming, and it
-  // is the last one that decides.
+  // is the last one that decides. A drop still to tick is still to come.
   if (working.length === 0 || !working.every((set) => set.isCompleted)) return null;
 
-  const last = working[working.length - 1];
+  // The last *top* set: a drop at 64 kg for twelve is the 80 kg set carried
+  // on, and twelve reps at the lighter weight say nothing about whether the
+  // heavier one is ready to go up.
+  const last = working.filter(isTopSet).at(-1);
   if (last === undefined || !countsTowardVolume(last)) return null;
   if (last.loadType === 'bodyweight' || last.loadType === 'assisted') return null;
   if (!(last.weightKg > 0) || !(last.reps >= repsThatEarnMoreWeight(input.repHigh))) return null;

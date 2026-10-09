@@ -5,7 +5,7 @@
  * screens share, and the one function that turns a routine into a workout in
  * progress.
  */
-import { naturalLoadType, nextSetTemplate, type SetTemplate } from '@g7m/core';
+import { naturalLoadType, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
 import type { Routine, RoutineDetail, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
 import type { Repositories } from './repositories.js';
@@ -68,9 +68,23 @@ export async function startRoutineWorkout(
     bodyweightKg: input.bodyweightKg,
   });
 
-  for (const movement of exercises) {
-    const slot = await repositories.sessions.addExercise(session.id, movement.exerciseId);
+  // A routine's superset starts as a superset: its movements go in together,
+  // sharing a new id of the session's own (ADR-0112).
+  const slots: { movement: RoutineDetail['exercises'][number]; id: string }[] = [];
+  for (const unit of workoutUnits(exercises, (movement) => movement.supersetId)) {
+    const movements = unit.kind === 'single' ? [unit.item] : unit.members;
+    const added = await repositories.sessions.addExercises(
+      session.id,
+      movements.map((movement) => movement.exerciseId),
+      { superset: unit.kind === 'superset' },
+    );
+    for (const [index, movement] of movements.entries()) {
+      const entry = added[index];
+      if (entry !== undefined) slots.push({ movement, id: entry.id });
+    }
+  }
 
+  for (const { movement, id: slotId } of slots) {
     const [previous, equipment] = await Promise.all([
       repositories.sessions.lastPerformance(movement.exerciseId, session.id),
       repositories.exercises.equipmentFor(movement.exerciseId),
@@ -88,7 +102,7 @@ export async function startRoutineWorkout(
         repLow: movement.targetRepLow,
         loadType,
       });
-      await repositories.sessions.addSet(slot.id, {
+      await repositories.sessions.addSet(slotId, {
         weightKg: template.weightKg,
         reps: template.reps,
         loadType: template.loadType,

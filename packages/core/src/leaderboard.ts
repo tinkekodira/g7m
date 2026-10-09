@@ -26,7 +26,7 @@
  * A workout belongs to the period it *started* in, as everywhere else.
  */
 import { kgToLb, type UnitSystem } from './units.js';
-import { countsTowardVolume, type LoggedSet } from './load.js';
+import { countsAsSet, countsTowardVolume, type LoggedSet } from './load.js';
 import { periodWindow, startOfMonth, type Span } from './periods.js';
 import { trainingMinutes } from './progress.js';
 import { daysBetween, type WeekStart } from './week.js';
@@ -139,7 +139,9 @@ export function tallyWorkouts(sets: readonly BoardSet[]): BoardWorkout[] {
       lifted: 0,
     };
     if (!set.cardio) {
-      tally.sets += 1;
+      // A drop is part of the set it hung from: its weight counts, but it is
+      // not another set. `board_workouts` says the same in SQL.
+      if (countsAsSet(set)) tally.sets += 1;
       tally.lifted += liftedKg(set);
     }
     const ticked = set.completedAt?.getTime();

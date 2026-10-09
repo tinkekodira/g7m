@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { orderKeyBetween } from '@g7m/core';
 import type { RepositoryContext } from './database.js';
 import { RoutineRepository } from './routines.js';
 import { SessionRepository } from './sessions.js';
@@ -259,5 +260,111 @@ describe('remove', () => {
     expect(after).not.toBeNull();
     expect(after?.routineId).toBeNull();
     expect(after?.source).toBe('manual');
+  });
+});
+
+describe('supersets', () => {
+  it('adds picked movements as one superset', async () => {
+    const saved = await routines.create({ name: 'Arms', exercises: [{ exerciseId: SQUAT }] });
+    const added = await routines.addExercises(
+      saved.id,
+      [{ exerciseId: BENCH }, { exerciseId: ROW }],
+      { superset: true },
+    );
+    const listed = await routines.exercisesFor(saved.id);
+    expect(listed.map((entry) => entry.exerciseId)).toEqual([SQUAT, BENCH, ROW]);
+    expect(listed[0]?.supersetId).toBeNull();
+    expect(listed[1]?.supersetId).toBe(added[0]?.supersetId);
+    expect(listed[2]?.supersetId).toBe(added[0]?.supersetId);
+    expect(added[0]?.supersetId).not.toBeNull();
+  });
+
+  it('ungroups', async () => {
+    const saved = await routines.create({ name: 'Arms' });
+    const [first] = await routines.addExercises(
+      saved.id,
+      [{ exerciseId: BENCH }, { exerciseId: ROW }],
+      { superset: true },
+    );
+    await routines.ungroup(saved.id, first?.supersetId ?? '');
+    const listed = await routines.exercisesFor(saved.id);
+    expect(listed.map((entry) => entry.supersetId)).toEqual([null, null]);
+  });
+
+  it('gives a saved workout’s superset a new id of its own, and keeps it together', async () => {
+    const session = await sessions.start();
+    const [bench, row] = await sessions.addExercises(session.id, [BENCH, ROW], { superset: true });
+    const squat = await sessions.addExercise(session.id, SQUAT);
+    for (const entry of [bench, row, squat]) {
+      if (entry === undefined) throw new Error('setup');
+      const set = await sessions.addSet(entry.id, {
+        weightKg: 60,
+        reps: 10,
+        loadType: 'external',
+        setType: 'working',
+      });
+      await sessions.completeSet(set.id);
+    }
+
+    const saved = await routines.createFromSession({ sessionId: session.id, name: 'Push' });
+    const listed = await routines.exercisesFor(saved.id);
+    expect(listed[0]?.supersetId).not.toBeNull();
+    expect(listed[0]?.supersetId).not.toBe(bench?.supersetId);
+    expect(listed[1]?.supersetId).toBe(listed[0]?.supersetId);
+    expect(listed[2]?.supersetId).toBeNull();
+  });
+
+  /** Its partner was opened and never trained, so it is left out; the other is alone. */
+  it('saves half a superset as an ordinary movement', async () => {
+    const session = await sessions.start();
+    const [bench] = await sessions.addExercises(session.id, [BENCH, ROW], { superset: true });
+    if (bench === undefined) throw new Error('setup');
+    const set = await sessions.addSet(bench.id, {
+      weightKg: 60,
+      reps: 10,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.completeSet(set.id);
+
+    const saved = await routines.createFromSession({ sessionId: session.id, name: 'Push' });
+    const listed = await routines.exercisesFor(saved.id);
+    expect(listed.map((entry) => [entry.exerciseId, entry.supersetId])).toEqual([[BENCH, null]]);
+  });
+
+  it('counts a set and its drop as one target set, with the set’s reps', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, BENCH);
+    const top = await sessions.addSet(entry.id, {
+      weightKg: 60,
+      reps: 8,
+      loadType: 'external',
+      setType: 'working',
+    });
+    const drop = await sessions.insertSetAfter(entry.id, top.id, {
+      weightKg: 45,
+      reps: 15,
+      loadType: 'external',
+      setType: 'dropset',
+    });
+    await sessions.completeSet(top.id);
+    await sessions.completeSet(drop?.id ?? '');
+
+    const saved = await routines.createFromSession({ sessionId: session.id, name: 'Push' });
+    const [movement] = await routines.exercisesFor(saved.id);
+    expect(movement).toMatchObject({ targetSets: 1, targetRepLow: 8, targetRepHigh: 8 });
+  });
+
+  it('writes a block move in one go', async () => {
+    const saved = await routines.create({
+      name: 'Mixed',
+      exercises: [{ exerciseId: SQUAT }, { exerciseId: BENCH }],
+    });
+    const [squat, bench] = await routines.exercisesFor(saved.id);
+    if (squat === undefined || bench === undefined) throw new Error('setup');
+    await routines.reorder([{ id: squat.id, orderKey: orderKeyBetween(bench.orderKey, null) }]);
+    await routines.reorder([]);
+    const listed = await routines.exercisesFor(saved.id);
+    expect(listed.map((entry) => entry.exerciseId)).toEqual([BENCH, SQUAT]);
   });
 });
