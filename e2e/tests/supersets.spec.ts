@@ -116,25 +116,28 @@ test('the Superset card keeps one line and even padding on a narrow phone', asyn
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
 
   const toggle = page.getByRole('switch', { name: /^Superset/ });
+  // The card you see is the section round the switch, not the switch itself.
+  const card = page.locator('section').filter({ has: toggle });
   for (const description of ['Back to back, then rest.', 'Pick in workout order.']) {
     if (description.startsWith('Pick')) await toggle.click();
-    // Wait for the real words before measuring anything (local-e2e-is-not-ci).
-    const line = toggle.getByText(description);
+    // The real words first: measuring before they load measures an empty box.
+    const line = toggle.getByText(description, { exact: true });
     await expect(line).toBeVisible();
-    const box = await toggle.evaluate((card, text) => {
-      const words = [...card.querySelectorAll('span')].find((s) => s.textContent === text)!;
-      const block = words.parentElement!.getBoundingClientRect();
-      const outer = card.getBoundingClientRect();
-      return {
-        lines:
-          words.getBoundingClientRect().height / parseFloat(getComputedStyle(words).lineHeight),
-        top: block.top - outer.top,
-        bottom: outer.bottom - block.bottom,
-        left: block.left - outer.left,
-      };
-    }, description);
-    expect(box.lines).toBeLessThan(1.5);
-    expect(Math.abs(box.top - box.bottom)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.top - box.left)).toBeLessThanOrEqual(1);
+
+    const lines = await line.evaluate(
+      (element: HTMLElement) =>
+        element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight),
+    );
+    expect(lines).toBeLessThan(1.5);
+
+    // The name and the line under it, against the card's edges.
+    const outer = await card.boundingBox();
+    const block = await line.locator('..').boundingBox();
+    if (outer === null || block === null) throw new Error('The Superset card is not on screen');
+    const top = block.y - outer.y;
+    const bottom = outer.y + outer.height - (block.y + block.height);
+    const left = block.x - outer.x;
+    expect(Math.abs(top - bottom)).toBeLessThanOrEqual(1);
+    expect(Math.abs(top - left)).toBeLessThanOrEqual(1);
   }
 });
