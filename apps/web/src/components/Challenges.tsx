@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from './Avatar.js';
@@ -204,37 +204,75 @@ export function SendChallenge({
     );
   };
 
+  // Lighter than the friend's card above it: this is something you might do,
+  // not who they are. The send button is the one solid accent block on it.
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-3 rounded-card border border-subtle bg-surface p-5"
+      className="flex flex-col gap-6 rounded-card border border-subtle/60 bg-surface/50 p-5"
     >
       <div>
         <h2 id={headingId} className="text-lg font-semibold text-primary">
           Challenge {name}
         </h2>
-        <p className="mt-1 text-sm text-secondary">
-          Seven days, from when {name} accepts.{' '}
+        <p className="mt-1 text-sm text-muted">
           {ranking === 'improved'
-            ? 'Each of you against your own last four weeks, so it’s fair whoever trains more.'
-            : 'Whoever does the most wins.'}
+            ? 'Seven days, each of you against your own last four weeks, so it’s fair whoever trains more.'
+            : 'Seven days. Whoever does the most wins.'}
         </p>
       </div>
-      <SegmentedControl
-        label="Rank by"
-        options={RANKING_OPTIONS}
-        value={ranking}
-        onChange={setRanking}
-      />
-      <SegmentedControl label="Stat" options={STAT_OPTIONS} value={stat} onChange={setStat} />
-      <Button fullWidth disabled={busy} onClick={send}>
-        Send challenge
-      </Button>
-      {problem !== null && (
-        <p role="alert" className="text-sm text-danger">
-          {problem}
-        </p>
-      )}
+      <div className="flex flex-col gap-4">
+        <ChallengeChoice label="Rank by">
+          <SegmentedControl
+            variant="quiet"
+            label="Rank by"
+            options={RANKING_OPTIONS}
+            value={ranking}
+            onChange={setRanking}
+          />
+        </ChallengeChoice>
+        <ChallengeChoice label="Stat">
+          <SegmentedControl
+            variant="quiet"
+            label="Stat"
+            options={STAT_OPTIONS}
+            value={stat}
+            onChange={setStat}
+          />
+        </ChallengeChoice>
+      </div>
+      <div className="flex flex-col gap-2">
+        <Button fullWidth disabled={busy} onClick={send}>
+          Send challenge
+        </Button>
+        <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
+        {problem !== null && (
+          <p role="alert" className="text-sm text-danger">
+            {problem}
+          </p>
+        )}
+      </div>
     </section>
+  );
+}
+
+/**
+ * A choice with its name above it. The name is for the eye: the group already
+ * carries the same words as its accessible name, so a screen reader skips this.
+ */
+function ChallengeChoice({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p aria-hidden className="text-xs font-medium text-muted">
+        {label}
+      </p>
+      {children}
+    </div>
   );
 }
