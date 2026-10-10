@@ -205,7 +205,8 @@ export function SendChallenge({
   };
 
   // Lighter than the friend's card above it: this is something you might do,
-  // not who they are. The send button is the one solid accent block on it.
+  // not who they are. The send button wears the same tint as the choices above
+  // it, so the card reads as one form rather than a form and a slab.
   return (
     <section
       aria-labelledby={headingId}
@@ -242,7 +243,7 @@ export function SendChallenge({
         </ChallengeChoice>
       </div>
       <div className="flex flex-col gap-2">
-        <Button fullWidth disabled={busy} onClick={send}>
+        <Button variant="quiet" fullWidth disabled={busy} onClick={send}>
           Send challenge
         </Button>
         <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
