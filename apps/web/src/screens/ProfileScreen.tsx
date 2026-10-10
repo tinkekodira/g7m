@@ -13,6 +13,8 @@ import { Avatar } from '../components/Avatar.js';
 import {
   ChevronRightIcon,
   ClipboardIcon,
+  CrownIcon,
+  LaurelIcon,
   PencilIcon,
   TargetIcon,
   TrophyIcon,
@@ -52,6 +54,8 @@ const AnatomyViewer = lazy(() =>
 
 /** Lifts listed before "Show all". */
 const BESTS_SHOWN = 6;
+/** How many of the best lifts get a metal: gold, silver, bronze. */
+const PODIUM = 3;
 
 /**
  * How a tile's second line is coloured.
@@ -539,7 +543,7 @@ function BestLifts({
   return (
     <section className="rounded-card border border-subtle bg-surface p-4">
       <h2 className="text-lg font-semibold text-primary">Best lifts</h2>
-      <p className="mt-0.5 mb-2 text-xs text-muted">
+      <p className="mt-0.5 mb-1 text-xs text-muted">
         The heaviest you have moved on each exercise. Bodyweight lifts count your bodyweight too.
       </p>
 
@@ -549,10 +553,18 @@ function BestLifts({
         <p className="text-sm text-muted">Nothing measurable yet.</p>
       ) : (
         <ul className="flex flex-col">
-          {shown.map((lift) => {
+          {shown.map((lift, index) => {
             const load = toDisplayWeight(lift.valueKg, unitSystem);
+            // The list comes heaviest first, so the first three are the podium.
+            const place = index < PODIUM ? index + 1 : undefined;
             return (
-              <li key={lift.exerciseId} className="border-b border-subtle last:border-b-0">
+              <li
+                key={lift.exerciseId}
+                className={cx(
+                  'border-b border-subtle last:border-b-0',
+                  place !== undefined && `relative podium-${String(place)}`,
+                )}
+              >
                 <Link
                   to={`/progress/exercise/${lift.exerciseId}`}
                   className="flex min-h-tap items-center gap-3 py-2 active:opacity-80"
@@ -569,10 +581,27 @@ function BestLifts({
                       })}
                     </span>
                   </span>
-                  <span className="numeric shrink-0 text-base font-semibold text-primary">
-                    {String(load.value)} {load.unit}
+                  <span
+                    className={cx(
+                      'numeric flex shrink-0 items-center gap-1.5',
+                      place === 1 ? 'text-lg font-bold' : 'text-base font-semibold',
+                      place === undefined ? 'text-primary' : 'podium-ink',
+                    )}
+                  >
+                    {place === 1 && <CrownIcon className="size-4 shrink-0 podium-badge" />}
+                    <span className={cx(place === 1 && 'podium-gleam')}>
+                      {String(load.value)} {load.unit}
+                    </span>
                   </span>
-                  <ChevronRightIcon className="size-5 shrink-0 text-muted" />
+                  {/* One width for chevron and laurel, so every weight ends
+                      on the same line down the card. */}
+                  <span className="flex w-8 shrink-0 justify-end">
+                    {place === undefined ? (
+                      <ChevronRightIcon className="size-5 text-muted" />
+                    ) : (
+                      <PlaceLaurel place={place} />
+                    )}
+                  </span>
                 </Link>
               </li>
             );
@@ -587,12 +616,25 @@ function BestLifts({
             setAll((previous) => !previous);
           }}
           className={cx(
-            'mt-2 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated',
+            'mt-4 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated',
           )}
         >
           {all ? 'Show fewer' : `Show all ${String(lifts.length)}`}
         </button>
       )}
     </section>
+  );
+}
+
+/**
+ * First, second or third, in a laurel of its metal (styles.css, `.podium-n`).
+ * Hidden from a screen reader: the order of the list already says it.
+ */
+function PlaceLaurel({ place }: { readonly place: number }) {
+  return (
+    <span aria-hidden className="relative grid size-8 place-items-center podium-badge">
+      <LaurelIcon className="absolute inset-0 size-8" />
+      <span className="numeric text-xs leading-none font-semibold">{place}</span>
+    </span>
   );
 }

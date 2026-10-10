@@ -83,3 +83,122 @@ textarea,
       )
       border-box;
 }
+
+/* The three heaviest lifts on Profile. Each row carries a wash of its metal
+   that starts clear on the left, is strongest behind the weight, and is gone
+   again before the laurel at the end, so the badge sits on the plain card.
+   The wash steps down from gold to bronze so first reads as first.
+
+   The inks are not the medal tokens: those sit at 2.7:1 on gold's own wash.
+   These clear 4.5:1 at the wash's peak (first is 20px bold, so 3:1 there). */
+.podium-1,
+.podium-2,
+.podium-3 {
+  background-image: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--podium-from) 40%,
+    var(--podium-peak) calc(100% - 6rem),
+    transparent calc(100% - 2.5rem)
+  );
+}
+
+.podium-1 {
+  --podium-from: rgb(212 160 23 / 0.14);
+  --podium-peak: rgb(245 197 66 / 0.38);
+  --podium-ink: #f5c542;
+  --podium-badge: #f5c542;
+}
+
+.podium-2 {
+  --podium-from: rgb(192 192 192 / 0.1);
+  --podium-peak: rgb(229 229 229 / 0.27);
+  --podium-ink: #e5e5e5;
+  --podium-badge: #d4d4d6;
+}
+
+.podium-3 {
+  --podium-from: rgb(184 115 51 / 0.07);
+  --podium-peak: rgb(205 127 50 / 0.18);
+  --podium-ink: #e0954f;
+  --podium-badge: #cd7f32;
+}
+
+:root[data-theme='light'] .podium-1 {
+  --podium-from: rgb(212 160 23 / 0.08);
+  --podium-peak: rgb(212 160 23 / 0.24);
+  --podium-ink: #7a5e0c;
+  --podium-badge: #9c7a14;
+}
+
+:root[data-theme='light'] .podium-2 {
+  --podium-from: rgb(140 141 146 / 0.07);
+  --podium-peak: rgb(140 141 146 / 0.2);
+  --podium-ink: #5d5e63;
+  --podium-badge: #86878c;
+}
+
+:root[data-theme='light'] .podium-3 {
+  --podium-from: rgb(184 115 51 / 0.05);
+  --podium-peak: rgb(205 127 50 / 0.16);
+  --podium-ink: #8a5222;
+  --podium-badge: #a0612a;
+}
+
+/* Plain classes, not `text-(--podium-ink)`: here `text-base` is a colour as
+   well as a size (the theme has a colour called base), and as a utility it
+   would win over the ink. */
+.podium-ink {
+  color: var(--podium-ink);
+}
+
+.podium-badge {
+  color: var(--podium-badge);
+}
+
+/* First alone gets a hairline of brighter gold along its top and bottom,
+   shaped like its wash, over the divider below it. */
+.podium-1::before,
+.podium-1::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent 15%,
+    color-mix(in srgb, var(--podium-badge) 70%, transparent) calc(100% - 6rem),
+    transparent calc(100% - 2.5rem)
+  );
+}
+
+.podium-1::before {
+  top: 0;
+}
+
+.podium-1::after {
+  bottom: -1px;
+}
+
+/* First's weight: a little light across the top of the gold and a soft
+   glow behind it. Still, not animated: it is a record, not a slot machine. */
+.podium-gleam {
+  background-image: linear-gradient(180deg, #ffe7a3 15%, var(--podium-ink) 85%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 6px rgb(245 197 66 / 0.35));
+}
+
+:root[data-theme='light'] .podium-gleam {
+  background-image: linear-gradient(180deg, #8f6f10 15%, var(--podium-ink) 85%);
+  filter: drop-shadow(0 0 5px rgb(212 160 23 / 0.25));
+}
+
+@media (forced-colors: active) {
+  .podium-gleam {
+    background-image: none;
+    color: CanvasText;
+  }
+}
