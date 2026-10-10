@@ -1,7 +1,8 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx.js';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-outline';
+export type ButtonVariant =
+  'primary' | 'secondary' | 'quiet' | 'ghost' | 'danger' | 'danger-outline';
 export type ButtonSize = 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -29,6 +30,12 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary:
     'bg-elevated text-primary border border-subtle hover:border-strong ' +
     'active:bg-surface disabled:text-muted',
+  // The chosen option of a quiet SegmentedControl, as a button: the action
+  // under a form built from them (Send challenge) reads as part of that form
+  // rather than a solid slab dropped onto it.
+  quiet:
+    'bg-accent-subtle text-primary ring-1 ring-accent/60 ring-inset hover:ring-accent ' +
+    'active:ring-accent-pressed disabled:bg-elevated disabled:text-muted disabled:ring-subtle',
   ghost: 'bg-transparent text-secondary hover:bg-elevated active:bg-surface disabled:text-muted',
   danger:
     'bg-danger text-on-danger hover:brightness-110 active:brightness-95 disabled:bg-strong disabled:text-muted',

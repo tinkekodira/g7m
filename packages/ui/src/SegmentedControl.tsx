@@ -8,9 +8,9 @@ export interface SegmentedOption<T extends string> {
 
 /**
  * `solid` fills the choice with the accent: the control is the screen's main
- * input. `quiet` tints it instead, for a form whose one solid accent block is
- * the button that sends it (the challenge card). Quiet is also 48px tall over
- * all rather than 58, so it lines up with a Button beside it.
+ * input. `quiet` tints it instead, for a choice that is one of several on a
+ * card (the challenge card, whose quiet Button shares the tint). Quiet is also
+ * 48px tall over all rather than 58, so it lines up with a Button beside it.
  */
 export type SegmentedVariant = 'solid' | 'quiet';
 
