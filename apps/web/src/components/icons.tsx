@@ -384,6 +384,47 @@ export function AddFriendIcon(props: IconProps) {
   );
 }
 
+/**
+ * One branch of the laurel: where each leaf sits on the stem's arc and which
+ * way it points, along the stem and leaning out. Worked out once here rather
+ * than traced, so the leaves are evenly spaced.
+ */
+const LAUREL_LEAVES = [128, 153, 178, 203, 228].map((degrees) => {
+  const theta = (degrees * Math.PI) / 180;
+  const x = 12 + 8 * Math.cos(theta);
+  const y = 12.5 + 8 * Math.sin(theta);
+  // Up the stem (increasing angle), plus some of the way outward.
+  const dx = -Math.sin(theta) + 0.75 * Math.cos(theta);
+  const dy = Math.cos(theta) + 0.75 * Math.sin(theta);
+  const turn = (Math.atan2(dx, -dy) * 180) / Math.PI;
+  return `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${turn.toFixed(1)})`;
+});
+
+/**
+ * A laurel wreath, open at the top, with room in the middle for a place: the
+ * three best lifts on Profile. Drawn, not filled, like every other glyph.
+ */
+export function LaurelIcon(props: IconProps) {
+  const branch = (
+    <>
+      <path d="M10.4 20.4A8 8 0 0 1 6.2 6.9" />
+      {LAUREL_LEAVES.map((transform) => (
+        <path
+          key={transform}
+          transform={transform}
+          d="M0 0C1.3-1 1.3-2.8 0-3.9-1.3-2.8-1.3-1 0 0Z"
+        />
+      ))}
+    </>
+  );
+  return (
+    <Glyph strokeWidth={1.1} {...props}>
+      {branch}
+      <g transform="matrix(-1 0 0 1 24 0)">{branch}</g>
+    </Glyph>
+  );
+}
+
 /** A crown with three points: last period's winner on the leaderboard. */
 export function CrownIcon(props: IconProps) {
   return (
