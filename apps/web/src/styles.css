@@ -70,10 +70,16 @@ textarea,
 /* First, second and third on the leaderboard: a thin metal edge, lighter at
    the top left and darker at the bottom right, so it reads as metal rather
    than as a coloured outline. The fill is set by the row (`--place-fill`),
-   so your own row keeps its accent wash inside the edge. */
+   so your own row keeps its accent wash inside the edge.
+
+   Over the fill, the same wash of metal as the best lifts on Profile (the
+   row is also a `.podium-n`), mirrored: clear behind the laurel on the left,
+   strongest behind the score on the right. */
 .place-edge {
   border: 1.5px solid transparent;
   background:
+    linear-gradient(to right, transparent 3.5rem, var(--podium-from) 45%, var(--podium-peak))
+      padding-box,
     linear-gradient(var(--place-fill), var(--place-fill)) padding-box,
     linear-gradient(
         135deg,
@@ -84,16 +90,18 @@ textarea,
       border-box;
 }
 
-/* The three heaviest lifts on Profile. Each row carries a wash of its metal
-   that starts clear on the left, is strongest behind the weight, and is gone
-   again before the laurel at the end, so the badge sits on the plain card.
-   The wash steps down from gold to bronze so first reads as first.
+/* The three heaviest lifts on Profile, and the top three on the friends'
+   leaderboard (`.place-edge` above). `.podium-n` holds a place's metal: its
+   wash, its ink and its badge. The wash steps down from gold to bronze so
+   first reads as first.
+
+   On Profile (`.podium-row`) the wash starts clear on the left, is strongest
+   behind the weight, and is gone again before the laurel at the end, so the
+   badge sits on the plain card.
 
    The inks are not the medal tokens: those sit at 2.7:1 on gold's own wash.
    These clear 4.5:1 at the wash's peak (first is 20px bold, so 3:1 there). */
-.podium-1,
-.podium-2,
-.podium-3 {
+.podium-row {
   background-image: linear-gradient(
     to right,
     transparent 0%,
@@ -156,10 +164,11 @@ textarea,
   color: var(--podium-badge);
 }
 
-/* First alone gets a hairline of brighter gold along its top and bottom,
-   shaped like its wash, over the divider below it. */
-.podium-1::before,
-.podium-1::after {
+/* First on Profile alone gets a hairline of brighter gold along its top and
+   bottom, shaped like its wash, over the divider below it. The leaderboard's
+   first has its metal edge instead. */
+.podium-row.podium-1::before,
+.podium-row.podium-1::after {
   content: '';
   position: absolute;
   inset-inline: 0;
@@ -173,11 +182,11 @@ textarea,
   );
 }
 
-.podium-1::before {
+.podium-row.podium-1::before {
   top: 0;
 }
 
-.podium-1::after {
+.podium-row.podium-1::after {
   bottom: -1px;
 }
 
