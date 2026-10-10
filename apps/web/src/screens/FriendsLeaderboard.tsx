@@ -12,6 +12,7 @@ import {
 import { SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { CrownIcon } from '../components/icons.js';
+import { PlaceLaurel } from '../components/PlaceLaurel.js';
 import { YourCode } from '../components/FriendParts.js';
 import { fetchLeaderboard } from '../lib/friends/api.js';
 import { useMyBoard, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
@@ -204,23 +205,25 @@ function BoardFilters({
   );
 }
 
-/** The edge round first, second and third, and the colour of their numbers. */
-const PLACES: Readonly<Record<number, { readonly metal: string; readonly text: string }>> = {
-  1: { metal: 'var(--medal-gold)', text: 'text-medal-gold' },
-  2: { metal: 'var(--medal-silver)', text: 'text-medal-silver' },
-  3: { metal: 'var(--medal-bronze)', text: 'text-medal-bronze' },
+/** The edge round first, second and third. */
+const METALS: Readonly<Record<number, string>> = {
+  1: 'var(--medal-gold)',
+  2: 'var(--medal-silver)',
+  3: 'var(--medal-bronze)',
 };
 
 /**
  * One place on the board. A friend's row opens their page — the name is the
  * link, stretched over the row — and yours is marked rather than linked.
  *
- * First, second and third stand apart with a metal edge, first a touch
- * larger; everybody after is a plain line. The score is the loudest thing in
- * a row, with a bar under it measured against the leader's.
+ * First, second and third stand apart like the best lifts on Profile: a metal
+ * edge, a wash of the metal behind the score, the place in a laurel and the
+ * score in the metal, first's with a gleam and a touch larger avatar.
+ * Everybody after is a plain line. The score is the loudest thing in a row, with a bar under
+ * it measured against the leader's.
  */
 function BoardRow({ row }: { readonly row: BoardRowView }) {
-  const place = row.rank === null ? undefined : PLACES[row.rank];
+  const metal = row.rank === null ? undefined : METALS[row.rank];
   // "12,450 kg": the unit is set smaller, so the number carries the row.
   const unit = / (kg|lb)$/.exec(row.scoreText);
   const number = unit === null ? row.scoreText : row.scoreText.slice(0, unit.index);
@@ -229,24 +232,28 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
     <li
       className={cx(
         'relative flex items-center gap-3 px-4',
-        place !== undefined
-          ? 'place-edge mb-2 rounded-card py-3'
+        metal !== undefined
+          ? `place-edge podium-${String(row.rank)} mb-2 rounded-card py-3`
           : 'border-b border-subtle/70 py-4 last:border-b-0',
-        place === undefined && row.isYou && 'rounded-control bg-accent-subtle',
+        metal === undefined && row.isYou && 'rounded-control bg-accent-subtle',
       )}
       style={
-        place === undefined
+        metal === undefined
           ? undefined
           : ({
-              '--place-metal': place.metal,
+              '--place-metal': metal,
               '--place-fill': row.isYou ? 'var(--accent-subtle)' : 'var(--bg-surface)',
             } as CSSProperties)
       }
     >
-      <span aria-hidden className="flex w-5 shrink-0 flex-col items-center leading-none">
-        <span className={cx('numeric text-sm font-semibold', place?.text ?? 'text-muted')}>
-          {row.rankText}
-        </span>
+      {/* As wide as a laurel on every row, so the avatars line up down the
+          board. */}
+      <span aria-hidden className="flex w-8 shrink-0 flex-col items-center leading-none">
+        {metal !== undefined && row.rank !== null ? (
+          <PlaceLaurel place={row.rank} />
+        ) : (
+          <span className="numeric text-sm font-semibold text-muted">{row.rankText}</span>
+        )}
         {row.moveText !== null && (
           <span
             className={cx(
@@ -287,10 +294,10 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
         <span
           className={cx(
             'numeric text-xl leading-none font-bold',
-            row.rank === null ? 'text-muted' : 'text-primary',
+            row.rank === null ? 'text-muted' : metal === undefined ? 'text-primary' : 'podium-ink',
           )}
         >
-          {number}
+          <span className={cx(row.rank === 1 && 'podium-gleam')}>{number}</span>
           {unit !== null && (
             <span className="ml-1 text-sm font-medium text-secondary">{unit[1]}</span>
           )}

@@ -10,11 +10,11 @@ import {
 } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { PlaceLaurel } from '../components/PlaceLaurel.js';
 import {
   ChevronRightIcon,
   ClipboardIcon,
   CrownIcon,
-  LaurelIcon,
   PencilIcon,
   TargetIcon,
   TrophyIcon,
@@ -562,7 +562,7 @@ function BestLifts({
                 key={lift.exerciseId}
                 className={cx(
                   'border-b border-subtle last:border-b-0',
-                  place !== undefined && `relative podium-${String(place)}`,
+                  place !== undefined && `podium-row relative podium-${String(place)}`,
                 )}
               >
                 <Link
@@ -623,18 +623,5 @@ function BestLifts({
         </button>
       )}
     </section>
-  );
-}
-
-/**
- * First, second or third, in a laurel of its metal (styles.css, `.podium-n`).
- * Hidden from a screen reader: the order of the list already says it.
- */
-function PlaceLaurel({ place }: { readonly place: number }) {
-  return (
-    <span aria-hidden className="relative grid size-8 place-items-center podium-badge">
-      <LaurelIcon className="absolute inset-0 size-8" />
-      <span className="numeric text-xs leading-none font-semibold">{place}</span>
-    </span>
   );
 }
