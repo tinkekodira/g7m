@@ -153,11 +153,9 @@ test('deselecting plates changes the maths, the bar and the legend, and survives
   await expect(redButton).toHaveAttribute('aria-pressed', 'false');
   await expect(yellowButton).toHaveAttribute('aria-pressed', 'false');
 
-  // The hint appears, and links to the section that was just edited.
+  // The hint appears, as plain text: the section it would point to is right below.
   await expect(page.getByText('2 plates are hidden')).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Change which plates your gym has' }),
-  ).toHaveAttribute('href', '#available-plates');
+  await expect(page.getByRole('link', { name: 'Change which plates your gym has' })).toHaveCount(0);
 
   // Without a 25 or a 15, 100 kg loads as two 20s a side, not a 25 and a 15.
   const stepper = stepperLocator(page);

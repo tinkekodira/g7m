@@ -134,14 +134,7 @@ export function PlateCalculatorScreen() {
       {hiddenCount > 0 && (
         <p className="text-sm text-secondary">
           {hiddenCount === 1 ? 'One plate is' : `${String(hiddenCount)} plates are`} hidden because
-          your gym doesn&rsquo;t have {hiddenCount === 1 ? 'it' : 'them'}.{' '}
-          <a
-            href="#available-plates"
-            className="font-medium text-accent underline underline-offset-2"
-          >
-            Change which plates your gym has
-          </a>
-          .
+          your gym doesn&rsquo;t have {hiddenCount === 1 ? 'it' : 'them'}.
         </p>
       )}
 
