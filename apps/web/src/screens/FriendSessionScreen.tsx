@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { describeWorkoutDay } from '@g7m/core';
 import { useAuthStore } from '../auth/auth-store.js';
+import { Avatar } from '../components/Avatar.js';
 import { FriendsOffline } from '../components/FriendParts.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { PlayIcon } from '../components/icons.js';
+import { ChevronRightIcon, PlayIcon } from '../components/icons.js';
 import { SessionBody, type SessionBlock } from '../components/SessionBody.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useOnline } from '../lib/use-online.js';
@@ -34,6 +35,9 @@ type Loaded =
  * One of a friend's workouts, every exercise and every set — and the button
  * that starts it as yours.
  *
+ * The way out is back to Friends, where the workout was most likely found.
+ * Whose workout it is — their avatar and name — is the way to their page.
+ *
  * Read from the server when there is a connection, and kept on the phone once
  * read (`lib/friends/cache.ts`), so a workout looked at on the way to the gym
  * still starts in a basement with no signal. That is the only thing about
@@ -51,7 +55,8 @@ export function FriendSessionScreen() {
   passedNameRef.current = passedName;
   const [loaded, setLoaded] = useState<Loaded>({ step: 'loading' });
   const [cachedName, setCachedName] = useState<string | null>(null);
-  const name = passedName ?? cachedName ?? friendName(null);
+  const known = passedName ?? cachedName;
+  const name = known ?? friendName(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +115,7 @@ export function FriendSessionScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-center justify-between gap-3 pt-6">
-        <HeaderLink to={`/friends/${friendId}`}>{name}</HeaderLink>
+        <HeaderLink to="/friends">Friends</HeaderLink>
       </header>
 
       {loaded.step === 'loading' ? (
@@ -130,7 +135,9 @@ export function FriendSessionScreen() {
           session={loaded.session}
           fromDevice={loaded.fromDevice}
           owner={owner}
+          friendId={friendId}
           friend={name}
+          avatarName={known}
         />
       )}
     </main>
@@ -141,12 +148,17 @@ function FriendWorkout({
   session,
   fromDevice,
   owner,
+  friendId,
   friend,
+  avatarName,
 }: {
   readonly session: FriendSession;
   readonly fromDevice: boolean;
   readonly owner: string;
+  readonly friendId: string;
   readonly friend: string;
+  /** Their name when it is known, for the initial; null draws the plain glyph. */
+  readonly avatarName: string | null;
 }) {
   const navigate = useNavigate();
   const mine = useMySide();
@@ -208,7 +220,18 @@ function FriendWorkout({
   return (
     <>
       <section>
-        <p className="text-sm text-secondary">{friend}’s workout</p>
+        <Link
+          to={`/friends/${friendId}`}
+          state={{ name: avatarName }}
+          aria-label={`${friend}’s workout, open ${friend}’s profile`}
+          className="-mx-1 mb-3 flex min-h-tap w-fit max-w-full items-center gap-3 rounded-card px-1 py-1 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Avatar name={avatarName} tint />
+          <span className="min-w-0 truncate text-base font-medium text-secondary">
+            {friend}’s workout
+          </span>
+          <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
+        </Link>
         <h1 className="text-2xl font-bold text-primary">{title}</h1>
         <p className="numeric mt-1 text-sm text-secondary">
           {describeWorkoutDay(session.startedAt, new Date())}
