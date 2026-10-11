@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createUser } from './support/backend.js';
-import { openTab, signIn } from './support/app.js';
+import { openTab, signIn, startWith, waitForCatalogue } from './support/app.js';
 
 /**
  * The plate calculator under Learn: what goes on each end, drawn from
@@ -210,6 +210,37 @@ test('at least one plate must stay selected', async ({ page }) => {
     'true',
   );
   await expect(page.getByText('Keep at least one plate selected.')).toBeVisible();
+});
+
+/**
+ * The logger's "Each side" line loads from the same plates. It used to assume
+ * the full rack whatever was ticked here, so a gym with no 25s still got told
+ * to put a 25 on.
+ */
+test('the workout loads the bar from the plates this gym has', async ({ page }) => {
+  const user = await createUser('plates-logger', { onboarded: true });
+  await signIn(page, user);
+  await waitForCatalogue(page);
+  await openCalculator(page);
+
+  const available = page.locator('#available-plates');
+  await available.scrollIntoViewIfNeeded();
+  await available.getByRole('button', { name: '25 kg', exact: true }).click();
+  await expect(available.getByRole('button', { name: '25 kg', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+
+  await openTab(page, 'Home');
+  await startWith(page, 'Barbell Bench Press');
+  await page.getByRole('button', { name: 'Add set' }).click();
+  await page.getByRole('textbox', { name: 'Weight' }).first().fill('100');
+
+  // 40 kg a side with no 25: two 20s, where the full rack would say 25 and 15.
+  const eachSide = page.locator('p').filter({ hasText: /^Each side/ });
+  await expect(eachSide).toContainText('on a 20 kg bar');
+  await expect(eachSide.getByText('20', { exact: true })).toHaveCount(2);
+  await expect(eachSide.getByText('25', { exact: true })).toHaveCount(0);
 });
 
 /**
