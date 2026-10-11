@@ -4,6 +4,7 @@ import type { Achievement } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { useAchievements } from '../lib/db/use-achievements.js';
 import { useWrite } from '../lib/db/use-catalogue.js';
+import { usePublishAchievements } from '../lib/friends/publish-achievements.js';
 import { buzz } from '../lib/haptics.js';
 import { celebrationsFor, quietSummary } from '../screens/achievements-view.js';
 import { AchievementMedal } from './AchievementMedal.js';
@@ -40,6 +41,9 @@ export function AchievementCelebrations() {
   const nextId = useRef(0);
 
   const data = state.data;
+  // The same read, so friends see what this announces. ADR-0117.
+  usePublishAchievements(data?.ready === true ? data.list : null);
+
   useEffect(() => {
     if (!data?.ready) return;
     const { loud, quiet } = celebrationsFor({

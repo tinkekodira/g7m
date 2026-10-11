@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ACHIEVEMENT_KEYS,
   achievements,
+  achievementsToPublish,
+  publishedAchievements,
   type Achievement,
   type AchievementInput,
   type AchievementSession,
@@ -407,5 +409,43 @@ describe('cardio and variety', () => {
     expect(badge('lit-up', { groups, sets }).earnedAt).toEqual(day(8, 14, 10));
     const half = badge('lit-up', { groups, sets: sets.slice(0, 1) });
     expect(half.progress).toEqual({ current: 1, target: 3, unit: 'groups' });
+  });
+});
+
+describe('a friend’s achievements', () => {
+  const sessions = Array.from({ length: 10 }, (_, index) => session(day(7, index + 1)));
+
+  it('publishes what is earned, dated, in key order, and never the birthday', () => {
+    const birthday = day(7, 5);
+    const list = achievements(input({ sessions, birthDate: new Date(Date.UTC(1990, 7, 5)) }), NOW);
+    expect(find(list, 'birthday-pump').earnedAt).toEqual(birthday);
+
+    const published = achievementsToPublish(list);
+    expect(published.map((each) => each.key)).toEqual(
+      [...published.map((each) => each.key)].sort(),
+    );
+    expect(published).toContainEqual({ key: 'day-one', earnedAt: day(7, 1) });
+    expect(published).toContainEqual({ key: 'double-digits', earnedAt: day(7, 10) });
+    expect(published.map((each) => each.key)).not.toContain('birthday-pump');
+    expect(published.map((each) => each.key)).not.toContain('quarter-century');
+  });
+
+  it('reads back as the whole catalogue, theirs dated and with no progress anywhere', () => {
+    const earned = new Map(
+      achievementsToPublish(achievements(input({ sessions }), NOW)).map((each) => [
+        each.key,
+        each.earnedAt,
+      ]),
+    );
+    earned.set('a-badge-from-a-newer-app', day(7, 1));
+
+    const list = publishedAchievements(earned, 'imperial');
+    expect(list.map((each) => each.key)).toEqual(ACHIEVEMENT_KEYS);
+    expect(find(list, 'double-digits').earnedAt).toEqual(day(7, 10));
+    expect(find(list, 'quarter-century').earnedAt).toBeNull();
+    expect(list.every((each) => each.progress === null && each.nextChance === null)).toBe(true);
+    // Named in the viewer's units, like their own.
+    const mine = achievements(input({ unitSystem: 'imperial' }), NOW);
+    expect(list.map((each) => each.name)).toEqual(mine.map((each) => each.name));
   });
 });

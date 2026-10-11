@@ -4,6 +4,7 @@ import {
   decodeChallengeSend,
   decodeChallenges,
   decodeDetail,
+  decodeFriendProfile,
   decodeOverview,
   decodeSendResult,
   decodeSession,
@@ -216,5 +217,73 @@ describe('decodeChallenges', () => {
     });
     expect(decodeChallengeAnswer({ outcome: 'started' })).toBe('started');
     expect(() => decodeChallengeAnswer({ outcome: 'maybe' })).toThrow(FriendsError);
+  });
+});
+
+describe('decodeFriendProfile', () => {
+  const PROFILE = {
+    name: 'Alex',
+    sex: 'female',
+    trained: true,
+    heat: [
+      { slug: 'pectoralis-major', intensity: 1 },
+      { slug: 'triceps', intensity: '0.4' },
+    ],
+    achievements: [
+      { key: 'day-one', earned_at: '2026-08-01T10:00:00+00:00' },
+      { key: 'gym-rat', earned_at: 'not a date' },
+    ],
+    routines: [
+      {
+        id: 'r1',
+        name: 'Push',
+        exercises: [
+          {
+            exercise_id: 'e1',
+            target_sets: 4,
+            target_rep_low: 6,
+            target_rep_high: 10,
+            superset_id: null,
+          },
+        ],
+      },
+    ],
+    bests: [
+      { exercise_id: 'e1', best_kg: '102.5', achieved_at: '2026-09-01T10:00:00+00:00' },
+      { exercise_id: 'e2', best_kg: 0, achieved_at: '2026-09-01T10:00:00+00:00' },
+    ],
+  };
+
+  it('reads every part, dropping what cannot be drawn', () => {
+    const profile = decodeFriendProfile(PROFILE);
+    expect(profile.name).toBe('Alex');
+    expect(profile.sex).toBe('female');
+    expect(profile.trained).toBe(true);
+    expect(profile.heat).toEqual([
+      { slug: 'pectoralis-major', intensity: 1 },
+      { slug: 'triceps', intensity: 0.4 },
+    ]);
+    expect([...(profile.achievements ?? new Map<string, Date>()).keys()]).toEqual(['day-one']);
+    expect(profile.routines[0]?.exercises[0]).toEqual({
+      exerciseId: 'e1',
+      targetSets: 4,
+      targetRepLow: 6,
+      targetRepHigh: 10,
+      supersetId: null,
+    });
+    expect(profile.bests).toEqual([
+      { exerciseId: 'e1', bestKg: 102.5, achievedAt: new Date('2026-09-01T10:00:00Z') },
+    ]);
+  });
+
+  it('tells nothing published apart from nothing earned, and an unknown sex from none', () => {
+    const profile = decodeFriendProfile({ ...PROFILE, sex: 'other', achievements: null });
+    expect(profile.sex).toBeNull();
+    expect(profile.achievements).toBeNull();
+    expect(decodeFriendProfile({ ...PROFILE, achievements: [] }).achievements?.size).toBe(0);
+  });
+
+  it('refuses a reply that is not an object', () => {
+    expect(() => decodeFriendProfile([])).toThrow(FriendsError);
   });
 });

@@ -39,11 +39,52 @@ import {
 export function AchievementsScreen() {
   const state = useAchievements();
   const [params] = useSearchParams();
-  const spotlight = params.get('badge');
-  const now = useMemo(() => new Date(), []);
 
-  const list = state.data?.list ?? null;
-  const unitSystem = state.data?.unitSystem ?? 'metric';
+  return (
+    <AchievementsPage
+      title="Achievements"
+      subtitle="Milestones from your training."
+      back={{ to: '/profile', label: 'Profile' }}
+      list={state.data?.list ?? null}
+      loading={state.loading}
+      error={state.error}
+      unitSystem={state.data?.unitSystem ?? 'metric'}
+      spotlight={params.get('badge')}
+      footer="Worked out from your training log, so past workouts count and a deleted set takes its badge with it."
+    />
+  );
+}
+
+/**
+ * The grid itself, for whoever's badges these are: yours, or a friend's as
+ * their phone published them (ADR-0117), which carry dates but no progress.
+ */
+export function AchievementsPage({
+  title,
+  subtitle,
+  back,
+  list,
+  loading,
+  error,
+  unitSystem,
+  spotlight,
+  footer,
+  notice = null,
+}: {
+  readonly title: string;
+  readonly subtitle: string;
+  readonly back: { readonly to: string; readonly label: string };
+  readonly list: readonly Achievement[] | null;
+  readonly loading: boolean;
+  readonly error: string | null;
+  readonly unitSystem: UnitSystem;
+  /** A badge to scroll to and point out once. */
+  readonly spotlight: string | null;
+  readonly footer: string;
+  /** Said instead of the grid when there is no list to show and nothing loading. */
+  readonly notice?: string | null;
+}) {
+  const now = useMemo(() => new Date(), []);
 
   // Scrolled to once it is on screen. Centred, so it is not left under the
   // header or behind the tab bar.
@@ -59,15 +100,23 @@ export function AchievementsScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Achievements</h1>
-          <p className="mt-1 text-sm text-secondary">Milestones from your training.</p>
+          <h1 className="text-2xl font-semibold text-primary">{title}</h1>
+          <p className="mt-1 text-sm text-secondary">{subtitle}</p>
         </div>
-        <HeaderLink to="/profile">Profile</HeaderLink>
+        <HeaderLink to={back.to}>{back.label}</HeaderLink>
       </header>
 
-      {state.error !== null && <p className="text-sm text-danger">{state.error}</p>}
+      {error !== null && <p className="text-sm text-danger">{error}</p>}
       {list === null ? (
-        state.loading && <p className="text-sm text-muted">Loading…</p>
+        loading ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          notice !== null && (
+            <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
+              {notice}
+            </p>
+          )
+        )
       ) : (
         <>
           <Overview list={list} now={now} />
@@ -84,10 +133,7 @@ export function AchievementsScreen() {
         </>
       )}
 
-      <p className="py-4 text-xs text-muted">
-        Worked out from your training log, so past workouts count and a deleted set takes its badge
-        with it.
-      </p>
+      <p className="py-4 text-xs text-muted">{footer}</p>
     </main>
   );
 }

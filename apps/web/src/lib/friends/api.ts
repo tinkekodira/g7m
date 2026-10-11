@@ -7,7 +7,7 @@
  * (ADR-0105). So this needs a connection, the screens say so when there is
  * none, and nothing here is kept in the local database.
  */
-import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
+import type { EarnedAchievement, LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { supabase } from '../supabase.js';
 import { describeDataError } from '../errors.js';
 import {
@@ -16,6 +16,7 @@ import {
   decodeChallengeSend,
   decodeChallenges,
   decodeDetail,
+  decodeFriendProfile,
   decodeLeaderboard,
   decodeOverview,
   decodeSendResult,
@@ -24,6 +25,7 @@ import {
   type ChallengeAnswerOutcome,
   type ChallengeSendOutcome,
   type FriendDetail,
+  type FriendProfile,
   type FriendsOverview,
   type SendResult,
 } from './decode.js';
@@ -57,6 +59,26 @@ export async function fetchLeaderboard(since: Date): Promise<readonly BoardFrien
 export async function fetchFriend(friendId: string): Promise<FriendDetail | null> {
   const data = await rpc('friend_detail', { friend_id: friendId });
   return data === null ? null : decodeDetail(data);
+}
+
+/**
+ * A friend's body, achievements, routines and best lifts (ADR-0117), with
+ * the heat counted from `since`. Null when they are not a friend sharing
+ * their training.
+ */
+export async function fetchFriendProfile(
+  friendId: string,
+  since: Date,
+): Promise<FriendProfile | null> {
+  const data = await rpc('friend_profile', { friend_id: friendId, since: since.toISOString() });
+  return data === null ? null : decodeFriendProfile(data);
+}
+
+/** Your earned badges, for friends to see. Replaces whatever was published before. */
+export async function publishAchievements(earned: readonly EarnedAchievement[]): Promise<void> {
+  await rpc('publish_achievements', {
+    earned: earned.map((each) => ({ key: each.key, earned_at: each.earnedAt.toISOString() })),
+  });
 }
 
 /**

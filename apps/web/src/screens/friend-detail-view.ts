@@ -13,7 +13,14 @@ import {
   type Standing,
   type UnitSystem,
 } from '@g7m/core';
-import type { FriendBest, WorkoutSummary } from '../lib/friends/api.js';
+import type { TrainingHeat } from '../lib/db/use-trained-body.js';
+import type {
+  FriendBest,
+  FriendProfile,
+  FriendRoutine,
+  WorkoutSummary,
+} from '../lib/friends/api.js';
+import type { BestLift as ProfileBestLift } from './profile-view.js';
 import { summaryDuration, summaryTitle, weightText, type Movers } from './friends-view.js';
 
 export interface HeadToHeadOption {
@@ -114,4 +121,62 @@ export function recentRows(
     exercises:
       summary.work.length === 1 ? '1 exercise' : `${String(summary.work.length)} exercises`,
   }));
+}
+
+/**
+ * A friend's heat, as the body card draws it: the server's share of the peak
+ * per muscle, and the hardest-worked few named from this phone's catalogue.
+ * Their order is the server's, hardest first. ADR-0117.
+ */
+export function friendHeat(
+  profile: Pick<FriendProfile, 'heat' | 'trained'>,
+  muscleNames: ReadonlyMap<string, string>,
+  topCount: number,
+): TrainingHeat {
+  const worked = profile.heat.filter((muscle) => muscle.intensity > 0);
+  return {
+    intensity: new Map(worked.map((muscle) => [muscle.slug, muscle.intensity])),
+    trained: profile.trained,
+    top: worked
+      .flatMap((muscle) => {
+        const name = muscleNames.get(muscle.slug);
+        return name === undefined ? [] : [{ slug: muscle.slug, name }];
+      })
+      .slice(0, topCount),
+  };
+}
+
+/** A friend's best lifts as the card lists them: heaviest first, ties by name. */
+export function friendBestLifts(
+  bests: FriendProfile['bests'],
+  names: ReadonlyMap<string, string>,
+): ProfileBestLift[] {
+  return bests
+    .map((best) => ({
+      exerciseId: best.exerciseId,
+      name: names.get(best.exerciseId) ?? 'Unknown exercise',
+      valueKg: best.bestKg,
+      achievedAt: best.achievedAt,
+    }))
+    .sort((a, b) => b.valueKg - a.valueKg || a.name.localeCompare(b.name, 'en'));
+}
+
+/** "4 exercises · Bench Press, Incline Press, Fly" for a routine's row. */
+export function routineLine(routine: FriendRoutine, names: ReadonlyMap<string, string>): string {
+  const count = routine.exercises.length;
+  const total = count === 1 ? '1 exercise' : `${String(count)} exercises`;
+  if (count === 0) return total;
+  const listed = routine.exercises
+    .map((movement) => names.get(movement.exerciseId) ?? 'Unknown exercise')
+    .join(', ');
+  return `${total} · ${listed}`;
+}
+
+/** "3 × 8–12", or "3 × 5" for a fixed number. */
+export function targetText(movement: FriendRoutine['exercises'][number]): string {
+  const reps =
+    movement.targetRepHigh > movement.targetRepLow
+      ? `${String(movement.targetRepLow)}–${String(movement.targetRepHigh)}`
+      : String(movement.targetRepLow);
+  return `${String(movement.targetSets)} × ${reps}`;
 }

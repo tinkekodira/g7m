@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BestLift } from '@g7m/core';
-import { headToHead, recentRows } from './friend-detail-view.js';
+import {
+  friendBestLifts,
+  friendHeat,
+  headToHead,
+  recentRows,
+  routineLine,
+  targetText,
+} from './friend-detail-view.js';
 
 const day = (n: number) => new Date(2026, 9, n, 12);
 const best = (bestKg: number, n: number): BestLift => ({ bestKg, lastAt: day(n) });
@@ -111,5 +118,94 @@ describe('recentRows', () => {
         exercises: '1 exercise',
       },
     ]);
+  });
+});
+
+describe('friendHeat', () => {
+  const names = new Map([
+    ['pectoralis-major', 'Chest'],
+    ['triceps', 'Triceps'],
+    ['deltoid-anterior', 'Front delts'],
+  ]);
+
+  it('colours by the server’s shares and names the hardest-worked it knows, in its order', () => {
+    const heat = friendHeat(
+      {
+        trained: true,
+        heat: [
+          { slug: 'pectoralis-major', intensity: 1 },
+          { slug: 'a-muscle-from-a-newer-app', intensity: 0.8 },
+          { slug: 'triceps', intensity: 0.5 },
+          { slug: 'deltoid-anterior', intensity: 0.3 },
+          { slug: 'rounded-away', intensity: 0 },
+        ],
+      },
+      names,
+      2,
+    );
+    expect(heat.top).toEqual([
+      { slug: 'pectoralis-major', name: 'Chest' },
+      { slug: 'triceps', name: 'Triceps' },
+    ]);
+    expect(heat.intensity.get('triceps')).toBe(0.5);
+    expect(heat.intensity.has('rounded-away')).toBe(false);
+    expect(heat.trained).toBe(true);
+  });
+
+  it('says nothing was trained when nothing was', () => {
+    expect(friendHeat({ trained: false, heat: [] }, names, 3)).toEqual({
+      intensity: new Map(),
+      trained: false,
+      top: [],
+    });
+  });
+});
+
+describe('friendBestLifts', () => {
+  it('lists heaviest first, ties by name, with the day it was reached', () => {
+    const at = new Date('2026-09-01T10:00:00Z');
+    const lifts = friendBestLifts(
+      [
+        { exerciseId: 'b', bestKg: 100, achievedAt: at },
+        { exerciseId: 'a', bestKg: 100, achievedAt: at },
+        { exerciseId: 'c', bestKg: 140, achievedAt: at },
+      ],
+      new Map([
+        ['a', 'Bench'],
+        ['b', 'Row'],
+        ['c', 'Squat'],
+      ]),
+    );
+    expect(lifts.map((lift) => lift.name)).toEqual(['Squat', 'Bench', 'Row']);
+    expect(lifts[0]).toEqual({ exerciseId: 'c', name: 'Squat', valueKg: 140, achievedAt: at });
+  });
+});
+
+describe('routine lines', () => {
+  const movement = {
+    exerciseId: 'a',
+    targetSets: 3,
+    targetRepLow: 8,
+    targetRepHigh: 12,
+    supersetId: null,
+  };
+
+  it('counts the exercises and names them', () => {
+    const names = new Map([
+      ['a', 'Bench'],
+      ['b', 'Fly'],
+    ]);
+    expect(
+      routineLine(
+        { id: 'r', name: 'Push', exercises: [movement, { ...movement, exerciseId: 'b' }] },
+        names,
+      ),
+    ).toBe('2 exercises · Bench, Fly');
+    expect(routineLine({ id: 'r', name: 'Empty', exercises: [] }, names)).toBe('0 exercises');
+  });
+
+  it('writes a range as a range and a fixed number once', () => {
+    expect(targetText(movement)).toBe('3 × 8–12');
+    expect(targetText({ ...movement, targetRepHigh: 8 })).toBe('3 × 8');
   });
 });

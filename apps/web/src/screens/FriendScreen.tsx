@@ -1,33 +1,55 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
-import { describePresence, describeStreak, weekDots, weeklyStreak } from '@g7m/core';
+import {
+  describePresence,
+  describeStreak,
+  publishedAchievements,
+  weekDots,
+  weeklyStreak,
+} from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { ChallengeList, SendChallenge } from '../components/Challenges.js';
 import { FriendsOffline, PresenceLine, Streak, WeekDots } from '../components/FriendParts.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { ChevronRightIcon, MoreIcon } from '../components/icons.js';
+import { AchievementsCard, BestLiftsCard, TrainingBodyCard } from '../components/ProfileParts.js';
+import { ChevronRightIcon, ClipboardIcon, MoreIcon } from '../components/icons.js';
+import { bodyFor } from '../lib/anatomy-model.js';
+import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { HEATMAP_WEEKS, TOP_MUSCLES, heatSince } from '../lib/db/use-trained-body.js';
 import { useOnline } from '../lib/use-online.js';
 import {
   fetchChallenges,
   fetchFriend,
+  fetchFriendProfile,
   removeFriend,
   FriendsError,
   type FriendDetail,
+  type FriendProfile,
 } from '../lib/friends/api.js';
 import {
   useChallengeCards,
   useMySide,
   useRemote,
   type MySide,
+  type RemoteState,
 } from '../lib/friends/use-friends-data.js';
+import { earnedCount } from './achievements-view.js';
 import type { ChallengeCardView } from './challenges-view.js';
-import { headToHead, recentRows } from './friend-detail-view.js';
+import {
+  friendBestLifts,
+  friendHeat,
+  headToHead,
+  recentRows,
+  routineLine,
+} from './friend-detail-view.js';
 import { friendName } from './friends-view.js';
 
 /**
- * One friend: their week, a challenge with them (ADR-0110), how your lifts
- * compare, and their recent workouts.
+ * One friend: their week, a challenge with them (ADR-0110), then the same
+ * cards as your own profile — achievements, routines, the body coloured by
+ * their training, best lifts (ADR-0117) — and last how your lifts compare and
+ * their recent workouts.
  *
  * Read from the server each time it is opened, like the list it came from. A
  * friend who stopped sharing — or is no longer a friend — gets nothing back
@@ -39,6 +61,9 @@ export function FriendScreen() {
   const online = useOnline();
   const mine = useMySide();
   const detail = useRemote(`friend:${friendId}`, online, () => fetchFriend(friendId));
+  const profile = useRemote(`friend-profile:${friendId}`, online, () =>
+    fetchFriendProfile(friendId, heatSince(new Date())),
+  );
   const challenges = useRemote('friend-challenges', online, fetchChallenges);
   const cards = useChallengeCards(challenges.data, mine.data?.unitSystem ?? 'metric');
   const passedName = (location.state as { name?: unknown } | null)?.name;
@@ -70,6 +95,7 @@ export function FriendScreen() {
       ) : (
         <FriendPage
           detail={detail.data}
+          profile={profile}
           mine={mine.data}
           challenges={
             cards === null
@@ -85,11 +111,14 @@ export function FriendScreen() {
 
 function FriendPage({
   detail,
+  profile,
   mine,
   challenges,
   onChallengesChanged,
 }: {
   readonly detail: FriendDetail;
+  /** Their body, achievements, routines and bests: a second read, which may still be on its way. */
+  readonly profile: RemoteState<FriendProfile | null>;
   readonly mine: MySide;
   /** Your challenges with this friend; null while they load. */
   readonly challenges: readonly ChallengeCardView[] | null;
@@ -142,6 +171,20 @@ function FriendPage({
             <SendChallenge friendId={detail.userId} name={name} onSent={onChallengesChanged} />
           )}
         </>
+      )}
+
+      {profile.error !== null && profile.data === null ? (
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+          {profile.error}
+        </p>
+      ) : (
+        <ProfileCards
+          friendId={detail.userId}
+          name={name}
+          profile={profile.data}
+          loading={profile.loading}
+          mine={mine}
+        />
       )}
 
       <section
@@ -226,6 +269,159 @@ function FriendPage({
         )}
       </section>
     </>
+  );
+}
+
+/**
+ * Their achievements, routines, body and best lifts, in the order your own
+ * profile has them. Null `profile` while it loads.
+ */
+function ProfileCards({
+  friendId,
+  name,
+  profile,
+  loading,
+  mine,
+}: {
+  readonly friendId: string;
+  readonly name: string;
+  readonly profile: FriendProfile | null;
+  readonly loading: boolean;
+  readonly mine: MySide;
+}) {
+  const muscles = useCatalogue('muscles-all', (r) => r.muscles.list());
+  const muscleNames = useMemo(
+    () => new Map((muscles.data ?? []).map((muscle) => [muscle.slug, muscle.commonName])),
+    [muscles.data],
+  );
+  const heat = useMemo(
+    () => (profile === null ? null : friendHeat(profile, muscleNames, TOP_MUSCLES)),
+    [profile, muscleNames],
+  );
+  const bests = useMemo(
+    () => (profile === null ? null : friendBestLifts(profile.bests, mine.names)),
+    [profile, mine.names],
+  );
+
+  const published = profile?.achievements ?? null;
+  const achievements = published === null ? [] : publishedAchievements(published, mine.unitSystem);
+  const { earned, total } = earnedCount(achievements);
+
+  return (
+    <>
+      <AchievementsCard
+        to={`/friends/${friendId}/achievements`}
+        list={achievements}
+        line={
+          profile === null
+            ? 'Loading…'
+            : published === null
+              ? `Shows up once ${name} next opens the app`
+              : earned === 0
+                ? 'None earned yet'
+                : `${String(earned)} of ${String(total)} earned`
+        }
+      />
+
+      <FriendRoutines friendId={friendId} profile={profile} names={mine.names} />
+
+      <TrainingBodyCard
+        title={`${name}’s training`}
+        subtitle={`The last ${String(HEATMAP_WEEKS)} weeks, on their body.`}
+        body={profile === null ? null : bodyFor(profile.sex)}
+        heat={heat}
+        heatLoading={loading}
+        loadingText="Loading…"
+        emptyText={`Nothing logged in the last ${String(HEATMAP_WEEKS)} weeks.`}
+      />
+
+      <BestLiftsCard
+        lifts={bests}
+        loading={loading}
+        unitSystem={mine.unitSystem}
+        description={`The heaviest ${name} has moved on each exercise. Bodyweight exercises are left out: their bodyweight stays private.`}
+        linkTo={(lift) => {
+          const slug = mine.slugs.get(lift.exerciseId);
+          return slug === undefined ? `/friends/${friendId}` : `/exercises/${slug}`;
+        }}
+      />
+    </>
+  );
+}
+
+/** Routines listed before "Show all". */
+const ROUTINES_SHOWN = 3;
+
+/** Their saved routines, each opening on its own page with "Do this routine". */
+function FriendRoutines({
+  friendId,
+  profile,
+  names,
+}: {
+  readonly friendId: string;
+  readonly profile: FriendProfile | null;
+  readonly names: ReadonlyMap<string, string>;
+}) {
+  const [all, setAll] = useState(false);
+  const routines = profile?.routines ?? [];
+  const shown = all ? routines : routines.slice(0, ROUTINES_SHOWN);
+
+  return (
+    <section
+      aria-labelledby="friend-routines"
+      className="rounded-card border border-subtle bg-surface p-4"
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <ClipboardIcon className="size-5" />
+        </span>
+        <h2 id="friend-routines" className="flex-1 text-base font-medium text-primary">
+          Routines
+        </h2>
+        {routines.length > 0 && (
+          <span className="numeric shrink-0 text-sm text-secondary">{routines.length}</span>
+        )}
+      </div>
+
+      {profile === null ? (
+        <p className="mt-3 text-sm text-muted">Loading…</p>
+      ) : routines.length === 0 ? (
+        <p className="mt-3 text-sm text-secondary">No routines saved yet.</p>
+      ) : (
+        <ul className="mt-2 flex flex-col">
+          {shown.map((routine) => (
+            <li key={routine.id} className="border-b border-subtle last:border-b-0">
+              <Link
+                to={`/friends/${friendId}/routines/${routine.id}`}
+                className="flex min-h-tap items-center gap-3 py-2 active:opacity-80"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-primary">
+                    {routine.name}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {routineLine(routine, names)}
+                  </span>
+                </span>
+                <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {routines.length > ROUTINES_SHOWN && (
+        <button
+          type="button"
+          onClick={() => {
+            setAll((previous) => !previous);
+          }}
+          className="mt-2 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated"
+        >
+          {all ? 'Show fewer' : `Show all ${String(routines.length)}`}
+        </button>
+      )}
+    </section>
   );
 }
 

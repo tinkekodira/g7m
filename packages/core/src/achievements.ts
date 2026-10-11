@@ -1097,3 +1097,52 @@ export function achievements(input: AchievementInput, now: Date): Achievement[] 
     };
   });
 }
+
+/** One earned badge, as a phone publishes it for friends to see. ADR-0117. */
+export interface EarnedAchievement {
+  readonly key: string;
+  readonly earnedAt: Date;
+}
+
+/**
+ * What is published for friends: every earned badge with its date, in key
+ * order so the same badges always make the same list.
+ *
+ * Not the secret one. It is earned by training on your birthday, so its date
+ * is your birthday, and friends are not told that unless you tell them.
+ */
+export function achievementsToPublish(list: readonly Achievement[]): readonly EarnedAchievement[] {
+  return list
+    .flatMap((each) =>
+      each.earnedAt === null || each.secret ? [] : [{ key: each.key, earnedAt: each.earnedAt }],
+    )
+    .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+}
+
+/**
+ * A friend's achievements, from what their phone published.
+ *
+ * The whole catalogue, in its order, named in the viewer's units, with the
+ * friend's earned ones dated. Unearned ones carry no progress: how close a
+ * friend is to a badge would take their training log, which stays on their
+ * phone. A key this version of the app does not know — a badge added in a
+ * newer one — is left out rather than shown nameless.
+ */
+export function publishedAchievements(
+  earned: ReadonlyMap<string, Date>,
+  unitSystem: UnitSystem,
+): Achievement[] {
+  return DEFINITIONS.map((definition) => ({
+    key: definition.key,
+    category: definition.category,
+    name: typeof definition.name === 'string' ? definition.name : definition.name(unitSystem),
+    description:
+      typeof definition.description === 'string'
+        ? definition.description
+        : definition.description(unitSystem),
+    secret: definition.category === 'secret',
+    earnedAt: earned.get(definition.key) ?? null,
+    progress: null,
+    nextChance: null,
+  }));
+}

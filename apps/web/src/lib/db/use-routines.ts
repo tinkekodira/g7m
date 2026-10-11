@@ -6,7 +6,7 @@
  * progress.
  */
 import { naturalLoadType, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
-import type { Routine, RoutineDetail, WorkoutSession } from '@g7m/db';
+import type { Routine, RoutineDetail, RoutineExercise, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
 import type { Repositories } from './repositories.js';
 
@@ -56,10 +56,7 @@ export async function startRoutineWorkout(
     readonly now?: Date;
   },
 ): Promise<WorkoutSession> {
-  const { routine, exercises } = {
-    routine: input.routine.routine,
-    exercises: input.routine.exercises,
-  };
+  const routine = input.routine.routine;
 
   const session = await repositories.sessions.start({
     source: 'routine',
@@ -67,18 +64,58 @@ export async function startRoutineWorkout(
     name: routine.name,
     bodyweightKg: input.bodyweightKg,
   });
+  await writeMovements(repositories, session.id, input.routine.exercises);
 
+  // What orders the routines list, so the one trained today is the one offered
+  // first tomorrow.
+  await repositories.routines.markPerformed(routine.id, input.now ?? new Date());
+
+  return session;
+}
+
+/** A movement as a workout is built from it, whoever's routine it is. */
+type Movement = Pick<RoutineExercise, 'exerciseId' | 'targetSets' | 'targetRepLow' | 'supersetId'>;
+
+/**
+ * "Do this routine" on a friend's page (ADR-0117): their movements, sets and
+ * rep ranges, your weights, by the same path as one of your own.
+ *
+ * `manual`, not `routine`: the routine is not yours, so there is no row of
+ * yours for the session to point at or to mark as trained.
+ */
+export async function startFriendRoutineWorkout(
+  repositories: Repositories,
+  input: {
+    readonly name: string;
+    readonly movements: readonly Movement[];
+    readonly bodyweightKg: number | null;
+  },
+): Promise<WorkoutSession> {
+  const session = await repositories.sessions.start({
+    source: 'manual',
+    name: input.name,
+    bodyweightKg: input.bodyweightKg,
+  });
+  await writeMovements(repositories, session.id, input.movements);
+  return session;
+}
+
+async function writeMovements(
+  repositories: Repositories,
+  sessionId: string,
+  movements: readonly Movement[],
+): Promise<void> {
   // A routine's superset starts as a superset: its movements go in together,
   // sharing a new id of the session's own (ADR-0112).
-  const slots: { movement: RoutineDetail['exercises'][number]; id: string }[] = [];
-  for (const unit of workoutUnits(exercises, (movement) => movement.supersetId)) {
-    const movements = unit.kind === 'single' ? [unit.item] : unit.members;
+  const slots: { movement: Movement; id: string }[] = [];
+  for (const unit of workoutUnits(movements, (movement) => movement.supersetId)) {
+    const members = unit.kind === 'single' ? [unit.item] : unit.members;
     const added = await repositories.sessions.addExercises(
-      session.id,
-      movements.map((movement) => movement.exerciseId),
+      sessionId,
+      members.map((movement) => movement.exerciseId),
       { superset: unit.kind === 'superset' },
     );
-    for (const [index, movement] of movements.entries()) {
+    for (const [index, movement] of members.entries()) {
       const entry = added[index];
       if (entry !== undefined) slots.push({ movement, id: entry.id });
     }
@@ -86,7 +123,7 @@ export async function startRoutineWorkout(
 
   for (const { movement, id: slotId } of slots) {
     const [previous, equipment] = await Promise.all([
-      repositories.sessions.lastPerformance(movement.exerciseId, session.id),
+      repositories.sessions.lastPerformance(movement.exerciseId, sessionId),
       repositories.exercises.equipmentFor(movement.exerciseId),
     ]);
     const loadType = naturalLoadType(equipment.map((item) => item.category));
@@ -111,10 +148,4 @@ export async function startRoutineWorkout(
       written.push(template);
     }
   }
-
-  // What orders the routines list, so the one trained today is the one offered
-  // first tomorrow.
-  await repositories.routines.markPerformed(routine.id, input.now ?? new Date());
-
-  return session;
 }
