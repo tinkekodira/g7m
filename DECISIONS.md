@@ -5450,7 +5450,8 @@ sleeve's own end.
 ### Available plates: on the calculator page, not in Settings
 
 > **Amended by [ADR-0115](#adr-0115--available-plates-in-settings-too).**
-> The picker is in Settings as well now, on the same store.
+> The picker is in Settings as well now, on the same store, and the hint
+> is plain text: the link is gone.
 
 The brief for this feature asked for a Settings panel. Milan redirected
 mid-build: it lives at the bottom of the Plate calculator screen itself
@@ -7538,8 +7539,17 @@ the picker stays there. Milan asked for it in Settings **as well**.
 - Both read and write `usePlateSettingsStore`. A tap in one place changes the
   other straight away, with nothing to keep in step.
 
+### The hint loses its link
+
+"One plate is hidden because your gym doesn't have it." used to end with an
+orange **Change which plates your gym has** link to `#available-plates`. The
+section it pointed to is directly below the sentence, and the orange drew the
+eye away from the bar. Milan asked for it gone. The sentence stays, as plain
+text. The section keeps its id, which the e2e specs find it by.
+
 ### Tests
 
 - **e2e:** `plate-calculator.spec.ts`: untick 25 kg in Settings and the
   calculator shows it unticked, with "One plate is hidden". Untick 15 kg on
-  the calculator and Settings shows both unticked.
+  the calculator and Settings shows both unticked. The hint shows with no
+  link.
