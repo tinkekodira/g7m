@@ -2,12 +2,12 @@
  * The plate calculator's own kit: which plates a gym might have, and which
  * bar the lifter is loading them on.
  *
- * Deliberately separate from `plates.ts`. That file backs the workout logger's
- * inline "Each side: 25 · 15 · 1.25" line and the warm-up ramp, both of which
- * assume the standard rack — every plate, one 20 kg (or 45 lb) bar — because
- * guessing a lighter kit mid-set is worse than assuming the common one. The
- * calculator is the opposite case: it exists to answer "what can *my* gym
- * make", so it needs a kit that can shrink, and three bars instead of one.
+ * Deliberately separate from `plates.ts`. That file backs the warm-up ramp,
+ * which assumes the standard rack — every plate, one 20 kg (or 45 lb) bar.
+ * The calculator exists to answer "what can *my* gym make", so it needs a kit
+ * that can shrink, and three bars instead of one. The workout logger's inline
+ * "Each side: 25 · 15 · 1.25" line now reads from here too (`gymBarKit`): the
+ * standard bar, but only the plates the gym has.
  *
  * ## Slots, not numbers
  *
@@ -227,6 +227,19 @@ export function calculatorKit(input: {
     bar: barWeight(input.bar, input.unit, input.ezBarWeight),
     plates,
   };
+}
+
+/**
+ * The workout logger's kit: the standard bar — 20 kg, or 45 lb — loaded from
+ * the plates this gym has.
+ *
+ * The bar stays the standard one because a set is typed as a total and the
+ * logger has no way to know which bar is under it; the plates are the gym's
+ * own because a line saying "25 a side" at a rack with no red plate is a
+ * sum the lifter has to redo with their heart rate up.
+ */
+export function gymBarKit(unit: CalculatorUnit, availableSlots: ReadonlySet<PlateSlot>): PlateKit {
+  return calculatorKit({ unit, bar: 'bar_20', ezBarWeight: DEFAULT_EZ_BAR_WEIGHT, availableSlots });
 }
 
 /**

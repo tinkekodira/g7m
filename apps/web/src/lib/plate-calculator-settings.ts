@@ -5,9 +5,9 @@
  * Kept on this device, the same way the theme is (`theme.ts`) — a gym's rack
  * is a fact about where you are training, not about the lifter, and a phone
  * carried to one gym has no reason to know about another's. There is also
- * nothing here PowerSync would gain from syncing: it is read once per visit
- * to one screen, not built into any other calculation the server needs to
- * agree with.
+ * nothing here PowerSync would gain from syncing: it shapes what the phone
+ * draws — the calculator, and the logger's "Each side" line — and no
+ * calculation the server needs to agree with.
  */
 import { ALL_PLATE_SLOTS, DEFAULT_EZ_BAR_WEIGHT, PLATE_SLOTS, type PlateSlot } from '@g7m/core';
 

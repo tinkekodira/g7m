@@ -6,11 +6,13 @@ import {
   PLATE_SLOTS,
   barWeight,
   calculatorKit,
+  gymBarKit,
   loadCalculatorBar,
   sleeveFits,
   slotValue,
   toggleSlot,
 } from './plate-calculator.js';
+import { loadBar } from './plates.js';
 
 describe('calculatorKit', () => {
   it('lists every slot heaviest first, in kilograms', () => {
@@ -81,6 +83,28 @@ describe('toggleSlot', () => {
   it('refuses to empty the selection', () => {
     const onlyRed = new Set<(typeof PLATE_SLOTS)[number]>(['red']);
     expect(toggleSlot(onlyRed, 'red')).toBe(onlyRed);
+  });
+});
+
+describe('gymBarKit', () => {
+  it('is the standard bar with every plate, for a fully stocked gym', () => {
+    expect(gymBarKit('kg', ALL_PLATE_SLOTS)).toEqual({
+      unit: 'kg',
+      bar: 20,
+      plates: [25, 20, 15, 10, 5, 2.5, 1.25],
+    });
+    expect(gymBarKit('lb', ALL_PLATE_SLOTS).bar).toBe(45);
+  });
+
+  it('leaves out a plate the gym does not have', () => {
+    const withoutRed = new Set(PLATE_SLOTS.filter((slot) => slot !== 'red'));
+    expect(gymBarKit('kg', withoutRed).plates).toEqual([20, 15, 10, 5, 2.5, 1.25]);
+    // 100 kg at a rack with no 25s: two 20s a side, not a 25 and a 15.
+    expect(loadBar(100, gymBarKit('kg', withoutRed))).toMatchObject({
+      kind: 'plates',
+      perSide: [20, 20],
+      total: 100,
+    });
   });
 });
 

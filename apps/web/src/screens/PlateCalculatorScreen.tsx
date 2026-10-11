@@ -32,14 +32,13 @@ import { usePlateSettingsStore } from '../lib/use-plate-settings.js';
  * reach for when you are *not* mid-set — setting up, or settling an argument
  * about what 142.5 looks like. The logger already tells you during a set.
  *
- * ## Its own kit, not the logger's
+ * ## Its own bars, the gym's plates
  *
- * The logger assumes the standard rack, because guessing a lighter one
- * mid-set is worse than assuming the common one. This screen is the opposite
- * case — the calculator's whole job is to answer for a gym that is missing
- * something — so it carries its own bar and plate choices
- * (`@g7m/core`'s `plate-calculator.ts`), remembered on this device the same
- * way the theme is.
+ * The calculator's whole job is to answer for a gym that is missing
+ * something, so it carries its own bar and plate choices (`@g7m/core`'s
+ * `plate-calculator.ts`), remembered on this device the same way the theme
+ * is. The plates chosen here are the logger's too: its "Each side" line
+ * loads the standard bar from the same selection (`gymBarKit`).
  *
  * ## Barbells only
  *

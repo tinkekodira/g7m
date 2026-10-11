@@ -5404,6 +5404,10 @@ is untouched and still backs the workout logger's "Each side: 25 · 15 ·
 guessing a lighter one mid-set is worse than assuming the common one — and
 neither has any idea a gym might be short a plate.
 
+> **Amended by [ADR-0114](#adr-0114--the-workouts-each-side-line-uses-the-gyms-plates).**
+> The logger's "Each side" line now loads from the plates ticked here. The
+> warm-up ramp still assumes the full rack.
+
 The calculator's job is the opposite: answer for a gym that might be
 missing something. Its kit lives in the new **`plate-calculator.ts`**,
 keyed by **colour slot** (`red` … `lightGrey`) rather than by weight, for
@@ -7450,3 +7454,56 @@ it updates.
   no lifts.
 - **e2e:** `friends.spec.ts`: Blake logs only a bench, and Alex's card shows
   "Best lifts" with one column, 60 kg under "Bench", and no "Deadlift".
+
+---
+
+## ADR-0114 — The workout's "Each side" line uses the gym's plates
+
+**Status:** accepted · **Date:** 2026-10-11 · **Phase:** out of phase (change) · **Amends:** ADR-0063, ADR-0089
+
+The person it is for: somebody whose gym has no 25 kg plates, who unticked
+red under the plate calculator's Available plates. They type 100 kg on a
+bench press and the line under the set said "Each side 25 15". There is no
+25 on the rack. They redo the sum between sets, which is the sum the line
+exists to save them.
+
+ADR-0063 and ADR-0089 kept the logger on the full standard rack on purpose:
+guessing a lighter kit mid-set is worse than assuming the common one. That
+reasoning was about *guessing*. Once the lifter has said which plates their
+gym has, the full rack is no longer the safe assumption. It is the wrong one.
+
+### What changed
+
+- **`gymBarKit(unit, availableSlots)`** in `plate-calculator.ts`: the
+  standard bar (20 kg, or 45 lb) loaded from the selected slots. It is
+  `calculatorKit` with the 20 kg bar, so the logger and the calculator
+  cannot disagree about which plates a gym has.
+- **`PlateLine`** reads the selection from the same store the calculator
+  writes (`usePlateSettingsStore`), so unticking a plate changes the line in
+  an open workout straight away.
+
+### The bar stays the standard one
+
+A set is typed as a total, and the logger has no way to know which bar is
+under it. The calculator's bar picker is for working something out, not a
+fact about the gym, so the logger does not read it.
+
+### Pounds take the calculator's ladder
+
+`LB_KIT` stops at 45 lb. The calculator's pound ladder starts at 55 lb
+(ADR-0089). The line now uses the calculator's ladder, because that is the
+list the lifter ticks. A pounds lifter whose gym has no 55s unticks red, the
+same as a kilogram lifter with no 25s.
+
+### Not changed
+
+The warm-up ramp (`warmup.ts`) still rounds rungs to the full rack's
+`KG_KIT` / `LB_KIT`. A rung it suggests can need a plate the gym does not
+have. The line under that rung now says what the gym's plates actually make.
+
+### Tests
+
+- **Core:** `gymBarKit` with every plate, and without red (100 kg is two 20s
+  a side).
+- **e2e:** `plate-calculator.spec.ts`: untick 25 kg, start a bench press, type
+  100. The line shows two 20s and no 25. It fails on the old `PlateLine`.

@@ -1,4 +1,5 @@
-import { KG_KIT, LB_KIT, loadBar, type UnitSystem } from '@g7m/core';
+import { gymBarKit, loadBar, type UnitSystem } from '@g7m/core';
+import { usePlateSettingsStore } from '../lib/use-plate-settings.js';
 
 /**
  * "Each side: 25 · 15 · 1.25 on a 20 kg bar", under a barbell set.
@@ -10,6 +11,10 @@ import { KG_KIT, LB_KIT, loadBar, type UnitSystem } from '@g7m/core';
  *
  * Silent at zero, which is a set nobody has filled in yet rather than an empty
  * bar.
+ *
+ * Only the plates this gym has, as ticked under the plate calculator's
+ * Available plates: a line saying "25" at a rack with no red plate is a sum
+ * the lifter has to redo between sets.
  */
 export function PlateLine({
   weight,
@@ -19,9 +24,10 @@ export function PlateLine({
   readonly weight: number;
   readonly unitSystem: UnitSystem;
 }) {
+  const availableSlots = usePlateSettingsStore((s) => s.availableSlots);
   if (!(weight > 0)) return null;
 
-  const kit = unitSystem === 'imperial' ? LB_KIT : KG_KIT;
+  const kit = gymBarKit(unitSystem === 'imperial' ? 'lb' : 'kg', availableSlots);
   const loading = loadBar(weight, kit);
   const bar = `${plate(kit.bar)} ${kit.unit} bar`;
 
