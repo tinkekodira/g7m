@@ -7553,3 +7553,25 @@ text. The section keeps its id, which the e2e specs find it by.
   calculator shows it unticked, with "One plate is hidden". Untick 15 kg on
   the calculator and Settings shows both unticked. The hint shows with no
   link.
+
+## ADR-0116 — A friend's workout leads back to Friends, and to them by their face
+
+**Status:** accepted · **Date:** 2026-10-11 · **Phase:** out of phase (change) · **Amends:** ADR-0105
+
+The person it is for: somebody who opened a friend's workout from the Friends
+tab and wants to get back there. The header button was the friend's name and
+led to their page, which is one step deeper, not the way back.
+
+- The header button says **Friends** and goes to `/friends`.
+- Above the workout's title sits the friend's tinted avatar with
+  "Feboo's workout" beside it and a chevron. The row is one link to their
+  page, named "Feboo's workout, open Feboo's profile" for screen readers.
+- Under it, unchanged: the title, then when · how long.
+
+With no name known (a cached workout opened offline from a link), the avatar
+shows the plain glyph and the row says "Your friend's workout".
+
+### Tests
+
+- **e2e:** `friends.spec.ts`: on Blake's workout the header link goes to
+  `#/friends`, and the avatar row opens Blake's page (Head-to-head shows).

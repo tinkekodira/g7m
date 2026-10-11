@@ -123,6 +123,16 @@ test('two friends: add by code, accept, see the training, do the workout, stop s
   await expect(page.getByText('Blake’s workout')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Barbell Bench Press' })).toBeVisible();
 
+  // The way out goes back to Friends; Blake's avatar and name go to Blake's page.
+  await expect(page.locator('header').getByRole('link', { name: 'Friends' })).toHaveAttribute(
+    'href',
+    '#/friends',
+  );
+  await page.getByRole('link', { name: 'Blake’s workout, open Blake’s profile' }).click();
+  await expect(page.getByRole('heading', { name: 'Head-to-head' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByText('Blake’s workout')).toBeVisible();
+
   // ...which is kept on the phone: with no connection the list says so, but
   // the workout already opened still opens, ready to start.
   await page.context().setOffline(true);
