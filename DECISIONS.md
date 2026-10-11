@@ -5449,6 +5449,10 @@ sleeve's own end.
 
 ### Available plates: on the calculator page, not in Settings
 
+> **Amended by [ADR-0115](#adr-0115--available-plates-in-settings-too).**
+> The picker is in Settings as well now, on the same store, and the hint
+> is plain text: the link is gone.
+
 The brief for this feature asked for a Settings panel. Milan redirected
 mid-build: it lives at the bottom of the Plate calculator screen itself
 instead, so a lifter mid-setup edits the same page they are looking at
@@ -7507,3 +7511,45 @@ have. The line under that rung now says what the gym's plates actually make.
   a side).
 - **e2e:** `plate-calculator.spec.ts`: untick 25 kg, start a bench press, type
   100. The line shows two 20s and no 25. It fails on the old `PlateLine`.
+
+---
+
+## ADR-0115 — Available plates in Settings too
+
+**Status:** accepted · **Date:** 2026-10-11 · **Phase:** out of phase (change) · **Amends:** ADR-0089
+
+The person it is for: somebody setting up the app for their gym who wants to
+untick the plates it doesn't have. On the calculator page that is Learn,
+Plates, then scroll to the bottom. Settings is where people look for a fact
+they set once.
+
+ADR-0089 put the picker on the calculator page instead of Settings, so a
+lifter mid-setup edits the page they are looking at. That still holds, so
+the picker stays there. Milan asked for it in Settings **as well**.
+
+### One picker, one store
+
+- **`PlatePicker`** (`components/PlatePicker.tsx`) is the grid of plate
+  buttons and the "Keep at least one plate selected" hint, moved out of
+  `PlateCalculatorScreen`.
+- The calculator's **Available plates** section keeps its heading,
+  description and `#available-plates` id, and draws `PlatePicker` inside.
+- Settings gains an **Available plates** panel after Units, drawing the same
+  `PlatePicker`.
+- Both read and write `usePlateSettingsStore`. A tap in one place changes the
+  other straight away, with nothing to keep in step.
+
+### The hint loses its link
+
+"One plate is hidden because your gym doesn't have it." used to end with an
+orange **Change which plates your gym has** link to `#available-plates`. The
+section it pointed to is directly below the sentence, and the orange drew the
+eye away from the bar. Milan asked for it gone. The sentence stays, as plain
+text. The section keeps its id, which the e2e specs find it by.
+
+### Tests
+
+- **e2e:** `plate-calculator.spec.ts`: untick 25 kg in Settings and the
+  calculator shows it unticked, with "One plate is hidden". Untick 15 kg on
+  the calculator and Settings shows both unticked. The hint shows with no
+  link.

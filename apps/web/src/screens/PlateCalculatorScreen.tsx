@@ -17,6 +17,7 @@ import {
 } from '@g7m/core';
 import { Stepper } from '@g7m/ui';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { PlatePicker } from '../components/PlatePicker.js';
 import { PlateStack } from '../components/PlateStack.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { usePlateSettingsStore } from '../lib/use-plate-settings.js';
@@ -133,14 +134,7 @@ export function PlateCalculatorScreen() {
       {hiddenCount > 0 && (
         <p className="text-sm text-secondary">
           {hiddenCount === 1 ? 'One plate is' : `${String(hiddenCount)} plates are`} hidden because
-          your gym doesn&rsquo;t have {hiddenCount === 1 ? 'it' : 'them'}.{' '}
-          <a
-            href="#available-plates"
-            className="font-medium text-accent underline underline-offset-2"
-          >
-            Change which plates your gym has
-          </a>
-          .
+          your gym doesn&rsquo;t have {hiddenCount === 1 ? 'it' : 'them'}.
         </p>
       )}
 
@@ -294,19 +288,11 @@ function PlateKey({
 }
 
 /**
- * Which plates this gym has, kept on this device (`use-plate-settings.ts`).
- *
- * Stored per colour so it survives a switch between kg and lb — deselecting
- * red removes the 25 kg plate here and the 55 lb plate there, with nothing
- * to migrate. At least one plate has to stay selected, since a calculator
- * with none has nothing to say; the store already refuses to clear the last
- * one, and the hint below explains why a tap did nothing.
+ * Which plates this gym has, at the bottom of the page a lifter mid-setup is
+ * already looking at. The same picker sits in Settings (`PlatePicker`), on
+ * the same store, so the two never disagree.
  */
 function AvailablePlates({ unit }: { readonly unit: CalculatorUnit }) {
-  const availableSlots = usePlateSettingsStore((s) => s.availableSlots);
-  const toggleSlot = usePlateSettingsStore((s) => s.toggleSlot);
-  const atMinimum = availableSlots.size <= 1;
-
   return (
     <section
       id="available-plates"
@@ -317,47 +303,7 @@ function AvailablePlates({ unit }: { readonly unit: CalculatorUnit }) {
         Which plates this gym has. A deselected plate is left out of the bar, the maths and the
         colours above.
       </p>
-      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {PLATE_SLOTS.map((slot) => {
-          const selected = availableSlots.has(slot);
-          const look = PLATE_SLOT_LOOK[slot];
-          const size = slotValue(slot, unit);
-          return (
-            <li key={slot}>
-              <button
-                type="button"
-                aria-pressed={selected}
-                onClick={() => {
-                  toggleSlot(slot);
-                }}
-                className={`flex min-h-tap w-full items-center gap-2 rounded-control border px-3 text-left transition-opacity duration-150 ${
-                  selected ? 'border-subtle bg-elevated' : 'border-subtle bg-input opacity-45'
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="numeric flex size-7 shrink-0 items-center justify-center rounded-full text-[0.55rem] font-semibold"
-                  style={{
-                    backgroundColor: look.colour,
-                    color: look.ink,
-                    boxShadow: `inset 0 0 0 1px ${look.shade}`,
-                  }}
-                >
-                  {trim(size)}
-                </span>
-                <span className="min-w-0 flex-1 text-sm font-medium text-primary">
-                  {trim(size)} {unit}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      {atMinimum && (
-        <p role="status" className="mt-3 text-sm text-warning">
-          Keep at least one plate selected.
-        </p>
-      )}
+      <PlatePicker unit={unit} />
     </section>
   );
 }
