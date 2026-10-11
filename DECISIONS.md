@@ -7575,3 +7575,80 @@ shows the plain glyph and the row says "Your friend's workout".
 
 - **e2e:** `friends.spec.ts`: on Blake's workout the header link goes to
   `#/friends`, and the avatar row opens Blake's page (Head-to-head shows).
+
+## ADR-0117 — A friend's profile shows what your own does
+
+**Status:** accepted · **Date:** 2026-10-11 · **Phase:** out of phase (feature) · **Amends:** ADR-0105, ADR-0072
+
+The person it is for: somebody looking at a friend who trains, wanting to see
+what that friend has earned, what they train and how, and to borrow a routine.
+Milan asked for a friend's page to carry the cards from Profile: the training
+heatmap on their own body, achievements, routines and best lifts.
+
+### Order
+
+Name card and week, challenge, then **Achievements, Routines, Training, Best
+lifts** in the order Profile has them, then Head-to-head and Recent workouts.
+"Worth adding" stays off: it is advice for you, not something to know about
+somebody else.
+
+### Where the data comes from
+
+A friend's rows are never on your phone (ADR-0105), so one new function,
+`friend_profile(friend_id, since)`, sends everything except achievements.
+It returns null to anybody who isn't a friend sharing with you, like every
+other friend function.
+
+- **Body:** `profiles.sex` picks the body (`bodyFor`).
+- **Heat:** worked out **on the server** (`muscle_heat`). The phone's rule is
+  load × reps, with the session's bodyweight counted for bodyweight movements,
+  split across muscles by `recruitment_weight`, as a share of the peak. Only
+  each muscle's share goes out, rounded to tenths. Sending volumes or sets with
+  a bodyweight snapshot would let a friend divide out the bodyweight, and
+  ADR-0105 never shows it. The window is `heatSince`, the same four weeks your
+  own heatmap uses.
+- **Best lifts:** external load only, heaviest first, dated by the workout
+  where the weight was first reached. Bodyweight movements are left out for the
+  same reason: a pull-up's "best" with bodyweight counted *is* the bodyweight.
+  The card says so.
+- **Routines:** each with its movements, sets, rep range and superset.
+  Tapping one opens `/friends/:id/routines/:routineId`, whose **Do this
+  routine** starts it as your workout. It uses the same path as your own
+  routines (`writeMovements`, shared with `startRoutineWorkout`), with your
+  weights from last time. The session is `manual`, because the routine is not
+  yours.
+- **Achievements:** published by the owner's phone. Achievements are worked
+  out on the device from the whole log and never stored (ADR-0072), so the
+  server cannot compute a friend's. `AchievementCelebrations` already reads
+  the list after every change. It now also calls `publish_achievements` with
+  each earned badge and its date (`achievementsToPublish`), once per change,
+  remembered per account in localStorage. The server rebuilds the list,
+  keeping only well-formed keys and real timestamps, up to 200. Friends read
+  it into the full catalogue (`publishedAchievements`): theirs dated, the rest
+  locked, with no progress bars. A friend who has not opened the app since
+  this shipped shows "Shows up once Alex next opens the app" rather than
+  0 of 52.
+- **The secret badge is never published.** It is earned by training on your
+  birthday, so its date *is* your birthday.
+
+### Shared cards
+
+`components/ProfileParts.tsx` holds `AchievementsCard`, `TrainingBodyCard` and
+`BestLiftsCard`, moved out of `ProfileScreen` unchanged. Profile and a friend's
+page draw the same cards, with different data. `AchievementsPage` is the
+Achievements screen's grid, shared with `FriendAchievementsScreen`.
+
+### Tests
+
+- **db:** `friends.test.ts`: the heat equals the phone's `volumeByMuscle`,
+  rounded, with lats lit by a bodyweight pull-up and no `81.5` anywhere in the
+  reply. Bests are dated by first reach. Routines come most recently trained
+  first, movements in order. Published achievements are cleaned, replaced and
+  only ever your own, with more than 200 or a non-list refused. A stranger, a
+  pending request and a friend who stopped sharing all get null, and
+  `muscle_heat` is out of reach.
+- **core:** publishing skips the birthday badge. Reading back gives the whole
+  catalogue in the viewer's units.
+- **e2e:** `friend-profile.spec.ts`: Blake trains and keeps a routine on
+  Blake's phone. Alex sees Blake's achievements, routine, training and 60 kg
+  best, opens the collection (Day One earned), then does Blake's routine.

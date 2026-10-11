@@ -72,6 +72,14 @@ const FriendSessionScreen = lazyScreen(
   () => import('./screens/FriendSessionScreen.js'),
   'FriendSessionScreen',
 );
+const FriendAchievementsScreen = lazyScreen(
+  () => import('./screens/FriendAchievementsScreen.js'),
+  'FriendAchievementsScreen',
+);
+const FriendRoutineScreen = lazyScreen(
+  () => import('./screens/FriendRoutineScreen.js'),
+  'FriendRoutineScreen',
+);
 
 /**
  * The screens worth having ready before they are asked for: the four other
@@ -316,6 +324,8 @@ function AppScreens() {
         <Route path="/friends" element={<FriendsScreen />} />
         <Route path="/friends/:friendId" element={<FriendScreen />} />
         <Route path="/friends/:friendId/session/:sessionId" element={<FriendSessionScreen />} />
+        <Route path="/friends/:friendId/achievements" element={<FriendAchievementsScreen />} />
+        <Route path="/friends/:friendId/routines/:routineId" element={<FriendRoutineScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>

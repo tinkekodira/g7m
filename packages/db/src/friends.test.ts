@@ -2,8 +2,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   FRIEND_CODE_ALPHABET,
   bestLiftsByExercise,
+  relativeVolume,
   tallyWorkouts,
   trainingMinutes,
+  volumeByMuscle,
+  type MuscleShare,
 } from '@g7m/core';
 import { startHarness, type Harness } from './testing/pglite-harness.js';
 
@@ -77,6 +80,8 @@ async function requestId(from: string, to: string): Promise<string> {
 
 const respond = (as: string, id: string, accept: boolean) =>
   call<{ outcome: string }>(as, 'public.respond_to_friend_request($1, $2)', [id, accept]);
+
+const A_MONTH_AGO = () => new Date(Date.now() - 28 * 86_400_000).toISOString();
 
 /** Two people who are friends, by the front door. */
 async function friends(a: string, b: string): Promise<void> {
@@ -421,7 +426,7 @@ describe('what a friend can see', () => {
     return { id, session };
   }
 
-  const NOTHING = { inOverview: null, onBoard: null, detail: null, session: null };
+  const NOTHING = { inOverview: null, onBoard: null, detail: null, session: null, profile: null };
 
   /** Every friend function, as `viewer`, about `other`. */
   async function everything(viewer: string, other: string, session: string) {
@@ -439,6 +444,7 @@ describe('what a friend can see', () => {
       onBoard: board.friends.find((friend) => friend.user_id === other) ?? null,
       detail: await call(viewer, 'public.friend_detail($1)', [other]),
       session: await call(viewer, 'public.friend_session($1, $2)', [other, session]),
+      profile: await call(viewer, 'public.friend_profile($1, $2)', [other, A_MONTH_AGO()]),
     };
   }
 
@@ -477,6 +483,7 @@ describe('what a friend can see', () => {
     const seen = await everything(me, alex.id, alex.session);
     expect(seen.detail).toBeNull();
     expect(seen.session).toBeNull();
+    expect(seen.profile).toBeNull();
     expect(seen.inOverview).toEqual({
       user_id: alex.id,
       name: 'Alex',
@@ -601,9 +608,243 @@ describe('what a friend can see', () => {
       `public.board_workouts('${alex.id}', now() - interval '1 year')`,
       `public.shares_training_with('${me}', '${alex.id}')`,
       `public.create_friend_profile('${me}')`,
+      `public.muscle_heat('${alex.id}', now() - interval '1 year')`,
     ]) {
       await expect(call(me, sql), sql).rejects.toThrow(/permission denied/i);
     }
+  });
+});
+
+describe('a friend’s profile', () => {
+  const profileOf = (viewer: string, other: string) =>
+    call<{
+      name: string | null;
+      sex: string | null;
+      trained: boolean;
+      heat: { slug: string; intensity: number }[];
+      achievements: { key: string; earned_at: string }[] | null;
+      routines: {
+        id: string;
+        name: string;
+        exercises: {
+          exercise_id: string;
+          target_sets: number;
+          target_rep_low: number;
+          target_rep_high: number;
+          superset_id: string | null;
+        }[];
+      }[];
+      bests: { exercise_id: string; best_kg: number; achieved_at: string }[];
+    }>(viewer, 'public.friend_profile($1, $2)', [other, A_MONTH_AGO()]);
+
+  async function slugOf(exerciseId: string): Promise<string> {
+    const { rows } = await h.db.query<{ slug: string }>(
+      `select slug from public.exercises where id = $1`,
+      [exerciseId],
+    );
+    return rows[0]?.slug ?? '';
+  }
+
+  /** Alex, and you, friends. */
+  async function pair(): Promise<{ alex: string; me: string }> {
+    const alex = await person('Alex');
+    const me = await person('Me');
+    await friends(me, alex);
+    return { alex, me };
+  }
+
+  it('colours the body by the rule the phone uses, counting bodyweight without sending it', async () => {
+    const { alex, me } = await pair();
+    await h.db.query(`update public.profiles set sex = 'female' where user_id = $1`, [alex]);
+    await logWorkout(alex, new Date(Date.now() - 3 * 86_400_000).toISOString(), [
+      { slug: 'barbell-bench-press', weightKg: 60, setType: 'warmup' },
+      { slug: 'barbell-bench-press', weightKg: 100, reps: 5 },
+      { slug: 'pull-up', weightKg: 0, loadType: 'bodyweight', reps: 8 },
+      { slug: 'barbell-back-squat', weightKg: 140, completed: false },
+    ]);
+    // Older than the window: not counted.
+    await logWorkout(alex, '2020-01-01T10:00:00Z', [{ slug: 'barbell-back-squat', weightKg: 200 }]);
+
+    const reply = await profileOf(me, alex);
+    expect(reply.name).toBe('Alex');
+    expect(reply.sex).toBe('female');
+    expect(reply.trained).toBe(true);
+
+    // The phone's own sum over the same sets, with the session's 81.5 kg.
+    const { rows: shareRows } = await h.db.query<{
+      exercise_id: string;
+      muscle_id: string;
+      recruitment_weight: string;
+    }>(`select exercise_id, muscle_id, recruitment_weight from public.exercise_muscles`);
+    const shares = new Map<string, MuscleShare[]>();
+    for (const row of shareRows) {
+      shares.set(row.exercise_id, [
+        ...(shares.get(row.exercise_id) ?? []),
+        { muscleId: row.muscle_id, recruitmentWeight: Number(row.recruitment_weight) },
+      ]);
+    }
+    const { rows: setRows } = await h.db.query<{
+      exercise_id: string;
+      set_type: 'working' | 'warmup';
+      load_type: 'external' | 'bodyweight';
+      weight_kg: string;
+      reps: number;
+      is_completed: boolean;
+    }>(
+      `select se.exercise_id, ss.set_type, ss.load_type, ss.weight_kg, ss.reps, ss.is_completed
+         from public.session_sets ss
+         join public.session_exercises se on se.id = ss.session_exercise_id
+         join public.workout_sessions ws on ws.id = se.session_id
+        where ss.user_id = $1 and ws.started_at >= $2`,
+      [alex, A_MONTH_AGO()],
+    );
+    const relative = relativeVolume(
+      volumeByMuscle(
+        setRows.map((row) => ({
+          sessionId: 'one',
+          exerciseId: row.exercise_id,
+          performedAt: new Date(),
+          bodyweightKg: 81.5,
+          setType: row.set_type,
+          loadType: row.load_type,
+          weightKg: Number(row.weight_kg),
+          reps: row.reps,
+          isCompleted: row.is_completed,
+        })),
+        shares,
+      ),
+    );
+    const { rows: muscles } = await h.db.query<{ id: string; slug: string }>(
+      `select id, slug from public.muscles`,
+    );
+    const slugs = new Map(muscles.map((muscle) => [muscle.id, muscle.slug]));
+    const expected = Object.fromEntries(
+      [...relative].map(([id, value]) => [slugs.get(id), Math.round(value * 10) / 10]),
+    );
+    const got = Object.fromEntries(reply.heat.map((muscle) => [muscle.slug, muscle.intensity]));
+    expect(got).toEqual(expected);
+    // Hardest first, and the lats lit by a pull-up that lifted no external load.
+    expect(reply.heat[0]?.intensity).toBe(1);
+    expect(got['latissimus-dorsi']).toBeGreaterThan(0);
+    expect(JSON.stringify(reply)).not.toContain('81.5');
+  });
+
+  it('says when nothing was finished in the window', async () => {
+    const { alex, me } = await pair();
+    await logWorkout(alex, '2020-01-01T10:00:00Z', [{ slug: 'barbell-back-squat', weightKg: 200 }]);
+    const reply = await profileOf(me, alex);
+    expect(reply.trained).toBe(false);
+    expect(reply.heat).toEqual([]);
+  });
+
+  it('lists the best lifts heaviest first, with the day each was first reached', async () => {
+    const { alex, me } = await pair();
+    await logWorkout(alex, '2026-09-01T10:00:00Z', [
+      { slug: 'barbell-bench-press', weightKg: 100 },
+      { slug: 'barbell-back-squat', weightKg: 120 },
+    ]);
+    await logWorkout(alex, '2026-09-08T10:00:00Z', [
+      { slug: 'barbell-bench-press', weightKg: 100 },
+      { slug: 'barbell-bench-press', weightKg: 130, setType: 'warmup' },
+      { slug: 'barbell-back-squat', weightKg: 140 },
+      { slug: 'pull-up', weightKg: 20, loadType: 'bodyweight_plus' },
+    ]);
+
+    const bests = (await profileOf(me, alex)).bests;
+    expect(
+      await Promise.all(
+        bests.map(async (best) => [
+          await slugOf(best.exercise_id),
+          best.best_kg,
+          new Date(best.achieved_at).toISOString().slice(0, 10),
+        ]),
+      ),
+    ).toEqual([
+      ['barbell-back-squat', 140, '2026-09-08'],
+      ['barbell-bench-press', 100, '2026-09-01'],
+    ]);
+  });
+
+  it('sends the routines, most recently trained first, each movement in order', async () => {
+    const { alex, me } = await pair();
+    const routine = async (name: string, performed: string | null) => {
+      const { rows } = await h.db.query<{ id: string }>(
+        `insert into public.routines (user_id, name, last_performed_at)
+         values ($1, $2, $3::timestamptz) returning id`,
+        [alex, name, performed],
+      );
+      return rows[0]?.id ?? '';
+    };
+    await routine('Never done', null);
+    const push = await routine('Push', '2026-09-08T10:00:00Z');
+    await routine('Pull', '2026-09-01T10:00:00Z');
+    for (const [key, slug, sets] of [
+      ['b', 'overhead-press', 3],
+      ['a', 'barbell-bench-press', 4],
+    ] as const) {
+      await h.db.query(
+        `insert into public.routine_exercises
+           (user_id, routine_id, exercise_id, order_key, target_sets, target_rep_low, target_rep_high)
+         values ($1, $2, (select id from public.exercises where slug = $3), $4, $5, 6, 10)`,
+        [alex, push, slug, key, sets],
+      );
+    }
+
+    const routines = (await profileOf(me, alex)).routines;
+    expect(routines.map((each) => each.name)).toEqual(['Push', 'Pull', 'Never done']);
+    const movements = routines[0]?.exercises ?? [];
+    expect(await Promise.all(movements.map((each) => slugOf(each.exercise_id)))).toEqual([
+      'barbell-bench-press',
+      'overhead-press',
+    ]);
+    expect(movements[0]).toMatchObject({
+      target_sets: 4,
+      target_rep_low: 6,
+      target_rep_high: 10,
+      superset_id: null,
+    });
+  });
+
+  it('shows the achievements their own phone published, cleaned, and none before that', async () => {
+    const { alex, me } = await pair();
+    expect((await profileOf(me, alex)).achievements).toBeNull();
+
+    await call(alex, 'public.publish_achievements($1)', [
+      JSON.stringify([
+        { key: 'gym-rat', earned_at: '2026-09-01T10:00:00Z', extra: 'dropped' },
+        { key: 'day-one', earned_at: '2026-08-01T10:00:00Z' },
+        { key: 'Not A Key!', earned_at: '2026-08-01T10:00:00Z' },
+        { key: 'no-date' },
+        'not an object',
+      ]),
+    ]);
+    const published = (await profileOf(me, alex)).achievements ?? [];
+    expect(published.map((each) => each.key)).toEqual(['day-one', 'gym-rat']);
+    expect(Object.keys(published[0] ?? {}).sort()).toEqual(['earned_at', 'key']);
+    expect(new Date(published[1]?.earned_at ?? '').toISOString()).toBe('2026-09-01T10:00:00.000Z');
+
+    // Publishing replaces the list, and only ever your own.
+    await call(alex, 'public.publish_achievements($1)', [JSON.stringify([])]);
+    expect((await profileOf(me, alex)).achievements).toEqual([]);
+    const { rows } = await h.db.query<{ achievements: unknown }>(
+      `select achievements from public.friend_profiles where user_id = $1`,
+      [me],
+    );
+    expect(rows[0]?.achievements).toBeNull();
+  });
+
+  it('refuses achievements that are not a list, or too many', async () => {
+    const alex = await person('Alex');
+    await expect(
+      call(alex, 'public.publish_achievements($1)', [JSON.stringify({ key: 'gym-rat' })]),
+    ).rejects.toThrow(/at most 200/);
+    const many = Array.from({ length: 201 }, (_, index) => ({
+      key: `badge-${String(index)}`,
+      earned_at: '2026-09-01T10:00:00Z',
+    }));
+    await expect(
+      call(alex, 'public.publish_achievements($1)', [JSON.stringify(many)]),
+    ).rejects.toThrow(/at most 200/);
   });
 });
 

@@ -22,6 +22,15 @@ import { useCatalogue, type QueryState } from './use-catalogue.js';
 export const HEATMAP_WEEKS = 4;
 
 /**
+ * Where the heat map's four weeks start: the first day of the week three
+ * before this one. A friend's body is coloured from the same day (ADR-0117),
+ * so two profiles side by side are the same four weeks.
+ */
+export function heatSince(now: Date): Date {
+  return recentWeeks(now, HEATMAP_WEEKS, DEFAULT_WEEK_START)[0] ?? now;
+}
+
+/**
  * Sessions before the app offers an opinion about what is missing.
  *
  * A cold shoulder after two workouts is not a gap in somebody's training, it
@@ -30,7 +39,7 @@ export const HEATMAP_WEEKS = 4;
 export const SESSIONS_BEFORE_ADVICE = 5;
 
 /** How many of the hardest-worked muscles to name. */
-const TOP_MUSCLES = 3;
+export const TOP_MUSCLES = 3;
 
 export interface TrainingHeat {
   /** 0–1 per muscle slug, relative to the hardest-worked one. What the viewer colours by. */
@@ -52,9 +61,8 @@ export function useTrainingHeat(now: Date, enabled: boolean): QueryState<Trainin
   return useCatalogue(`heat:${String(enabled)}:${startOfDay(now).toISOString()}`, async (r) => {
     if (!enabled) return null;
 
-    const weeks = recentWeeks(now, HEATMAP_WEEKS, DEFAULT_WEEK_START);
     const [sets, shares, muscles] = await Promise.all([
-      r.history.completedSets({ from: weeks[0] ?? now }),
+      r.history.completedSets({ from: heatSince(now) }),
       r.history.muscleShares(),
       r.muscles.list(),
     ]);

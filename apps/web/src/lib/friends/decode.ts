@@ -101,6 +101,46 @@ export interface FriendSession extends WorkoutSummary {
   readonly exercises: readonly FriendSessionExercise[];
 }
 
+/** One movement of a friend's routine: what, how many sets, what rep range. */
+export interface FriendRoutineMovement {
+  readonly exerciseId: string;
+  readonly targetSets: number;
+  readonly targetRepLow: number;
+  readonly targetRepHigh: number;
+  /** Shared by the movements planned as one superset. */
+  readonly supersetId: string | null;
+}
+
+export interface FriendRoutine {
+  readonly id: string;
+  readonly name: string;
+  readonly exercises: readonly FriendRoutineMovement[];
+}
+
+/** A friend's heaviest external load on an exercise, and the day it was first lifted. */
+export interface FriendRecord {
+  readonly exerciseId: string;
+  readonly bestKg: number;
+  readonly achievedAt: Date;
+}
+
+/** What a friend's page shows besides their week and workouts. ADR-0117. */
+export interface FriendProfile {
+  readonly name: string | null;
+  /** Which body they are drawn on; null when they have not said. */
+  readonly sex: 'male' | 'female' | null;
+  /** Whether they finished any workout in the window asked about. */
+  readonly trained: boolean;
+  /** Each muscle's training relative to their hardest-worked one, hardest first. */
+  readonly heat: readonly { readonly slug: string; readonly intensity: number }[];
+  /** Badge key to when it was earned. Null until their phone first publishes. */
+  readonly achievements: ReadonlyMap<string, Date> | null;
+  /** Most recently trained first. */
+  readonly routines: readonly FriendRoutine[];
+  /** Heaviest first. */
+  readonly bests: readonly FriendRecord[];
+}
+
 export const SEND_OUTCOMES = [
   'sent',
   'now_friends',
@@ -336,6 +376,62 @@ export function decodeDetail(value: unknown): FriendDetail {
     training: decodeTraining(data['training']),
     bests: list(data['bests']).map(decodeBest),
     recent: list(data['recent']).map(decodeWorkoutSummary),
+  };
+}
+
+export function decodeFriendProfile(value: unknown): FriendProfile {
+  const data = record(value);
+  const sex = data['sex'];
+  const published = data['achievements'];
+  return {
+    name: optionalString(data['name']),
+    sex: sex === 'male' || sex === 'female' ? sex : null,
+    trained: data['trained'] === true,
+    heat: list(data['heat']).map((entry) => {
+      const muscle = record(entry);
+      return {
+        slug: string(muscle['slug']),
+        intensity: Math.min(1, Math.max(0, number(muscle['intensity'], 0))),
+      };
+    }),
+    achievements:
+      published === null || published === undefined
+        ? null
+        : new Map(
+            list(published).flatMap((entry) => {
+              const badge = record(entry);
+              const at = optionalDate(badge['earned_at']);
+              return at === null ? [] : [[string(badge['key']), at] as const];
+            }),
+          ),
+    routines: list(data['routines']).map((entry) => {
+      const routine = record(entry);
+      return {
+        id: string(routine['id']),
+        name: string(routine['name']),
+        exercises: list(routine['exercises']).map((item) => {
+          const movement = record(item);
+          const low = Math.max(1, number(movement['target_rep_low'], 8));
+          return {
+            exerciseId: string(movement['exercise_id']),
+            targetSets: Math.max(1, number(movement['target_sets'], 3)),
+            targetRepLow: low,
+            targetRepHigh: Math.max(low, number(movement['target_rep_high'], low)),
+            supersetId: optionalString(movement['superset_id']),
+          };
+        }),
+      };
+    }),
+    bests: list(data['bests'])
+      .map((entry) => {
+        const best = record(entry);
+        return {
+          exerciseId: string(best['exercise_id']),
+          bestKg: number(best['best_kg'], 0),
+          achievedAt: date(best['achieved_at']),
+        };
+      })
+      .filter((best) => best.bestKg > 0),
   };
 }
 
