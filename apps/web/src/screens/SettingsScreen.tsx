@@ -24,10 +24,12 @@ import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
 import { useOnline } from '../lib/use-online.js';
 import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
+import { PlatePicker } from '../components/PlatePicker.js';
 import {
   ClockIcon,
   DeviceIcon,
   DownloadIcon,
+  DumbbellIcon,
   FriendsIcon,
   KettlebellIcon,
   MessageIcon,
@@ -73,6 +75,7 @@ export function SettingsScreen() {
 
       <Appearance />
       <Units />
+      <AvailablePlates />
       <RestTimes />
       <FriendsSharing />
       <SendFeedback />
@@ -179,6 +182,35 @@ function Units() {
           {error}
         </p>
       )}
+    </Panel>
+  );
+}
+
+/**
+ * Which plates this gym has — the same picker, on the same store, as the
+ * bottom of the plate calculator (`PlatePicker`), so a plate unticked here is
+ * unticked there and the other way round.
+ *
+ * Here as well because the calculator is three taps and a scroll away (Learn,
+ * Plates, the bottom of the page), and Settings is where somebody looks for a
+ * fact about their gym that they set once.
+ */
+function AvailablePlates() {
+  const profile = useCatalogue('profile', (r) => r.profile.current());
+  const unit = profile.data?.unitSystem === 'imperial' ? 'lb' : 'kg';
+
+  return (
+    <Panel title="Available plates">
+      <div className="flex items-center gap-3">
+        <IconChip tone="accent" icon={<DumbbellIcon className="size-5" />} />
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-medium text-primary">Your gym&rsquo;s plates</p>
+          <p className="text-sm text-muted">
+            The same list as Learn &rarr; Plates. A change here shows there too.
+          </p>
+        </div>
+      </div>
+      <PlatePicker unit={unit} />
     </Panel>
   );
 }

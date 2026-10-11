@@ -192,6 +192,48 @@ test('deselecting plates changes the maths, the bar and the legend, and survives
   await expect(page.getByText('2 plates are hidden')).toBeVisible();
 });
 
+/**
+ * The same picker sits in Settings, because the calculator's copy is three
+ * taps and a scroll away. Both are one store: a change in either shows in the
+ * other.
+ */
+test('Settings and the calculator share one list of plates', async ({ page }) => {
+  const user = await createUser('plates-settings', { onboarded: true });
+  await signIn(page, user);
+
+  // Settings to calculator.
+  await openTab(page, 'Settings');
+  const inSettings = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Available plates' }),
+  });
+  await inSettings.scrollIntoViewIfNeeded();
+  await inSettings.getByRole('button', { name: '25 kg', exact: true }).click();
+  await expect(inSettings.getByRole('button', { name: '25 kg', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+
+  await openCalculator(page);
+  const onCalculator = page.locator('#available-plates');
+  await expect(onCalculator.getByRole('button', { name: '25 kg', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(page.getByText('One plate is hidden')).toBeVisible();
+
+  // Calculator to Settings.
+  await onCalculator.getByRole('button', { name: '15 kg', exact: true }).click();
+  await openTab(page, 'Settings');
+  await expect(inSettings.getByRole('button', { name: '15 kg', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(inSettings.getByRole('button', { name: '25 kg', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+});
+
 test('at least one plate must stay selected', async ({ page }) => {
   const user = await createUser('plates-minimum', { onboarded: true });
   await signIn(page, user);
