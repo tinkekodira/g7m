@@ -8,7 +8,7 @@
  *
  * ## Made, not loaded
  *
- * Three short notes from an oscillator through Web Audio, so there is no
+ * A three-second chime from an oscillator through Web Audio, so there is no
  * audio file to download, cache or keep in step with anything. It sounds the
  * same offline as on.
  *
@@ -35,15 +35,36 @@ export interface ChimeNote {
   readonly duration: number;
 }
 
+/** How long the whole chime lasts, in seconds. */
+export const REST_CHIME_SECONDS = 3;
+
+/** How many times the phrase plays, one a second. */
+const REST_CHIME_ROUNDS = 3;
+
 /**
- * Two short notes and a longer, higher one. Bright enough to cut through gym
- * music, short enough not to be mistaken for a phone call.
+ * Two short notes and a longer, higher one, played three times a second apart,
+ * the last high note ringing on to the three-second mark.
+ *
+ * Three rounds rather than one: a single phrase of under a second was heard,
+ * but it was over before anybody across the gym floor had looked up. Bright
+ * enough to cut through gym music, and stops on its own like a kitchen timer.
  */
-export const REST_CHIME: readonly ChimeNote[] = [
-  { at: 0, frequency: 880, duration: 0.14 },
-  { at: 0.22, frequency: 880, duration: 0.14 },
-  { at: 0.44, frequency: 1318.5, duration: 0.32 },
-];
+export const REST_CHIME: readonly ChimeNote[] = Array.from(
+  { length: REST_CHIME_ROUNDS },
+  (_, round) => {
+    const at = round * (REST_CHIME_SECONDS / REST_CHIME_ROUNDS);
+    const last = round === REST_CHIME_ROUNDS - 1;
+    return [
+      { at, frequency: 880, duration: 0.14 },
+      { at: at + 0.22, frequency: 880, duration: 0.14 },
+      {
+        at: at + 0.44,
+        frequency: 1318.5,
+        duration: last ? REST_CHIME_SECONDS - (at + 0.44) : 0.32,
+      },
+    ];
+  },
+).flat();
 
 /** How loud the notes peak, out of 1. Clear without being a shock. */
 const PEAK_GAIN = 0.5;

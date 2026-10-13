@@ -171,7 +171,8 @@ test('rest ending plays a sound, and not once Settings turns it off', async ({ p
   await startWith(page, 'Lateral Raise');
   await logSet(page, 1, '10', '12');
   await expect(page.getByText('Rest over')).toBeVisible({ timeout: 25_000 });
-  await expect.poll(() => notes(page)).toBe(3);
+  // Three rounds of three notes: the three-second chime.
+  await expect.poll(() => notes(page)).toBe(9);
 
   // Off, the next rest ends in silence.
   await page.getByRole('button', { name: 'Dismiss' }).click();

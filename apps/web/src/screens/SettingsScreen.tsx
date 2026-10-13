@@ -303,7 +303,7 @@ function RestTimes() {
           label="Sound when rest is over"
           description={
             sound
-              ? 'Three short notes as well as the buzz, while the app is open.'
+              ? 'A three-second chime as well as the buzz, while the app is open.'
               : 'Off — rest ending only buzzes.'
           }
         />
