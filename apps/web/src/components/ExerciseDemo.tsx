@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { colorTokens, lightColorTokens } from '@g7m/ui';
+import { useReducedMotion } from '../lib/use-reduced-motion.js';
 import { useThemeStore } from '../lib/use-theme.js';
 import {
   demoFormat,
@@ -159,21 +160,6 @@ function useInView(target: RefObject<HTMLElement | null>, rootMargin: string): b
     };
   }, [target, rootMargin]);
   return inView;
-}
-
-const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
-
-/** The system setting, kept current: it can be switched with the page open. */
-function useReducedMotion(): boolean {
-  return useSyncExternalStore(subscribeToReducedMotion, () => matchMedia(REDUCED_MOTION).matches);
-}
-
-function subscribeToReducedMotion(onChange: () => void): () => void {
-  const query = matchMedia(REDUCED_MOTION);
-  query.addEventListener('change', onChange);
-  return () => {
-    query.removeEventListener('change', onChange);
-  };
 }
 
 function useTabVisible(): boolean {

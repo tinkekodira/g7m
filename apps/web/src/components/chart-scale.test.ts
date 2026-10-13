@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  smoothPath,
   formatVolume,
   formatVolumeShort,
   formatWeightExact,
@@ -237,5 +238,52 @@ describe('formatWeightExact', () => {
     expect(formatWeightExact(2450, 'imperial')).toBe('5,401 lb');
     expect(formatWeightExact(0.4, 'metric')).toBe('0 kg');
     expect(formatWeightExact(Number.NaN, 'imperial')).toBe('0 lb');
+  });
+});
+
+describe('smoothPath', () => {
+  /** Every number in a path, as [x, y] pairs: the start, then three per curve. */
+  function pairs(path: string): number[][] {
+    const numbers = (path.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+    const out: number[][] = [];
+    for (let index = 0; index < numbers.length; index += 2) {
+      out.push([numbers[index] ?? 0, numbers[index + 1] ?? 0]);
+    }
+    return out;
+  }
+
+  it('is empty for nothing and a move for one point', () => {
+    expect(smoothPath([])).toBe('');
+    expect(smoothPath([{ x: 3, y: 4 }])).toBe('M3,4');
+  });
+
+  it('passes through every point', () => {
+    const points = [
+      { x: 0, y: 40 },
+      { x: 10, y: 30 },
+      { x: 20, y: 30 },
+      { x: 30, y: 5 },
+    ];
+    const drawn = pairs(smoothPath(points));
+    const ends = [drawn[0], ...drawn.slice(1).filter((_, index) => index % 3 === 2)];
+    expect(ends).toEqual(points.map((point) => [point.x, point.y]));
+  });
+
+  it('never overshoots a running total: each curve stays inside its own step', () => {
+    // A running total, flat then rising by one, drawn with y down.
+    const totals = [0, 0, 1, 1, 1, 2, 3, 3, 3, 3, 4];
+    const points = totals.map((total, index) => ({ x: index * 10, y: 40 - total * 10 }));
+    const drawn = pairs(smoothPath(points));
+
+    for (let segment = 0; segment < points.length - 1; segment += 1) {
+      const from = points[segment] as { y: number };
+      const to = points[segment + 1] as { y: number };
+      const low = Math.min(from.y, to.y);
+      const high = Math.max(from.y, to.y);
+      for (const [, y] of drawn.slice(1 + segment * 3, 1 + segment * 3 + 3)) {
+        expect(y).toBeGreaterThanOrEqual(low);
+        expect(y).toBeLessThanOrEqual(high);
+      }
+    }
   });
 });

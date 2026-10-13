@@ -9,6 +9,7 @@ import {
   type UnitSystem,
 } from '@g7m/core';
 import { describeLink, describeObservation } from '../screens/review-copy.js';
+import { ChevronRightIcon } from './icons.js';
 
 /**
  * What the log says about how the training is going.
@@ -126,6 +127,11 @@ export function ReviewCard({
  * One line and a way through to the rest. The brief asked for a *heads-up* —
  * something that finds the user rather than waiting to be opened — and
  * somebody running their own program may never tap Progress.
+ *
+ * On Home it sits under the month's cards as the coach's note (ADR-0120):
+ * built like the cards' own insight lines, so it reads as part of the same
+ * block rather than a banner bolted on below it. The dot keeps the review's
+ * tone, inside a mark the size of the cards' symbols.
  */
 export function ReviewNudge({
   observations,
@@ -141,21 +147,24 @@ export function ReviewNudge({
   // a screen that will only tell them to come back later.
   if (headline === undefined || headline.key === 'observation-too_soon') return null;
 
-  const line = headline;
-  const tone = headline.tone;
-
   return (
     <Link
       to="/progress"
-      className={`flex min-h-tap items-center justify-between gap-3 rounded-card border bg-surface px-4 py-3 active:bg-elevated ${TONE_CLASSES[tone]}`}
+      className="flex min-h-tap items-center gap-3 rounded-card border border-subtle bg-surface px-3 py-2.5 transition-transform duration-150 ease-out select-none active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span className="flex min-w-0 items-baseline gap-2">
-        <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${DOT_CLASSES[tone]}`} />
-        <span className="min-w-0 text-sm font-medium text-primary">{line.heading}</span>
+      <span
+        aria-hidden
+        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-elevated"
+      >
+        <span className={`size-2 rounded-full ${DOT_CLASSES[headline.tone]}`} />
       </span>
-      <span aria-hidden className="shrink-0 text-muted">
-        →
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
+          How it is going
+        </span>
+        <span className="block text-sm leading-5 font-medium text-primary">{headline.heading}</span>
       </span>
+      <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted" />
     </Link>
   );
 }

@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from 'react';
 import {
   fractionOf,
   formatVolume,
@@ -5,6 +6,7 @@ import {
   niceMax,
   niceRange,
   polylinePoints,
+  smoothPath,
 } from './chart-scale.js';
 
 /**
@@ -286,5 +288,323 @@ export function TrendChart({
         ))}
       </svg>
     </figure>
+  );
+}
+
+/**
+ * How a chart arrives (ADR-0120).
+ *
+ *   still  drawn as it is, no motion — Reduce Motion, or Home opened again
+ *   wait   not drawn yet: a card off to the side, waiting to be swiped to
+ *   play   drawing itself in now
+ *
+ * The motion itself is CSS (`styles.css`), so the system's Reduce Motion rule
+ * flattens it without anything here having to ask.
+ */
+export type Motion = 'still' | 'wait' | 'play';
+
+const LINE_WIDTH = 300;
+const LINE_HEIGHT = 100;
+
+/** The days a month axis is labelled at: the 1st, each week, the last. */
+function dayTicks(days: number): number[] {
+  return [1, 8, 15, 22, days];
+}
+
+/**
+ * Where a running total bends: zero at the start of the 1st, the end of every
+ * day it went up, and the end of the last day drawn.
+ *
+ * Not one point a day. A count goes up in whole steps, and a point on every
+ * flat day drew a staircase; through the days that changed it reads as the
+ * climb it is, and the monotone curve still never dips.
+ *
+ * A long break is the exception. Between a workout on the 2nd and the next on
+ * the 25th, a curve through those two alone would creep up for three weeks of
+ * nothing. So after more than `HOLD_DAYS` without a change, the line is held
+ * flat until the day before the next one, and the break looks like a break.
+ */
+const HOLD_DAYS = 3;
+
+function knots(totals: readonly number[], days: number): { x: number; y: number }[] {
+  const end = (index: number): number => ((index + 1) / days) * LINE_WIDTH;
+  const points = [{ x: 0, y: 0 }];
+  let lastIndex = -1;
+  let lastValue = 0;
+  totals.forEach((value, index) => {
+    const changed = value !== lastValue;
+    if (!changed && index !== totals.length - 1) return;
+    if (changed && index - lastIndex > HOLD_DAYS) {
+      points.push({ x: end(index - 1), y: lastValue });
+    }
+    points.push({ x: end(index), y: value });
+    lastIndex = index;
+    lastValue = value;
+  });
+  return points;
+}
+
+/**
+ * Workouts so far this month as a running total, over last month's.
+ *
+ * A running total rather than a column a day: most days have no workout, and
+ * thirty columns of mostly nothing reads as a month of failing. A line that
+ * only ever rises reads as what it is — progress adding up. Last month is the
+ * faint line behind it, so "ahead" and "behind" are something to see, not just
+ * a sentence underneath.
+ *
+ * Drawn like `TrendChart`: the SVG stretches to the card and its strokes do
+ * not, and anything that must stay round — the dot on today — is HTML placed
+ * over it rather than an SVG circle that would stretch into an oval.
+ */
+export function MonthLine({
+  current,
+  previous,
+  days,
+  monthLabel,
+  currentName,
+  previousName,
+  showPrevious,
+  summary,
+  motion,
+}: {
+  /** Running totals from the 1st to today. */
+  readonly current: readonly number[];
+  /** Running totals for every day of last month. */
+  readonly previous: readonly number[];
+  /** Days in this month: the width of the axis. */
+  readonly days: number;
+  /** "Oct", for the first tick. */
+  readonly monthLabel: string;
+  readonly currentName: string;
+  readonly previousName: string;
+  readonly showPrevious: boolean;
+  readonly summary: string;
+  readonly motion: Motion;
+}) {
+  const gradient = useId();
+  const shown = showPrevious ? previous.slice(0, days) : [];
+  // Never an axis of 0 to 1: four is the least a month's line is drawn against.
+  const max = niceMax([...current, ...shown, 4]);
+  const y = (value: number): number => LINE_HEIGHT - fractionOf(value, max) * LINE_HEIGHT;
+  const plot = (totals: readonly number[]) =>
+    knots(totals, days).map((point) => ({ x: point.x, y: y(point.y) }));
+
+  // The axis runs from the start of the 1st to the end of the last day, so
+  // the line always leaves from nothing and today's dot sits at the end of
+  // today, where the day's workouts are counted.
+  const points = current.length === 0 ? [] : plot(current);
+  const line = smoothPath(points);
+  const last = points.at(-1);
+  const area =
+    last === undefined
+      ? ''
+      : `${line}L${String(last.x)},${String(LINE_HEIGHT)}L0,${String(LINE_HEIGHT)}Z`;
+  const ghost = shown.length === 0 ? '' : smoothPath(plot(shown));
+
+  return (
+    <figure className="m-0 flex min-h-0 flex-1 flex-col">
+      <div className="relative min-h-24 flex-1">
+        {/* Two values on the axis: the top, and nothing. The line's own end
+            says where it is now, and the number above the chart says how many. */}
+        <span className="numeric absolute top-0 left-0 -translate-y-1/2 text-[10px] leading-none text-muted">
+          {max}
+        </span>
+        <span className="numeric absolute bottom-0 left-0 translate-y-1/2 text-[10px] leading-none text-muted">
+          0
+        </span>
+
+        <div className="absolute inset-y-0 right-1 left-5">
+          <div aria-hidden className="absolute inset-0 flex flex-col justify-between">
+            <div className="border-t border-subtle/50" />
+            <div className="border-t border-subtle/50" />
+            <div className="border-t border-subtle" />
+          </div>
+
+          {showPrevious && (
+            <div
+              aria-hidden
+              className="absolute top-1.5 left-1.5 flex items-center gap-3 text-[10px] text-muted"
+            >
+              <span className="flex items-center gap-1">
+                <span className="h-0.5 w-3 rounded-full bg-accent" />
+                {currentName}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-0.5 w-3 rounded-full bg-muted/50" />
+                {previousName}
+              </span>
+            </div>
+          )}
+
+          <svg
+            role="img"
+            aria-label={summary}
+            viewBox={`0 0 ${String(LINE_WIDTH)} ${String(LINE_HEIGHT)}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 h-full w-full overflow-visible"
+          >
+            <defs>
+              <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {ghost !== '' && (
+              <path
+                d={ghost}
+                fill="none"
+                stroke="var(--text-muted)"
+                strokeOpacity="0.45"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            <g
+              className={
+                motion === 'play' ? 'reveal-x' : motion === 'wait' ? 'reveal-wait' : undefined
+              }
+            >
+              <path d={area} fill={`url(#${gradient})`} />
+              <path
+                d={line}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </g>
+          </svg>
+
+          {last !== undefined && (
+            <span
+              aria-hidden
+              className={`absolute size-0 ${motion === 'play' ? 'pop-in' : motion === 'wait' ? 'opacity-0' : ''}`}
+              style={{
+                left: `${String((last.x / LINE_WIDTH) * 100)}%`,
+                top: `${String((last.y / LINE_HEIGHT) * 100)}%`,
+              }}
+            >
+              <span className="absolute size-6 -translate-1/2 rounded-full bg-accent/20" />
+              <span className="absolute size-2.5 -translate-1/2 rounded-full bg-accent ring-2 ring-surface" />
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div aria-hidden className="relative mt-2 mr-1 ml-5 h-3">
+        {dayTicks(days).map((day, index, all) => (
+          <span
+            key={day}
+            className={`numeric absolute top-0 text-[10px] leading-none whitespace-nowrap text-muted ${
+              index === 0 ? '' : index === all.length - 1 ? '-translate-x-full' : '-translate-x-1/2'
+            }`}
+            // A day's label sits under the middle of that day.
+            style={{ left: `${String(((day - 0.5) / Math.max(1, days)) * 100)}%` }}
+          >
+            {index === 0 ? `${monthLabel} 1` : day}
+          </span>
+        ))}
+      </div>
+    </figure>
+  );
+}
+
+export interface RingSlice {
+  readonly key: string;
+  readonly value: number;
+  /** A CSS colour, normally a region token: `var(--region-legs)`. */
+  readonly color: string;
+}
+
+const RING_RADIUS = 46;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+/** The surface showing between slices, in the ring's own units. */
+const RING_GAP = 2.4;
+
+/**
+ * Part of a whole, as a ring: the muscle groups on Home.
+ *
+ * Six slices at most, in a fixed order — colour follows the region, never its
+ * rank, so legs are the same colour this month and next. The slices are
+ * separated by a gap in the surface colour rather than an outline, and the
+ * total sits in the middle, where a pie would have put more pie.
+ *
+ * It sweeps round once on arrival: a mask over the whole ring draws in from
+ * twelve o'clock, so the slices themselves never have to animate.
+ */
+export function RegionRing({
+  slices,
+  center,
+  summary,
+  motion,
+}: {
+  readonly slices: readonly RingSlice[];
+  readonly center: ReactNode;
+  readonly summary: string;
+  readonly motion: Motion;
+}) {
+  const mask = useId();
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const gap = slices.length > 1 ? RING_GAP : 0;
+
+  let offset = 0;
+  const arcs = slices.map((slice) => {
+    const length = total > 0 ? (slice.value / total) * RING_CIRCUMFERENCE : 0;
+    const arc = { ...slice, dash: Math.max(length - gap, 0.5), offset };
+    offset += length;
+    return arc;
+  });
+
+  return (
+    <div className="relative size-32 shrink-0">
+      <svg role="img" aria-label={summary} viewBox="0 0 120 120" className="size-full -rotate-90">
+        <defs>
+          <mask id={mask}>
+            <circle
+              cx="60"
+              cy="60"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="white"
+              strokeWidth={16}
+              pathLength={1}
+              strokeDasharray="1 1"
+              className={motion === 'play' ? 'sweep' : motion === 'wait' ? 'sweep-wait' : undefined}
+            />
+          </mask>
+        </defs>
+        {total === 0 && (
+          <circle
+            cx="60"
+            cy="60"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="var(--border-subtle)"
+            strokeWidth={12}
+          />
+        )}
+        <g mask={`url(#${mask})`}>
+          {arcs.map((arc) => (
+            <circle
+              key={arc.key}
+              cx="60"
+              cy="60"
+              r={RING_RADIUS}
+              fill="none"
+              stroke={arc.color}
+              strokeWidth={12}
+              strokeDasharray={`${String(arc.dash)} ${String(RING_CIRCUMFERENCE)}`}
+              strokeDashoffset={-arc.offset}
+            />
+          ))}
+        </g>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">{center}</div>
+    </div>
   );
 }

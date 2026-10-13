@@ -128,6 +128,68 @@ export function polylinePoints(points: readonly Point[]): string {
 }
 
 /**
+ * A smooth SVG path through the points that never overshoots them.
+ *
+ * Monotone cubic interpolation (Fritsch–Carlson; d3's `curveMonotoneX`). An
+ * ordinary spline swings past a point on its way into a flat stretch, which
+ * on a running total draws a dip that never happened — a count of workouts
+ * going briefly down. Here every segment's control points stay inside the
+ * segment's own range, so a flat run is flat and a rise only rises.
+ *
+ * Points must be in order of `x`.
+ */
+export function smoothPath(points: readonly Point[]): string {
+  const first = points[0];
+  if (first === undefined) return '';
+  const start = `M${String(round1(first.x))},${String(round1(first.y))}`;
+  if (points.length === 1) return start;
+
+  const count = points.length;
+  // Each point with the one after it: the segments the curve is drawn along.
+  const segments = points.slice(1).map((b, index) => ({ a: points[index] ?? b, b }));
+  const secants = segments.map(({ a, b }) => {
+    const dx = b.x - a.x;
+    return dx === 0 ? 0 : (b.y - a.y) / dx;
+  });
+
+  const tangents = points.map((_, index) => {
+    if (index === 0) return secants[0] ?? 0;
+    if (index === count - 1) return secants[count - 2] ?? 0;
+    const before = secants[index - 1] ?? 0;
+    const after = secants[index] ?? 0;
+    // A peak, a trough or a flat on either side: level off here.
+    return before * after <= 0 ? 0 : (before + after) / 2;
+  });
+
+  // Fritsch–Carlson: shorten any tangent steep enough to overshoot.
+  for (let index = 0; index < count - 1; index += 1) {
+    const secant = secants[index] ?? 0;
+    if (secant === 0) {
+      tangents[index] = 0;
+      tangents[index + 1] = 0;
+      continue;
+    }
+    const a = (tangents[index] ?? 0) / secant;
+    const b = (tangents[index + 1] ?? 0) / secant;
+    const length = a * a + b * b;
+    if (length > 9) {
+      const tau = 3 / Math.sqrt(length);
+      tangents[index] = tau * a * secant;
+      tangents[index + 1] = tau * b * secant;
+    }
+  }
+
+  let path = start;
+  for (const [index, { a, b }] of segments.entries()) {
+    const third = (b.x - a.x) / 3;
+    const c1 = { x: a.x + third, y: a.y + (tangents[index] ?? 0) * third };
+    const c2 = { x: b.x - third, y: b.y - (tangents[index + 1] ?? 0) * third };
+    path += `C${[c1, c2, b].map((p) => `${String(round1(p.x))},${String(round1(p.y))}`).join(' ')}`;
+  }
+  return path;
+}
+
+/**
  * A short, readable weight: `1.2t` past a tonne, `340` below it.
  *
  * Session volumes run to tens of thousands of kilograms, and an axis reading

@@ -70,6 +70,21 @@
   --medal-silver: #b4b5b9;
   --medal-bronze: #c27a38;
 
+  /* --- Body regions ---
+     One colour per region on Home's muscle ring and wherever else a region
+     is named, so legs are the same colour everywhere (ADR-0120). Warm and
+     cool alternate in ring order (legs, arms, shoulders, back, chest, core)
+     and the set was run through the data-viz palette validator, in that
+     order, against the card: lightness band, chroma floor, colour-blind
+     separation of neighbours, 3:1 on the surface. Re-run it before changing
+     one. Legs is a hair under the accent, which sits just outside the band. Decorative marks only, never text. */
+  --region-legs: #d77755;
+  --region-arms: #9b69b1;
+  --region-shoulders: #b48e34;
+  --region-back: #587fc8;
+  --region-chest: #c05b6e;
+  --region-core: #249cb4;
+
   /* --- Anatomy model --- */
   --muscle-idle: #4a4844;
   --muscle-hover: #d97757;
@@ -136,6 +151,13 @@
   --medal-silver: #86878c;
   --medal-bronze: #a0612a;
 
+  --region-legs: #c45e39;
+  --region-arms: #7f4995;
+  --region-shoulders: #b28319;
+  --region-back: #345fb2;
+  --region-chest: #b7445d;
+  --region-core: #1488a2;
+
   --bg-stage: #e6e2d9;
 
   /* The page colour, a step down from the white card. The transparent WebP
@@ -179,6 +201,13 @@
   --color-medal-gold: var(--medal-gold);
   --color-medal-silver: var(--medal-silver);
   --color-medal-bronze: var(--medal-bronze);
+
+  --color-region-legs: var(--region-legs);
+  --color-region-arms: var(--region-arms);
+  --color-region-shoulders: var(--region-shoulders);
+  --color-region-back: var(--region-back);
+  --color-region-chest: var(--region-chest);
+  --color-region-core: var(--region-core);
 
   --color-muscle-idle: var(--muscle-idle);
   --color-muscle-hover: var(--muscle-hover);
