@@ -34,7 +34,11 @@ test('a first workout turns the first step into this month’s numbers', async (
   await expect(
     page.getByRole('link', { name: /^Strength and activity this month: 1 workout,/ }),
   ).toBeAttached();
-  await expect(page.getByRole('link', { name: /^Workout duration this month:/ })).toBeAttached();
+  // Four cards, records first (ADR-0125): how long a session runs is said on
+  // Progress now, not in a fifth card.
+  await expect(page.getByRole('link', { name: /^Workout duration this month:/ })).toHaveCount(0);
+  await expect(page.getByRole('group', { name: 'Personal records, 1 of 4' })).toBeAttached();
+  await expect(page.getByRole('group', { name: 'Strength and activity, 4 of 4' })).toBeAttached();
   // The bench press was a first: a best set, not a record broken.
   await expect(
     page.getByRole('link', {

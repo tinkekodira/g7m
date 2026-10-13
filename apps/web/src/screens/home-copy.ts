@@ -12,10 +12,8 @@
  */
 import {
   REGION_LABELS,
-  formatMinutes,
   type ActivityInsight,
   type BodyRegion,
-  type DurationInsight,
   type MusclesInsight,
   type RecordsInsight,
   type WorkoutsInsight,
@@ -195,39 +193,6 @@ export function describeActivity(insight: ActivityInsight): Insight {
 /** 2, 2.5, 3: a whole number without its ".0". */
 export function formatPerWeek(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-/** Within this many minutes of last month's average reads as the same. */
-const SAME_LENGTH = 5;
-
-export function describeDuration(insight: DurationInsight): Insight {
-  if (insight.kind === 'none') {
-    return {
-      heading: 'No timed workouts yet this month',
-      detail: 'Time runs from your first ticked set to your last.',
-      tone: 'neutral',
-      symbol: 'clock',
-    };
-  }
-  const heading = `Average session ${formatMinutes(insight.minutes)}`;
-  if (insight.previous === null) {
-    return {
-      heading,
-      detail: 'From your first ticked set to your last, each workout this month.',
-      tone: 'neutral',
-      symbol: 'clock',
-    };
-  }
-  const difference = insight.minutes - insight.previous;
-  return {
-    heading,
-    detail:
-      Math.abs(difference) < SAME_LENGTH
-        ? 'About the same as last month by this day.'
-        : `${formatMinutes(Math.abs(difference))} ${difference > 0 ? 'longer' : 'shorter'} than last month’s average.`,
-    tone: 'neutral',
-    symbol: 'clock',
-  };
 }
 
 export function describeRecords(

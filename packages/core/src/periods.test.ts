@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_TIME_CHART_MONTHS,
+  averageSession,
   comparePeriods,
   formatMinutes,
   periodWindow,
@@ -226,6 +227,39 @@ describe('volumeBuckets', () => {
   it('never draws more months than the chart has room for', () => {
     const window = periodWindow('all', WEDNESDAY, 1, local(2020, 1, 1));
     expect(volumeBuckets(window, [], WEDNESDAY)).toHaveLength(ALL_TIME_CHART_MONTHS);
+  });
+});
+
+describe('averageSession', () => {
+  const span = { start: local(2026, 9, 1, 0), end: local(2026, 10, 1, 0) };
+
+  function session(startedAt: Date, minutes: number | null): SessionTimes {
+    return {
+      startedAt,
+      firstSetAt: minutes === null ? null : startedAt,
+      lastSetAt: minutes === null ? null : new Date(startedAt.getTime() + minutes * 60_000),
+    };
+  }
+
+  it('averages the timed workouts inside the span, leaving out the ones too short to time', () => {
+    expect(
+      averageSession(
+        [
+          session(local(2026, 9, 2, 18), 50),
+          session(local(2026, 9, 9, 7), 21),
+          session(local(2026, 9, 10), null),
+          // Outside the span.
+          session(local(2026, 8, 31, 18), 90),
+          session(local(2026, 10, 1, 0), 90),
+        ],
+        span,
+      ),
+    ).toBe(36);
+  });
+
+  it('has no average without a timed workout', () => {
+    expect(averageSession([], span)).toBeNull();
+    expect(averageSession([session(local(2026, 9, 8), null)], span)).toBeNull();
   });
 });
 
