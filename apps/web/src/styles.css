@@ -299,3 +299,23 @@ textarea,
 .sweep-wait {
   stroke-dashoffset: 1;
 }
+
+/* The duration card's columns, growing up from the baseline together. */
+@keyframes g7m-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.grow-y {
+  transform-origin: bottom;
+  animation: g7m-grow-y 600ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.grow-wait {
+  transform: scaleY(0);
+  transform-origin: bottom;
+}

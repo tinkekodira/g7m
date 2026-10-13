@@ -24,7 +24,7 @@
  * a colour-blind reader. The palette was validated in that order, so do not
  * re-sort it.
  */
-import { countsAsSet, countsTowardVolume, setVolumeKg } from './load.js';
+import { countsAsSet, countsTowardVolume, effectiveLoadKg, setVolumeKg } from './load.js';
 import { startOfMonth, type SessionTimes, type Span } from './periods.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
 
@@ -99,6 +99,14 @@ export interface MonthStats {
   readonly workouts: MonthFigure;
   /** Training minutes, first ticked set to last. See `trainingMinutes`. */
   readonly minutes: MonthFigure;
+  /**
+   * Workouts long enough to time, which is what an average session divides
+   * by: a one-set workout has no duration, and counting it as zero minutes
+   * would drag the average down for a session nobody timed.
+   */
+  readonly timed: MonthFigure;
+  /** Training minutes on each day of this month; days still to come are 0. */
+  readonly dailyMinutes: readonly number[];
   /** Weight times reps over working sets, drops included. */
   readonly volumeKg: MonthFigure;
   /** Workouts per week, to one decimal. */
@@ -166,19 +174,25 @@ export function monthStats({ sessions, sets, groupsByExercise, now }: MonthStats
   const previousDays = new Array<number>(daysInPreviousMonth).fill(0);
   const workouts = { current: 0, previous: 0 };
   const minutes = { current: 0, previous: 0 };
+  const timed = { current: 0, previous: 0 };
+  const dailyMinutes = new Array<number>(daysInMonth).fill(0);
 
   for (const session of sessions) {
     const at = session.startedAt;
-    const spent = trainingMinutes([session.firstSetAt, session.lastSetAt]) ?? 0;
+    const measured = trainingMinutes([session.firstSetAt, session.lastSetAt]);
+    const spent = measured ?? 0;
     if (isCurrent(at)) {
       currentDays[at.getDate() - 1] = (currentDays[at.getDate() - 1] ?? 0) + 1;
+      dailyMinutes[at.getDate() - 1] = (dailyMinutes[at.getDate() - 1] ?? 0) + spent;
       workouts.current += 1;
       minutes.current += spent;
+      if (measured !== null) timed.current += 1;
     } else if (inSpan(at, previousStart, start)) {
       previousDays[at.getDate() - 1] = (previousDays[at.getDate() - 1] ?? 0) + 1;
       if (isPrevious(at)) {
         workouts.previous += 1;
         minutes.previous += spent;
+        if (measured !== null) timed.previous += 1;
       }
     }
   }
@@ -249,6 +263,8 @@ export function monthStats({ sessions, sets, groupsByExercise, now }: MonthStats
     previousTotal: previousDays.reduce((sum, value) => sum + value, 0),
     workouts,
     minutes: { current: Math.round(minutes.current), previous: Math.round(minutes.previous) },
+    timed,
+    dailyMinutes: dailyMinutes.map((value) => Math.round(value)),
     volumeKg: { current: Math.round(volume.current), previous: Math.round(volume.previous) },
     perWeek: {
       current: round1(workouts.current / weeks),
@@ -418,4 +434,134 @@ export function activityInsight(stats: MonthStats): ActivityInsight {
 export function percentChange(current: number, previous: number): number | null {
   if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) return null;
   return Math.round(((current - previous) / previous) * 100);
+}
+
+export type DurationInsight =
+  | { readonly kind: 'none' }
+  /** `previous` is last month's average to the same day, or null with nothing to average. */
+  | { readonly kind: 'average'; readonly minutes: number; readonly previous: number | null };
+
+/** The average session this month, against last month's to the same day. */
+export function durationInsight(stats: MonthStats): DurationInsight {
+  if (stats.timed.current === 0) return { kind: 'none' };
+  return {
+    kind: 'average',
+    minutes: Math.round(stats.minutes.current / stats.timed.current),
+    previous:
+      stats.timed.previous === 0 ? null : Math.round(stats.minutes.previous / stats.timed.previous),
+  };
+}
+
+// --- Personal records ------------------------------------------------------
+
+/** One lift trained this month, against everything before it. */
+export interface LiftBest {
+  readonly exerciseId: string;
+  /**
+   * The heaviest load this month, counted the way Profile's best lifts count
+   * it (the max weight in `personalRecords`): what was on the bar, the belt or
+   * the body, so a weighted pull-up is the lifter plus the plate.
+   */
+  readonly bestKg: number;
+  /** The heaviest before the 1st, or null for a lift first logged this month. */
+  readonly previousKg: number | null;
+  /** Heavier than ever before. Never true for a first time: that is a start, not a record. */
+  readonly isRecord: boolean;
+}
+
+export interface MonthRecords {
+  /** New bests first, the biggest jump leading; then the rest, heaviest first. */
+  readonly lifts: readonly LiftBest[];
+  readonly newBests: number;
+}
+
+/**
+ * The bests this month: which lifts went heavier than ever, and by how much.
+ *
+ * Needs the whole history, not two months: "heavier than ever" is measured
+ * against every set before the 1st. `skip` leaves out lifts where weight is
+ * not the point (a plank's best is its time, not its load).
+ */
+export function monthRecords(
+  sets: readonly HistoricalSet[],
+  now: Date,
+  skip: ReadonlySet<string> = new Set(),
+): MonthRecords {
+  const start = startOfMonth(now).getTime();
+  const end = now.getTime();
+  const thisMonth = new Map<string, number>();
+  const before = new Map<string, number>();
+
+  for (const set of sets) {
+    if (!countsTowardVolume(set) || skip.has(set.exerciseId)) continue;
+    const load = effectiveLoadKg(set, set.bodyweightKg);
+    if (load === null || load <= 0) continue;
+    const time = set.performedAt.getTime();
+    if (Number.isNaN(time) || time > end) continue;
+    const into = time >= start ? thisMonth : before;
+    into.set(set.exerciseId, Math.max(into.get(set.exerciseId) ?? 0, load));
+  }
+
+  const lifts = [...thisMonth].map(([exerciseId, best]) => {
+    const previous = before.get(exerciseId) ?? null;
+    return {
+      exerciseId,
+      bestKg: round2(best),
+      previousKg: previous === null ? null : round2(previous),
+      isRecord: previous !== null && best > previous,
+    };
+  });
+
+  const gain = (lift: LiftBest): number =>
+    lift.previousKg === null || lift.previousKg === 0 ? 0 : lift.bestKg / lift.previousKg - 1;
+  lifts.sort((a, b) => {
+    if (a.isRecord !== b.isRecord) return a.isRecord ? -1 : 1;
+    if (a.isRecord) return gain(b) - gain(a) || a.exerciseId.localeCompare(b.exerciseId, 'en');
+    return b.bestKg - a.bestKg || a.exerciseId.localeCompare(b.exerciseId, 'en');
+  });
+
+  return { lifts, newBests: lifts.filter((lift) => lift.isRecord).length };
+}
+
+/** Within this share of the best counts as close enough to say so. */
+const CLOSE_TO_BEST = 0.05;
+
+export type RecordsInsight =
+  /** No lifts with a weight this month. */
+  | { readonly kind: 'none' }
+  /** `exerciseId` is the biggest jump. */
+  | { readonly kind: 'new'; readonly count: number; readonly exerciseId: string }
+  /** Every lift this month is a first: nothing yet to beat. */
+  | { readonly kind: 'first'; readonly count: number }
+  /** No new best, but one lift is within 5% of its own. */
+  | { readonly kind: 'close'; readonly exerciseId: string; readonly shortKg: number }
+  | { readonly kind: 'holding' };
+
+export function recordsInsight(records: MonthRecords): RecordsInsight {
+  const top = records.lifts[0];
+  if (top === undefined) return { kind: 'none' };
+  if (top.isRecord) return { kind: 'new', count: records.newBests, exerciseId: top.exerciseId };
+  if (records.lifts.every((lift) => lift.previousKg === null)) {
+    return { kind: 'first', count: records.lifts.length };
+  }
+
+  let closest: { lift: LiftBest; short: number } | null = null;
+  for (const lift of records.lifts) {
+    if (lift.previousKg === null || lift.previousKg <= 0) continue;
+    const short = 1 - lift.bestKg / lift.previousKg;
+    if (short > CLOSE_TO_BEST) continue;
+    if (closest === null || short < closest.short) closest = { lift, short };
+  }
+  if (closest !== null) {
+    return {
+      kind: 'close',
+      exerciseId: closest.lift.exerciseId,
+      shortKg: round2((closest.lift.previousKg ?? 0) - closest.lift.bestKg),
+    };
+  }
+  return { kind: 'holding' };
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

@@ -251,3 +251,15 @@ export function formatWeightExact(kg: number, unitSystem: UnitSystem): string {
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
+
+/**
+ * The top of a minutes axis: a time somebody would say out loud.
+ *
+ * `niceMax` rounds 70 minutes to 100, and "1h 40m" at the top of a chart is a
+ * number nobody uses. These are the steps a session is talked about in.
+ */
+export function niceMinutes(peak: number): number {
+  const steps = [30, 45, 60, 90, 120, 150, 180, 240];
+  const usable = Number.isFinite(peak) ? Math.max(0, peak) : 0;
+  return steps.find((step) => usable <= step) ?? Math.ceil(usable / 60) * 60;
+}

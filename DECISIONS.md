@@ -7897,3 +7897,36 @@ Motion. Changing the period afterwards does not pull the page back.
 with the review card 16px from the top. There is no e2e for the scroll. The
 note only appears once six weeks of history against a goal give the review
 something to say, which is more seeding than this change is worth.
+
+## ADR-0122 — Workout duration and personal records join the month
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120
+
+The two cards from the mockups that ADR-0120 left for later. Each is one
+entry in `CARDS` and one component.
+
+- **Workout duration**: training time on each day of the month as slim
+  columns. A day only gets a column if it had training, and today's column is
+  the full accent. The axis tops out at a length people actually say (45 min,
+  1 h, 1 h 30, via `niceMinutes`), not `niceMax`'s 100 minutes. The total is
+  in the corner. Underneath is the average session, against last month's to
+  the same day. It divides by workouts long enough to time, so a one-set
+  workout doesn't drag the average down.
+- **Personal records**: up to four lifts trained this month, as Profile counts
+  a best (the heaviest load, `personalRecords`' max weight). New bests come
+  first, biggest jump first, each with "+X kg on your best"; the rest show
+  their standing best. A lift logged for the first time is a start, not a
+  record. Time-based lifts are left out, because a plank's best is its time.
+  Underneath: how many new bests, a lift within 5% of its best, "first bests
+  set", or "bests still stand".
+
+"Heavier than ever" needs all of history, so the month hook now reads every
+set, not two months of them. The launch-time achievements check already reads
+them all, and the cards stay in their own chunk, so Home's entry budget is
+unchanged.
+
+**Tests:** `month-stats.test.ts` covers per-day minutes and timed workouts,
+the average with and without last month, records against every set before
+the 1st (warm-ups, first times and skipped lifts excluded) and each insight.
+`niceMinutes` has its own test. `home-stats.spec.ts` checks that a first
+workout reaches both new cards.

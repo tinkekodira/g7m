@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   BODY_REGIONS,
   activityInsight,
+  durationInsight,
+  monthRecords,
   monthStats,
   monthStatsSince,
   musclesInsight,
   percentChange,
+  recordsInsight,
   regionOf,
   workoutsInsight,
   type MonthStats,
@@ -366,5 +369,91 @@ describe('percentChange', () => {
     expect(percentChange(5, 0)).toBeNull();
     expect(percentChange(12, 10)).toBe(20);
     expect(percentChange(8, 10)).toBe(-20);
+  });
+});
+
+describe('duration', () => {
+  it('adds each day’s training minutes, and counts only workouts long enough to time', () => {
+    const untimed: SessionTimes = {
+      startedAt: local(2026, 10, 3),
+      firstSetAt: local(2026, 10, 3),
+      lastSetAt: local(2026, 10, 3),
+    };
+    const result = stats([
+      session(local(2026, 10, 2), 50),
+      session(local(2026, 10, 2, 18), 20),
+      untimed,
+      session(local(2026, 9, 2), 40),
+    ]);
+
+    expect(result.dailyMinutes).toHaveLength(31);
+    expect(result.dailyMinutes.slice(0, 3)).toEqual([0, 70, 0]);
+    expect(result.timed).toEqual({ current: 2, previous: 1 });
+    expect(durationInsight(result)).toEqual({ kind: 'average', minutes: 35, previous: 40 });
+  });
+
+  it('has no average without a timed workout, and no comparison without one last month', () => {
+    expect(durationInsight(stats([]))).toEqual({ kind: 'none' });
+    expect(durationInsight(stats([session(local(2026, 10, 2), 45)]))).toEqual({
+      kind: 'average',
+      minutes: 45,
+      previous: null,
+    });
+  });
+});
+
+describe('monthRecords', () => {
+  const history = [
+    set({ exerciseId: 'bench', performedAt: local(2026, 8, 20), weightKg: 100 }),
+    set({ exerciseId: 'bench', performedAt: local(2026, 10, 5), weightKg: 105 }),
+    set({ exerciseId: 'row', performedAt: local(2026, 9, 10), weightKg: 80 }),
+    set({ exerciseId: 'row', performedAt: local(2026, 10, 6), weightKg: 88 }),
+    set({ exerciseId: 'squat', performedAt: local(2026, 9, 1), weightKg: 140 }),
+    set({ exerciseId: 'squat', performedAt: local(2026, 10, 7), weightKg: 135 }),
+    set({ exerciseId: 'curl', performedAt: local(2026, 10, 8), weightKg: 30 }),
+    set({ exerciseId: 'plank', performedAt: local(2026, 10, 8), weightKg: 20 }),
+    // A warm-up heavier than anything is still not a record.
+    set({ exerciseId: 'curl', performedAt: local(2026, 10, 9), weightKg: 60, setType: 'warmup' }),
+  ];
+
+  it('measures this month against every set before the 1st, biggest jump first', () => {
+    const records = monthRecords(history, NOW, new Set(['plank']));
+
+    expect(records.newBests).toBe(2);
+    expect(records.lifts.map((lift) => [lift.exerciseId, lift.isRecord])).toEqual([
+      ['row', true], // +10%
+      ['bench', true], // +5%
+      ['squat', false],
+      ['curl', false], // first time: a start, not a record
+    ]);
+    expect(records.lifts.find((lift) => lift.exerciseId === 'curl')).toMatchObject({
+      bestKg: 30,
+      previousKg: null,
+    });
+  });
+
+  it('names the biggest new best, a near miss, or that the bests still stand', () => {
+    expect(recordsInsight(monthRecords(history, NOW))).toEqual({
+      kind: 'new',
+      count: 2,
+      exerciseId: 'row',
+    });
+
+    const nearMiss = history.filter((entry) => !['bench', 'row'].includes(entry.exerciseId));
+    expect(recordsInsight(monthRecords(nearMiss, NOW))).toEqual({
+      kind: 'close',
+      exerciseId: 'squat',
+      shortKg: 5,
+    });
+
+    const farOff = [
+      set({ exerciseId: 'squat', performedAt: local(2026, 9, 1), weightKg: 140 }),
+      set({ exerciseId: 'squat', performedAt: local(2026, 10, 7), weightKg: 120 }),
+    ];
+    expect(recordsInsight(monthRecords(farOff, NOW))).toEqual({ kind: 'holding' });
+    expect(recordsInsight(monthRecords([], NOW))).toEqual({ kind: 'none' });
+
+    const firsts = [set({ exerciseId: 'curl', performedAt: local(2026, 10, 8), weightKg: 30 })];
+    expect(recordsInsight(monthRecords(firsts, NOW))).toEqual({ kind: 'first', count: 1 });
   });
 });

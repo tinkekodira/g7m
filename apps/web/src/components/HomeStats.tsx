@@ -4,9 +4,12 @@ import {
   BODY_REGIONS,
   REGION_LABELS,
   activityInsight,
+  durationInsight,
   formatMinutes,
   musclesInsight,
   percentChange,
+  recordsInsight,
+  toDisplayWeight,
   workoutsInsight,
   type MonthFigure,
   type MonthStats,
@@ -20,13 +23,15 @@ import { buzz } from '../lib/haptics.js';
 import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
 import {
   describeActivity,
+  describeDuration,
   describeMuscles,
+  describeRecords,
   describeWorkouts,
   formatPerWeek,
   type Insight,
   type InsightSymbol,
 } from '../screens/home-copy.js';
-import { MonthLine, RegionRing, type Motion } from './Charts.js';
+import { MonthColumns, MonthLine, RegionRing, type Motion } from './Charts.js';
 import { formatWeightTotal } from './chart-scale.js';
 import { REGION_DOT } from './region-colours.js';
 import { StatSkeleton } from './StatSkeleton.js';
@@ -86,6 +91,16 @@ const CARDS: readonly CardEntry[] = [
     render: (home, motion) => (
       <ActivityCard stats={home.stats} unitSystem={home.unitSystem} motion={motion} />
     ),
+  },
+  {
+    key: 'duration',
+    name: 'Workout duration',
+    render: (home, motion) => <DurationCard stats={home.stats} motion={motion} />,
+  },
+  {
+    key: 'records',
+    name: 'Personal records',
+    render: (home, motion) => <RecordsCard home={home} motion={motion} />,
   },
 ];
 
@@ -484,6 +499,124 @@ function ActivityCard({
         </Stat>
       </dl>
     </StatCard>
+  );
+}
+
+function DurationCard({ stats, motion }: { readonly stats: MonthStats; readonly motion: Motion }) {
+  const insight = describeDuration(durationInsight(stats));
+  const total = useCountUp(stats.minutes.current, motion);
+  const time = formatMinutes(stats.minutes.current);
+  const month = monthName(stats.month.start);
+
+  return (
+    <StatCard
+      label={`Workout duration this month: ${time} in total. ${insight.heading}. ${insight.detail}`}
+      icon={ClockIcon}
+      eyebrow="Workout duration"
+      title="This month"
+      figure={
+        <>
+          <Value parts={minuteParts(total)} />
+          <span className="block text-xs text-muted">total time</span>
+        </>
+      }
+      insight={insight}
+    >
+      <MonthColumns
+        minutes={stats.dailyMinutes}
+        day={stats.day}
+        monthLabel={monthShort(stats.month.start)}
+        format={formatMinutes}
+        summary={`${time} of training in ${month} so far, across ${String(stats.workouts.current)} workouts.`}
+        motion={motion}
+      />
+    </StatCard>
+  );
+}
+
+/** Four lifts at most: two rows of two fit the card on the smallest phone. */
+const RECORDS_SHOWN = 4;
+
+function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly motion: Motion }) {
+  const { records, names, unitSystem } = home;
+  const weight = (kg: number): string => {
+    const shown = toDisplayWeight(kg, unitSystem);
+    return `${String(shown.value)} ${shown.unit}`;
+  };
+  const insight = describeRecords(recordsInsight(records), names, weight);
+  const count = Math.round(useCountUp(records.newBests, motion));
+  const lifts = records.lifts.slice(0, RECORDS_SHOWN);
+
+  return (
+    <StatCard
+      label={`Personal records this month: ${String(records.newBests)} new ${records.newBests === 1 ? 'best' : 'bests'}. ${insight.heading}. ${insight.detail}`}
+      icon={TrophyIcon}
+      eyebrow="Personal records"
+      title="This month"
+      figure={
+        <Figure value={String(count)} caption={records.newBests === 1 ? 'new best' : 'new bests'} />
+      }
+      insight={insight}
+    >
+      <ul aria-hidden className="grid flex-1 grid-cols-2 content-center gap-2">
+        {lifts.length === 0
+          ? Array.from({ length: RECORDS_SHOWN }, (_, index) => (
+              <li
+                key={`empty-${String(index)}`}
+                className="flex h-[4.5rem] items-center justify-center rounded-card border border-dashed border-subtle text-muted"
+              >
+                –
+              </li>
+            ))
+          : lifts.map((lift) => {
+              const best = toDisplayWeight(lift.bestKg, unitSystem);
+              return (
+                <li
+                  key={lift.exerciseId}
+                  className={cx(
+                    'min-w-0 rounded-card border px-3 py-2',
+                    lift.isRecord ? 'border-accent/30 bg-accent/10' : 'border-subtle/70 bg-base/50',
+                  )}
+                >
+                  <span className="block truncate text-xs leading-4 text-muted">
+                    {names.get(lift.exerciseId) ?? 'Exercise'}
+                  </span>
+                  <span className="numeric block text-lg leading-6 font-bold text-primary">
+                    {String(best.value)}
+                    <span className="ml-0.5 text-xs font-semibold text-muted">{best.unit}</span>
+                  </span>
+                  <LiftNote lift={lift} weight={weight} />
+                </li>
+              );
+            })}
+      </ul>
+    </StatCard>
+  );
+}
+
+/** Under a lift: by how much it beat the old best, or what the best is. */
+function LiftNote({
+  lift,
+  weight,
+}: {
+  readonly lift: HomeStats['records']['lifts'][number];
+  readonly weight: (kg: number) => string;
+}) {
+  if (lift.previousKg === null) {
+    return <span className="block text-[11px] leading-4 text-muted">First time</span>;
+  }
+  if (lift.isRecord) {
+    return (
+      <span className="numeric flex items-center gap-0.5 text-[11px] leading-4 font-medium text-success">
+        <ArrowUpIcon aria-hidden className="size-3" strokeWidth={2.4} />
+        {weight(lift.bestKg - lift.previousKg)} on your best
+      </span>
+    );
+  }
+  return (
+    <span className="numeric block truncate text-[11px] leading-4 text-muted">
+      Best {weight(lift.previousKg)}
+    </span>
   );
 }
 

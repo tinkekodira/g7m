@@ -34,6 +34,13 @@ test('a first workout turns the first step into this month’s numbers', async (
   await expect(
     page.getByRole('link', { name: /^Strength and activity this month: 1 workout,/ }),
   ).toBeAttached();
+  await expect(page.getByRole('link', { name: /^Workout duration this month:/ })).toBeAttached();
+  // The bench press was a first: a best set, not a record broken.
+  await expect(
+    page.getByRole('link', {
+      name: /^Personal records this month: 0 new bests\. Your first bests are set\./,
+    }),
+  ).toBeAttached();
   await expect(
     page.getByRole('heading', { name: 'Your first workout starts the chart' }),
   ).toHaveCount(0);
