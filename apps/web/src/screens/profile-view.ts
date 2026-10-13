@@ -162,6 +162,16 @@ export function bmiNote(index: BodyIndex | null): string | null {
   return 'Your range moves with your age, your sex and how much you train. Plain BMI counts muscle as excess weight, so 18.5–25 is the wrong band for somebody who lifts.';
 }
 
+/**
+ * How Home's records card says "and show me my bests": `/profile?show=bests`.
+ *
+ * In the query because the hash holds the route, as with the review on
+ * Progress (ADR-0121). Profile scrolls the card with this id into view once
+ * the lifts are drawn, and points it out once (ADR-0123).
+ */
+export const BEST_LIFTS_PARAM = 'show';
+export const BEST_LIFTS_ANCHOR = 'best-lifts';
+
 export interface BestLift {
   readonly exerciseId: string;
   readonly name: string;

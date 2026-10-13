@@ -10,7 +10,7 @@ import { useSculptedBody, type BodyKind } from '../lib/anatomy-model.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import type { TrainingHeat } from '../lib/db/use-trained-body.js';
 import { useStageColor } from '../lib/use-theme.js';
-import type { BestLift } from '../screens/profile-view.js';
+import { BEST_LIFTS_ANCHOR, type BestLift } from '../screens/profile-view.js';
 
 /**
  * The cards a profile is made of — the achievements button, the body coloured
@@ -239,6 +239,7 @@ export function BestLiftsCard({
   unitSystem,
   description,
   linkTo,
+  arrived = false,
 }: {
   readonly lifts: readonly BestLift[] | null;
   readonly loading: boolean;
@@ -246,12 +247,20 @@ export function BestLiftsCard({
   readonly description: string;
   /** Where a row goes when tapped. */
   readonly linkTo: (lift: BestLift) => string;
+  /** Arrived at from Home's records card: anchored, and pointed out once. */
+  readonly arrived?: boolean;
 }) {
   const [all, setAll] = useState(false);
   const shown = lifts === null ? [] : all ? lifts : lifts.slice(0, BESTS_SHOWN);
 
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
+    <section
+      id={arrived ? BEST_LIFTS_ANCHOR : undefined}
+      className={cx(
+        'scroll-mt-4 rounded-card border border-subtle bg-surface p-4',
+        arrived && 'spotlight',
+      )}
+    >
       <h2 className="text-lg font-semibold text-primary">Best lifts</h2>
       <p className="mt-0.5 mb-1 text-xs text-muted">{description}</p>
 
