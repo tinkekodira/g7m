@@ -12,9 +12,12 @@
  */
 import {
   REGION_LABELS,
+  formatMinutes,
   type ActivityInsight,
   type BodyRegion,
+  type DurationInsight,
   type MusclesInsight,
+  type RecordsInsight,
   type WorkoutsInsight,
 } from '@g7m/core';
 import type { Line } from './review-copy.js';
@@ -192,4 +195,85 @@ export function describeActivity(insight: ActivityInsight): Insight {
 /** 2, 2.5, 3: a whole number without its ".0". */
 export function formatPerWeek(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/** Within this many minutes of last month's average reads as the same. */
+const SAME_LENGTH = 5;
+
+export function describeDuration(insight: DurationInsight): Insight {
+  if (insight.kind === 'none') {
+    return {
+      heading: 'No timed workouts yet this month',
+      detail: 'Time runs from your first ticked set to your last.',
+      tone: 'neutral',
+      symbol: 'clock',
+    };
+  }
+  const heading = `Average session ${formatMinutes(insight.minutes)}`;
+  if (insight.previous === null) {
+    return {
+      heading,
+      detail: 'From your first ticked set to your last, each workout this month.',
+      tone: 'neutral',
+      symbol: 'clock',
+    };
+  }
+  const difference = insight.minutes - insight.previous;
+  return {
+    heading,
+    detail:
+      Math.abs(difference) < SAME_LENGTH
+        ? 'About the same as last month by this day.'
+        : `${formatMinutes(Math.abs(difference))} ${difference > 0 ? 'longer' : 'shorter'} than last month’s average.`,
+    tone: 'neutral',
+    symbol: 'clock',
+  };
+}
+
+export function describeRecords(
+  insight: RecordsInsight,
+  names: ReadonlyMap<string, string>,
+  weight: (kg: number) => string,
+): Insight {
+  const name = (exerciseId: string): string => names.get(exerciseId) ?? 'One lift';
+  switch (insight.kind) {
+    case 'none':
+      return {
+        heading: 'No lifts logged this month yet',
+        detail: 'Your heaviest sets this month show up here, against your best.',
+        tone: 'neutral',
+        symbol: 'play',
+      };
+    case 'new':
+      return {
+        heading:
+          insight.count === 1
+            ? 'A new personal best'
+            : `${String(insight.count)} new personal bests`,
+        detail: `${name(insight.exerciseId)} is heavier than ever. You’re getting stronger.`,
+        tone: 'good',
+        symbol: 'up',
+      };
+    case 'first':
+      return {
+        heading: 'Your first bests are set',
+        detail: `${String(insight.count)} ${insight.count === 1 ? 'lift' : 'lifts'} to beat from here. Go heavier and they show up as new records.`,
+        tone: 'good',
+        symbol: 'check',
+      };
+    case 'close':
+      return {
+        heading: `${weight(insight.shortKg)} off your best`,
+        detail: `${name(insight.exerciseId)} is nearly there. One good day puts it on the board.`,
+        tone: 'nudge',
+        symbol: 'target',
+      };
+    case 'holding':
+      return {
+        heading: 'Your bests still stand',
+        detail: 'A heavier set on any lift this month shows up here.',
+        tone: 'neutral',
+        symbol: 'target',
+      };
+  }
 }
