@@ -7995,32 +7995,31 @@ now uses Home's language.
 week-stepping test caught a title that repeated the chart's "This week", which
 is how the period came out of the title.
 
-## ADR-0125 — Four month cards, records first; the average session moves to Progress
+## ADR-0126 — Profile in Home's style
 
-**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120, ADR-0122, ADR-0123
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0071, ADR-0117
 
-Five cards was one swipe too many. Workout duration came out, and the rest
-were reordered to what somebody most wants to see first:
+Home's records card opens Profile, which still had the older look: a name
+card, a separate goal card, six boxed tiles, and a plain best-lifts card.
+It now uses the shell Progress moved to (ADR-0124):
 
-1. **Personal records.** A new best is the reason to open the app.
-2. **Your workouts**, the month's running line.
-3. **Muscle groups.**
-4. **Strength & activity.**
+- **You and your goal** are one hero card. The goal is a block inside it,
+  still one link that says "Change" (or "Choose").
+- **Your numbers** is one card with a hairline grid, like Home's activity
+  card, with figures drawn by `StatValue`. The tiles are still `dl > div`,
+  and the BMI note sits at the foot of the card.
+- **Achievements** and **Your routines** are rows in the large-corner shell
+  with square icon chips, and they press in like Home's cards.
+- **Your training** (the body) takes the shell, and its section labels use
+  Home's small capitals.
+- **Best lifts** is the hero card, the place Home's records card leads to: a
+  "Personal records" label and a count of exercises on the right. The podium
+  stays exactly as it was (gold, silver and bronze rows, the crown, the
+  laurels); only the unit is set a size down.
 
-Total training time is still on Strength & activity. The average session,
-which was the duration card's line, now sits under Progress's chart when the
-chart is on **Active time** and the period is **Monthly**. It uses Home's
-insight row (`InsightRow`, now shared) and covers the month the arrows are on,
-compared with the whole month before it. A running total would be unfair to
-compare that way on the 3rd; an average is not.
+The body card, the achievements row and the best lifts are shared with a
+friend's profile (ADR-0117), so it changes with them.
 
-Removed with the card: `MonthColumns`, `niceMinutes`, and the month's
-`timed` and `dailyMinutes`. `averageSession(sessions, span)` in `periods.ts`
-replaces `durationInsight` and works for any span.
-
-**Tests:** `periods.test.ts` covers `averageSession` (untimed workouts left
-out, nothing timed is null). `progress-view.test.ts` covers the wording.
-`home-stats.spec.ts` checks for four cards with records first and no duration
-card.
-
-ADR-0123 was lost when #158 was merged and is restored above.
+**Tests:** no new behaviour. `profile-and-progress`, `friend-profile`,
+`home-stats` and `routines` pass, except the BMI test, which is the known
+flake and is left alone because BMI is not going to be shown.

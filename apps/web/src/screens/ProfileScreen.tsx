@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 import { countryName, firstName, personalRecords, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { Panel } from '../components/Panel.js';
+import { StatValue } from '../components/StatValue.js';
 import { AchievementsCard, BestLiftsCard, TrainingBodyCard } from '../components/ProfileParts.js';
 import { ChevronRightIcon, ClipboardIcon, PencilIcon, TargetIcon } from '../components/icons.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
@@ -126,67 +128,84 @@ export function ProfileScreen() {
         </p>
       )}
 
-      <section className="flex items-center gap-4 rounded-card border border-subtle bg-surface p-4">
-        <Avatar name={name} size="lg" />
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-xl font-semibold text-primary">
-            {fullName ?? 'Add your name'}
-          </p>
-          {profile.data?.country != null && (
-            <>
-              <Flag code={profile.data.country} className="shrink-0 text-xl" />
-              {/* The flag is decorative and hidden, and it is now the only place
-                  the country appears — so the name of it has to be said
-                  somewhere a screen reader will reach. */}
-              <span className="sr-only">{countryName(profile.data.country)}</span>
-            </>
-          )}
+      {/* Who, and what for, in one card: the screen's hero, the way the month
+          is Home's (ADR-0126). The goal is a block inside it rather than a
+          card of its own, so the two read as one person. */}
+      <Panel tone="hero" label="You">
+        <div className="flex items-center gap-4">
+          <Avatar name={name} size="lg" />
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-2xl leading-8 font-bold text-primary">
+              {fullName ?? 'Add your name'}
+            </p>
+            {profile.data?.country != null && (
+              <>
+                <Flag code={profile.data.country} className="shrink-0 text-xl" />
+                {/* The flag is decorative and hidden, and it is now the only place
+                    the country appears — so the name of it has to be said
+                    somewhere a screen reader will reach. */}
+                <span className="sr-only">{countryName(profile.data.country)}</span>
+              </>
+            )}
+          </div>
         </div>
-      </section>
 
-      <GoalCard goal={goal.data} loading={goal.loading} now={now} />
+        <GoalCard goal={goal.data} loading={goal.loading} now={now} />
+      </Panel>
 
-      <section aria-labelledby="profile-numbers">
-        <h2 id="profile-numbers" className="mb-2 text-lg font-semibold text-primary">
-          Your numbers
-        </h2>
-        <dl className="grid grid-cols-2 gap-3">
-          {tiles.map((tile, index) => (
-            <div
-              key={tile.key}
-              // An odd tile out at the end takes the whole row rather than
-              // leaving a hole beside it.
-              className="rise rounded-card border border-subtle bg-surface p-3 [&:last-child:nth-child(odd)]:col-span-2"
-              style={{ animationDelay: `${String(index * 30)}ms` }}
-            >
-              <dt className="text-xs font-medium text-muted">{tile.label}</dt>
-              <dd className="mt-1">
-                {tile.value === null ? (
-                  <Link
-                    to="/you"
-                    className="text-sm text-secondary underline-offset-4 hover:underline"
-                  >
-                    Not set — add it
-                  </Link>
-                ) : (
-                  <span className="numeric block truncate text-base font-semibold text-primary">
-                    {tile.value}
-                  </span>
+      {/* One card of figures on a hairline grid, as Home's activity card, rather
+          than six boxes of their own. */}
+      <Panel title="Your numbers">
+        <dl className="mt-2 grid grid-cols-2">
+          {tiles.map((tile, index) => {
+            const left = index % 2 === 0;
+            // An odd tile out at the end takes the whole row rather than
+            // leaving a hole beside it.
+            const alone = left && index === tiles.length - 1;
+            return (
+              <div
+                key={tile.key}
+                className={cx(
+                  'min-w-0 py-3',
+                  alone && 'col-span-2',
+                  left && !alone && 'border-r border-subtle/70 pr-3',
+                  !left && 'pl-4',
+                  index >= 2 && 'border-t border-subtle/70',
                 )}
-                {tile.detail !== undefined && (
-                  <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
-                    {tile.detail}
-                  </span>
-                )}
-              </dd>
-            </div>
-          ))}
+              >
+                <dt className="text-xs text-muted">{tile.label}</dt>
+                <dd className="mt-0.5">
+                  {tile.value === null ? (
+                    <Link
+                      to="/you"
+                      className="text-sm text-secondary underline-offset-4 hover:underline"
+                    >
+                      Not set — add it
+                    </Link>
+                  ) : /\d/.test(tile.value) ? (
+                    <StatValue text={tile.value} size="text-xl leading-7" />
+                  ) : (
+                    <span className="block truncate text-lg leading-7 font-bold text-primary">
+                      {tile.value}
+                    </span>
+                  )}
+                  {tile.detail !== undefined && (
+                    <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
+                      {tile.detail}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            );
+          })}
         </dl>
 
         {/* Why the band under BMI is not the 18.5–25 everybody has seen. Left
             unsaid, a widened range reads as loose arithmetic. */}
-        {note !== null && <p className="mt-2 text-xs text-muted">{note}</p>}
-      </section>
+        {note !== null && (
+          <p className="mt-2 border-t border-subtle/70 pt-3 text-xs text-muted">{note}</p>
+        )}
+      </Panel>
 
       <AchievementsLink />
 
@@ -255,9 +274,9 @@ function RoutinesLink() {
     <Link
       to="/routines"
       viewTransition
-      className="flex min-h-tap w-full items-center gap-3 rounded-card border border-subtle bg-surface px-4 py-3 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="flex min-h-tap w-full items-center gap-3 rounded-sheet border border-subtle bg-surface px-4 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent">
         <ClipboardIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -306,19 +325,19 @@ function GoalCard({
       to="/goal"
       state={{ from: '/profile' }}
       viewTransition
-      className="rise flex items-center gap-4 rounded-card border border-accent/40 bg-surface p-4 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="rise mt-4 flex items-center gap-3 rounded-card bg-base/70 p-3 transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <span
         aria-hidden
-        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent"
+        className="flex size-10 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent"
       >
-        <TargetIcon className="size-6" />
+        <TargetIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-xs font-semibold tracking-wide text-accent uppercase">
+        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
           Your goal
         </span>
-        <span className="block text-lg font-semibold text-primary">
+        <span className="block text-base leading-6 font-semibold text-primary">
           {line?.title ?? 'Choose what you are training for'}
         </span>
         <span className="block text-xs text-muted">
@@ -353,7 +372,7 @@ function TrainingBody({ now }: { readonly now: Date }) {
       emptyText={`Nothing logged in the last ${String(HEATMAP_WEEKS)} weeks yet. Finish a workout and it shows up here.`}
     >
       <div>
-        <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
+        <h3 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
           Worth adding
         </h3>
         {neglected.data === null ? (
