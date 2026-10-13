@@ -1,5 +1,5 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
@@ -33,7 +33,12 @@ interface MuscleDetail {
 
 export function LearnScreen() {
   const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<AnatomyMode>('explore');
+  // `?view=heatmap` opens on the trained body: the way Home's muscle card
+  // comes in (ADR-0123). Read once; the switch on screen takes over after.
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<AnatomyMode>(() =>
+    params.get('view') === 'heatmap' ? 'heatmap' : 'explore',
+  );
   const now = useMemo(() => new Date(), []);
 
   const generated = useMemo(() => placeholderBodyParts(), []);
