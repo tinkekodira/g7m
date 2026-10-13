@@ -5,7 +5,7 @@
  * screens share, and the one function that turns a routine into a workout in
  * progress.
  */
-import { naturalLoadType, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
+import { loadTypeForEquipment, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
 import type { Routine, RoutineDetail, RoutineExercise, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
 import type { Repositories } from './repositories.js';
@@ -126,7 +126,7 @@ async function writeMovements(
       repositories.sessions.lastPerformance(movement.exerciseId, sessionId),
       repositories.exercises.equipmentFor(movement.exerciseId),
     ]);
-    const loadType = naturalLoadType(equipment.map((item) => item.category));
+    const loadType = loadTypeForEquipment(equipment);
 
     // Built one at a time through the same prefill the logger uses, so an
     // ascending scheme comes back ascending rather than flattened to one

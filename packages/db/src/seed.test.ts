@@ -40,20 +40,23 @@ describe('volumes', () => {
 
   it('seeds the equipment list', async () => {
     // 28 from Brief §5, plus the back extension bench the §5 list omits, the
-    // six cardio machines (ADR-0069), and the two hip machines.
-    expect(await count('select count(*) n from public.equipment')).toBe(37);
+    // six cardio machines (ADR-0069), the two hip machines, and the preacher
+    // curl machine.
+    expect(await count('select count(*) n from public.equipment')).toBe(38);
   });
 
   /**
    * The 50 from the brief, plus the four added afterwards — the skull crusher,
    * the dumbbell pullover and the two hip machines — the eight cardio
    * machines (ADR-0069), and eleven more (ADR-0098): seven curls, the seated
-   * cable row, the T-bar row, the cable lat pullover and the wall sit. Counted rather than left open, because an exercise
+   * cable row, the T-bar row, the cable lat pullover and the wall sit, then
+   * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
+   * curl machine and two crunches. Counted rather than left open, because an exercise
    * that fails to insert — a bad slug in a join, a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(81);
+    expect(await count('select count(*) n from public.exercises')).toBe(84);
   });
 });
 
@@ -308,7 +311,6 @@ describe('equipment filtering, which the generator depends on', () => {
     // the list is the user's "my gym has this" vocabulary, which is broader
     // than 50 exercises. Pinned so the set cannot grow unnoticed.
     expect(unused).toEqual([
-      'decline-bench',
       'hip-thrust-machine',
       'power-rack',
       'resistance-bands',
@@ -415,6 +417,36 @@ describe('the exercises asked for after the first fifty', () => {
       { slug: 'preacher-curl', name: 'Preacher Curl (EZ Bar)', station: 'ez-bar' },
       { slug: 'seated-cable-row', name: 'Seated Cable Row Machine', station: 'cable-machine' },
       { slug: 'seated-row-machine', name: 'Seated Row Machine', station: 'seated-row-machine' },
+    ]);
+  });
+
+  it('puts the machine preacher curl on its own station, apart from the bars', async () => {
+    const { rows } = await h.db.query<{ name: string; station: string }>(
+      `select e.name, q.slug as station from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id and ee.is_primary
+         join public.equipment q on q.id = ee.equipment_id
+        where e.slug = 'preacher-curl-machine'`,
+    );
+    expect(rows).toEqual([{ name: 'Preacher Curl (Machine)', station: 'preacher-curl-machine' }]);
+  });
+
+  /**
+   * Bodyweight first, so the logger offers "+ Add weight" for a plate on the
+   * chest. The decline bench is required, but as an accessory: it qualifies
+   * the exercise and adds no load.
+   */
+  it('files both crunches under bodyweight, the decline one with its bench', async () => {
+    const { rows } = await h.db.query<{ slug: string; station: string; is_primary: boolean }>(
+      `select e.slug, q.slug as station, ee.is_primary from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id
+         join public.equipment q on q.id = ee.equipment_id
+        where e.slug in ('ab-crunch','decline-ab-crunch')
+        order by e.slug, ee.is_primary desc`,
+    );
+    expect(rows).toEqual([
+      { slug: 'ab-crunch', station: 'bodyweight-only', is_primary: true },
+      { slug: 'decline-ab-crunch', station: 'bodyweight-only', is_primary: true },
+      { slug: 'decline-ab-crunch', station: 'decline-bench', is_primary: false },
     ]);
   });
 });

@@ -5,7 +5,7 @@ import { signIn } from './support/app.js';
 /**
  * The demonstration loop on an exercise's page (ADR-0102).
  *
- * Thirty-eight exercises have one (`WITH_LOOP` below); the rest do not. It plays in
+ * Fifty-eight exercises have one (`WITH_LOOP` below); the rest do not. It plays in
  * the "How to do it" card, the MP4 in the dark theme and the transparent WebP
  * in the light one, the poster alone under reduced motion, and none of it is
  * fetched until somebody scrolls to it.
@@ -67,11 +67,31 @@ const WITH_LOOP = [
   ['standing-calf-raise', 'Standing Calf Raise'],
   ['straight-arm-pulldown', 'Straight-Arm Pulldown'],
   ['triceps-pushdown', 'Triceps Pushdown'],
+  ['triceps-dip', 'Dips (Triceps focused)'],
+  ['ez-bar-curl', 'EZ Bar Curl'],
+  ['incline-dumbbell-curl', 'Incline Dumbbell Curl'],
+  ['cable-curl', 'Cable Curl'],
+  ['cable-lat-pullover', 'Cable Lat Pullover'],
+  ['concentration-curl', 'Concentration Curl'],
+  ['chest-supported-dumbbell-row', 'Chest Supported Dumbbell Row'],
+  ['kettlebell-deadlift', 'Kettlebell Deadlift'],
+  ['kettlebell-swing', 'Kettlebell Swing'],
+  ['overhead-triceps-extension', 'Overhead Triceps Extension'],
+  ['machine-chest-press', 'Machine Chest Press'],
+  ['seated-row-machine', 'Seated Row Machine'],
+  ['hip-abduction-machine', 'Abductor Machine'],
+  ['hip-adduction-machine', 'Adductor Machine'],
+  ['pec-deck', 'Pec Deck'],
+  ['t-bar-row', 'T-Bar Row'],
+  ['leg-extension', 'Leg Extension'],
+  ['seated-leg-curl', 'Seated Leg Curl'],
+  ['lying-leg-curl', 'Lying Leg Curl'],
+  ['back-extension', 'Back Extension'],
 ] as const;
 
 test('every exercise with a loop plays it', async ({ page }) => {
-  // Thirty-eight pages, each waiting for its video to start.
-  test.setTimeout(540_000);
+  // Fifty-eight pages, each waiting for its video to start.
+  test.setTimeout(840_000);
   const user = await createUser('demo', { onboarded: true });
   await signIn(page, user);
   // A browser that cannot decode H.264 never plays the MP4: it takes the

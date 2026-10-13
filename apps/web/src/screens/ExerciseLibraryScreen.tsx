@@ -6,7 +6,7 @@ import { ExerciseIcon } from '../components/ExerciseIcon.js';
 import { FavouriteMark } from '../components/Favourite.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
-import { addedState } from './added-exercise.js';
+import { addedState, backFromAddingState } from './added-exercise.js';
 import { favouritesFirst } from './favourites.js';
 import { canConfirm, selectionNumber, toggleSelected } from './superset-picker.js';
 import {
@@ -196,7 +196,10 @@ export function ExerciseLibraryScreen() {
         <h1 className="text-2xl font-semibold text-primary">
           {picking ? 'Add an exercise' : 'Exercises'}
         </h1>
-        <HeaderLink to={adding ? '/workout' : routineId !== null ? `/routines/${routineId}` : '/'}>
+        <HeaderLink
+          to={adding ? '/workout' : routineId !== null ? `/routines/${routineId}` : '/'}
+          state={adding ? backFromAddingState() : undefined}
+        >
           {picking ? 'Back' : 'Home'}
         </HeaderLink>
       </header>

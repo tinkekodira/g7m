@@ -48,6 +48,26 @@ const WITH_LOOP = [
   'standing-calf-raise',
   'straight-arm-pulldown',
   'triceps-pushdown',
+  'triceps-dip',
+  'ez-bar-curl',
+  'incline-dumbbell-curl',
+  'cable-curl',
+  'cable-lat-pullover',
+  'concentration-curl',
+  'chest-supported-dumbbell-row',
+  'kettlebell-deadlift',
+  'kettlebell-swing',
+  'overhead-triceps-extension',
+  'machine-chest-press',
+  'seated-row-machine',
+  'hip-abduction-machine',
+  'hip-adduction-machine',
+  'pec-deck',
+  't-bar-row',
+  'leg-extension',
+  'seated-leg-curl',
+  'lying-leg-curl',
+  'back-extension',
 ];
 
 describe('exerciseDemo', () => {
@@ -84,11 +104,17 @@ describe('exerciseDemo', () => {
     expect(exerciseDemo('')).toBeNull();
   });
 
-  it('gives the chest dip its loop and leaves the triceps dip without one', () => {
-    // The loop leans forward over the bars. The triceps dip is done upright,
-    // so the same file on its page would show the other exercise.
-    expect(exerciseDemo('chest-dip')).not.toBeNull();
-    expect(exerciseDemo('triceps-dip')).toBeNull();
+  it('gives the two dips different loops', () => {
+    // The chest dip leans forward over the bars and the triceps dip stays
+    // upright, so one file on both pages would show the wrong exercise on one.
+    expect(exerciseDemo('triceps-dip')?.webp).not.toBe(exerciseDemo('chest-dip')?.webp);
+  });
+
+  it('gives the abductor and the adductor different loops', () => {
+    // One machine, opposite directions.
+    expect(exerciseDemo('hip-abduction-machine')?.webp).not.toBe(
+      exerciseDemo('hip-adduction-machine')?.webp,
+    );
   });
 
   it('gives the hammer curl its own loop, not the supinated curl', () => {

@@ -7652,3 +7652,121 @@ Achievements screen's grid, shared with `FriendAchievementsScreen`.
 - **e2e:** `friend-profile.spec.ts`: Blake trains and keeps a routine on
   Blake's phone. Alex sees Blake's achievements, routine, training and 60 kg
   best, opens the collection (Day One earned), then does Blake's routine.
+
+---
+
+## ADR-0118 — Rest timer step and sound, Back to the end, crunches, twenty loops
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (feature) · **Amends:** ADR-0107, ADR-0102, ADR-0074
+
+The person it is for: somebody mid-workout with the phone on a bench. They
+open the exercise list, change their mind and want to be back at Finish. The
+rest timer is running and they want a little off it, or to hear it end. Milan
+asked for five things in one PR, so they ship together.
+
+### Back from the library returns to the end
+
+"+ Add an exercise" sits at the bottom of the workout. Back from the library
+used to land on a fresh screen scrolled to the top. Back now carries
+`backFromAddingState()`, and the workout scrolls the end of the page (the add
+link, Finish and Discard) into view once the exercises are drawn. It uses the
+same wait as the scroll to a just-added exercise, which this sits beside in
+`added-exercise.ts`. The scroll is instant, because it puts the page back
+rather than showing anything new. `scroll-mb-32` matches the page's padding,
+so a bar along the bottom never covers Finish.
+
+Only the header Back does this. The browser's own back returns to the history
+entry the workout left, which has no state.
+
+### The rest bar has a minus, and both move by a chosen step
+
+The bar now reads **−30s +30s Skip**. Settings → Rest timer → "Minus and plus"
+sets the step, in 5-second steps from 5 s to 2:00. Milan asked for 15, 30 and
+45, and also 20, which a 15-second step cannot reach. Steps under a minute read
+"30s" and longer ones "1:30", like the timer beside them (`formatAdjust`). The
+minus is disabled once less than one step is left. Taking a step off at that
+point is Skip, and doing it through the minus would buzz and chime for a rest
+the lifter has just ended.
+
+### A sound when rest is over
+
+`lib/rest-sound.ts` plays three short notes (A5, A5, E6) through Web Audio
+when rest ends, alongside the existing buzz. The notes come from an
+oscillator, so there is no file to ship or cache. Settings has a switch,
+"Sound when rest is over", on by default. Unlike the buzz, the gym hears a
+sound too, so it gets an off switch. ADR-0074's "no setting" reasoning was
+about haptics, which the OS already lets you switch off.
+
+- **Unlocked by the tick.** Browsers, and iOS above all, only play sound after
+  a touch. Ticking a set is the last touch before rest ends, so it resumes the
+  context (`primeRestSound`).
+- **iOS silent switch.** Safari treats Web Audio as "ambient" by default, so
+  the silent switch would mute it. Where `navigator.audioSession` exists
+  (Safari 16.4+) the chime asks for `transient`, the session meant for short
+  sounds over music. This is **not verified on a device yet.**
+- **Only while the app is open.** The workout keeps the screen awake. A locked
+  phone suspends the page and its timers, and a sound through a locked screen
+  would need a scheduled native notification, which this is not.
+- Stored with the rest times in `g7m.rest` on this device (`adjust`, `sound`).
+  Settings saved before these fields existed read as 30 s with sound on.
+
+### Three exercises, and load read off the primary equipment
+
+Migration `20261016120000`:
+
+- **Preacher Curl (Machine)**, on a new `preacher-curl-machine` equipment row
+  (category `machine`). Stack pins are not plates on a bar, so it is logged
+  apart from the three bar versions. It gets a new equipment row for the
+  reason the hip machines did: a gym either has one or doesn't (ADR-0010).
+- **Ab Crunch** on `bodyweight-only`, and **Decline Ab Crunch** on
+  `bodyweight-only` with `decline-bench` as an accessory. As bodyweight
+  exercises they get "+ Add weight", which logs a plate on the chest as
+  `bodyweight_plus`.
+
+The decline bench is `other`. `naturalLoadType` treated any non-bodyweight
+equipment as load, so it would have made the decline crunch an external lift
+logged as "0 kg". The new `loadTypeForEquipment` (core) reads only the
+**primary** equipment, falling back to all of it when nothing is primary. The
+logger, routines, friend-workout start and the planner's SQL all use it now.
+No existing exercise changes: none has bodyweight primary equipment together
+with a non-bodyweight accessory (checked across every migration). The decline
+bench was the one unused piece of equipment, and now one exercise uses it.
+
+**Rejected:** filing the decline crunch under `bodyweight-only` alone. The
+generator would then offer it to somebody without a decline bench, which
+ADR-0024 rejected for the back extension.
+
+### Twenty more demonstration loops
+
+From 3d-models batches 11–15: both dips (the triceps dip now has its own
+upright loop), EZ bar, incline, cable and concentration curls, cable lat
+pullover, chest-supported row, kettlebell deadlift and swing, overhead triceps
+extension, machine chest press, seated row machine, both hip machines, pec
+deck, T-bar row, leg extension, seated and lying leg curl, back extension.
+The files were copied unchanged and named by the app's slug. 3d-models'
+`abductor_machine` and `adductor_machine` are `hip-abduction-machine` and
+`hip-adduction-machine`. The dumbbell shoulder press is still left out
+(ADR-0104): the render stands and the catalogue's press is seated.
+
+### Tests
+
+- **core:** `loadTypeForEquipment` reads the primary equipment, external stays
+  external, and it falls back when nothing is primary.
+- **db:** the planner reads a bodyweight exercise with an `other` accessory as
+  bodyweight. This test fails on the old SQL. The seed has 84 exercises and 38
+  pieces of equipment, the machine preacher curl has its own station, the
+  crunches are bodyweight with the decline bench as an accessory, and no
+  equipment is unused except the pinned list.
+- **web:** rest settings: defaults, older saved settings, sound off only on an
+  explicit false, step rounding and range, and `formatAdjust`. Rest sound:
+  every note is scheduled in order, every note is stopped, a sleeping context
+  is woken, and it does nothing without Web Audio. Demo mapping: 58 loops
+  resolve, both dips and both hip machines have different files, and every
+  file in the folder is mapped.
+- **e2e:** `rest-timer-and-back.spec.ts`: Back lands with Finish and the add
+  link in view and the first exercise out of it, on a page long enough to need
+  the scroll; this fails without the fix. A 20 s step reads −20s/+20s, moves
+  the timer by 20 and the minus stops short of zero. Rest ending asks Web
+  Audio for three notes, and none once the switch is off. Both crunches offer
+  "+ Add weight" and an "Added" field. The four preacher curls list side by
+  side. `exercise-demo.spec.ts` plays all 58.

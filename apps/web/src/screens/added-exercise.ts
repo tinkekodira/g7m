@@ -47,6 +47,32 @@ export function exerciseToReveal(state: unknown, entryIds: readonly string[]): s
   return added !== null && entryIds.includes(added) ? added : null;
 }
 
+/**
+ * Coming back from the library without adding anything.
+ *
+ * Somebody who opened "+ Add an exercise" and changed their mind was at the
+ * bottom of the workout, where that link is. Back used to land them on a fresh
+ * screen scrolled to the top, a long scroll from where they were and from
+ * Finish. Back now says where it came from, and the workout returns to its
+ * end.
+ */
+export interface BackFromAddingState {
+  readonly backFromAdding: true;
+}
+
+export function backFromAddingState(): BackFromAddingState {
+  return { backFromAdding: true };
+}
+
+/** Whether `location.state` says the library was left without adding. Validated, not cast. */
+export function cameBackFromAdding(state: unknown): boolean {
+  if (typeof state !== 'object' || state === null) return false;
+  return (state as { backFromAdding?: unknown }).backFromAdding === true;
+}
+
+/** The DOM id of the end of the workout: "+ Add an exercise" and the buttons under it. */
+export const WORKOUT_END_ANCHOR = 'workout-end';
+
 /** The DOM id an exercise card carries, so it can be found to scroll to. */
 export function exerciseAnchor(entryId: string): string {
   return `exercise-${entryId}`;

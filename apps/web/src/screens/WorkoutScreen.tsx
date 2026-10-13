@@ -17,7 +17,7 @@ import {
   describePreviousSet,
   formatRest,
   fromDisplayWeight,
-  naturalLoadType,
+  loadTypeForEquipment,
   nextSetTemplate,
   previousSetAt,
   restSecondsFor,
@@ -38,8 +38,9 @@ import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } f
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
 import { useRestSettingsStore } from '../lib/use-rest-settings.js';
-import { chosenRestSeconds } from '../lib/rest-settings.js';
+import { chosenRestSeconds, formatAdjust } from '../lib/rest-settings.js';
 import { buzz } from '../lib/haptics.js';
+import { playRestSound, primeRestSound } from '../lib/rest-sound.js';
 import { readSnoozedAt, writeSnoozedAt } from '../lib/workout-notice.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { readFriendWorkoutNote } from '../lib/friends/cache.js';
@@ -62,7 +63,14 @@ import {
   restRemaining,
   shouldAskStillTraining,
 } from './workout-timer.js';
-import { addedExerciseId, exerciseAnchor, exerciseToReveal, setAnchor } from './added-exercise.js';
+import {
+  WORKOUT_END_ANCHOR,
+  addedExerciseId,
+  cameBackFromAdding,
+  exerciseAnchor,
+  exerciseToReveal,
+  setAnchor,
+} from './added-exercise.js';
 import { dayTitle } from './calendar-view.js';
 import { isDropRow, numberSets, rowTitle, tickLabel } from './set-numbers.js';
 
@@ -128,12 +136,15 @@ export function WorkoutScreen() {
   /**
    * When "still training?" was last answered — or last made unnecessary.
    *
-   * Coming back from adding an exercise counts: it is about the clearest proof
-   * there is that somebody is still here, and it arrives through a remount, so
-   * this is the moment to record it.
+   * Coming back from adding an exercise counts, and so does coming back from
+   * deciding not to: either is about the clearest proof there is that
+   * somebody is still here, and it arrives through a remount, so this is the
+   * moment to record it.
    */
   const [snoozedAt, setSnoozedAt] = useState<Date | null>(() =>
-    addedExerciseId(location.state) !== null ? new Date() : null,
+    addedExerciseId(location.state) !== null || cameBackFromAdding(location.state)
+      ? new Date()
+      : null,
   );
   const [rest, setRest] = useState<{ startedAt: Date; seconds: number } | null>(null);
   /**
@@ -193,7 +204,7 @@ export function WorkoutScreen() {
           sets,
           previous,
           bests: bestsFrom(history),
-          loadType: naturalLoadType(equipment.map((item) => item.category)),
+          loadType: loadTypeForEquipment(equipment),
           barbell: equipment.some((item) => item.slug === 'barbell'),
           dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
           mechanic: exercise?.mechanic ?? 'compound',
@@ -312,6 +323,23 @@ export function WorkoutScreen() {
     void navigate('.', { replace: true, state: null });
   }, [reveal, navigate]);
 
+  /**
+   * Back to the end of the workout, after opening the library and adding
+   * nothing.
+   *
+   * The same wait as above: the end only means anything once the exercises
+   * above it are drawn, so this holds until the workout has loaded. `end`,
+   * so "+ Add an exercise", Finish and Discard are all on screen. Instant
+   * rather than smooth: this is putting the page back where it was, not
+   * showing somebody something new.
+   */
+  const backFromAdding = cameBackFromAdding(location.state) && workout !== null;
+  useEffect(() => {
+    if (!backFromAdding) return;
+    document.getElementById(WORKOUT_END_ANCHOR)?.scrollIntoView({ block: 'end' });
+    void navigate('.', { replace: true, state: null });
+  }, [backFromAdding, navigate]);
+
   const remaining = restRemaining(rest?.startedAt ?? null, rest?.seconds ?? 0, now);
 
   /**
@@ -322,7 +350,12 @@ export function WorkoutScreen() {
    */
   const restOver = remaining !== null && isRestOver(remaining);
   useEffect(() => {
-    if (restOver) buzz('alert');
+    if (!restOver) return;
+    buzz('alert');
+    // Heard as well as felt, unless Settings turned it off. Read at the moment
+    // rather than subscribed to, so turning the sound on afterwards does not
+    // play it for a rest that ended minutes ago.
+    if (useRestSettingsStore.getState().sound) playRestSound();
   }, [restOver]);
 
   /**
@@ -519,6 +552,9 @@ export function WorkoutScreen() {
     // Answers the finger already on the glass, so the tick does not have to
     // be watched to be believed.
     buzz('tick');
+    // This tap is the last touch before rest ends, and browsers only let a
+    // page make sound after a touch has asked. See `rest-sound.ts`.
+    if (restSettings.sound) primeRestSound();
     const group = groupOf(block);
     if (group === null) {
       // Nothing to rest between when the sets happened days ago.
@@ -769,31 +805,36 @@ export function WorkoutScreen() {
         ),
       )}
 
-      <Link
-        to="/exercises?add=1"
-        className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
-      >
-        + Add an exercise
-      </Link>
-
-      <div className="flex gap-3 py-4">
-        <Button disabled={busy} onClick={finishWorkout}>
-          Finish workout
-        </Button>
-        <Button
-          variant="danger-outline"
-          disabled={busy}
-          onClick={() => {
-            // Confirmed, because it is the one destructive action on the
-            // screen and it sits next to the one people mean to press.
-            if (!globalThis.confirm('Discard this workout and everything logged in it?')) return;
-            void write((r) => r.sessions.discard(session.id)).then(() => {
-              void navigate(afterwards);
-            });
-          }}
+      {/* The end of the workout: where Back from the library returns to. The
+          bottom margin is the page's own padding, so a bar pinned along the
+          bottom never sits over Finish. */}
+      <div id={WORKOUT_END_ANCHOR} className="flex scroll-mb-32 flex-col gap-4">
+        <Link
+          to="/exercises?add=1"
+          className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
         >
-          Discard
-        </Button>
+          + Add an exercise
+        </Link>
+
+        <div className="flex gap-3 py-4">
+          <Button disabled={busy} onClick={finishWorkout}>
+            Finish workout
+          </Button>
+          <Button
+            variant="danger-outline"
+            disabled={busy}
+            onClick={() => {
+              // Confirmed, because it is the one destructive action on the
+              // screen and it sits next to the one people mean to press.
+              if (!globalThis.confirm('Discard this workout and everything logged in it?')) return;
+              void write((r) => r.sessions.discard(session.id)).then(() => {
+                void navigate(afterwards);
+              });
+            }}
+          >
+            Discard
+          </Button>
+        </div>
       </div>
 
       {removing !== null && (
@@ -864,12 +905,15 @@ export function WorkoutScreen() {
           {remaining !== null && (
             <RestBar
               remaining={remaining}
+              step={restSettings.adjust}
               onSkip={() => {
                 setRest(null);
               }}
-              onAdd={() => {
+              onAdjust={(change) => {
                 setRest((current) =>
-                  current === null ? null : { ...current, seconds: current.seconds + 30 },
+                  current === null
+                    ? null
+                    : { ...current, seconds: Math.max(0, current.seconds + change) },
                 );
               }}
             />
@@ -1822,16 +1866,28 @@ function StillTrainingBar({
   );
 }
 
+/**
+ * The rest timer: what is left, a minus and a plus, and Skip.
+ *
+ * The minus and plus move by the step chosen in Settings, 30 seconds unless
+ * changed. The minus stops short of ending the rest: with less left than one
+ * step, taking a step off is Skip, which is right beside it, and doing it
+ * through the minus would set off the rest-over buzz and sound for a rest the
+ * lifter has just ended themselves.
+ */
 function RestBar({
   remaining,
+  step,
   onSkip,
-  onAdd,
+  onAdjust,
 }: {
   readonly remaining: number;
+  readonly step: number;
   readonly onSkip: () => void;
-  readonly onAdd: () => void;
+  readonly onAdjust: (change: number) => void;
 }) {
   const done = isRestOver(remaining);
+  const label = formatAdjust(step);
   return (
     <div className="border-t border-subtle bg-elevated">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
@@ -1841,9 +1897,25 @@ function RestBar({
             {formatRest(remaining)}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onAdd}>
-            +30s
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            aria-label={`${label} less rest`}
+            disabled={done || remaining <= step}
+            onClick={() => {
+              onAdjust(-step);
+            }}
+          >
+            −{label}
+          </Button>
+          <Button
+            variant="ghost"
+            aria-label={`${label} more rest`}
+            onClick={() => {
+              onAdjust(step);
+            }}
+          >
+            +{label}
           </Button>
           <Button variant="secondary" onClick={onSkip}>
             {done ? 'Dismiss' : 'Skip'}

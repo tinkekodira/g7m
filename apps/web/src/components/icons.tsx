@@ -177,6 +177,15 @@ export function ClockIcon(props: IconProps) {
   );
 }
 
+export function BellIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14l1.5-2Z" />
+      <path d="M10 20.5a2 2 0 0 0 4 0" />
+    </Glyph>
+  );
+}
+
 export function ChevronRightIcon(props: IconProps) {
   return (
     <Glyph {...props}>
