@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { REST_CHIME, playChime, playRestSound, type ChimeContext } from './rest-sound.js';
+import {
+  REST_CHIME,
+  REST_CHIME_SECONDS,
+  playChime,
+  playRestSound,
+  type ChimeContext,
+} from './rest-sound.js';
 
 /** Records what the chime asked the audio graph for. */
 function fakeContext(state = 'running') {
@@ -62,9 +68,13 @@ describe('playChime', () => {
     expect(fake.resumed()).toBe(1);
   });
 
-  it('lasts about a second, short of a ringtone', () => {
-    const last = REST_CHIME[REST_CHIME.length - 1];
-    expect(last === undefined ? 0 : last.at + last.duration).toBeLessThan(1.2);
+  it('lasts three seconds, to the end of its last note', () => {
+    expect(REST_CHIME_SECONDS).toBe(3);
+    const ends = REST_CHIME.map((note) => note.at + note.duration);
+    expect(Math.max(...ends)).toBeCloseTo(3, 5);
+    // The phrase is repeated, not one note stretched: something to notice.
+    expect(REST_CHIME).toHaveLength(9);
+    expect(REST_CHIME.every((note) => note.duration > 0)).toBe(true);
   });
 });
 

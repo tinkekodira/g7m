@@ -7787,3 +7787,21 @@ The files were copied unchanged and named by the app's slug. 3d-models'
   Audio for three notes, and none once the switch is off. Both crunches offer
   "+ Add weight" and an "Added" field. The four preacher curls list side by
   side. `exercise-demo.spec.ts` plays all 58.
+
+---
+
+## ADR-0119 — The rest chime lasts three seconds
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (polish) · **Amends:** ADR-0118
+
+Milan could hear the rest-over chime in the gym, but at under a second it was
+over before it got anyone's attention. It now lasts three seconds: the same
+phrase (two short A5s and a higher E6) plays three times, a second apart, and
+the last high note rings on to the three-second mark (`REST_CHIME_SECONDS`).
+Repeating the phrase rather than stretching one note keeps it a timer going
+off, not a tone, and it still stops by itself. The volume and the off switch
+are unchanged.
+
+**Tests:** `rest-sound.test.ts` checks that the chime ends at exactly 3 s with
+nine notes. The e2e sound test counts nine notes, and still none with the
+switch off.
