@@ -7805,3 +7805,72 @@ are unchanged.
 **Tests:** `rest-sound.test.ts` checks that the chime ends at exactly 3 s with
 nine notes. The e2e sound test counts nine notes, and still none with the
 switch off.
+
+## ADR-0120 — Home opens with this month
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0032, ADR-0105
+
+Most people never press "Start workout" on the plan the app builds; they run
+their own. So the top of Home now shows the person's own month, and today's
+plan moves below Quick access. Top to bottom, the screen is: greeting, a
+running workout if there is one, the month, the coach's note, Quick access,
+today's plan, disclaimer.
+
+**The month** is three cards in a row that swipes (scroll-snap, no library),
+one card tall, so Quick access still shows on an iPhone SE:
+
+- **Workouts**: this month's running total as a line, with last month's as a
+  faint line behind it. The line is drawn through the days the count changed,
+  with a monotone curve so it never dips. After more than three days without a
+  workout it holds flat, so a break looks like a break.
+- **Muscle groups**: a ring of working sets per region. Drop sets and warm-ups
+  are left out, as everywhere else. The 14 muscle groups roll up into six
+  regions (legs, arms, shoulders, back, chest, core; traps and neck go with
+  back). A set whose exercise trains two regions counts half in each, so the
+  ring adds up to the sets actually done.
+- **Strength & activity**: workouts, training time, workouts per week (counted
+  over at least a week) and volume lifted. There is no calorie figure: the app
+  only has cardio calories, and they would misrepresent a strength month.
+
+Every comparison is this month so far against last month **up to the same
+day**. That keeps "behind" honest: on the 13th, four workouts against last
+month's full eleven would be a false shortfall. Each card has one line
+underneath, chosen in `@g7m/core` (`workoutsInsight`, `musclesInsight`,
+`activityInsight`) and worded in `home-copy.ts`. A region counts as neglected
+only after 14 days, and only once the history read actually covers 14 days. A
+region counts as lopsided only above 55%, because squat, bench and deadlift
+already give legs half.
+
+**Colours**: six `--region-*` tokens per theme. Warm and cool alternate around
+the ring, there is no green (green is kept for an upward change), and both sets
+pass the data-viz palette validator against the card surface. The same dots
+mark the muscle tags on today's plan.
+
+**The coach's note.** The training review's headline (ADR-0032) used to sit
+at the bottom of Home, below the fold. It is now a row directly under the
+cards, styled like their insight lines. It still opens Progress and still
+needs a goal.
+
+**Today's plan** keeps every state it had and gains "Done for today" when a
+workout is already finished today. A running workout is no longer one of its
+states: that has its own row at the top of the screen, because getting back
+into it cannot wait for a scroll.
+
+**Motion.** The line draws in, the dot lands, the ring sweeps round and the
+numbers count up, each in about 600 ms. This happens once per app launch, and
+a card that starts off-screen animates when it is first swiped to. The CSS
+animations are flattened by the existing Reduce Motion rule, and the
+count-up checks the setting itself. Swiping to a new card gives a light
+haptic tick.
+
+**Loading.** The cards are their own chunk (`React.lazy`), so the charts stay
+out of Home's entry bundle. That bundle went over its budget when they were
+included. A skeleton of the same size covers both the chunk loading and the
+data read.
+
+**Tests:** `month-stats.test.ts` covers the same-day comparison (including the
+31st against a 30-day month), the running totals, the region split, the
+at-least-one-week rule, and every insight kind. `chart-scale.test.ts` checks
+that `smoothPath` passes through each point and never overshoots.
+`home-stats.spec.ts` covers the empty state, a first workout filling in the
+cards, the screen order, and a card opening Progress on this month.

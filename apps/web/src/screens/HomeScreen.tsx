@@ -1,10 +1,20 @@
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
   FOCUS_LABELS,
   estimateSessionMinutes,
   firstName,
   greetingFor,
+  regionOf,
   type PlannedSession,
 } from '@g7m/core';
 import { cx } from '@g7m/ui';
@@ -20,20 +30,41 @@ import {
   SearchIcon,
   type IconProps,
 } from '../components/icons.js';
+import { REGION_DOT } from '../components/region-colours.js';
 import { ReviewNudge } from '../components/ReviewCard.js';
+import { StatSkeleton } from '../components/StatSkeleton.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { useMonthStats, type TrainedToday } from '../lib/db/use-month-stats.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import { startPlannedWorkout, useTodaysPlan, type TodaysPlan } from '../lib/db/use-todays-plan.js';
+import { buzz } from '../lib/haptics.js';
 import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { openSessionSummary, type OpenSession, type OpenSessionSummary } from './workout-timer.js';
 
 /**
- * Home: hello, today's workout, and the ways into everything else.
+ * The month's cards, in a chunk of their own.
  *
- * The workout the app has built for today leads, and looks like it — it is
- * the reason most people open the app. Under it, four ways in: building your
- * own workout, the calendar of days trained, the exercise library and
- * Progress. The tab bar does the rest — your numbers are on Profile.
+ * Home is the one screen in the entry chunk (ADR-0078), and the cards bring
+ * the charts with them. Loaded beside the month's numbers, which are read at
+ * the same moment, they cost no wait the numbers were not already costing —
+ * and the skeleton covers both.
+ */
+const StatsHero = lazy(async () => ({
+  default: (await import('../components/HomeStats.js')).StatsHero,
+}));
+
+/**
+ * Home: hello, this month, the ways in, and today's workout (ADR-0120).
+ *
+ * The month leads. Most people never press "Start workout" on the plan the
+ * app builds — they run their own — so the first thing on the first screen is
+ * what everybody has: their own training this month, added up and compared
+ * with last month, in three cards that swipe. Under them, what the training
+ * review has to say, in a line; then the four ways in; then today's planned
+ * workout, still all there for anybody who wants it.
+ *
+ * A workout already running goes above all of it. Getting back into it is the
+ * one thing that cannot wait for a scroll.
  *
  * What this screen used to be — account, sync, storage and device panels from
  * when it existed to prove the plumbing worked — is on Settings now. The one
@@ -45,8 +76,18 @@ export function HomeScreen() {
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const open = useOpenSession();
   const today = useTodaysPlan(now);
+  const month = useMonthStats(now);
   const review = useTrainingReview(now);
   const alarm = useSyncAlarm();
+
+  const coach =
+    review.data?.review != null ? (
+      <ReviewNudge
+        observations={review.data.review.observations}
+        links={review.data.links}
+        unitSystem={review.data.unitSystem}
+      />
+    ) : null;
 
   const greeting = greetingFor(profile.data?.country ?? null, profile.data?.sex ?? null);
   const name = firstName(profile.data?.displayName ?? null);
@@ -94,7 +135,22 @@ export function HomeScreen() {
 
       {(alarm.lost !== null || alarm.error !== null) && <SyncWarning lost={alarm.lost !== null} />}
 
-      <TodayCard open={open} today={today} />
+      {open !== null && <InProgress open={open} />}
+
+      {/* The heads-up ADR-0032 asked for, now part of the month block rather
+          than a banner at the bottom: it has to be seen without a scroll,
+          because the lifter running their own program is exactly the one who
+          never taps Progress (ADR-0120). */}
+      <Suspense
+        fallback={
+          <section aria-label="This month" aria-busy className="flex flex-col gap-3">
+            <StatSkeleton />
+            {coach}
+          </section>
+        }
+      >
+        <StatsHero month={month} after={coach} />
+      </Suspense>
 
       <section aria-labelledby="quick-access">
         <h2 id="quick-access" className="mb-3 text-lg font-semibold text-primary">
@@ -113,18 +169,12 @@ export function HomeScreen() {
         </ul>
       </section>
 
-      {/* The heads-up ADR-0032 asked for: it finds the user rather than
-          waiting to be opened, because the lifter running their own program is
-          exactly the one who never taps Progress. */}
-      {review.data?.review != null && (
-        <ReviewNudge
-          observations={review.data.review.observations}
-          links={review.data.links}
-          unitSystem={review.data.unitSystem}
-        />
-      )}
+      {/* With a workout open, the strip at the top is the way back in and the
+          first tile is the way to the plan; a third card saying the same
+          would be one too many. */}
+      {open === null && <TodayCard today={today} trainedToday={month.data?.trainedToday ?? null} />}
 
-      <footer className="py-4 text-xs text-muted">
+      <footer className="mt-1 border-t border-subtle/60 pt-4 pb-4 text-xs leading-relaxed text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
       </footer>
     </main>
@@ -132,31 +182,77 @@ export function HomeScreen() {
 }
 
 /**
- * Today's workout: the thing on this screen that should stand out.
+ * A workout that is still open: the way back into it, at the top.
  *
- * Five states, and each is a different thing to say:
+ * One row, as wide as the screen and all of it a link, so the thumb that came
+ * back to Home mid-rest finds it without looking.
+ */
+function InProgress({ open }: { readonly open: OpenSessionSummary }) {
+  return (
+    <Link
+      to="/workout"
+      className={cx(
+        'flex min-h-tap items-center gap-3 rounded-card border border-accent/40 bg-accent-subtle px-4 py-3',
+        'transition-transform duration-150 ease-out select-none active:scale-[0.99]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+      )}
+    >
+      <span
+        aria-hidden
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent"
+      >
+        <PlayIcon className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-accent uppercase">
+          {open.stale ? 'Still open' : 'In progress'}
+        </span>
+        <span className="block truncate text-base leading-6 font-semibold text-primary">
+          {open.headline}
+        </span>
+        <span className="numeric block truncate text-xs leading-4 text-secondary">
+          {open.detail}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary">
+        {open.stale ? 'Open it' : 'Continue'}
+        <ChevronRightIcon aria-hidden className="size-4" />
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * Today's workout: the plan the app built, one scroll down (ADR-0120).
  *
- *   open        a workout is already running, and carrying on beats starting
+ * It used to lead the screen. Most people never press it, so it moved below
+ * the ways in, a size smaller, and kept everything it did. Its states, each a
+ * different thing to say:
+ *
  *   no goal     nothing to build from yet — ten seconds to fix
  *   loading     the plan is being worked out from the history
+ *   trained     a workout is already done today; resting is the advice
  *   done        the week's targets are met; resting is the advice
  *   ready       the session, with how long it will take, and a button
+ *
+ * A workout still open is not one of them: the strip at the top has it.
  *
  * "Start workout" starts it here, with the generator's choices. "See the
  * plan" is the way to the full session — every weight with its reason, and a
  * swap for any exercise — for anybody who wants to look before they lift.
  */
 function TodayCard({
-  open,
   today,
+  trainedToday,
 }: {
-  readonly open: OpenSessionSummary | null;
   readonly today: TodaysPlan;
+  readonly trainedToday: TrainedToday | null;
 }) {
   const navigate = useNavigate();
   const { write, busy, error } = useWrite();
 
   async function start(plan: PlannedSession): Promise<void> {
+    buzz('tick');
     const started = await write((r) =>
       startPlannedWorkout(r, {
         plan,
@@ -167,69 +263,86 @@ function TodayCard({
     if (started !== null) void navigate('/workout');
   }
 
-  if (open !== null) {
-    return (
-      <Hero label={open.stale ? 'Still open' : 'In progress'}>
-        <h2 className="mt-1 text-2xl font-bold text-primary">{open.headline}</h2>
-        <p className="numeric mt-1 text-sm text-secondary">{open.detail}</p>
-        <div className="mt-5">
-          <HeroLink to="/workout">{open.stale ? 'Open it' : 'Continue'}</HeroLink>
-        </div>
-      </Hero>
-    );
-  }
-
   if (today.noGoal) {
     return (
-      <Hero label="Today’s workout">
-        <h2 className="mt-1 text-2xl font-bold text-primary">Get a plan built for you</h2>
+      <PlanCard label="Today’s workout" title="Get a plan built for you">
         <p className="mt-1 text-sm text-secondary">
           Pick a goal and how many days you train. It takes about ten seconds, and every session
           after that is built from what you log.
         </p>
-        <div className="mt-5">
-          <HeroLink to="/goal">Choose a goal</HeroLink>
-        </div>
-      </Hero>
+        <Actions>
+          <PrimaryLink to="/goal">Choose a goal</PrimaryLink>
+        </Actions>
+      </PlanCard>
     );
   }
 
   if (today.error !== null) {
     return (
-      <Hero label="Today’s workout">
+      <PlanCard label="Today’s workout">
         <p role="alert" className="mt-2 text-sm text-danger">
           {today.error}
         </p>
-      </Hero>
+      </PlanCard>
     );
   }
 
   const plan = today.plan;
   if (!today.ready || plan === null) {
     return (
-      <Hero label="Today’s workout">
-        <div aria-hidden className="mt-2 h-8 w-40 animate-pulse rounded-control bg-elevated" />
+      <PlanCard label="Today’s workout">
+        <div aria-hidden className="mt-2 h-7 w-40 animate-pulse rounded-control bg-elevated" />
         <p className="mt-2 text-sm text-muted">Working out today’s session…</p>
-        <div aria-hidden className="mt-5 h-14 w-44 animate-pulse rounded-control bg-elevated" />
-      </Hero>
+        <div aria-hidden className="mt-4 h-12 w-40 animate-pulse rounded-full bg-elevated" />
+      </PlanCard>
+    );
+  }
+
+  if (trainedToday !== null) {
+    const parts = [
+      trainedToday.minutes === null ? null : `${String(trainedToday.minutes)} min`,
+      `${String(trainedToday.sets)} ${trainedToday.sets === 1 ? 'set' : 'sets'}`,
+    ].filter((part) => part !== null);
+    return (
+      <PlanCard label="Today’s workout" title="Done for today">
+        <p className="numeric mt-1 text-sm text-secondary">Trained today · {parts.join(' · ')}</p>
+        <p className="mt-2 text-sm text-secondary">
+          Rest is where today’s work turns into progress. Tomorrow’s session is built from it.
+        </p>
+        <Actions>
+          {plan.exercises.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                void start(plan);
+              }}
+              className={cx(ACTION, QUIET)}
+            >
+              {busy ? 'Setting it up…' : 'Train again'}
+            </button>
+          )}
+          <SeePlan />
+        </Actions>
+        <WriteError error={error} />
+      </PlanCard>
     );
   }
 
   if (plan.exercises.length === 0) {
     return (
-      <Hero label="Today’s workout">
-        <h2 className="mt-1 text-2xl font-bold text-primary">You have done the week</h2>
+      <PlanCard label="Today’s workout" title="You have done the week">
         <p className="mt-1 text-sm text-secondary">
           Everything today’s session would train has had its sets in the last seven days. Another
           session now costs more recovery than it buys.
         </p>
-        <div className="mt-5">
+        <Actions>
           {/* Not a lock. Somebody who wants to train anyway is allowed to. */}
-          <HeroLink to="/workout" quiet>
+          <Link to="/workout" className={cx(ACTION, QUIET)}>
             Train anyway
-          </HeroLink>
-        </div>
-      </Hero>
+          </Link>
+        </Actions>
+      </PlanCard>
     );
   }
 
@@ -237,110 +350,141 @@ function TodayCard({
   const groups = [...new Set(plan.exercises.map((exercise) => exercise.groupSlug))];
 
   return (
-    <Hero label="Today’s workout">
-      <h2 className="mt-1 text-3xl font-bold text-primary">{FOCUS_LABELS[plan.focus]}</h2>
+    <PlanCard label="Today’s workout" title={FOCUS_LABELS[plan.focus]}>
       <p className="numeric mt-1 text-sm text-secondary">
         {plan.exercises.length} exercises · {plan.totalSets} sets
         {minutes !== null && ` · about ${String(minutes)} min`}
       </p>
 
       <ul aria-label="Muscle groups" className="mt-3 flex flex-wrap gap-1.5">
-        {groups.map((group) => (
-          <li
-            key={group}
-            className="rounded-full border border-subtle bg-base/40 px-2.5 py-1 text-xs text-secondary capitalize"
-          >
-            {group}
-          </li>
-        ))}
+        {groups.map((group) => {
+          const region = regionOf(group);
+          return (
+            <li
+              key={group}
+              className="inline-flex items-center gap-1.5 rounded-full border border-subtle bg-base/40 py-1 pr-2.5 pl-2 text-xs text-secondary capitalize"
+            >
+              {/* The same colour the month's ring gives this group's region. */}
+              <span
+                aria-hidden
+                className={cx(
+                  'size-1.5 rounded-full',
+                  region === null ? 'bg-muted' : REGION_DOT[region],
+                )}
+              />
+              {group}
+            </li>
+          );
+        })}
       </ul>
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <Actions>
         <button
           type="button"
           disabled={busy}
           onClick={() => {
             void start(plan);
           }}
-          className={cx(HERO_ACTION, HERO_PRIMARY, 'pr-7 pl-5 disabled:cursor-not-allowed')}
+          className={cx(ACTION, PRIMARY, 'disabled:cursor-not-allowed')}
         >
-          <PlayIcon className="size-5" />
+          <PlayIcon className="size-4" />
           {busy ? 'Setting it up…' : 'Start workout'}
         </button>
-        <Link
-          to="/plan"
-          className="inline-flex min-h-tap items-center px-2 text-sm font-medium text-secondary underline-offset-4 hover:text-primary hover:underline"
-        >
-          See the plan
-        </Link>
-      </div>
-
-      {error !== null && (
-        <p role="alert" className="mt-3 text-sm text-danger">
-          {error}
-        </p>
-      )}
-    </Hero>
+        <SeePlan />
+      </Actions>
+      <WriteError error={error} />
+    </PlanCard>
   );
 }
 
 /**
- * The card's frame: a warm glow in the corner and a faint dumbbell behind the
- * words, so it reads as the one thing on the screen that is not a menu item.
- * Both decorative, and both drawn in the design tokens rather than a photo —
- * there is no stock picture to license, and no face to put on somebody's plan.
+ * The plan card's frame: the month cards' warm corner light, without their
+ * accent edge — this one sits lower and speaks a little more quietly — and a
+ * hairline above the actions, so the buttons read as the card's floor.
  */
-function Hero({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+function PlanCard({
+  label,
+  title,
+  children,
+}: {
+  readonly label: string;
+  readonly title?: string;
+  readonly children: ReactNode;
+}) {
+  const heading = useId();
   return (
-    <section className="relative isolate overflow-hidden rounded-sheet border border-accent/30 bg-surface p-5">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-br from-accent/20 via-accent/5 to-transparent"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-20 -right-16 -z-10 size-56 rounded-full bg-accent/25 blur-3xl"
-      />
-      <DumbbellIcon
-        className="pointer-events-none absolute top-5 right-4 -z-10 size-24 -rotate-12 text-accent/10"
-        strokeWidth={1.4}
-      />
-      <p className="text-xs font-semibold tracking-wider text-accent uppercase">{label}</p>
+    <section
+      aria-labelledby={heading}
+      className="relative isolate overflow-hidden rounded-sheet border border-subtle bg-surface p-4"
+    >
+      <div aria-hidden className="stat-glow pointer-events-none absolute inset-0 -z-10" />
+      <p
+        id={title === undefined ? heading : undefined}
+        className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-accent uppercase"
+      >
+        {label}
+      </p>
+      {title !== undefined && (
+        <h2 id={heading} className="mt-1 text-2xl leading-8 font-bold text-primary">
+          {title}
+        </h2>
+      )}
       {children}
     </section>
   );
 }
 
+function Actions({ children }: { readonly children: ReactNode }) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-subtle/70 pt-4">
+      {children}
+    </div>
+  );
+}
+
 /**
- * The card's actions: pill-shaped and a size up from the app's other buttons,
- * because this is the one press the screen exists for. Written out rather than
- * passed to `Button` as overrides — two radius utilities on one element are
- * decided by stylesheet order, not by which was written last.
+ * The card's buttons: pill-shaped, so they read as the one press the card
+ * exists for. Written out rather than passed to `Button` as overrides — two
+ * radius utilities on one element are decided by stylesheet order, not by
+ * which was written last.
  */
-const HERO_ACTION = cx(
-  'inline-flex min-h-14 items-center gap-2 rounded-full px-6 text-lg font-medium select-none',
-  'transition-colors duration-150',
+const ACTION = cx(
+  'inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-medium select-none',
+  'transition-[background-color,transform] duration-150 active:scale-[0.97]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 );
-const HERO_PRIMARY =
+const PRIMARY =
   'bg-accent text-on-accent shadow-floating hover:bg-accent-hover active:bg-accent-pressed ' +
   'disabled:bg-strong disabled:text-muted disabled:shadow-none';
-const HERO_QUIET = 'border border-subtle bg-elevated text-primary active:bg-surface';
+const QUIET = 'border border-subtle bg-elevated text-primary active:bg-surface';
 
-function HeroLink({
-  to,
-  quiet = false,
-  children,
-}: {
-  readonly to: string;
-  readonly quiet?: boolean;
-  readonly children: ReactNode;
-}) {
+function PrimaryLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
   return (
-    <Link to={to} className={cx(HERO_ACTION, quiet ? HERO_QUIET : HERO_PRIMARY)}>
+    <Link to={to} className={cx(ACTION, PRIMARY, 'pr-4')}>
       {children}
       <ChevronRightIcon className="size-5" />
     </Link>
+  );
+}
+
+function SeePlan() {
+  return (
+    <Link
+      to="/plan"
+      className="inline-flex min-h-tap items-center gap-0.5 px-1 text-sm font-medium text-secondary underline-offset-4 hover:text-primary hover:underline"
+    >
+      See the plan
+      <ChevronRightIcon aria-hidden className="size-4" />
+    </Link>
+  );
+}
+
+function WriteError({ error }: { readonly error: string | null }) {
+  if (error === null) return null;
+  return (
+    <p role="alert" className="mt-3 text-sm text-danger">
+      {error}
+    </p>
   );
 }
 
@@ -363,7 +507,7 @@ const TILE_TONES = {
  * The four ways in.
  *
  * With a workout already open the first one would lead straight back into it —
- * the card above already does that, and says so — so its place goes to
+ * the strip at the top already does that, and says so — so its place goes to
  * today's plan instead, which is otherwise out of reach until the workout is
  * finished.
  *

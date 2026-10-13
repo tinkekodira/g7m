@@ -211,3 +211,91 @@ textarea,
     color: CanvasText;
   }
 }
+
+/* Home's month cards (ADR-0120). ---------------------------------------- */
+
+/* A warm light from the top-left corner of each card, so the three read as
+   one family and as the top of the screen, without a gradient border or a
+   glow blob. Quieter on the light theme, where a tint shows more. */
+.stat-glow {
+  background: radial-gradient(
+    120% 90% at 0% 0%,
+    color-mix(in oklab, var(--accent) 13%, transparent),
+    transparent 62%
+  );
+}
+
+:root[data-theme='light'] .stat-glow {
+  background: radial-gradient(
+    120% 90% at 0% 0%,
+    color-mix(in oklab, var(--accent) 7%, transparent),
+    transparent 62%
+  );
+}
+
+/* The carousel scrolls by swipe; a scrollbar under it is a desktop artefact. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* The arrivals, each once: the month's line drawing in from the left, the
+   dot on today landing at its end, and the muscle ring sweeping round from
+   twelve o'clock. Around half a second each, eased out. The reduced-motion
+   rule in tokens.css flattens all three to their end state, and each has a
+   -wait twin for a card that is still off to the side. */
+@keyframes g7m-reveal-x {
+  from {
+    clip-path: inset(-12px 100% -12px -12px);
+  }
+  to {
+    clip-path: inset(-12px -12px -12px -12px);
+  }
+}
+
+.reveal-x {
+  animation: g7m-reveal-x 600ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.reveal-wait {
+  clip-path: inset(-12px 100% -12px -12px);
+}
+
+@keyframes g7m-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pop-in {
+  animation: g7m-pop-in 360ms cubic-bezier(0.22, 1, 0.36, 1) 480ms both;
+}
+
+@keyframes g7m-sweep {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sweep {
+  animation: g7m-sweep 600ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.sweep-wait {
+  stroke-dashoffset: 1;
+}

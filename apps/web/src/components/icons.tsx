@@ -81,6 +81,16 @@ export function ProgressIcon(props: IconProps) {
   );
 }
 
+/** A line climbing to a point: a running total, as on Home's month card. */
+export function TrendIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M3.5 18.5 9 13l3.5 3L20 8" />
+      <path d="M15 8h5v5" />
+    </Glyph>
+  );
+}
+
 export function ProfileIcon(props: IconProps) {
   return (
     <Glyph {...props}>

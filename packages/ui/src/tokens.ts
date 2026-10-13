@@ -41,6 +41,13 @@ export const colorTokens = {
   'medal-silver': '#b4b5b9',
   'medal-bronze': '#c27a38',
 
+  'region-legs': '#d77755',
+  'region-arms': '#9b69b1',
+  'region-shoulders': '#b48e34',
+  'region-back': '#587fc8',
+  'region-chest': '#c05b6e',
+  'region-core': '#249cb4',
+
   'muscle-idle': '#4a4844',
   'muscle-hover': '#d97757',
   'muscle-selected': '#e8a184',
@@ -92,6 +99,13 @@ export const lightColorTokens = {
   'medal-gold': '#9c7a14',
   'medal-silver': '#86878c',
   'medal-bronze': '#a0612a',
+
+  'region-legs': '#c45e39',
+  'region-arms': '#7f4995',
+  'region-shoulders': '#b28319',
+  'region-back': '#345fb2',
+  'region-chest': '#b7445d',
+  'region-core': '#1488a2',
 
   'bg-stage': '#e6e2d9',
   'bg-demo': '#f5f3ee',
