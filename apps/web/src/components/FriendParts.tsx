@@ -103,7 +103,9 @@ export function YourCode({ code }: { readonly code: string }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold tracking-wider text-muted uppercase">Your code</p>
+      <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
+        Your code
+      </p>
       <p
         className="numeric mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-primary"
         aria-label={`Your code: ${code.split('').join(' ')}`}
@@ -150,7 +152,7 @@ export function YourCode({ code }: { readonly code: string }) {
 /** Friends live on the server, so with no connection there is nothing to show. */
 export function FriendsOffline() {
   return (
-    <section className="rounded-card border border-subtle bg-surface p-5 text-center">
+    <section className="rounded-sheet border border-subtle bg-surface p-5 text-center">
       <FriendsIcon className="mx-auto size-8 text-muted" />
       <h2 className="mt-2 text-base font-semibold text-primary">You’re offline</h2>
       <p className="mx-auto mt-1 max-w-prose text-sm text-secondary">
@@ -178,7 +180,7 @@ export function NamePrompt() {
   const trimmed = name.trim();
 
   return (
-    <section className="rounded-card border border-subtle bg-surface p-5">
+    <section className="rounded-sheet border border-subtle bg-surface p-5">
       <h2 className="text-lg font-semibold text-primary">What should friends call you?</h2>
       <p className="mt-1 text-sm text-secondary">
         Friends see your name next to your training. You can change it later on Your profile.

@@ -86,7 +86,7 @@ export function FriendScreen() {
       ) : detail.loading || mine.data === null ? (
         <p className="text-sm text-muted">Loading…</p>
       ) : detail.data === null ? (
-        <section className="rounded-card border border-subtle bg-surface p-5">
+        <section className="rounded-sheet border border-subtle bg-surface p-5">
           <h1 className="text-xl font-semibold text-primary">{name}</h1>
           <p className="mt-1 text-sm text-secondary">
             Not sharing their training right now, or no longer on your friends list.
@@ -145,7 +145,7 @@ function FriendPage({
 
   return (
     <>
-      <section className="rounded-card border border-subtle bg-surface p-5">
+      <section className="rounded-sheet border border-subtle bg-surface p-5">
         <div className="flex items-center gap-4">
           <Avatar name={detail.name} size="lg" tint />
           <div className="min-w-0">
@@ -189,7 +189,7 @@ function FriendPage({
 
       <section
         aria-labelledby="head-to-head"
-        className="rounded-card border border-subtle bg-surface p-5"
+        className="rounded-sheet border border-subtle bg-surface p-5"
       >
         <h2 id="head-to-head" className="text-lg font-semibold text-primary">
           Head-to-head
@@ -240,7 +240,7 @@ function FriendPage({
           Recent workouts
         </h2>
         {recent.length === 0 ? (
-          <p className="rounded-card border border-subtle bg-surface p-4 text-sm text-secondary">
+          <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
             No finished workouts yet.
           </p>
         ) : (
@@ -250,7 +250,7 @@ function FriendPage({
                 <Link
                   to={`/friends/${detail.userId}/session/${row.sessionId}`}
                   state={{ name }}
-                  className="flex min-h-tap items-center gap-3 rounded-card border border-subtle bg-surface p-4 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="flex min-h-tap items-center gap-3 rounded-sheet border border-subtle bg-surface p-4 transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-base font-medium text-primary">
@@ -369,7 +369,7 @@ function FriendRoutines({
   return (
     <section
       aria-labelledby="friend-routines"
-      className="rounded-card border border-subtle bg-surface p-4"
+      className="rounded-sheet border border-subtle bg-surface p-4"
     >
       <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">

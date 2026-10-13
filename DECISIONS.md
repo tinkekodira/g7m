@@ -7966,3 +7966,26 @@ now uses Home's language.
 **Tests:** no new behaviour, so no new tests. The full e2e suite passes. The
 week-stepping test caught a title that repeated the chart's "This week", which
 is how the period came out of the title.
+
+## ADR-0127 — Friends in Home's style
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0105, ADR-0106, ADR-0113
+
+Friends was the last main tab still in the older look. It now uses the shell
+Home, Progress and Profile share (ADR-0124, ADR-0126):
+
+- **The sub-tabs** are the pill Progress picks its period with. They are
+  still tabs to a screen reader, because each one swaps the whole page. The
+  requests count turns inside out on the filled pill so it stays visible.
+- **A friend's card** has the large corner and presses in like Home's cards.
+  "Best lifts" is in Home's small capitals, each figure has its unit a size
+  down, and the last workout is an inset row like Home's insight row.
+- **The leaderboard** sits in Home's warm hero card. The gold, silver and
+  bronze rows keep their metals inside it. The filter card and the standing
+  bar take the large corner.
+- **Requests, challenges, the offline and name prompts, and a friend's page**
+  take the same corner and hairlines. With no friends yet, "Train with
+  friends" is the hero, with your code under a rule.
+
+**Tests:** no new behaviour. `friends`, `leaderboard`, `challenges` and
+`friend-profile` pass.

@@ -57,7 +57,10 @@ export function ChallengeCard({
   };
 
   return (
-    <article aria-labelledby={titleId} className="rounded-card border border-subtle bg-surface p-4">
+    <article
+      aria-labelledby={titleId}
+      className="rounded-sheet border border-subtle bg-surface p-4"
+    >
       <div className="flex items-center gap-3">
         <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
@@ -71,7 +74,7 @@ export function ChallengeCard({
       </div>
 
       {card.sides !== null && (
-        <dl className="mt-3 flex flex-col gap-1 border-t border-subtle pt-3">
+        <dl className="mt-3 flex flex-col gap-1 border-t border-subtle/70 pt-3">
           {card.sides.map((side) => (
             <div key={side.name} className="flex items-baseline justify-between gap-3">
               <dt
@@ -210,7 +213,7 @@ export function SendChallenge({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-6 rounded-card border border-subtle/60 bg-surface/50 p-5"
+      className="flex flex-col gap-6 rounded-sheet border border-subtle/60 bg-surface/50 p-5"
     >
       <div>
         <h2 id={headingId} className="text-lg font-semibold text-primary">
