@@ -53,6 +53,19 @@ test('a first workout turns the first step into this month’s numbers', async (
   expect(await top(workouts)).toBeLessThan(await top(quickAccess));
   expect(await top(quickAccess)).toBeLessThan(await top(plan));
 
+  // Each card opens the screen that answers it (ADR-0123).
   await workouts.click();
-  await expect(page).toHaveURL(/#\/progress\?period=month$/);
+  await expect(page).toHaveURL(/#\/progress\?period=month&chart=workouts$/);
+
+  await page.goto('/#/');
+  await page.getByRole('link', { name: /^Muscle groups this month:/ }).click();
+  await expect(page).toHaveURL(/#\/learn\?view=heatmap$/);
+  await expect(page.getByText(/^What you have trained, over \d+ weeks\.$/)).toBeVisible();
+
+  await page.goto('/#/');
+  await page.getByRole('link', { name: /^Personal records this month:/ }).click();
+  await expect(page).toHaveURL(/#\/profile\?show=bests$/);
+  const bests = page.locator('#best-lifts');
+  await expect(bests).toContainText('Barbell Bench Press');
+  await expect(bests).toBeInViewport();
 });

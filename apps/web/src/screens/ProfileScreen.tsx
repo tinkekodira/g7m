@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { countryName, firstName, personalRecords, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { AchievementsCard, BestLiftsCard, TrainingBodyCard } from '../components/ProfileParts.js';
 import { ChevronRightIcon, ClipboardIcon, PencilIcon, TargetIcon } from '../components/icons.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
+import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
 import { Flag } from '../components/Flag.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { useAchievements } from '../lib/db/use-achievements.js';
@@ -16,7 +17,15 @@ import {
   useNeglected,
   useTrainingHeat,
 } from '../lib/db/use-trained-body.js';
-import { bestLifts, bmiNote, goalCardLine, indexFor, profileStats } from './profile-view.js';
+import {
+  BEST_LIFTS_ANCHOR,
+  BEST_LIFTS_PARAM,
+  bestLifts,
+  bmiNote,
+  goalCardLine,
+  indexFor,
+  profileStats,
+} from './profile-view.js';
 import type { Goal } from '@g7m/db';
 
 /**
@@ -62,6 +71,19 @@ export function ProfileScreen() {
       new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
     );
   });
+
+  // Opened from Home's records card: down to the best lifts once they, and
+  // the body above them, are drawn (ADR-0123). Read once, like the review on
+  // Progress, so nothing pulls the page back later.
+  const [params] = useSearchParams();
+  const [toBests] = useState(() => params.get(BEST_LIFTS_PARAM) === 'bests');
+  const bestsReady = bests.data !== null;
+  useEffect(() => {
+    if (!toBests || !bestsReady) return;
+    document
+      .getElementById(BEST_LIFTS_ANCHOR)
+      ?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [toBests, bestsReady]);
 
   const unitSystem: UnitSystem = profile.data?.unitSystem ?? 'metric';
   const name = firstName(profile.data?.displayName ?? null);
@@ -178,6 +200,7 @@ export function ProfileScreen() {
         unitSystem={unitSystem}
         description="The heaviest you have moved on each exercise. Bodyweight lifts count your bodyweight too."
         linkTo={(lift) => `/progress/exercise/${lift.exerciseId}`}
+        arrived={toBests}
       />
 
       <p className="py-4 text-xs text-muted">

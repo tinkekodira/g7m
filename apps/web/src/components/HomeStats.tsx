@@ -65,8 +65,19 @@ import {
  * carousel, the page marker and the arrival are all shared.
  */
 
-/** Where every card leads: Progress, already on this month. */
-const PROGRESS_THIS_MONTH = '/progress?period=month';
+/**
+ * Where each card leads: the screen that answers the question the card asks
+ * (ADR-0123). Three go to Progress on this month, each on its own chart; the
+ * muscle ring opens the body on Learn, painted with what was trained; the
+ * records open Profile's best lifts, pointed out.
+ */
+const DESTINATIONS = {
+  workouts: '/progress?period=month&chart=workouts',
+  activity: '/progress?period=month',
+  duration: '/progress?period=month&chart=time',
+  muscles: '/learn?view=heatmap',
+  records: '/profile?show=bests',
+} as const;
 
 interface CardEntry {
   readonly key: string;
@@ -231,6 +242,7 @@ function Carousel({
  * chevron to aim for; it presses in slightly so a tap is felt to have landed.
  */
 function StatCard({
+  to,
   label,
   icon: Icon,
   eyebrow,
@@ -239,6 +251,8 @@ function StatCard({
   insight,
   children,
 }: {
+  /** The screen that answers what the card shows. See `DESTINATIONS`. */
+  readonly to: string;
   /** The card read aloud, in one sentence: what a screen reader announces for the link. */
   readonly label: string;
   readonly icon: ComponentType<IconProps>;
@@ -250,7 +264,7 @@ function StatCard({
 }) {
   return (
     <Link
-      to={PROGRESS_THIS_MONTH}
+      to={to}
       aria-label={label}
       className={cx(
         'relative isolate flex min-h-[18.5rem] w-full flex-col overflow-hidden rounded-sheet border border-accent/20 bg-surface p-4',
@@ -345,6 +359,7 @@ function WorkoutsCard({ stats, motion }: { readonly stats: MonthStats; readonly 
 
   return (
     <StatCard
+      to={DESTINATIONS.workouts}
       label={`Workouts this month: ${String(total)} completed. ${insight.heading}. ${insight.detail}`}
       icon={TrendIcon}
       eyebrow="Your workouts"
@@ -381,6 +396,7 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
 
   return (
     <StatCard
+      to={DESTINATIONS.muscles}
       label={`Muscle groups this month: ${String(stats.regionSets)} ${stats.regionSets === 1 ? 'set' : 'sets'} across ${String(trained)} ${trained === 1 ? 'group' : 'groups'}. ${insight.heading}. ${insight.detail}`}
       icon={BodyIcon}
       eyebrow="Muscle groups"
@@ -463,6 +479,7 @@ function ActivityCard({
 
   return (
     <StatCard
+      to={DESTINATIONS.activity}
       label={`Strength and activity this month: ${String(stats.workouts.current)} ${stats.workouts.current === 1 ? 'workout' : 'workouts'}, ${time} training, ${formatPerWeek(stats.perWeek.current)} a week, ${lifted} lifted. Compared with ${range}. ${insight.heading}. ${insight.detail}`}
       icon={FlameIcon}
       eyebrow="Strength & activity"
@@ -511,6 +528,7 @@ function DurationCard({ stats, motion }: { readonly stats: MonthStats; readonly 
 
   return (
     <StatCard
+      to={DESTINATIONS.duration}
       label={`Workout duration this month: ${time} in total. ${insight.heading}. ${insight.detail}`}
       icon={ClockIcon}
       eyebrow="Workout duration"
@@ -550,6 +568,7 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
 
   return (
     <StatCard
+      to={DESTINATIONS.records}
       label={`Personal records this month: ${String(records.newBests)} new ${records.newBests === 1 ? 'best' : 'bests'}. ${insight.heading}. ${insight.detail}`}
       icon={TrophyIcon}
       eyebrow="Personal records"
