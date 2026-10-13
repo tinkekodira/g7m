@@ -7710,6 +7710,19 @@ about haptics, which the OS already lets you switch off.
 - Stored with the rest times in `g7m.rest` on this device (`adjust`, `sound`).
   Settings saved before these fields existed read as 30 s with sound on.
 
+### The rest survives leaving the screen
+
+The running rest lived in the workout screen's state, so opening the library
+(to add an exercise, or to change your mind) threw it away, and so did a look
+at Settings or the app closing. It is now written to this phone
+(`g7m.restTimer`: workout id, start, length; `lib/rest-timer.ts`) on every
+change and read back when the screen opens. A rest is a start time and a
+length, so it comes back exactly where it would have been. Only the open
+workout's rest shows. One that ended more than five minutes ago is dropped,
+and one brought back already over shows "Rest over" without buzzing or
+chiming again: the alert follows the rest flipping from running to over, not
+its being over.
+
 ### Three exercises, and load read off the primary equipment
 
 Migration `20261016120000`:
@@ -7763,9 +7776,13 @@ The files were copied unchanged and named by the app's slug. 3d-models'
   is woken, and it does nothing without Web Audio. Demo mapping: 58 loops
   resolve, both dips and both hip machines have different files, and every
   file in the folder is mapped.
+- **web:** the running rest is stored and read back exactly, kept five
+  minutes past its end and no longer, ignored when malformed, and shown only on
+  its own workout.
 - **e2e:** `rest-timer-and-back.spec.ts`: Back lands with Finish and the add
   link in view and the first exercise out of it, on a page long enough to need
-  the scroll; this fails without the fix. A 20 s step reads −20s/+20s, moves
+  the scroll; this fails without the fix. A rest carries on through Back and
+  through adding an exercise; this also fails without the fix. A 20 s step reads −20s/+20s, moves
   the timer by 20 and the minus stops short of zero. Rest ending asks Web
   Audio for three notes, and none once the switch is off. Both crunches offer
   "+ Add weight" and an "Added" field. The four preacher curls list side by

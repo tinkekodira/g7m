@@ -41,6 +41,12 @@ import { useRestSettingsStore } from '../lib/use-rest-settings.js';
 import { chosenRestSeconds, formatAdjust } from '../lib/rest-settings.js';
 import { buzz } from '../lib/haptics.js';
 import { playRestSound, primeRestSound } from '../lib/rest-sound.js';
+import {
+  readRunningRest,
+  restOfSession,
+  writeRunningRest,
+  type RunningRest,
+} from '../lib/rest-timer.js';
 import { readSnoozedAt, writeSnoozedAt } from '../lib/workout-notice.js';
 import { useAuthStore } from '../auth/auth-store.js';
 import { readFriendWorkoutNote } from '../lib/friends/cache.js';
@@ -146,7 +152,15 @@ export function WorkoutScreen() {
       ? new Date()
       : null,
   );
-  const [rest, setRest] = useState<{ startedAt: Date; seconds: number } | null>(null);
+  /**
+   * The rest that is running, brought back from this phone so that leaving the
+   * screen (the library, Settings, the app closing) does not end it. Written
+   * back on every change, below. See `rest-timer.ts`.
+   */
+  const [rest, setRest] = useState<RunningRest | null>(() => readRunningRest(new Date()));
+  useEffect(() => {
+    writeRunningRest(rest);
+  }, [rest]);
   /**
    * Set once the workout is finished and is worth keeping as a routine.
    *
@@ -340,23 +354,35 @@ export function WorkoutScreen() {
     void navigate('.', { replace: true, state: null });
   }, [backFromAdding, navigate]);
 
-  const remaining = restRemaining(rest?.startedAt ?? null, rest?.seconds ?? 0, now);
+  /** Only this workout's rest: one from a finished workout never shows. */
+  const shownRest = restOfSession(rest, workout?.session.id ?? null);
+  const remaining = restRemaining(shownRest?.startedAt ?? null, shownRest?.seconds ?? 0, now);
 
   /**
    * Rest is over, said to a phone that is face-down on a bench.
    *
    * The bar has always shown it, and showing it was no use: the moment the
    * timer matters is the one where nobody is looking at the screen.
+   *
+   * The moment rest ends, not the state of having ended. A rest brought back
+   * already over, coming back from the library to "Rest over", must not buzz
+   * and chime as if it had just happened. So this watches
+   * the stored rest flip from running to over, starting from how it was when
+   * the screen opened, and only speaks up for this workout's rest.
    */
-  const restOver = remaining !== null && isRestOver(remaining);
+  const storedOver = rest !== null && isRestOver(restRemaining(rest.startedAt, rest.seconds, now));
+  const wasOver = useRef(storedOver);
+  const restShown = shownRest !== null;
   useEffect(() => {
-    if (!restOver) return;
+    const justEnded = storedOver && !wasOver.current;
+    wasOver.current = storedOver;
+    if (!justEnded || !restShown) return;
     buzz('alert');
     // Heard as well as felt, unless Settings turned it off. Read at the moment
     // rather than subscribed to, so turning the sound on afterwards does not
     // play it for a rest that ended minutes ago.
     if (useRestSettingsStore.getState().sound) playRestSound();
-  }, [restOver]);
+  }, [storedOver, restShown]);
 
   /**
    * Personal records, worked out rather than watched for.
@@ -558,7 +584,7 @@ export function WorkoutScreen() {
     const group = groupOf(block);
     if (group === null) {
       // Nothing to rest between when the sets happened days ago.
-      if (!past) setRest({ startedAt: new Date(), seconds: restFor(block) });
+      if (!past) setRest({ sessionId: session.id, startedAt: new Date(), seconds: restFor(block) });
       return;
     }
     const after = afterTick(
@@ -571,7 +597,11 @@ export function WorkoutScreen() {
     if (after.next !== null) revealSet(after.next.setId);
     if (after.rest === 'hold') setRest(null);
     else if (!past) {
-      setRest({ startedAt: new Date(), seconds: roundRestSeconds(group.map(restFor)) });
+      setRest({
+        sessionId: session.id,
+        startedAt: new Date(),
+        seconds: roundRestSeconds(group.map(restFor)),
+      });
     }
   };
 

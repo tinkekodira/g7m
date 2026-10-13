@@ -52,6 +52,28 @@ test('Back from adding an exercise returns to the end of the workout', async ({ 
   await expect(page.getByRole('heading', { name: 'Lateral Raise' })).not.toBeInViewport();
 });
 
+test('the rest keeps running through a trip to the library and back', async ({ page }) => {
+  const user = await createUser('rest-kept', { onboarded: true });
+  await signIn(page, user);
+  await waitForCatalogue(page);
+  await startWith(page, 'Lateral Raise');
+  await logSet(page, 1, '10', '12');
+  await expect(page.getByText('Resting')).toBeVisible();
+  const before = await restSeconds(page);
+
+  // Back without adding, then adding one: both used to come back to no timer.
+  await page.getByRole('link', { name: '+ Add an exercise' }).click();
+  await page.getByRole('link', { name: 'Back' }).click();
+  await expect(page.getByText('Resting')).toBeVisible();
+  await addExercise(page, 'Hammer Curl');
+  await expect(page.getByText('Resting')).toBeVisible();
+
+  // The same rest, carried on: a little less left, not a fresh one.
+  const after = await restSeconds(page);
+  expect(after).toBeLessThanOrEqual(before);
+  expect(after).toBeGreaterThan(before - 30);
+});
+
 test('the rest bar takes off and adds the step chosen in Settings', async ({ page }) => {
   const user = await createUser('rest-step', { onboarded: true });
   await signIn(page, user);
