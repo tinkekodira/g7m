@@ -15,14 +15,18 @@ import type { ReactNode } from 'react';
  */
 export function HeaderLink({
   to,
+  state,
   children,
 }: {
   readonly to: string;
+  /** Navigation state for the screen it leads to, such as where to scroll. */
+  readonly state?: unknown;
   readonly children: ReactNode;
 }) {
   return (
     <Link
       to={to}
+      state={state}
       className="inline-flex min-h-tap shrink-0 items-center gap-1 rounded-control border border-subtle bg-elevated px-4 text-sm font-medium text-primary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {children}

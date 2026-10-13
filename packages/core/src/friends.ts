@@ -355,6 +355,7 @@ const CARD_LIFT_NAMES: Readonly<Record<string, string>> = {
   'preacher-curl': 'Preacher Curl',
   'barbell-preacher-curl': 'Preacher Curl',
   'dumbbell-preacher-curl': 'Preacher Curl',
+  'preacher-curl-machine': 'Preacher Curl',
   'kettlebell-swing': 'KB Swing',
   'kettlebell-deadlift': 'KB Deadlift',
   'kettlebell-press': 'KB Press',

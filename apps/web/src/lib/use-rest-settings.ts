@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import {
   readRestSettings,
+  tidyAdjustSeconds,
   tidyRestSeconds,
   writeRestSettings,
   type Mechanic,
@@ -14,6 +15,8 @@ import {
 interface RestSettingsState extends RestSettings {
   readonly setCustom: (custom: boolean) => void;
   readonly setSeconds: (mechanic: Mechanic, seconds: number) => void;
+  readonly setAdjust: (seconds: number) => void;
+  readonly setSound: (sound: boolean) => void;
 }
 
 export const useRestSettingsStore = create<RestSettingsState>((set, get) => ({
@@ -27,5 +30,15 @@ export const useRestSettingsStore = create<RestSettingsState>((set, get) => ({
     if (tidy === null) return;
     set({ [mechanic]: tidy });
     writeRestSettings({ ...get(), [mechanic]: tidy });
+  },
+  setAdjust: (seconds) => {
+    const adjust = tidyAdjustSeconds(seconds);
+    if (adjust === null) return;
+    set({ adjust });
+    writeRestSettings({ ...get(), adjust });
+  },
+  setSound: (sound) => {
+    set({ sound });
+    writeRestSettings({ ...get(), sound });
   },
 }));

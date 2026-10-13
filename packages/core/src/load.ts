@@ -245,6 +245,27 @@ export function naturalLoadType(equipmentCategories: readonly string[]): LoadTyp
     : 'external';
 }
 
+/** The two things `loadTypeForEquipment` reads off an exercise's equipment. */
+export interface LoadEquipment {
+  readonly category: string;
+  readonly isPrimary: boolean;
+}
+
+/**
+ * The load type from an exercise's equipment list, read off what provides the
+ * resistance.
+ *
+ * Only the primary equipment counts. An accessory qualifies an exercise and
+ * adds no load: the decline bench a crunch is done on, whose category is
+ * `other`, would otherwise turn a bodyweight crunch into an external lift
+ * logged as "0 kg", with no "+ Add weight" for the plate on the chest. When
+ * nothing is marked primary, all of it counts, as it did before.
+ */
+export function loadTypeForEquipment(equipment: readonly LoadEquipment[]): LoadType {
+  const primary = equipment.filter((item) => item.isPrimary);
+  return naturalLoadType((primary.length > 0 ? primary : equipment).map((item) => item.category));
+}
+
 /**
  * Whether a set carries enough load for a one-rep-max estimate to mean
  * anything, and what weight that estimate should be based on.

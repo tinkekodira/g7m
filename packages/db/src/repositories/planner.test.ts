@@ -188,6 +188,35 @@ describe('candidates', () => {
     });
     expect((await planner.candidates()).map((entry) => entry.id)).not.toContain('orphan');
   });
+
+  /**
+   * The decline crunch: bodyweight, on a bench it needs but is not loaded by.
+   * The bench's `other` category would make it an external lift if it counted.
+   */
+  it('reads the load type off the primary equipment, not an accessory', async () => {
+    await db.seed('equipment', {
+      id: 'eq-bw',
+      slug: 'bodyweight-only',
+      name: 'Bodyweight only',
+      category: 'bodyweight',
+    });
+    await db.seed('equipment', {
+      id: 'eq-decline',
+      slug: 'decline-bench',
+      name: 'Decline bench',
+      category: 'other',
+    });
+    await addExercise('crunch', 'Decline Ab Crunch', 'isolation', 4, 'm-tri', 'eq-bw');
+    await db.seed('exercise_equipment', {
+      id: 'ee-crunch-bench',
+      exercise_id: 'crunch',
+      equipment_id: 'eq-decline',
+      is_primary: 0,
+    });
+
+    const crunch = (await planner.candidates()).find((entry) => entry.id === 'crunch');
+    expect(crunch?.loadType).toBe('bodyweight');
+  });
 });
 
 const SINCE = new Date('2026-06-01T00:00:00.000Z');

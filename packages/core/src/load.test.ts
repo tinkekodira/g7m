@@ -4,6 +4,7 @@ import {
   countsTowardVolume,
   effectiveLoadKg,
   loadForOneRepMax,
+  loadTypeForEquipment,
   naturalLoadType,
   setVolumeKg,
   totalVolumeKg,
@@ -248,6 +249,36 @@ describe('naturalLoadType', () => {
    */
   it('is external for bodyweight kit plus something loaded', () => {
     expect(naturalLoadType(['bodyweight', 'other'])).toBe('external');
+  });
+});
+
+describe('loadTypeForEquipment', () => {
+  /**
+   * The decline crunch: the lifter's own body on a decline bench. The bench is
+   * `other` and needed, but it qualifies the exercise rather than loading it.
+   */
+  it('reads the primary equipment and leaves accessories out', () => {
+    expect(
+      loadTypeForEquipment([
+        { category: 'bodyweight', isPrimary: true },
+        { category: 'other', isPrimary: false },
+      ]),
+    ).toBe('bodyweight');
+  });
+
+  it('is external when the primary equipment is loaded, whatever the accessory', () => {
+    // The EZ bar preacher curl: the bar is the load, the preacher bench is not.
+    expect(
+      loadTypeForEquipment([
+        { category: 'barbell', isPrimary: true },
+        { category: 'other', isPrimary: false },
+      ]),
+    ).toBe('external');
+  });
+
+  it('falls back on all of it when nothing is marked primary', () => {
+    expect(loadTypeForEquipment([{ category: 'other', isPrimary: false }])).toBe('external');
+    expect(loadTypeForEquipment([])).toBe('bodyweight');
   });
 });
 

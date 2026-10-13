@@ -18,7 +18,15 @@ import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { useThemeStore } from '../lib/use-theme.js';
 import { useRestSettingsStore } from '../lib/use-rest-settings.js';
-import { REST_MAX_SECONDS, REST_MIN_SECONDS, REST_STEP_SECONDS } from '../lib/rest-settings.js';
+import {
+  REST_ADJUST_MAX_SECONDS,
+  REST_ADJUST_MIN_SECONDS,
+  REST_ADJUST_STEP_SECONDS,
+  REST_MAX_SECONDS,
+  REST_MIN_SECONDS,
+  REST_STEP_SECONDS,
+  formatAdjust,
+} from '../lib/rest-settings.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
 import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
@@ -26,6 +34,7 @@ import { useOnline } from '../lib/use-online.js';
 import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
 import { PlatePicker } from '../components/PlatePicker.js';
 import {
+  BellIcon,
   ClockIcon,
   DeviceIcon,
   DownloadIcon,
@@ -223,13 +232,20 @@ function AvailablePlates() {
  * changes until they come here and change it. On, the two times win over
  * every exercise's own (`restSecondsFor`). Kept on this phone; see
  * `rest-settings.ts` for why.
+ *
+ * Below them, whatever the switch says: how far the rest bar's minus and plus
+ * move it, and whether rest ending makes a sound.
  */
 function RestTimes() {
   const custom = useRestSettingsStore((state) => state.custom);
   const compound = useRestSettingsStore((state) => state.compound);
   const isolation = useRestSettingsStore((state) => state.isolation);
+  const adjust = useRestSettingsStore((state) => state.adjust);
+  const sound = useRestSettingsStore((state) => state.sound);
   const setCustom = useRestSettingsStore((state) => state.setCustom);
   const setSeconds = useRestSettingsStore((state) => state.setSeconds);
+  const setAdjust = useRestSettingsStore((state) => state.setAdjust);
+  const setSound = useRestSettingsStore((state) => state.setSound);
 
   return (
     <Panel title="Rest timer">
@@ -264,6 +280,34 @@ function RestTimes() {
           />
         </div>
       )}
+      <div className="mt-3 border-t border-subtle pt-3">
+        <SecondsStepper
+          label="Minus and plus"
+          hint="What the timer's − and + take off and add."
+          groupLabel="Rest timer step"
+          lessLabel="Smaller step"
+          moreLabel="Bigger step"
+          seconds={adjust}
+          step={REST_ADJUST_STEP_SECONDS}
+          min={REST_ADJUST_MIN_SECONDS}
+          max={REST_ADJUST_MAX_SECONDS}
+          format={formatAdjust}
+          onChange={setAdjust}
+        />
+      </div>
+      <div className="mt-3 border-t border-subtle pt-3">
+        <Switch
+          checked={sound}
+          onChange={setSound}
+          icon={<IconChip tone="accent" icon={<BellIcon className="size-5" />} />}
+          label="Sound when rest is over"
+          description={
+            sound
+              ? 'Three short notes as well as the buzz, while the app is open.'
+              : 'Off — rest ending only buzzes.'
+          }
+        />
+      </div>
     </Panel>
   );
 }
@@ -286,6 +330,49 @@ function RestStepper({
   readonly seconds: number;
   readonly onChange: (seconds: number) => void;
 }) {
+  return (
+    <SecondsStepper
+      label={label}
+      hint={hint}
+      groupLabel={`${label} rest`}
+      lessLabel={`Shorter rest for ${label.toLowerCase()}`}
+      moreLabel={`Longer rest for ${label.toLowerCase()}`}
+      seconds={seconds}
+      step={REST_STEP_SECONDS}
+      min={REST_MIN_SECONDS}
+      max={REST_MAX_SECONDS}
+      format={formatRest}
+      onChange={onChange}
+    />
+  );
+}
+
+/** A number of seconds with a minus and a plus, in whatever steps and words it is given. */
+function SecondsStepper({
+  label,
+  hint,
+  groupLabel,
+  lessLabel,
+  moreLabel,
+  seconds,
+  step,
+  min,
+  max,
+  format,
+  onChange,
+}: {
+  readonly label: string;
+  readonly hint: string;
+  readonly groupLabel: string;
+  readonly lessLabel: string;
+  readonly moreLabel: string;
+  readonly seconds: number;
+  readonly step: number;
+  readonly min: number;
+  readonly max: number;
+  readonly format: (seconds: number) => string;
+  readonly onChange: (seconds: number) => void;
+}) {
   const button =
     'flex size-tap shrink-0 items-center justify-center rounded-control border border-subtle bg-elevated text-xl text-primary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:text-muted/40';
 
@@ -295,13 +382,13 @@ function RestStepper({
         <p className="text-base font-medium text-primary">{label}</p>
         <p className="text-sm text-muted">{hint}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`${label} rest`}>
+      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={groupLabel}>
         <button
           type="button"
-          aria-label={`Shorter rest for ${label.toLowerCase()}`}
-          disabled={seconds <= REST_MIN_SECONDS}
+          aria-label={lessLabel}
+          disabled={seconds <= min}
           onClick={() => {
-            onChange(seconds - REST_STEP_SECONDS);
+            onChange(seconds - step);
           }}
           className={button}
         >
@@ -311,14 +398,14 @@ function RestStepper({
           aria-live="polite"
           className="numeric w-14 text-center text-lg font-semibold text-primary"
         >
-          {formatRest(seconds)}
+          {format(seconds)}
         </output>
         <button
           type="button"
-          aria-label={`Longer rest for ${label.toLowerCase()}`}
-          disabled={seconds >= REST_MAX_SECONDS}
+          aria-label={moreLabel}
+          disabled={seconds >= max}
           onClick={() => {
-            onChange(seconds + REST_STEP_SECONDS);
+            onChange(seconds + step);
           }}
           className={button}
         >

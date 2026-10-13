@@ -80,7 +80,11 @@ export class PlannerRepository {
       `SELECT e.id, e.name, e.mechanic, e.is_time_based, e.popularity_rank,
               e.default_rep_low, e.default_rep_high, e.default_rest_seconds,
               group_concat(DISTINCT mg.slug) AS group_slugs,
-              group_concat(DISTINCT eq.category) AS equipment_categories
+              -- What provides the load, not what qualifies it: the primary
+              -- equipment's categories, or all of them when none is primary
+              -- (see loadTypeForEquipment).
+              coalesce(group_concat(DISTINCT CASE WHEN xq.is_primary = 1 THEN eq.category END),
+                       group_concat(DISTINCT eq.category)) AS equipment_categories
          FROM exercises e
          JOIN exercise_muscles em ON em.exercise_id = e.id AND em.role = 'primary'
          JOIN muscles m ON m.id = em.muscle_id
@@ -253,8 +257,9 @@ function toPlannable(row: RawRow): PlannableExercise {
     name: readString(row, 'name', ''),
     mechanic: mechanic === 'compound' || mechanic === 'isolation' ? mechanic : 'unknown',
     isTimeBased: readNumber(row, 'is_time_based', 0) === 1,
-    // An exercise needing only bodyweight equipment is a bodyweight exercise.
-    // The derivation lives in core so the logger and the planner agree.
+    // An exercise whose primary equipment is bodyweight kit is a bodyweight
+    // exercise. The derivation lives in core so the logger and the planner
+    // agree; the query has already left accessories out.
     loadType: naturalLoadType(categories === '' ? [] : categories.split(',')),
     // `group_concat` returns one comma-joined string; SQLite has no arrays.
     groupSlugs: slugs === '' ? [] : slugs.split(','),

@@ -16,7 +16,7 @@
  * runs, and `source` is what the app reads to decide that (ADR-0105).
  */
 import {
-  naturalLoadType,
+  loadTypeForEquipment,
   nextSetTemplate,
   workoutToCopy,
   workoutUnits,
@@ -80,7 +80,7 @@ export async function startFriendWorkout(
     if (detail?.cardioKind != null) continue;
     if (previous.length === 0) continue;
 
-    const loadType = naturalLoadType(equipment.map((item) => item.category));
+    const loadType = loadTypeForEquipment(equipment);
     const written: SetTemplate[] = [];
     for (let index = 0; index < exercise.workingSets; index++) {
       const template = nextSetTemplate({

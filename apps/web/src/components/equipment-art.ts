@@ -272,9 +272,11 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   // Bodyweight, so no catalogue kit: the mat is what they are done on. The
   // wall sit needs a wall rather than a mat and wears this until it has one.
+  // The decline crunch is done on a decline bench, which has no render yet.
   'push-up': EXERCISE_MAT,
   plank: EXERCISE_MAT,
   'wall-sit': EXERCISE_MAT,
+  'ab-crunch': EXERCISE_MAT,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addedExerciseId, addedState, exerciseAnchor, exerciseToReveal } from './added-exercise.js';
+import {
+  addedExerciseId,
+  addedState,
+  backFromAddingState,
+  cameBackFromAdding,
+  exerciseAnchor,
+  exerciseToReveal,
+} from './added-exercise.js';
 
 describe('addedExerciseId', () => {
   it('reads what the library hands back', () => {
@@ -45,5 +52,23 @@ describe('exerciseAnchor', () => {
     expect(exerciseAnchor('abc')).toBe('exercise-abc');
     // A uuid can start with a digit, which is not a valid id to select by.
     expect(exerciseAnchor('9f3e')).toMatch(/^[a-z]/);
+  });
+});
+
+describe('cameBackFromAdding', () => {
+  it('reads what the library hands back on Back', () => {
+    expect(cameBackFromAdding(backFromAddingState())).toBe(true);
+  });
+
+  it('is not an added exercise, and an added exercise is not it', () => {
+    // Adding scrolls to the new exercise; only Back returns to the end.
+    expect(cameBackFromAdding(addedState('entry-5'))).toBe(false);
+    expect(addedExerciseId(backFromAddingState())).toBeNull();
+  });
+
+  it('ignores state that is not from the library', () => {
+    for (const stray of [null, undefined, 'back', 1, [], {}, { backFromAdding: 'yes' }]) {
+      expect(cameBackFromAdding(stray), JSON.stringify(stray)).toBe(false);
+    }
   });
 });
