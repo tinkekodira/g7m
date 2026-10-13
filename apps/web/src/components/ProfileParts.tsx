@@ -11,13 +11,20 @@ import { useCatalogue } from '../lib/db/use-catalogue.js';
 import type { TrainingHeat } from '../lib/db/use-trained-body.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { BEST_LIFTS_ANCHOR, type BestLift } from '../screens/profile-view.js';
+import { Panel } from './Panel.js';
 
 /**
  * The cards a profile is made of — the achievements button, the body coloured
  * by training, the best lifts — drawn the same for your own profile and a
  * friend's (ADR-0117). Each takes its data rather than reading it, because
  * yours comes from this phone and a friend's from the server.
+ *
+ * In Home's shell (ADR-0126): the large corner, labels in Home's small
+ * capitals, and the best lifts as the one hero card, the place Home's
+ * records card leads to.
  */
+
+const EYEBROW = 'text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase';
 
 /**
  * Loaded on demand, as on Learn. three.js is the largest thing the app ships,
@@ -63,9 +70,9 @@ export function AchievementsCard({
     <Link
       to={to}
       viewTransition
-      className="flex min-h-tap w-full items-center gap-3 rounded-card border border-subtle bg-surface px-4 py-3 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="flex min-h-tap w-full items-center gap-3 rounded-sheet border border-subtle bg-surface px-4 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-card bg-warning/15 text-warning">
         <TrophyIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -139,9 +146,9 @@ export function TrainingBodyCard({
   );
 
   return (
-    <section className="overflow-hidden rounded-card border border-subtle bg-surface">
-      <div className="p-4 pb-2">
-        <h2 className="text-lg font-semibold text-primary">{title}</h2>
+    <section className="overflow-hidden rounded-sheet border border-subtle bg-surface">
+      <div className="p-4 pb-3">
+        <h2 className="text-lg leading-6 font-semibold text-primary">{title}</h2>
         <p className="mt-0.5 text-sm text-muted">{subtitle}</p>
       </div>
 
@@ -198,9 +205,7 @@ export function TrainingBodyCard({
         ) : (
           heat.top.length > 0 && (
             <div>
-              <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">
-                Trained most
-              </h3>
+              <h3 className={cx('mb-2', EYEBROW)}>Trained most</h3>
               <ul className="flex flex-wrap gap-2">
                 {heat.top.map((muscle) => (
                   <li
@@ -254,15 +259,27 @@ export function BestLiftsCard({
   const shown = lifts === null ? [] : all ? lifts : lifts.slice(0, BESTS_SHOWN);
 
   return (
-    <section
-      id={arrived ? BEST_LIFTS_ANCHOR : undefined}
-      className={cx(
-        'scroll-mt-4 rounded-card border border-subtle bg-surface p-4',
-        arrived && 'spotlight',
-      )}
+    <Panel
+      tone="hero"
+      eyebrow="Personal records"
+      title="Best lifts"
+      aside={
+        lifts !== null &&
+        lifts.length > 0 && (
+          <>
+            <span className="numeric block text-2xl leading-7 font-bold text-primary">
+              {lifts.length}
+            </span>
+            <span className="block text-xs text-muted">
+              {lifts.length === 1 ? 'exercise' : 'exercises'}
+            </span>
+          </>
+        )
+      }
+      {...(arrived ? { id: BEST_LIFTS_ANCHOR } : {})}
+      className={cx('scroll-mt-4', arrived && 'spotlight')}
     >
-      <h2 className="text-lg font-semibold text-primary">Best lifts</h2>
-      <p className="mt-0.5 mb-1 text-xs text-muted">{description}</p>
+      <p className="mt-1 mb-2 text-xs text-muted">{description}</p>
 
       {loading && lifts === null ? (
         <p className="text-sm text-muted">Loading…</p>
@@ -307,7 +324,12 @@ export function BestLiftsCard({
                   >
                     {place === 1 && <CrownIcon className="size-4 shrink-0 podium-badge" />}
                     <span className={cx(place === 1 && 'podium-gleam')}>
-                      {String(load.value)} {load.unit}
+                      {String(load.value)}
+                      {/* The unit a size down, as on Home; the space kept, so it
+                          still reads "60 kg". */}
+                      <span className="text-xs font-semibold whitespace-pre opacity-75">
+                        {` ${load.unit}`}
+                      </span>
                     </span>
                   </span>
                   {/* One width for chevron and laurel, so every weight ends
@@ -337,6 +359,6 @@ export function BestLiftsCard({
           {all ? 'Show fewer' : `Show all ${String(lifts.length)}`}
         </button>
       )}
-    </section>
+    </Panel>
   );
 }
