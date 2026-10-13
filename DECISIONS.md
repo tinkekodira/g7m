@@ -7931,6 +7931,34 @@ the 1st (warm-ups, first times and skipped lifts excluded) and each insight.
 `niceMinutes` has its own test. `home-stats.spec.ts` checks that a first
 workout reaches both new cards.
 
+## ADR-0123 — Each month card opens the screen that answers it
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120, ADR-0122
+
+Every month card used to open Progress. Each now opens the screen that
+answers the question it asks (`DESTINATIONS` in `HomeStats.tsx`):
+
+- **Workouts** opens Progress on this month, on the workouts chart.
+- **Strength & activity** opens Progress on this month, on weight lifted.
+- **Workout duration** opens Progress on this month, on time.
+- **Muscle groups** opens Learn on the heat map (`/learn?view=heatmap`): the
+  3D body, painted by what was trained.
+- **Personal records** opens Profile at its best lifts (`/profile?show=bests`).
+  The page scrolls to the card once the lifts are drawn and outlines it once,
+  like the review on Progress (ADR-0121).
+
+Learn and Profile read their flags once, on arrival, so switching modes or
+scrolling afterwards is never fought. The best-lifts card is shared with a
+friend's profile, so the anchor and outline are opt-in props.
+
+The heat map covers the last four weeks, not the calendar month. It is the
+closest view that exists, and the ring's own numbers are on the card the
+person tapped.
+
+**Tests:** `home-stats.spec.ts` taps the workouts, muscle and records cards
+and checks where each lands. It checks Learn's heat-map wording, and that the
+best-lifts card is in view with the bench press on it.
+
 ## ADR-0124 — Progress in Home's style
 
 **Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0071, ADR-0120
@@ -7966,3 +7994,33 @@ now uses Home's language.
 **Tests:** no new behaviour, so no new tests. The full e2e suite passes. The
 week-stepping test caught a title that repeated the chart's "This week", which
 is how the period came out of the title.
+
+## ADR-0125 — Four month cards, records first; the average session moves to Progress
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120, ADR-0122, ADR-0123
+
+Five cards was one swipe too many. Workout duration came out, and the rest
+were reordered to what somebody most wants to see first:
+
+1. **Personal records.** A new best is the reason to open the app.
+2. **Your workouts**, the month's running line.
+3. **Muscle groups.**
+4. **Strength & activity.**
+
+Total training time is still on Strength & activity. The average session,
+which was the duration card's line, now sits under Progress's chart when the
+chart is on **Active time** and the period is **Monthly**. It uses Home's
+insight row (`InsightRow`, now shared) and covers the month the arrows are on,
+compared with the whole month before it. A running total would be unfair to
+compare that way on the 3rd; an average is not.
+
+Removed with the card: `MonthColumns`, `niceMinutes`, and the month's
+`timed` and `dailyMinutes`. `averageSession(sessions, span)` in `periods.ts`
+replaces `durationInsight` and works for any span.
+
+**Tests:** `periods.test.ts` covers `averageSession` (untimed workouts left
+out, nothing timed is null). `progress-view.test.ts` covers the wording.
+`home-stats.spec.ts` checks for four cards with records first and no duration
+card.
+
+ADR-0123 was lost when #158 was merged and is restored above.

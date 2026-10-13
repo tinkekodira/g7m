@@ -4,7 +4,6 @@ import {
   BODY_REGIONS,
   REGION_LABELS,
   activityInsight,
-  durationInsight,
   formatMinutes,
   musclesInsight,
   percentChange,
@@ -23,15 +22,14 @@ import { buzz } from '../lib/haptics.js';
 import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
 import {
   describeActivity,
-  describeDuration,
   describeMuscles,
   describeRecords,
   describeWorkouts,
   formatPerWeek,
   type Insight,
-  type InsightSymbol,
 } from '../screens/home-copy.js';
-import { MonthColumns, MonthLine, RegionRing, type Motion } from './Charts.js';
+import { MonthLine, RegionRing, type Motion } from './Charts.js';
+import { InsightRow } from './InsightRow.js';
 import { formatWeightTotal } from './chart-scale.js';
 import { REGION_DOT } from './region-colours.js';
 import { StatSkeleton } from './StatSkeleton.js';
@@ -39,42 +37,42 @@ import { StatValue } from './StatValue.js';
 import {
   ArrowUpIcon,
   BodyIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  ClockIcon,
   FlameIcon,
   PlayIcon,
-  TargetIcon,
   TrendIcon,
   TrophyIcon,
   type IconProps,
 } from './icons.js';
 
 /**
- * The top of Home: this month, as three cards side by side (ADR-0120).
+ * The top of Home: this month, as four cards side by side (ADR-0120, ADR-0125).
  *
  * Most people never press "Start workout" on the generated plan, so the most
  * valuable place on the first screen goes to what everybody has — their own
- * training, added up. Three cards in a row that swipes, so the section stays
+ * training, added up. Four cards in a row that swipes, so the section stays
  * one card tall and Quick access stays on the first screen of an iPhone SE.
+ *
+ * Records first: a new best is the one thing here worth opening the app for.
+ * Then the month's workouts, what they trained, and how much. Four and no
+ * more — a fifth card was one swipe past where anybody looked (ADR-0125),
+ * and how long a session runs went to Progress, under Active time.
  *
  * Every number is read from the log (`useMonthStats`), and every card says one
  * thing underneath it in words, worked out from the same numbers.
  *
- * A fourth card is one entry in `CARDS` and one component: the shell, the
+ * Another card is one entry in `CARDS` and one component: the shell, the
  * carousel, the page marker and the arrival are all shared.
  */
 
 /**
  * Where each card leads: the screen that answers the question the card asks
- * (ADR-0123). Three go to Progress on this month, each on its own chart; the
+ * (ADR-0123). Two go to Progress on this month, each on its own chart; the
  * muscle ring opens the body on Learn, painted with what was trained; the
  * records open Profile's best lifts, pointed out.
  */
 const DESTINATIONS = {
   workouts: '/progress?period=month&chart=workouts',
   activity: '/progress?period=month',
-  duration: '/progress?period=month&chart=time',
   muscles: '/learn?view=heatmap',
   records: '/profile?show=bests',
 } as const;
@@ -87,6 +85,11 @@ interface CardEntry {
 }
 
 const CARDS: readonly CardEntry[] = [
+  {
+    key: 'records',
+    name: 'Personal records',
+    render: (home, motion) => <RecordsCard home={home} motion={motion} />,
+  },
   {
     key: 'workouts',
     name: 'Workouts',
@@ -103,16 +106,6 @@ const CARDS: readonly CardEntry[] = [
     render: (home, motion) => (
       <ActivityCard stats={home.stats} unitSystem={home.unitSystem} motion={motion} />
     ),
-  },
-  {
-    key: 'duration',
-    name: 'Workout duration',
-    render: (home, motion) => <DurationCard stats={home.stats} motion={motion} />,
-  },
-  {
-    key: 'records',
-    name: 'Personal records',
-    render: (home, motion) => <RecordsCard home={home} motion={motion} />,
   },
 ];
 
@@ -292,49 +285,8 @@ function StatCard({
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col">{children}</div>
 
-      <InsightRow insight={insight} />
+      <InsightRow insight={insight} chevron className="mt-4" />
     </Link>
-  );
-}
-
-const SYMBOLS: Record<InsightSymbol, ComponentType<IconProps>> = {
-  up: ArrowUpIcon,
-  trophy: TrophyIcon,
-  check: CheckIcon,
-  target: TargetIcon,
-  play: PlayIcon,
-  clock: ClockIcon,
-};
-
-/**
- * What the numbers mean, sunk into the card's floor.
- *
- * Tone is carried by the mark on the left — the accent when it is going well,
- * plain when it is a nudge or just how things stand. Never red: being behind
- * on the 13th is not an error, and a red line on the first screen would read
- * as one.
- */
-function InsightRow({ insight }: { readonly insight: Insight }) {
-  const Symbol = SYMBOLS[insight.symbol];
-  return (
-    <div className="mt-4 flex items-center gap-3 rounded-card bg-base/70 px-3 py-2.5">
-      <span
-        aria-hidden
-        className={cx(
-          'flex size-8 shrink-0 items-center justify-center rounded-full',
-          insight.tone === 'good' ? 'bg-accent/15 text-accent' : 'bg-elevated text-secondary',
-        )}
-      >
-        <Symbol className="size-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm leading-5 font-semibold text-primary">
-          {insight.heading}
-        </span>
-        <span className="block text-xs leading-4 text-secondary">{insight.detail}</span>
-      </span>
-      <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted" />
-    </div>
   );
 }
 
@@ -516,39 +468,6 @@ function ActivityCard({
           <Delta figure={stats.volumeKg} as="percent" first={first} />
         </Stat>
       </dl>
-    </StatCard>
-  );
-}
-
-function DurationCard({ stats, motion }: { readonly stats: MonthStats; readonly motion: Motion }) {
-  const insight = describeDuration(durationInsight(stats));
-  const total = useCountUp(stats.minutes.current, motion);
-  const time = formatMinutes(stats.minutes.current);
-  const month = monthName(stats.month.start);
-
-  return (
-    <StatCard
-      to={DESTINATIONS.duration}
-      label={`Workout duration this month: ${time} in total. ${insight.heading}. ${insight.detail}`}
-      icon={ClockIcon}
-      eyebrow="Workout duration"
-      title="This month"
-      figure={
-        <>
-          <StatValue text={formatMinutes(total)} />
-          <span className="block text-xs text-muted">total time</span>
-        </>
-      }
-      insight={insight}
-    >
-      <MonthColumns
-        minutes={stats.dailyMinutes}
-        day={stats.day}
-        monthLabel={monthShort(stats.month.start)}
-        format={formatMinutes}
-        summary={`${time} of training in ${month} so far, across ${String(stats.workouts.current)} workouts.`}
-        motion={motion}
-      />
     </StatCard>
   );
 }

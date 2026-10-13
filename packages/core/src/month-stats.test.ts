@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BODY_REGIONS,
   activityInsight,
-  durationInsight,
   monthRecords,
   monthStats,
   monthStatsSince,
@@ -369,36 +368,6 @@ describe('percentChange', () => {
     expect(percentChange(5, 0)).toBeNull();
     expect(percentChange(12, 10)).toBe(20);
     expect(percentChange(8, 10)).toBe(-20);
-  });
-});
-
-describe('duration', () => {
-  it('adds each day’s training minutes, and counts only workouts long enough to time', () => {
-    const untimed: SessionTimes = {
-      startedAt: local(2026, 10, 3),
-      firstSetAt: local(2026, 10, 3),
-      lastSetAt: local(2026, 10, 3),
-    };
-    const result = stats([
-      session(local(2026, 10, 2), 50),
-      session(local(2026, 10, 2, 18), 20),
-      untimed,
-      session(local(2026, 9, 2), 40),
-    ]);
-
-    expect(result.dailyMinutes).toHaveLength(31);
-    expect(result.dailyMinutes.slice(0, 3)).toEqual([0, 70, 0]);
-    expect(result.timed).toEqual({ current: 2, previous: 1 });
-    expect(durationInsight(result)).toEqual({ kind: 'average', minutes: 35, previous: 40 });
-  });
-
-  it('has no average without a timed workout, and no comparison without one last month', () => {
-    expect(durationInsight(stats([]))).toEqual({ kind: 'none' });
-    expect(durationInsight(stats([session(local(2026, 10, 2), 45)]))).toEqual({
-      kind: 'average',
-      minutes: 45,
-      previous: null,
-    });
   });
 });
 
