@@ -8,7 +8,12 @@ import {
   type Tone,
   type UnitSystem,
 } from '@g7m/core';
-import { describeLink, describeObservation } from '../screens/review-copy.js';
+import {
+  REVIEW_ANCHOR,
+  REVIEW_PARAM,
+  describeLink,
+  describeObservation,
+} from '../screens/review-copy.js';
 import { ChevronRightIcon } from './icons.js';
 
 /**
@@ -82,16 +87,22 @@ export function ReviewCard({
   observations,
   links = [],
   unitSystem,
+  arrived = false,
 }: {
   readonly observations: readonly Observation[];
   readonly links?: readonly ObservationLink[];
   readonly unitSystem: UnitSystem;
+  /** Opened from Home's note: pointed out once, so the eye lands on it. */
+  readonly arrived?: boolean;
 }) {
   const shown = entriesFor(observations, links, unitSystem).slice(0, SHOWN);
   if (shown.length === 0) return null;
 
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
+    <section
+      id={REVIEW_ANCHOR}
+      className={`scroll-mt-4 rounded-card border border-subtle bg-surface p-4 ${arrived ? 'spotlight' : ''}`}
+    >
       <h2 className="text-lg font-semibold text-primary">How it is going</h2>
       <p className="mt-1 mb-3 text-sm text-muted">
         Read from what you logged, whether the plan wrote it or you did.
@@ -149,7 +160,7 @@ export function ReviewNudge({
 
   return (
     <Link
-      to="/progress"
+      to={`/progress?${REVIEW_PARAM}=review`}
       className="flex min-h-tap items-center gap-3 rounded-card border border-subtle bg-surface px-3 py-2.5 transition-transform duration-150 ease-out select-none active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <span

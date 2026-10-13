@@ -28,6 +28,16 @@ import {
   type UnitSystem,
 } from '@g7m/core';
 
+/**
+ * How Home's note says "and show me the review": `/progress?show=review`.
+ *
+ * In the query rather than a `#fragment`, because the hash already holds the
+ * route. Progress reads it, scrolls the review card into view once it is drawn,
+ * and points it out (ADR-0121).
+ */
+export const REVIEW_PARAM = 'show';
+export const REVIEW_ANCHOR = 'how-it-is-going';
+
 export interface Line {
   /** A few words. The thing being reported on. */
   readonly heading: string;

@@ -97,33 +97,24 @@ const CARDS: readonly CardEntry[] = [
  */
 let arrived = false;
 
-export function StatsHero({
-  month,
-  after,
-}: {
-  readonly month: QueryState<HomeStats>;
-  /** Shown under the page marker, part of the same block: the coach's note. */
-  readonly after?: ReactNode;
-}) {
+export function StatsHero({ month }: { readonly month: QueryState<HomeStats> }) {
   const home = month.data;
 
   if (home === null) {
     // A failed read is not worth an error on the first screen: the same
     // numbers are on Progress, which says so properly.
-    if (month.error !== null) return after ?? null;
+    if (month.error !== null) return null;
     return (
-      <section aria-label="This month" aria-busy className="flex flex-col gap-3">
+      <section aria-label="This month" aria-busy>
         <StatSkeleton />
-        {after}
       </section>
     );
   }
 
   if (!home.hasHistory) {
     return (
-      <section aria-label="This month" className="flex flex-col gap-3">
+      <section aria-label="This month">
         <FirstWorkoutCard stats={home.stats} />
-        {after}
       </section>
     );
   }
@@ -131,7 +122,6 @@ export function StatsHero({
   return (
     <section aria-label="This month" className="flex flex-col">
       <Carousel cards={CARDS} home={home} />
-      {after !== undefined && after !== null && <div className="mt-1">{after}</div>}
     </section>
   );
 }

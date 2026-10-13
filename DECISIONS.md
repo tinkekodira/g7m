@@ -7874,3 +7874,26 @@ at-least-one-week rule, and every insight kind. `chart-scale.test.ts` checks
 that `smoothPath` passes through each point and never overshoots.
 `home-stats.spec.ts` covers the empty state, a first workout filling in the
 cards, the screen order, and a card opening Progress on this month.
+
+## ADR-0121 — Quick access before the coach's note, and the note leads to the review
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120
+
+Seen on a phone, the coach's note between the month cards and Quick access
+pushed the ways into the app below the fold. Milan wanted Quick access
+directly under the cards. The order is now: month, Quick access, the coach's
+note, today's plan.
+
+The note used to open Progress at the top, leaving the review it came from a
+scroll away. It now opens `/progress?show=review`. The flag is in the query
+because the hash already holds the route. Progress reads the flag once, waits
+until the review and everything above it are drawn (scrolling any earlier, the
+charts arriving above would push the card back off screen), scrolls the
+"How it is going" card to the top, and outlines it once with the `spotlight`
+animation the achievements grid uses. It scrolls instantly under Reduce
+Motion. Changing the period afterwards does not pull the page back.
+
+**Tests:** checked by hand against `pnpm dev:fake`: Alex's note opens Progress
+with the review card 16px from the top. There is no e2e for the scroll. The
+note only appears once six weeks of history against a goal give the review
+something to say, which is more seeding than this change is worth.
