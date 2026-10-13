@@ -4,7 +4,6 @@ import {
   formatVolume,
   linePointsWithin,
   niceMax,
-  niceMinutes,
   niceRange,
   polylinePoints,
   smoothPath,
@@ -616,97 +615,5 @@ export function RegionRing({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">{center}</div>
     </div>
-  );
-}
-
-/**
- * Training time on each day of the month, as slim columns.
- *
- * A column only where there was training: thirty-one bars with most of them
- * zero would read as a month of failing, the same reason the workouts card is
- * a running line. Days still to come are left empty, and today's column is
- * the full accent, the rest a step lighter, so the eye finds where the month
- * is up to.
- *
- * Each column grows from the baseline on arrival, all together; the
- * reduced-motion rule flattens it like the rest.
- */
-export function MonthColumns({
-  minutes,
-  day,
-  monthLabel,
-  format,
-  summary,
-  motion,
-}: {
-  /** Minutes on each day of the month, the whole month long. */
-  readonly minutes: readonly number[];
-  /** Today's day of the month, from 1. */
-  readonly day: number;
-  readonly monthLabel: string;
-  readonly format: (minutes: number) => string;
-  readonly summary: string;
-  readonly motion: Motion;
-}) {
-  const days = minutes.length;
-  const max = niceMinutes(Math.max(0, ...minutes));
-
-  return (
-    <figure className="m-0 flex min-h-0 flex-1 flex-col">
-      <div className="relative min-h-24 flex-1">
-        <span className="numeric absolute top-0 left-0 -translate-y-1/2 text-[10px] leading-none text-muted">
-          {format(max)}
-        </span>
-        <span className="numeric absolute bottom-0 left-0 translate-y-1/2 text-[10px] leading-none text-muted">
-          0
-        </span>
-
-        <div className="absolute inset-y-0 right-1 left-7">
-          <div aria-hidden className="absolute inset-0 flex flex-col justify-between">
-            <div className="border-t border-subtle/50" />
-            <div className="border-t border-subtle/50" />
-            <div className="border-t border-subtle" />
-          </div>
-          <div
-            role="img"
-            aria-label={summary}
-            className={`absolute inset-0 flex items-end gap-px ${
-              motion === 'play' ? 'grow-y' : motion === 'wait' ? 'grow-wait' : ''
-            }`}
-          >
-            {minutes.map((value, index) => (
-              <div
-                key={`day-${String(index + 1)}`}
-                className="flex h-full min-w-0 flex-1 items-end justify-center"
-              >
-                {value > 0 && index < day && (
-                  <div
-                    className={`w-full max-w-1.5 rounded-t-sm ${
-                      index === day - 1 ? 'bg-accent' : 'bg-accent/60'
-                    }`}
-                    // Never under two pixels: a short session is still a session.
-                    style={{ height: `max(2px, ${String(fractionOf(value, max) * 100)}%)` }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div aria-hidden className="relative mt-2 mr-1 ml-7 h-3">
-        {dayTicks(days).map((tick, index, all) => (
-          <span
-            key={tick}
-            className={`numeric absolute top-0 text-[10px] leading-none whitespace-nowrap text-muted ${
-              index === 0 ? '' : index === all.length - 1 ? '-translate-x-full' : '-translate-x-1/2'
-            }`}
-            style={{ left: `${String(((tick - 0.5) / Math.max(1, days)) * 100)}%` }}
-          >
-            {index === 0 ? `${monthLabel} 1` : tick}
-          </span>
-        ))}
-      </div>
-    </figure>
   );
 }

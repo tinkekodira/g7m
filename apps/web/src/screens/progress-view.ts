@@ -17,6 +17,7 @@ import {
   type VolumeBucket,
 } from '@g7m/core';
 import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
+import type { Insight } from './home-copy.js';
 import {
   MONTHS_SHORT,
   monthName,
@@ -309,6 +310,44 @@ export function describeComparison(
  * "Mar 2026 / first workout", for all time, where there is nothing before it
  * to compare with — so the card says where all time begins instead.
  */
+/** Within this many minutes of the month before reads as the same. */
+const SAME_LENGTH = 5;
+
+/**
+ * What sits under the Active time chart on a month: the average workout, and
+ * how it sits against the month before (ADR-0125). Null with nothing timed,
+ * where the empty chart has already said it.
+ *
+ * Unlike the totals above it, an average is not still growing on the 3rd, so
+ * it can be held against all of the month before without being unfair to it.
+ */
+export function describeAverageSession(
+  average: number | null,
+  previous: number | null,
+  previousMonth: string,
+): Insight | null {
+  if (average === null) return null;
+  const heading = `Average session ${formatMinutes(average)}`;
+  if (previous === null) {
+    return {
+      heading,
+      detail: 'From your first ticked set to your last, in each workout.',
+      tone: 'neutral',
+      symbol: 'clock',
+    };
+  }
+  const difference = average - previous;
+  return {
+    heading,
+    detail:
+      Math.abs(difference) < SAME_LENGTH
+        ? `About the same as in ${previousMonth}.`
+        : `${formatMinutes(Math.abs(difference))} ${difference > 0 ? 'longer' : 'shorter'} than in ${previousMonth}.`,
+    tone: 'neutral',
+    symbol: 'clock',
+  };
+}
+
 export function sinceLine(firstAt: Date | null): ComparisonLine | null {
   if (firstAt === null) return null;
   return {

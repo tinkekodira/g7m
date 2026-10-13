@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  niceMinutes,
   smoothPath,
   formatVolume,
   formatVolumeShort,
@@ -286,15 +285,5 @@ describe('smoothPath', () => {
         expect(y).toBeLessThanOrEqual(high);
       }
     }
-  });
-});
-
-describe('niceMinutes', () => {
-  it('tops a minutes axis at a time people say', () => {
-    expect(niceMinutes(0)).toBe(30);
-    expect(niceMinutes(31)).toBe(45);
-    expect(niceMinutes(70)).toBe(90);
-    expect(niceMinutes(180)).toBe(180);
-    expect(niceMinutes(250)).toBe(300);
   });
 });

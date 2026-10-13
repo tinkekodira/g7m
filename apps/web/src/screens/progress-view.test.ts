@@ -5,6 +5,7 @@ import {
   bucketName,
   captionFor,
   dateTile,
+  describeAverageSession,
   describeComparison,
   describeWork,
   metricChartSummary,
@@ -145,6 +146,32 @@ describe('sinceLine', () => {
 describe('dateTile', () => {
   it('is the day over a short month', () => {
     expect(dateTile(local(2026, 9, 12))).toEqual({ day: '12', month: 'SEP' });
+  });
+});
+
+describe('describeAverageSession', () => {
+  it('says nothing without a timed workout: the empty chart has said it', () => {
+    expect(describeAverageSession(null, 40, 'September')).toBeNull();
+  });
+
+  it('gives the average, and how it sits against the month before', () => {
+    expect(describeAverageSession(52, 40, 'September')).toMatchObject({
+      heading: 'Average session 52m',
+      detail: '12m longer than in September.',
+    });
+    expect(describeAverageSession(75, 95, 'August')).toMatchObject({
+      heading: 'Average session 1h 15m',
+      detail: '20m shorter than in August.',
+    });
+  });
+
+  it('calls a few minutes either way the same, and has no comparison with nothing before', () => {
+    expect(describeAverageSession(44, 40, 'September')?.detail).toBe(
+      'About the same as in September.',
+    );
+    expect(describeAverageSession(44, null, 'September')?.detail).toBe(
+      'From your first ticked set to your last, in each workout.',
+    );
   });
 });
 
