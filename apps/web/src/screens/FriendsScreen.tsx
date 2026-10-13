@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 import { checkFriendCode } from '@g7m/core';
 import { Button, TextField, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { Panel } from '../components/Panel.js';
+import { StatValue } from '../components/StatValue.js';
 import {
   FriendsOffline,
   NamePrompt,
@@ -54,8 +56,15 @@ import {
  * Three sub-tabs: the friends themselves, the leaderboard (ADR-0106) with
  * your challenges above it (ADR-0110), and the requests and challenges
  * waiting for your answer.
+ *
+ * In Home's shell (ADR-0127): the sub-tabs are the pill Progress picks its
+ * period with, every card has the large corner, and labels are Home's small
+ * capitals.
  */
 type SubTab = 'friends' | 'leaderboard' | 'requests';
+
+/** How a card that opens something answers a press: in slightly, as Home's do. */
+const PRESS = 'transition-transform duration-150 ease-out active:scale-[0.985]';
 
 function subTab(value: string | null): SubTab {
   return value === 'requests' || value === 'leaderboard' ? value : 'friends';
@@ -161,7 +170,13 @@ export function FriendsScreen() {
   );
 }
 
-/** Friends | Leaderboard | Requests. Tabs in the ARIA sense: one is selected. */
+/**
+ * Friends | Leaderboard | Requests. Tabs in the ARIA sense: one is selected.
+ *
+ * Drawn as the pill Progress chooses its period with, so the two screens'
+ * main switch reads the same; still tabs underneath, not radios, because
+ * each one swaps the whole page below it.
+ */
 function SubTabs({
   value,
   requests,
@@ -173,15 +188,17 @@ function SubTabs({
 }) {
   const tabClass = (selected: boolean) =>
     cx(
-      'relative flex min-h-tap flex-1 items-center justify-center gap-1.5 px-2 text-sm font-medium transition-colors',
-      'focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-accent',
-      selected
-        ? 'text-accent after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-accent'
-        : 'text-secondary',
+      'flex min-h-tap flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-medium whitespace-nowrap transition-colors duration-200',
+      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+      selected ? 'bg-accent text-on-accent' : 'text-secondary',
     );
 
   return (
-    <div role="tablist" aria-label="Friends" className="flex border-b border-subtle">
+    <div
+      role="tablist"
+      aria-label="Friends"
+      className="flex rounded-full border border-subtle bg-input p-1"
+    >
       <button
         type="button"
         role="tab"
@@ -215,7 +232,13 @@ function SubTabs({
       >
         Requests
         {requests > 0 && (
-          <span className="numeric flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-semibold text-on-accent">
+          <span
+            className={cx(
+              'numeric flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+              // On the filled pill the count turns inside out, or it vanishes into it.
+              value === 'requests' ? 'bg-on-accent text-accent' : 'bg-accent text-on-accent',
+            )}
+          >
             {requests}
             <span className="sr-only"> waiting</span>
           </span>
@@ -250,18 +273,17 @@ function FriendList({
 
   if (cards.length === 0) {
     return (
-      <section className="rounded-card border border-subtle bg-surface p-5">
-        <h2 className="text-lg font-semibold text-primary">Train with friends</h2>
+      <Panel tone="hero" eyebrow="Friends" title="Train with friends">
         <p className="mt-1 text-sm text-secondary">
           Share your code with someone you train with. Once they add you, you’ll see each other’s
           week, best lifts and workouts here.
         </p>
         {overview.me !== null && (
-          <div className="mt-4">
+          <div className="mt-4 border-t border-subtle/70 pt-4">
             <YourCode code={overview.me.code} />
           </div>
         )}
-      </section>
+      </Panel>
     );
   }
 
@@ -286,7 +308,7 @@ function FriendList({
  */
 function FriendCard({ card }: { readonly card: FriendCardView }) {
   return (
-    <article className="relative rounded-card border border-subtle bg-surface p-4">
+    <article className={cx('relative rounded-sheet border border-subtle bg-surface p-4', PRESS)}>
       <div className="flex items-center gap-3">
         <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
@@ -294,7 +316,7 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
             <Link
               to={`/friends/${card.userId}`}
               state={{ name: card.name }}
-              className="after:absolute after:inset-0 after:rounded-card after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
+              className="after:absolute after:inset-0 after:rounded-sheet after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
             >
               {card.name}
             </Link>
@@ -323,7 +345,7 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
             <Link
               to={`/friends/${card.userId}/session/${card.lastWorkout.sessionId}`}
               state={{ name: card.name }}
-              className="relative z-10 mt-3 flex min-h-tap items-center gap-3 rounded-control bg-elevated px-3 py-2 active:bg-base focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="relative z-10 mt-4 flex min-h-tap items-center gap-3 rounded-card bg-base/70 px-3 py-2.5 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="min-w-0 flex-1">
                 <span className="block text-xs text-muted">Last workout</span>
@@ -353,8 +375,11 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
 function BestLifts({ lifts }: { readonly lifts: readonly CardLift[] }) {
   const captionId = useId();
   return (
-    <div className="mt-3 border-t border-subtle pt-3">
-      <p id={captionId} className="text-xs text-muted">
+    <div className="mt-3 border-t border-subtle/70 pt-3">
+      <p
+        id={captionId}
+        className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase"
+      >
         Best lifts
       </p>
       {lifts.length === 0 ? (
@@ -366,8 +391,9 @@ function BestLifts({ lifts }: { readonly lifts: readonly CardLift[] }) {
               <dt className="text-xs text-secondary">{lift.label}</dt>
               <dd className="numeric mt-0.5 flex flex-wrap items-baseline justify-center gap-x-1.5">
                 <span className="sr-only">{lift.description}</span>
-                <span aria-hidden className="text-base font-semibold text-primary">
-                  {lift.theirs}
+                {/* The unit a size down, as on Home. */}
+                <span aria-hidden>
+                  <StatValue text={lift.theirs} size="text-base leading-6" />
                 </span>
                 {lift.delta !== null && (
                   <span
@@ -432,7 +458,7 @@ function RequestList({
 
   if (rows.length === 0 && challenges.length === 0) {
     return (
-      <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
+      <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
         No requests waiting. When someone adds you with your code, or challenges you, it shows up
         here for you to accept.
       </p>
@@ -482,7 +508,7 @@ function RequestCard({
   };
 
   return (
-    <article className="rounded-card border border-subtle bg-surface p-4">
+    <article className="rounded-sheet border border-subtle bg-surface p-4">
       <div className="flex items-center gap-3">
         <Avatar name={row.avatarName} tint />
         <div className="min-w-0 flex-1">

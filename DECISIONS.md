@@ -7995,31 +7995,25 @@ now uses Home's language.
 week-stepping test caught a title that repeated the chart's "This week", which
 is how the period came out of the title.
 
-## ADR-0126 — Profile in Home's style
+## ADR-0127 — Friends in Home's style
 
-**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0071, ADR-0117
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0105, ADR-0106, ADR-0113
 
-Home's records card opens Profile, which still had the older look: a name
-card, a separate goal card, six boxed tiles, and a plain best-lifts card.
-It now uses the shell Progress moved to (ADR-0124):
+Friends was the last main tab still in the older look. It now uses the shell
+Home, Progress and Profile share (ADR-0124, ADR-0126):
 
-- **You and your goal** are one hero card. The goal is a block inside it,
-  still one link that says "Change" (or "Choose").
-- **Your numbers** is one card with a hairline grid, like Home's activity
-  card, with figures drawn by `StatValue`. The tiles are still `dl > div`,
-  and the BMI note sits at the foot of the card.
-- **Achievements** and **Your routines** are rows in the large-corner shell
-  with square icon chips, and they press in like Home's cards.
-- **Your training** (the body) takes the shell, and its section labels use
-  Home's small capitals.
-- **Best lifts** is the hero card, the place Home's records card leads to: a
-  "Personal records" label and a count of exercises on the right. The podium
-  stays exactly as it was (gold, silver and bronze rows, the crown, the
-  laurels); only the unit is set a size down.
+- **The sub-tabs** are the pill Progress picks its period with. They are
+  still tabs to a screen reader, because each one swaps the whole page. The
+  requests count turns inside out on the filled pill so it stays visible.
+- **A friend's card** has the large corner and presses in like Home's cards.
+  "Best lifts" is in Home's small capitals, each figure has its unit a size
+  down, and the last workout is an inset row like Home's insight row.
+- **The leaderboard** sits in Home's warm hero card. The gold, silver and
+  bronze rows keep their metals inside it. The filter card and the standing
+  bar take the large corner.
+- **Requests, challenges, the offline and name prompts, and a friend's page**
+  take the same corner and hairlines. With no friends yet, "Train with
+  friends" is the hero, with your code under a rule.
 
-The body card, the achievements row and the best lifts are shared with a
-friend's profile (ADR-0117), so it changes with them.
-
-**Tests:** no new behaviour. `profile-and-progress`, `friend-profile`,
-`home-stats` and `routines` pass, except the BMI test, which is the known
-flake and is left alone because BMI is not going to be shown.
+**Tests:** no new behaviour. `friends`, `leaderboard`, `challenges` and
+`friend-profile` pass.

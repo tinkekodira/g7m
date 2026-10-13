@@ -134,24 +134,32 @@ export function FriendsLeaderboard({
       {view === null ? (
         error === null && <p className="text-sm text-muted">Loading…</p>
       ) : view.alone ? (
-        <div className="rounded-card border border-subtle bg-surface p-5">
+        <div className="rounded-sheet border border-subtle bg-surface p-4">
           <h2 className="text-lg font-semibold text-primary">Nobody to race yet</h2>
           <p className="mt-1 text-sm text-secondary">
             Once a friend adds you, you’ll see who trained most this week and this month.
           </p>
           {code !== null && (
-            <div className="mt-4">
+            <div className="mt-4 border-t border-subtle/70 pt-4">
               <YourCode code={code} />
             </div>
           )}
         </div>
       ) : (
         <>
-          <ol className="flex flex-col">
-            {view.rows.map((row) => (
-              <BoardRow key={row.key} row={row} />
-            ))}
-          </ol>
+          {/* The board is the screen's hero, in Home's warm card; the podium
+              rows keep their metals inside it (ADR-0127). */}
+          <div className="relative isolate rounded-sheet border border-accent/20 bg-surface p-2">
+            <div
+              aria-hidden
+              className="stat-glow pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
+            />
+            <ol className="flex flex-col">
+              {view.rows.map((row) => (
+                <BoardRow key={row.key} row={row} />
+              ))}
+            </ol>
+          </div>
           {view.footnote !== null && <p className="text-xs text-muted">{view.footnote}</p>}
           {view.notSharing !== null && <p className="text-xs text-muted">{view.notSharing}</p>}
           {children}
@@ -180,7 +188,7 @@ function BoardFilters({
   const panel = useId();
 
   return (
-    <div className="rounded-card bg-surface">
+    <div className="rounded-sheet border border-subtle bg-surface">
       <button
         type="button"
         aria-expanded={open}
@@ -188,7 +196,7 @@ function BoardFilters({
         onClick={() => {
           setOpen((was) => !was);
         }}
-        className="flex min-h-tap w-full items-center gap-3 rounded-card p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex min-h-tap w-full items-center gap-3 rounded-sheet p-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span className="min-w-0 flex-1">
           <span className="block text-base font-medium text-primary">{summary}</span>
@@ -233,7 +241,7 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
       className={cx(
         'relative flex items-center gap-3 px-4',
         metal !== undefined
-          ? `place-edge podium-${String(row.rank)} mb-2 rounded-card py-3`
+          ? `place-edge podium-${String(row.rank)} mb-2 rounded-card py-3 last:mb-0`
           : 'border-b border-subtle/70 py-4 last:border-b-0',
         metal === undefined && row.isYou && 'rounded-control bg-accent-subtle',
       )}
@@ -330,7 +338,7 @@ function Standing({ place, gap }: { readonly place: string; readonly gap: string
         className="pointer-events-none fixed inset-x-0 bottom-(--tab-bar-offset) z-20"
       >
         <div className="mx-auto max-w-2xl px-4 pb-2">
-          <p className="flex flex-wrap items-baseline gap-x-2 rounded-card border border-accent/30 bg-elevated px-4 py-3 text-sm shadow-floating">
+          <p className="flex flex-wrap items-baseline gap-x-2 rounded-sheet border border-accent/30 bg-elevated px-4 py-3 text-sm shadow-floating">
             <span className="font-semibold text-primary">{place}</span>
             {gap !== null && <span className="text-secondary">{gap}</span>}
           </p>
