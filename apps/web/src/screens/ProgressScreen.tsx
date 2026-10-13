@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
@@ -37,6 +37,8 @@ import {
 import { ViewPicker, type ViewOption } from '../components/ViewPicker.js';
 import { StepArrow } from '../components/StepArrow.js';
 import { ReviewCard } from '../components/ReviewCard.js';
+import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
+import { REVIEW_ANCHOR, REVIEW_PARAM } from './review-copy.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { readChartMetric, writeChartMetric } from '../lib/chart-preference.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
@@ -109,6 +111,9 @@ export function ProgressScreen() {
   // query on it, and used to land on weight lifted whatever was picked.
   const metric = metricFrom(params.get('chart') ?? readChartMetric());
   const backParam = params.get('back');
+  // Opened from Home's note: go to the review it was a line from. Read once,
+  // so changing the period afterwards does not keep pulling the page back.
+  const [toReview] = useState(() => params.get(REVIEW_PARAM) === 'review');
   // Defaults left out of the address, so an untouched screen has a clean one.
   const writeParams = (nextPeriod: Period, nextMetric: ChartMetric, nextBack: number): void => {
     writeChartMetric(nextMetric);
@@ -150,6 +155,17 @@ export function ProgressScreen() {
       bouts,
     };
   });
+
+  // Down to the review once it, and everything above it, is drawn: scrolled
+  // earlier, the charts arriving above would push it back off the screen.
+  const reviewShown = review.data?.review != null;
+  const ready = reviewShown && state.data !== null;
+  useEffect(() => {
+    if (!toReview || !ready) return;
+    document
+      .getElementById(REVIEW_ANCHOR)
+      ?.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [toReview, ready]);
 
   const view = useMemo(() => {
     if (state.data === null) return null;
@@ -324,6 +340,7 @@ export function ProgressScreen() {
               observations={review.data.review.observations}
               links={review.data.links}
               unitSystem={review.data.unitSystem}
+              arrived={toReview}
             />
           )}
 

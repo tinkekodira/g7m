@@ -137,19 +137,14 @@ export function HomeScreen() {
 
       {open !== null && <InProgress open={open} />}
 
-      {/* The heads-up ADR-0032 asked for, now part of the month block rather
-          than a banner at the bottom: it has to be seen without a scroll,
-          because the lifter running their own program is exactly the one who
-          never taps Progress (ADR-0120). */}
       <Suspense
         fallback={
-          <section aria-label="This month" aria-busy className="flex flex-col gap-3">
+          <section aria-label="This month" aria-busy>
             <StatSkeleton />
-            {coach}
           </section>
         }
       >
-        <StatsHero month={month} after={coach} />
+        <StatsHero month={month} />
       </Suspense>
 
       <section aria-labelledby="quick-access">
@@ -168,6 +163,11 @@ export function HomeScreen() {
           ))}
         </ul>
       </section>
+
+      {/* The heads-up ADR-0032 asked for, under the ways in: the month and
+          Quick access come first, and the note leads straight to the review
+          it comes from (ADR-0121). */}
+      {coach}
 
       {/* With a workout open, the strip at the top is the way back in and the
           first tile is the way to the plan; a third card saying the same
