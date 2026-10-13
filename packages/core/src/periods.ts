@@ -422,6 +422,32 @@ export function totalsWithin(sessions: readonly SessionTimes[], span: Span): Per
 }
 
 /**
+ * The average workout's training time inside a span, in whole minutes, or
+ * null when no workout in it was long enough to time.
+ *
+ * It divides by the timed workouts only: a one-set workout has no duration,
+ * and counting it as zero minutes would drag the average down for a session
+ * nobody timed. What Progress says under the Active time chart (ADR-0125).
+ */
+export function averageSession(sessions: readonly SessionTimes[], span: Span): number | null {
+  const start = span.start.getTime();
+  const end = span.end.getTime();
+  let timed = 0;
+  let minutes = 0;
+
+  for (const session of sessions) {
+    const at = session.startedAt.getTime();
+    if (Number.isNaN(at) || at < start || at >= end) continue;
+    const measured = trainingMinutes([session.firstSetAt, session.lastSetAt]);
+    if (measured === null) continue;
+    timed += 1;
+    minutes += measured;
+  }
+
+  return timed === 0 ? null : Math.round(minutes / timed);
+}
+
+/**
  * This period against the last one, in the only terms that stay true while
  * this one is still running.
  *

@@ -99,14 +99,6 @@ export interface MonthStats {
   readonly workouts: MonthFigure;
   /** Training minutes, first ticked set to last. See `trainingMinutes`. */
   readonly minutes: MonthFigure;
-  /**
-   * Workouts long enough to time, which is what an average session divides
-   * by: a one-set workout has no duration, and counting it as zero minutes
-   * would drag the average down for a session nobody timed.
-   */
-  readonly timed: MonthFigure;
-  /** Training minutes on each day of this month; days still to come are 0. */
-  readonly dailyMinutes: readonly number[];
   /** Weight times reps over working sets, drops included. */
   readonly volumeKg: MonthFigure;
   /** Workouts per week, to one decimal. */
@@ -174,25 +166,19 @@ export function monthStats({ sessions, sets, groupsByExercise, now }: MonthStats
   const previousDays = new Array<number>(daysInPreviousMonth).fill(0);
   const workouts = { current: 0, previous: 0 };
   const minutes = { current: 0, previous: 0 };
-  const timed = { current: 0, previous: 0 };
-  const dailyMinutes = new Array<number>(daysInMonth).fill(0);
 
   for (const session of sessions) {
     const at = session.startedAt;
-    const measured = trainingMinutes([session.firstSetAt, session.lastSetAt]);
-    const spent = measured ?? 0;
+    const spent = trainingMinutes([session.firstSetAt, session.lastSetAt]) ?? 0;
     if (isCurrent(at)) {
       currentDays[at.getDate() - 1] = (currentDays[at.getDate() - 1] ?? 0) + 1;
-      dailyMinutes[at.getDate() - 1] = (dailyMinutes[at.getDate() - 1] ?? 0) + spent;
       workouts.current += 1;
       minutes.current += spent;
-      if (measured !== null) timed.current += 1;
     } else if (inSpan(at, previousStart, start)) {
       previousDays[at.getDate() - 1] = (previousDays[at.getDate() - 1] ?? 0) + 1;
       if (isPrevious(at)) {
         workouts.previous += 1;
         minutes.previous += spent;
-        if (measured !== null) timed.previous += 1;
       }
     }
   }
@@ -263,8 +249,6 @@ export function monthStats({ sessions, sets, groupsByExercise, now }: MonthStats
     previousTotal: previousDays.reduce((sum, value) => sum + value, 0),
     workouts,
     minutes: { current: Math.round(minutes.current), previous: Math.round(minutes.previous) },
-    timed,
-    dailyMinutes: dailyMinutes.map((value) => Math.round(value)),
     volumeKg: { current: Math.round(volume.current), previous: Math.round(volume.previous) },
     perWeek: {
       current: round1(workouts.current / weeks),
@@ -434,22 +418,6 @@ export function activityInsight(stats: MonthStats): ActivityInsight {
 export function percentChange(current: number, previous: number): number | null {
   if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) return null;
   return Math.round(((current - previous) / previous) * 100);
-}
-
-export type DurationInsight =
-  | { readonly kind: 'none' }
-  /** `previous` is last month's average to the same day, or null with nothing to average. */
-  | { readonly kind: 'average'; readonly minutes: number; readonly previous: number | null };
-
-/** The average session this month, against last month's to the same day. */
-export function durationInsight(stats: MonthStats): DurationInsight {
-  if (stats.timed.current === 0) return { kind: 'none' };
-  return {
-    kind: 'average',
-    minutes: Math.round(stats.minutes.current / stats.timed.current),
-    previous:
-      stats.timed.previous === 0 ? null : Math.round(stats.minutes.previous / stats.timed.previous),
-  };
 }
 
 // --- Personal records ------------------------------------------------------

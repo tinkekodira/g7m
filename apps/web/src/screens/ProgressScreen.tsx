@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
   DEFAULT_WEEK_START,
+  averageSession,
   cardioTotalsWithin,
   chartBuckets,
   comparePeriods,
@@ -23,6 +24,7 @@ import {
 import type { SessionSummary } from '@g7m/db';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { ColumnChart } from '../components/Charts.js';
+import { InsightRow } from '../components/InsightRow.js';
 import { Panel } from '../components/Panel.js';
 import { StatValue } from '../components/StatValue.js';
 import { HeaderLink } from '../components/HeaderLink.js';
@@ -44,6 +46,7 @@ import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
 import { REVIEW_ANCHOR, REVIEW_PARAM } from './review-copy.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { readChartMetric, writeChartMetric } from '../lib/chart-preference.js';
+import { monthName } from '../lib/date-words.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import {
   PERIOD_OPTIONS,
@@ -52,6 +55,7 @@ import {
   chartPeriodLabel,
   chartPeriodPhrase,
   dateTile,
+  describeAverageSession,
   describeWork,
   metricChartSummary,
   metricFrom,
@@ -201,6 +205,19 @@ export function ProgressScreen() {
       chartPhrase: chartPeriodPhrase(period, back, chartWindow.chart, now),
       // What the chart draws — all time is the last twelve months of columns.
       chartTotal: chart.reduce((sum, bucket) => sum + bucket.value, 0),
+      // Under Active time on a month, the average workout in the month the
+      // arrows are on, against the one before it (ADR-0125). Where Home's
+      // fifth card used to say it.
+      average:
+        period === 'month' && metric === 'time'
+          ? describeAverageSession(
+              averageSession(summaries, chartWindow.current),
+              chartWindow.previous === null
+                ? null
+                : averageSession(summaries, chartWindow.previous),
+              chartWindow.previous === null ? '' : monthName(chartWindow.previous.start),
+            )
+          : null,
       cardio: {
         totals: cardioNow,
         minutes: comparePeriods(cardioNow.minutes, cardioBefore?.minutes ?? null),
@@ -332,6 +349,7 @@ export function ProgressScreen() {
                 )}
               />
             </SwipeToStep>
+            {view.average !== null && <InsightRow insight={view.average} className="rise mt-4" />}
           </Panel>
 
           {/* Only once there is cardio to show: a lifter who never gets on a

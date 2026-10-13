@@ -7931,6 +7931,34 @@ the 1st (warm-ups, first times and skipped lifts excluded) and each insight.
 `niceMinutes` has its own test. `home-stats.spec.ts` checks that a first
 workout reaches both new cards.
 
+## ADR-0123 — Each month card opens the screen that answers it
+
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120, ADR-0122
+
+Every month card used to open Progress. Each now opens the screen that
+answers the question it asks (`DESTINATIONS` in `HomeStats.tsx`):
+
+- **Workouts** opens Progress on this month, on the workouts chart.
+- **Strength & activity** opens Progress on this month, on weight lifted.
+- **Workout duration** opens Progress on this month, on time.
+- **Muscle groups** opens Learn on the heat map (`/learn?view=heatmap`): the
+  3D body, painted by what was trained.
+- **Personal records** opens Profile at its best lifts (`/profile?show=bests`).
+  The page scrolls to the card once the lifts are drawn and outlines it once,
+  like the review on Progress (ADR-0121).
+
+Learn and Profile read their flags once, on arrival, so switching modes or
+scrolling afterwards is never fought. The best-lifts card is shared with a
+friend's profile, so the anchor and outline are opt-in props.
+
+The heat map covers the last four weeks, not the calendar month. It is the
+closest view that exists, and the ring's own numbers are on the card the
+person tapped.
+
+**Tests:** `home-stats.spec.ts` taps the workouts, muscle and records cards
+and checks where each lands. It checks Learn's heat-map wording, and that the
+best-lifts card is in view with the bench press on it.
+
 ## ADR-0124 — Progress in Home's style
 
 **Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0071, ADR-0120
