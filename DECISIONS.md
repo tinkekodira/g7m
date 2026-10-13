@@ -7931,30 +7931,38 @@ the 1st (warm-ups, first times and skipped lifts excluded) and each insight.
 `niceMinutes` has its own test. `home-stats.spec.ts` checks that a first
 workout reaches both new cards.
 
-## ADR-0123 — Each month card opens the screen that answers it
+## ADR-0124 — Progress in Home's style
 
-**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0120, ADR-0122
+**Status:** accepted · **Date:** 2026-10-13 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0071, ADR-0120
 
-Every month card used to open Progress. Each now opens the screen that
-answers the question it asks (`DESTINATIONS` in `HomeStats.tsx`):
+Three of Home's month cards open Progress, and it still had the older look:
+two stacked stat cards, a chart with dashed gridlines, and review entries each
+in a red-bordered box. Tapping a card felt like moving to a different app. It
+now uses Home's language.
 
-- **Workouts** opens Progress on this month, on the workouts chart.
-- **Strength & activity** opens Progress on this month, on weight lifted.
-- **Workout duration** opens Progress on this month, on time.
-- **Muscle groups** opens Learn on the heat map (`/learn?view=heatmap`): the
-  3D body, painted by what was trained.
-- **Personal records** opens Profile at its best lifts (`/profile?show=bests`).
-  The page scrolls to the card once the lifts are drawn and outlines it once,
-  like the review on Progress (ADR-0121).
+- **`Panel`** is the shared card shell: the large corner, a small uppercase
+  label over the title, and a figure on the right. `hero` adds Home's coral
+  edge and warm corner light, for the summary and the chart; `quiet` is used
+  for everything after them. It does not clip its content, because the chart's
+  view picker opens a menu below the card. A title that is a control (the
+  picker) goes in `header`, not inside a heading.
+- **One summary card** replaces the two stat cards: workouts and active time
+  side by side, the comparison under each, green with an arrow when ahead.
+  The comparison rules are unchanged. The chart now starts on the first screen
+  of an iPhone SE. The title carries no period, because the control above and
+  the chart's label below already say it.
+- **`StatValue`** draws a figure with its units a size down ("24m", "12 t"),
+  shared with Home's cards, which drop their own copy of it. It keeps the
+  formatter's spacing and any leading "≈", so the text reads exactly as
+  formatted.
+- **The column chart** follows Home's chart rules: solid hairline gridlines
+  (a dashed rule reads as a target), columns no wider than 24px, today in the
+  full accent and the rest a step lighter, and the month still running lighter
+  again. It grows in once on arrival.
+- **How it is going** is rows with the tone in a mark beside each, like Home's
+  coach note, instead of a coloured box each: three red boxes read as three
+  errors. **Cardio** and **Recent workouts** move into the same shell.
 
-Learn and Profile read their flags once, on arrival, so switching modes or
-scrolling afterwards is never fought. The best-lifts card is shared with a
-friend's profile, so the anchor and outline are opt-in props.
-
-The heat map covers the last four weeks, not the calendar month. It is the
-closest view that exists, and the ring's own numbers are on the card the
-person tapped.
-
-**Tests:** `home-stats.spec.ts` taps the workouts, muscle and records cards
-and checks where each lands. It checks Learn's heat-map wording, and that the
-best-lifts card is in view with the bench press on it.
+**Tests:** no new behaviour, so no new tests. The full e2e suite passes. The
+week-stepping test caught a title that repeated the chart's "This week", which
+is how the period came out of the title.

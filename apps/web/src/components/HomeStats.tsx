@@ -35,6 +35,7 @@ import { MonthColumns, MonthLine, RegionRing, type Motion } from './Charts.js';
 import { formatWeightTotal } from './chart-scale.js';
 import { REGION_DOT } from './region-colours.js';
 import { StatSkeleton } from './StatSkeleton.js';
+import { StatValue } from './StatValue.js';
 import {
   ArrowUpIcon,
   BodyIcon,
@@ -499,19 +500,19 @@ function ActivityCard({
     >
       <dl className="grid flex-1 grid-cols-2 content-center">
         <Stat label="Workouts" corner="top-left">
-          <Value parts={[[String(workouts), '']]} />
+          <StatValue text={String(workouts)} />
           <Delta figure={stats.workouts} as="count" first={first} />
         </Stat>
         <Stat label="Training time" corner="top-right">
-          <Value parts={minuteParts(minutes)} />
+          <StatValue text={formatMinutes(minutes)} />
           <Delta figure={stats.minutes} as="percent" first={first} />
         </Stat>
         <Stat label="Per week" corner="bottom-left">
-          <Value parts={[[formatPerWeek(Math.round(perWeek * 10) / 10), '']]} />
+          <StatValue text={formatPerWeek(Math.round(perWeek * 10) / 10)} />
           <Delta figure={stats.perWeek} as="decimal" first={first} />
         </Stat>
         <Stat label="Volume lifted" corner="bottom-right">
-          <Value parts={[weightParts(formatWeightTotal(volume, unitSystem))]} />
+          <StatValue text={formatWeightTotal(volume, unitSystem)} />
           <Delta figure={stats.volumeKg} as="percent" first={first} />
         </Stat>
       </dl>
@@ -534,7 +535,7 @@ function DurationCard({ stats, motion }: { readonly stats: MonthStats; readonly 
       title="This month"
       figure={
         <>
-          <Value parts={minuteParts(total)} />
+          <StatValue text={formatMinutes(total)} />
           <span className="block text-xs text-muted">total time</span>
         </>
       }
@@ -661,34 +662,6 @@ function Stat({
       <dd className="mt-1">{children}</dd>
     </div>
   );
-}
-
-/** A value with its units a size down: "4h 32m", "12.4 t". */
-function Value({ parts }: { readonly parts: readonly (readonly [string, string])[] }) {
-  return (
-    <span className="numeric block text-2xl leading-7 font-bold whitespace-nowrap text-primary">
-      {parts.map(([number, unit], index) => (
-        <span key={`${String(index)}-${unit}`}>
-          {index > 0 && ' '}
-          {number}
-          {unit !== '' && <span className="ml-px text-sm font-semibold text-muted">{unit}</span>}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function minuteParts(minutes: number): [string, string][] {
-  const parts = [...formatMinutes(minutes).matchAll(/(\d+)([hm])/g)].map(
-    (match): [string, string] => [match[1] ?? '', match[2] ?? ''],
-  );
-  return parts.length === 0 ? [['0', 'm']] : parts;
-}
-
-/** "850 kg" into its number and unit. */
-function weightParts(text: string): [string, string] {
-  const space = text.lastIndexOf(' ');
-  return space === -1 ? [text, ''] : [text.slice(0, space), text.slice(space + 1)];
 }
 
 /**

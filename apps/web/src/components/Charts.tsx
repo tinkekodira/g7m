@@ -126,12 +126,14 @@ export function ColumnChart({
   return (
     <figure className="m-0">
       <div role="img" aria-label={summary} className="relative h-44">
+        {/* Solid hairlines, as on Home: a dashed rule reads as a target or a
+            projection, and these are neither (ADR-0124). */}
         <div
           aria-hidden
           className="absolute inset-x-0 top-5 bottom-0 flex flex-col justify-between"
         >
-          <div className="border-t border-dashed border-subtle" />
-          <div className="border-t border-dashed border-subtle" />
+          <div className="border-t border-subtle/50" />
+          <div className="border-t border-subtle/50" />
           <div className="border-t border-subtle" />
         </div>
 
@@ -142,7 +144,7 @@ export function ColumnChart({
           </span>
         )}
 
-        <div className={`absolute inset-x-0 top-5 bottom-0 flex items-end ${gap}`}>
+        <div className={`grow-y absolute inset-x-0 top-5 bottom-0 flex items-end ${gap}`}>
           {data.map((datum) => {
             const height = Math.max(datum.value > 0 ? 3 : 0, fractionOf(datum.value, max) * 100);
             return (
@@ -158,10 +160,17 @@ export function ColumnChart({
                     {format(datum.value)}
                   </span>
                 )}
+                {/* Today in the full accent, the rest a step lighter, as on
+                    Home's duration card: the eye finds where the period is up
+                    to. A month still running is lighter again. */}
                 {!datum.future && (
                   <div
-                    className={`w-full max-w-9 rounded-t-md transition-[height] duration-300 ease-out ${
-                      datum.inProgress === true ? 'bg-accent/55' : 'bg-accent'
+                    className={`w-full max-w-6 rounded-t-sm transition-[height] duration-300 ease-out ${
+                      datum.highlight === true
+                        ? 'bg-accent'
+                        : datum.inProgress === true
+                          ? 'bg-accent/40'
+                          : 'bg-accent/70'
                     }`}
                     style={{ height: `${String(height)}%` }}
                   />
