@@ -69,14 +69,21 @@ async function oneRepMax(page: Page, slug: string): Promise<string> {
   return (await card.locator('p.numeric').first().textContent())?.trim() ?? '';
 }
 
-/** "Total workouts" from Progress, "All time" — clear of any week/month boundary. */
-async function totalWorkouts(page: Page): Promise<string> {
+/**
+ * "Total workouts" from Progress, "All time" — clear of any week/month boundary.
+ *
+ * Asserted with a retry rather than read once. The card's caption switches to
+ * "All time" at the tap, but its number is the default period's until the
+ * re-read lands. On a slow runner a single read caught this week's 1 instead
+ * of all time's 2, whenever the seeded workout fell in the week before.
+ */
+async function expectTotalWorkouts(page: Page, expected: string): Promise<void> {
   await page.goto('/#/progress');
   await page.getByRole('radio', { name: 'All time' }).click();
   const heading = page.getByRole('heading', { name: 'Total workouts' });
   await expect(heading).toBeVisible({ timeout: 10_000 });
   const card = page.locator('section').filter({ has: heading });
-  return (await card.locator('p.numeric').first().textContent())?.trim() ?? '';
+  await expect(card.locator('p.numeric').first()).toHaveText(expected);
 }
 
 /** Seed one finished, completed-set session directly, the way `chart-back` does. */
@@ -133,7 +140,7 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
   // A single rep IS the 1RM, so 100 kg for one rep reads back as exactly
   // 100 kg — no Epley rounding to argue with.
   expect(await oneRepMax(page, 'barbell-bench-press')).toBe('100 kg');
-  expect(await totalWorkouts(page)).toBe('1');
+  await expectTotalWorkouts(page, '1');
 
   // A new PR, logged for real through the app.
   await page.goto('/#/');
@@ -142,7 +149,7 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
   await finishWorkout(page);
 
   expect(await oneRepMax(page, 'barbell-bench-press')).toBe('110 kg');
-  expect(await totalWorkouts(page)).toBe('2');
+  await expectTotalWorkouts(page, '2');
 
   // Waited for: the upload runs on the app's schedule, not the test's. This
   // once passed only because a banner over Progress held a click up for five
@@ -171,7 +178,7 @@ test('deleting a workout from its detail screen reverts Progress, the 1RM and th
 
   // And everywhere else that read it: the 1RM, the totals, the calendar.
   expect(await oneRepMax(page, 'barbell-bench-press')).toBe('100 kg');
-  expect(await totalWorkouts(page)).toBe('1');
+  await expectTotalWorkouts(page, '1');
 
   await page.goto('/#/calendar');
   await dayButton(page, new Date()).click();
