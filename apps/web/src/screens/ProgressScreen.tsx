@@ -23,8 +23,11 @@ import {
 import type { SessionSummary } from '@g7m/db';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { ColumnChart } from '../components/Charts.js';
+import { Panel } from '../components/Panel.js';
+import { StatValue } from '../components/StatValue.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import {
+  ArrowUpIcon,
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -220,38 +223,47 @@ export function ProgressScreen() {
       <SegmentedControl label="Period" options={PERIOD_OPTIONS} value={period} onChange={choose} />
 
       {state.error !== null ? (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p
+          role="alert"
+          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-danger"
+        >
           {state.error}
         </p>
       ) : state.loading || view === null || state.data === null ? (
-        <p className="rounded-card bg-surface p-4 text-sm text-muted">Loading…</p>
+        <ProgressSkeleton />
       ) : state.data.summaries.length === 0 ? (
-        <p className="rounded-card border border-subtle bg-surface p-4 text-sm text-secondary">
-          Nothing here yet. Finish a workout and it will show up — the charts need completed
-          sessions, so the one you are part-way through does not count until you tap Finish.
-        </p>
+        <Panel eyebrow="Progress" title="Nothing here yet">
+          <p className="mt-1 text-sm text-secondary">
+            Finish a workout and it shows up here. The charts count completed sessions, so the one
+            you are part-way through counts once you tap Finish.
+          </p>
+        </Panel>
       ) : (
         <>
-          <StatCard
-            icon={<FlameIcon className="size-6" />}
-            tone="accent"
-            title="Total workouts"
-            value={String(view.current.workouts)}
-            caption={periodPhrase(period)}
-            side={since ?? describeComparison(view.workouts, period, String)}
-          />
-          <StatCard
-            icon={<ClockIcon className="size-6" />}
-            tone="success"
-            title="Active time"
-            value={formatMinutes(view.current.minutes)}
-            caption={periodPhrase(period)}
-            side={since ?? describeComparison(view.minutes, period, formatMinutes)}
-          />
+          {/* The two numbers somebody opens this screen for, side by side in
+              one card rather than a card each (ADR-0124). */}
+          {/* No period in the title: the control above and the chart's own label
+              below already say which week, and a third "This week" is noise. */}
+          <Panel tone="hero" title="Your training">
+            <div className="mt-4 grid grid-cols-2">
+              <Headline
+                label="Total workouts"
+                value={String(view.current.workouts)}
+                side={since ?? describeComparison(view.workouts, period, String)}
+                first
+              />
+              <Headline
+                label="Active time"
+                value={formatMinutes(view.current.minutes)}
+                side={since ?? describeComparison(view.minutes, period, formatMinutes)}
+              />
+            </div>
+          </Panel>
 
-          <section className="rounded-card border border-subtle bg-surface p-4">
-            <h2 className="sr-only">Chart</h2>
-            <div className="flex items-center justify-between gap-3">
+          <Panel
+            tone="hero"
+            label="Chart"
+            header={
               <ViewPicker
                 label="Chart view"
                 value={metric}
@@ -260,10 +272,13 @@ export function ProgressScreen() {
                   writeParams(period, next, view.back);
                 }}
               />
-              <span className="text-right">
-                <span className="numeric block text-sm text-secondary">
-                  {metricTotal(metric, view.chartTotal, unitSystem)}
-                </span>
+            }
+            aside={
+              <>
+                <StatValue
+                  text={metricTotal(metric, view.chartTotal, unitSystem)}
+                  size="text-xl leading-7"
+                />
                 {/* Which week or month is said once, between the arrows; all
                     time has no arrows, so it is said here. */}
                 {period === 'all' && (
@@ -271,8 +286,9 @@ export function ProgressScreen() {
                     {view.window.clipped ? 'in the last 12 months' : 'all time'}
                   </span>
                 )}
-              </span>
-            </div>
+              </>
+            }
+          >
             {period !== 'all' && (
               <PeriodStepper
                 period={period}
@@ -316,7 +332,7 @@ export function ProgressScreen() {
                 )}
               />
             </SwipeToStep>
-          </section>
+          </Panel>
 
           {/* Only once there is cardio to show: a lifter who never gets on a
               machine should not scroll past a card of zeros. */}
@@ -477,27 +493,12 @@ function CardioSection({
 }) {
   const unit = unitSystem === 'imperial' ? 'mi' : 'km';
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-primary">Cardio</h2>
-          <p className="text-xs text-muted">{capitalised(periodPhrase(period))}</p>
-        </div>
-        {comparison !== null && (
-          <p className="text-right text-xs">
-            <span
-              className={cx(
-                'numeric font-semibold',
-                comparison.ahead ? 'text-success' : 'text-secondary',
-              )}
-            >
-              {comparison.headline}
-            </span>{' '}
-            <span className="block text-muted">{comparison.detail}</span>
-          </p>
-        )}
-      </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+    <Panel
+      eyebrow={capitalised(periodPhrase(period))}
+      title="Cardio"
+      aside={comparison === null ? undefined : <Compared line={comparison} />}
+    >
+      <div className="mt-3 grid grid-cols-3">
         <CardioFigure label="Time" value={minutes > 0 ? formatMinutes(minutes) : '—'} />
         <CardioFigure
           label="Distance"
@@ -507,9 +508,10 @@ function CardioSection({
           label="Calories"
           value={kcal > 0 ? `≈ ${kcal.toLocaleString('en-GB')}` : '—'}
           unit={kcal > 0 ? 'kcal' : undefined}
+          last
         />
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -517,75 +519,85 @@ function capitalised(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/**
+ * One of cardio's three numbers. Its own text, not `StatValue`: "≈ 760" and
+ * "10 km" are read as written, the unit for calories on a line of its own.
+ */
 function CardioFigure({
   label,
   value,
   unit,
+  last = false,
 }: {
   readonly label: string;
   readonly value: string;
   readonly unit?: string | undefined;
+  readonly last?: boolean;
 }) {
   return (
-    <div className="min-w-0 rounded-control bg-elevated px-2.5 py-2">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="numeric truncate text-base font-semibold text-primary">{value}</p>
+    <div className={cx('min-w-0 px-3 first:pl-0', !last && 'border-r border-subtle/70')}>
+      <p className="text-xs leading-4 text-muted">{label}</p>
+      <p className="numeric mt-1 truncate text-lg leading-6 font-bold text-primary">{value}</p>
       {unit !== undefined && <p className="text-xs text-muted">{unit}</p>}
     </div>
   );
 }
 
-const TONES = {
-  accent: 'bg-accent/15 text-accent',
-  success: 'bg-success/15 text-success',
-} as const;
-
-/** One headline number, what it covers, and how it compares. */
-function StatCard({
-  icon,
-  tone,
-  title,
+/**
+ * One of the two headline numbers: the label, the figure with its units a
+ * size down (as on Home), and how it compares.
+ */
+function Headline({
+  label,
   value,
-  caption,
   side,
+  first = false,
 }: {
-  readonly icon: ReactNode;
-  readonly tone: keyof typeof TONES;
-  readonly title: string;
+  readonly label: string;
   readonly value: string;
-  readonly caption: string;
   readonly side: ComparisonLine | null;
+  readonly first?: boolean;
 }) {
   return (
-    <section className="rise flex items-center gap-4 rounded-card border border-subtle bg-surface p-4">
-      <span
-        aria-hidden
-        className={cx(
-          'flex size-12 shrink-0 items-center justify-center rounded-full',
-          TONES[tone],
-        )}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="text-sm font-medium text-secondary">{title}</h2>
-        <p className="numeric text-2xl font-bold text-primary">{value}</p>
-        <p className="text-xs text-muted">{caption}</p>
-      </div>
-      {side !== null && (
-        <div className="shrink-0 text-right">
-          <p
-            className={cx(
-              'numeric text-sm font-semibold',
-              side.ahead ? 'text-success' : 'text-secondary',
-            )}
-          >
-            {side.headline}
-          </p>
-          <p className="text-xs text-muted">{side.detail}</p>
-        </div>
-      )}
-    </section>
+    <div className={cx('min-w-0', first ? 'border-r border-subtle/70 pr-3' : 'pl-4')}>
+      <h3 className="text-xs leading-4 text-muted">{label}</h3>
+      <p className="numeric mt-1">
+        <StatValue text={value} size="text-3xl leading-9" />
+      </p>
+      {side !== null && <Compared line={side} />}
+    </div>
+  );
+}
+
+/**
+ * How a number compares: green with an arrow when ahead, and otherwise only
+ * last time's figure, without a direction. A shortfall mid-week is not news
+ * (`comparePeriods`).
+ */
+function Compared({ line }: { readonly line: ComparisonLine }) {
+  if (line.ahead) {
+    return (
+      <p className="numeric mt-0.5 flex items-center gap-0.5 text-xs leading-4 font-medium text-success">
+        <ArrowUpIcon aria-hidden className="size-3" strokeWidth={2.4} />
+        {line.headline.replace(/^↑\s*/, '')}
+        <span className="ml-1 font-normal text-muted">{line.detail}</span>
+      </p>
+    );
+  }
+  return (
+    <p className="numeric mt-0.5 text-xs leading-4 text-muted">
+      <span className="font-medium text-secondary">{line.headline}</span> {line.detail}
+    </p>
+  );
+}
+
+/** The screen's own shape while its numbers are read: the two cards to come. */
+function ProgressSkeleton() {
+  return (
+    <div aria-busy aria-label="Loading" className="flex flex-col gap-4">
+      <div className="h-40 animate-pulse rounded-sheet border border-subtle bg-surface" />
+      <div className="h-80 animate-pulse rounded-sheet border border-subtle bg-surface" />
+    </div>
   );
 }
 
@@ -600,9 +612,8 @@ function RecentWorkouts({
   const shown = all ? summaries : summaries.slice(0, RECENT_SHOWN);
 
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
-      <h2 className="mb-1 text-lg font-semibold text-primary">Recent workouts</h2>
-      <ul className="flex flex-col">
+    <Panel title="Recent workouts">
+      <ul className="mt-1 flex flex-col">
         {shown.map((summary) => (
           <li key={summary.sessionId} className="border-b border-subtle last:border-b-0">
             <SessionRow summary={summary} now={now} />
@@ -620,7 +631,7 @@ function RecentWorkouts({
           {all ? 'Show fewer' : `Show all ${String(summaries.length)}`}
         </button>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -634,7 +645,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
       to={`/progress/session/${summary.sessionId}`}
       className="flex min-h-tap items-center gap-3 py-3 active:opacity-80"
     >
-      <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-control bg-elevated leading-none">
+      <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-card bg-base/60 leading-none">
         <span className="numeric text-base font-semibold text-primary">{tile.day}</span>
         <span className="mt-0.5 text-[10px] font-medium tracking-wide text-muted">
           {tile.month}

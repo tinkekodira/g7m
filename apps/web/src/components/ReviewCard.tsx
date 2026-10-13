@@ -14,7 +14,9 @@ import {
   describeLink,
   describeObservation,
 } from '../screens/review-copy.js';
+import { cx } from '@g7m/ui';
 import { ChevronRightIcon } from './icons.js';
+import { Panel } from './Panel.js';
 
 /**
  * What the log says about how the training is going.
@@ -39,12 +41,6 @@ import { ChevronRightIcon } from './icons.js';
 
 /** Enough to be useful, few enough to read standing up. */
 const SHOWN = 3;
-
-const TONE_CLASSES = {
-  good: 'border-accent/40',
-  warning: 'border-danger/40',
-  neutral: 'border-subtle',
-} as const;
 
 const DOT_CLASSES = {
   good: 'bg-accent',
@@ -99,36 +95,40 @@ export function ReviewCard({
   if (shown.length === 0) return null;
 
   return (
-    <section
+    <Panel
       id={REVIEW_ANCHOR}
-      className={`scroll-mt-4 rounded-card border border-subtle bg-surface p-4 ${arrived ? 'spotlight' : ''}`}
+      eyebrow="From your log"
+      title="How it is going"
+      className={cx('scroll-mt-4', arrived && 'spotlight')}
     >
-      <h2 className="text-lg font-semibold text-primary">How it is going</h2>
-      <p className="mt-1 mb-3 text-sm text-muted">
+      <p className="mt-1 text-sm text-muted">
         Read from what you logged, whether the plan wrote it or you did.
       </p>
 
-      <ul className="flex flex-col gap-3">
-        {shown.map((entry) => {
-          const tone = entry.tone;
-          return (
-            <li key={entry.key} className={`rounded-control border p-3 ${TONE_CLASSES[tone]}`}>
-              <div className="flex items-baseline gap-2">
-                {/* A dot rather than colouring the text: the heading has to stay
-                    readable, and a red sentence reads as an error rather than
-                    as a thing worth looking at. */}
-                <span
-                  aria-hidden
-                  className={`mt-1.5 size-2 shrink-0 rounded-full ${DOT_CLASSES[tone]}`}
-                />
-                <p className="text-sm font-semibold text-primary">{entry.heading}</p>
-              </div>
-              <p className="mt-1 text-sm text-secondary">{entry.detail}</p>
-            </li>
-          );
-        })}
+      {/* Rows with the tone in a mark beside them, like Home's note, rather
+          than a coloured box each: three red boxes read as three errors. */}
+      <ul className="mt-2 flex flex-col">
+        {shown.map((entry) => (
+          <li
+            key={entry.key}
+            className="flex gap-3 border-b border-subtle/70 py-3 last:border-b-0 last:pb-0"
+          >
+            <span
+              aria-hidden
+              className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-elevated"
+            >
+              <span className={`size-2 rounded-full ${DOT_CLASSES[entry.tone]}`} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm leading-5 font-semibold text-primary">
+                {entry.heading}
+              </span>
+              <span className="mt-0.5 block text-sm text-secondary">{entry.detail}</span>
+            </span>
+          </li>
+        ))}
       </ul>
-    </section>
+    </Panel>
   );
 }
 
