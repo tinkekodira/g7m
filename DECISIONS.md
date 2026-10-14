@@ -8017,3 +8017,29 @@ Home, Progress and Profile share (ADR-0124, ADR-0126):
 
 **Tests:** no new behaviour. `friends`, `leaderboard`, `challenges` and
 `friend-profile` pass.
+
+## ADR-0129 — Settings in Home's style, in three groups
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish)
+
+Settings was the last tab in the older look, and thirteen cards in one
+column made it a page to scroll through looking for one switch.
+
+- **Three groups**, each under a label in Home's small capitals:
+  - **In the gym:** units, plates, rest timer.
+  - **App:** appearance, friends sharing, send feedback.
+  - **Account:** your account, sync, offline storage, where this is
+    running, your data, sign out, delete.
+
+  Gym settings come first because that is what somebody opens Settings for
+  mid-workout. This moves Appearance from the top into App. Each group is a
+  labelled `role="group"`, not a `section`, because every card in it is
+  already a section, and a section around sections made "the section with
+  this heading" match two of them (the plate-sharing e2e test caught this).
+- **Cards** take the large corner. A card's icon sits in a square chip
+  beside its title, the row icons are square like Home's, and row
+  dividers are hairlines. Delete your account keeps its red edge.
+
+**Tests:** no new behaviour. `settings`, `delete-account`, `send-feedback`,
+`your-data`, `plate-calculator`, `rest-timer-and-back`, `workout-polish` and
+`code-splitting` pass.
