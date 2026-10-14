@@ -63,6 +63,10 @@ import stairClimberIcon from '../assets/equipment/stair-climber.png';
 import stairClimberHero from '../assets/equipment/stair-climber-hero.webp';
 import kettlebellIcon from '../assets/equipment/kettlebell.png';
 import kettlebellHero from '../assets/equipment/kettlebell-hero.webp';
+import declineBenchIcon from '../assets/equipment/decline-bench.png';
+import declineBenchHero from '../assets/equipment/decline-bench-hero.webp';
+import preacherCurlMachineIcon from '../assets/equipment/preacher-curl-machine.png';
+import preacherCurlMachineHero from '../assets/equipment/preacher-curl-machine-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -140,6 +144,11 @@ const ROWING_MACHINE: EquipmentArt = { icon: rowingMachineIcon, hero: rowingMach
 const SKI_ERG: EquipmentArt = { icon: skiErgIcon, hero: skiErgHero };
 const STAIR_CLIMBER: EquipmentArt = { icon: stairClimberIcon, hero: stairClimberHero };
 const KETTLEBELL: EquipmentArt = { icon: kettlebellIcon, hero: kettlebellHero };
+const DECLINE_BENCH: EquipmentArt = { icon: declineBenchIcon, hero: declineBenchHero };
+const PREACHER_CURL_MACHINE: EquipmentArt = {
+  icon: preacherCurlMachineIcon,
+  hero: preacherCurlMachineHero,
+};
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'barbell-bench-press': BENCH,
@@ -225,6 +234,10 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'ez-bar-curl': EZ_BAR,
   'skull-crusher': EZ_BAR,
 
+  // A selectorised preacher station: pad, seat, lever arm and its own stack.
+  // Not the EZ bar: the machine is the load, so it is logged apart (ADR-0118).
+  'preacher-curl-machine': PREACHER_CURL_MACHINE,
+
   // One upright bike render covers all three — the silhouette does not
   // survive at 56px between upright and spin. Recumbent is the compromise.
   'upright-bike': EXERCISE_BIKE,
@@ -272,11 +285,14 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   // Bodyweight, so no catalogue kit: the mat is what they are done on. The
   // wall sit needs a wall rather than a mat and wears this until it has one.
-  // The decline crunch is done on a decline bench, which has no render yet.
   'push-up': EXERCISE_MAT,
   plank: EXERCISE_MAT,
   'wall-sit': EXERCISE_MAT,
   'ab-crunch': EXERCISE_MAT,
+
+  // Bodyweight too, but done on the decline bench, the accessory that tells
+  // it from the floor crunch above.
+  'decline-ab-crunch': DECLINE_BENCH,
 };
 
 /** What this exercise has been drawn with, or null if it has not been. */
