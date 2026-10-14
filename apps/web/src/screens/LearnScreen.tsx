@@ -5,8 +5,9 @@ import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { FavouriteMark } from '../components/Favourite.js';
+import { Panel } from '../components/Panel.js';
 import { ChevronRightIcon, DumbbellIcon } from '../components/icons.js';
-import { Chip } from '@g7m/ui';
+import { SegmentedControl } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
 import { HEATMAP_WEEKS, useNeglected, useTrainingHeat } from '../lib/db/use-trained-body.js';
@@ -23,6 +24,15 @@ import { sectionsFor, type MuscleSections } from './muscle-exercises.js';
 const AnatomyViewer = lazy(() =>
   import('@g7m/anatomy').then((module) => ({ default: module.AnatomyViewer })),
 );
+
+/** The two ways to look at the body, on Progress's pill (ADR-0128). */
+const MODES = [
+  { value: 'explore', label: 'Explore' },
+  { value: 'heatmap', label: 'What I have trained' },
+] as const satisfies readonly { value: AnatomyMode; label: string }[];
+
+/** Home's small capitals, for the labels inside a card. */
+const EYEBROW = 'text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase';
 
 interface MuscleDetail {
   readonly muscle: Muscle;
@@ -145,7 +155,10 @@ export function LearnScreen() {
       </header>
 
       {taxonomy.error !== null && (
-        <p role="alert" className="rounded-card bg-surface p-3 text-sm text-danger">
+        <p
+          role="alert"
+          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-danger"
+        >
           {taxonomy.error}
         </p>
       )}
@@ -163,7 +176,7 @@ export function LearnScreen() {
         three paragraphs of diagnostics above the thing the screen is for.
       */}
       {!taxonomy.loading && taxonomy.error === null && selectableSlugs.length === 0 && (
-        <p className="rounded-card bg-surface p-3 text-sm text-secondary">
+        <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
           No muscles on this device yet, so nothing on the model can be tapped. They arrive with the
           first sync — open the app once with a connection and they stay for good.
         </p>
@@ -188,27 +201,13 @@ export function LearnScreen() {
 
       {/* Two modes, one model. The heat map is the same body with different
           colours on it — a second viewer for it would drift until one
-          highlighted a muscle the other could not select. */}
-      <div className="flex gap-2">
-        <Chip
-          selected={mode === 'explore'}
-          onClick={() => {
-            setMode('explore');
-          }}
-        >
-          Explore
-        </Chip>
-        <Chip
-          selected={mode === 'heatmap'}
-          onClick={() => {
-            setMode('heatmap');
-          }}
-        >
-          What I have trained
-        </Chip>
-      </div>
+          highlighted a muscle the other could not select. On the pill
+          Progress and Friends switch with, so the main switch on every tab
+          looks the same (ADR-0128). */}
+      <SegmentedControl label="Body view" options={MODES} value={mode} onChange={setMode} />
 
-      <div className="overflow-hidden rounded-card bg-stage">
+      {/* The stage in the large corner of every other card. */}
+      <div className="overflow-hidden rounded-sheet border border-subtle bg-stage">
         {/*
           Nothing is drawn until it is known *which* body to draw.
 
@@ -271,8 +270,7 @@ export function LearnScreen() {
       )}
 
       {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
-        <section className="rounded-card bg-surface p-4">
-          <h2 className="text-lg font-semibold text-primary">Worth adding</h2>
+        <Panel eyebrow={`Last ${String(HEATMAP_WEEKS)} weeks`} title="Worth adding">
           <p className="mt-1 mb-3 text-sm text-muted">
             The groups furthest behind their weekly target, and one thing that trains each.
           </p>
@@ -280,7 +278,7 @@ export function LearnScreen() {
             {todo.data.map((suggestion, index) => (
               <li
                 key={suggestion.exerciseId}
-                className="rise flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
+                className="rise flex items-baseline justify-between gap-3 border-b border-subtle/70 py-2.5 last:border-b-0"
                 style={{ animationDelay: `${String(index * 45)}ms` }}
               >
                 <span className="min-w-0 text-sm text-primary">{suggestion.name}</span>
@@ -290,7 +288,7 @@ export function LearnScreen() {
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
 
       {/* Which body is on screen, said out loud rather than left to be worked
@@ -329,7 +327,7 @@ function MusclePanel({
   }
   if (detail === null) {
     return (
-      <p className="rounded-card bg-surface p-4 text-sm text-secondary">
+      <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
         That muscle is not in the catalogue on this device yet.
       </p>
     );
@@ -338,17 +336,21 @@ function MusclePanel({
   const { muscle, sections, favourites } = detail;
 
   return (
-    <section className="rounded-card bg-surface p-4">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold text-primary">{muscle.commonName}</h2>
+    // The answer to the tap is what the screen is for, so it is the hero.
+    <Panel
+      tone="hero"
+      eyebrow="Muscle"
+      title={muscle.commonName}
+      aside={
         <button
           type="button"
           onClick={onClear}
-          className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
+          className="-my-3 min-h-tap text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
         >
           Clear
         </button>
-      </div>
+      }
+    >
       {/* The Latin name is the reason this is Learn and not just a filter. */}
       <p className="mb-4 text-sm text-secondary italic">{muscle.latinName}</p>
 
@@ -371,7 +373,7 @@ function MusclePanel({
           />
         </>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -390,7 +392,7 @@ function ExerciseGroup({
   if (exercises.length === 0) return null;
   return (
     <div className="mb-4 last:mb-0">
-      <h3 className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">{title}</h3>
+      <h3 className={`mb-2 ${EYEBROW}`}>{title}</h3>
       {hint !== undefined && <p className="mb-2 text-xs text-muted">{hint}</p>}
       {/* Tiles with a chevron, not bare names: as plain text on the card
           they read as a list to look at, and nobody tapped them. */}
@@ -399,7 +401,7 @@ function ExerciseGroup({
           <li key={exercise.id}>
             <Link
               to={`/exercises/${exercise.slug}`}
-              className="flex min-h-tap items-center justify-between gap-3 rounded-control border border-subtle bg-elevated px-3 py-2 text-base text-primary active:opacity-80"
+              className="flex min-h-tap items-center justify-between gap-3 rounded-card bg-base/70 px-3 py-2.5 text-base text-primary transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {/* The star outside the truncated name, so a long name loses
                   its last letters rather than its star. */}

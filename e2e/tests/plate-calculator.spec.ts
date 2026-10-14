@@ -298,6 +298,6 @@ test('Learn answers a tap without three paragraphs of preamble', async ({ page }
   // gone — the model's own placeholder covers that second.
   await expect(page.getByText('Loading the muscle catalogue…')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'What I have trained' }).click();
+  await page.getByRole('radio', { name: 'What I have trained' }).click();
   await expect(page.getByText(/What you have trained, over \d+ weeks/)).toBeVisible();
 });

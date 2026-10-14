@@ -8017,3 +8017,24 @@ Home, Progress and Profile share (ADR-0124, ADR-0126):
 
 **Tests:** no new behaviour. `friends`, `leaderboard`, `challenges` and
 `friend-profile` pass.
+
+## ADR-0128 — Learn in Home's style
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0123
+
+Learn now uses the shell the other tabs share (ADR-0124, ADR-0126,
+ADR-0127):
+
+- **Explore / What I have trained** is Progress's pill (`SegmentedControl`)
+  instead of two chips, so the main switch looks the same on every tab. It
+  is a radio group, so the e2e test that clicked it as a button now clicks a
+  radio.
+- **The model's stage** has the large corner and a hairline edge.
+- **The muscle panel**, the answer to a tap and the reason the screen
+  exists, is the hero card: a "Muscle" label, the name, and Clear in the
+  accent on the right. Its sections use Home's small capitals, and each
+  exercise is an inset row that presses in.
+- **Worth adding** is a quiet card with a "Last 4 weeks" label.
+
+**Tests:** no new behaviour. `plate-calculator` (Learn's layout test),
+`home-stats` (the heat-map link) and `code-splitting` pass.
