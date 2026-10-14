@@ -8123,3 +8123,28 @@ column made it a page to scroll through looking for one switch.
 **Tests:** no new behaviour. `settings`, `delete-account`, `send-feedback`,
 `your-data`, `plate-calculator`, `rest-timer-and-back`, `workout-polish` and
 `code-splitting` pass.
+
+## ADR-0130 — The decline crunch and the machine preacher curl wear their own kit
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (polish) · **Amends:** ADR-0118
+
+ADR-0118 added both exercises before 3d-models had drawn what they are done
+on, so the decline crunch borrowed nothing and the machine preacher curl had
+no icon. Both renders are done now.
+
+- **Decline Ab Crunch** wears `3d-models/decline-bench`: the bench is what
+  tells it from the floor crunch, which keeps the mat.
+- **Preacher Curl (Machine)** wears `3d-models/curl-machine`, a selectorised
+  preacher station. It is the one preacher curl not drawn by its bar, so the
+  four now look as different in the list as they are in the log.
+
+Icon and hero come out of ADR-0084's two steps unchanged. The script that does
+it reproduces the committed kettlebell icon and hero pixel for pixel, so it is
+the same recipe and not a guess at it. Files are named for the equipment:
+`decline-bench.png` / `decline-bench-hero.webp` and
+`preacher-curl-machine.png` / `preacher-curl-machine-hero.webp` (the
+equipment row's id, not 3d-models' `curl_machine`). The decline bench hero is
+wide (1.2:1) and the machine portrait (about 0.72:1); neither is outside the
+range the hero box already fits.
+
+**Tests:** `exercise-icons.spec.ts` and `exercise-hero.spec.ts` cover both.
