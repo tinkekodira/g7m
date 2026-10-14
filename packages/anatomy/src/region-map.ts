@@ -26,16 +26,27 @@
  * The shader reads the four texels around a point itself, with `texelFetch`,
  * rather than letting the GPU filter: filtering would blend region numbers,
  * and the average of the pec and the deltoid is some third muscle.
+ *
+ * ## Why the shader is so plain
+ *
+ * It ran on desktops and drew nothing at all on a Galaxy A54 (Mali GPU): an
+ * empty stage on Learn and Profile alike (ADR-0131). Desktop browsers compile
+ * through ANGLE; a phone hands the GLSL more or less straight to its vendor's
+ * driver, and mobile drivers are where the bugs are. The first version used a
+ * float colour table, local arrays indexed in nested loops, and `continue`,
+ * which are each a known weak spot on those drivers. None of that is left. The
+ * table is plain bytes, and the four texels are four lanes of a vector,
+ * compared all at once.
  */
 import {
   Color,
   DataTexture,
-  FloatType,
   MeshStandardMaterial,
   NearestFilter,
   NoColorSpace,
   RGBAFormat,
   Texture,
+  UnsignedByteType,
 } from 'three';
 
 export interface RegionMap {
@@ -144,10 +155,12 @@ export function createRegionMaterial(map: RegionMap): RegionMaterial {
   regions.generateMipmaps = false;
   regions.needsUpdate = true;
 
-  // Linear floats, so a colour arrives in the shader exactly as `new Color`
-  // makes it for a vertex colour, and the accent is the accent.
-  const table = new Float32Array(TABLE_SIZE * 4);
-  const colours = new DataTexture(table, TABLE_SIZE, 1, RGBAFormat, FloatType);
+  // Bytes, not floats: every GPU samples an 8-bit texture, and a float one
+  // read as zero on a phone draws the body black on a black stage. The bytes
+  // are sRGB, as the colours were written, and the shader decodes them back to
+  // linear. Linear bytes would band the dark colours visibly.
+  const table = new Uint8Array(TABLE_SIZE * 4);
+  const colours = new DataTexture(table, TABLE_SIZE, 1, RGBAFormat, UnsignedByteType);
   colours.magFilter = NearestFilter;
   colours.minFilter = NearestFilter;
   colours.needsUpdate = true;
@@ -177,16 +190,12 @@ export function createRegionMaterial(map: RegionMap): RegionMaterial {
       );
   };
 
-  const scratch = new Color();
   const paint = (looks: ReadonlyMap<number, RegionLook>, rest: string) => {
-    scratch.set(rest);
-    for (let i = 0; i < TABLE_SIZE; i += 1) {
-      table.set([scratch.r, scratch.g, scratch.b, 0], i * 4);
-    }
+    const resting = tableEntry(rest, 0);
+    for (let i = 0; i < TABLE_SIZE; i += 1) table.set(resting, i * 4);
     for (const [index, look] of looks) {
       if (index < 0 || index >= TABLE_SIZE) continue;
-      scratch.set(look.color);
-      table.set([scratch.r, scratch.g, scratch.b, look.glow], index * 4);
+      table.set(tableEntry(look.color, look.glow), index * 4);
     }
     colours.needsUpdate = true;
   };
@@ -203,6 +212,22 @@ export function createRegionMaterial(map: RegionMap): RegionMaterial {
 }
 
 /**
+ * One row of the colour table: the colour as sRGB bytes, the glow as a byte.
+ *
+ * `getHex` gives sRGB whatever three's working colour space is, so this is
+ * the colour exactly as written in the palette.
+ */
+export function tableEntry(colour: string, glow: number): [number, number, number, number] {
+  const hex = new Color(colour).getHex();
+  return [
+    (hex >> 16) & 0xff,
+    (hex >> 8) & 0xff,
+    hex & 0xff,
+    Math.round(Math.min(1, Math.max(0, glow)) * 255),
+  ];
+}
+
+/**
  * The colour at a point, antialiased across region edges.
  *
  * For each distinct region among the four texels around the point, the
@@ -214,7 +239,12 @@ export function createRegionMaterial(map: RegionMap): RegionMaterial {
  *
  * `fwidth` is taken of the texel coordinate rather than of each distance so it
  * is evaluated once, in uniform control flow, and means the same thing for
- * every region the loop visits.
+ * every region.
+ *
+ * No arrays, loops or branches (see the header). The four texels are the four
+ * lanes of `id`, `d` and `w`. A region that already appeared in an earlier
+ * lane is counted once by multiplying its later lanes by zero, not by skipping
+ * them.
  */
 const REGION_GLSL = /* glsl */ `
 uniform sampler2D g7mRegions;
@@ -225,6 +255,26 @@ varying vec2 vG7mUv;
 
 int g7mRegionId( vec4 texel ) {
 	return int( floor( texel.r * g7mIdScale + 0.5 ) );
+}
+
+// The table holds sRGB bytes; lighting wants linear.
+vec3 g7mToLinear( vec3 c ) {
+	vec3 low = c / 12.92;
+	vec3 high = pow( ( c + 0.055 ) / 1.055, vec3( 2.4 ) );
+	return mix( high, low, vec3( lessThanEqual( c, vec3( 0.04045 ) ) ) );
+}
+
+vec4 g7mColour( int region ) {
+	vec4 entry = texelFetch( g7mColours, ivec2( region, 0 ), 0 );
+	return vec4( g7mToLinear( entry.rgb ), entry.a );
+}
+
+// How much of this pixel one region covers: its signed distance, plus where a
+// texel is inside it and minus where it is not, weighted by nearness.
+float g7mCover( int region, ivec4 id, vec4 d, vec4 w, float ramp ) {
+	vec4 inside = vec4( equal( id, ivec4( region ) ) );
+	float s = dot( w, d * ( 2.0 * inside - 1.0 ) );
+	return smoothstep( - ramp, ramp, s * g7mMaxDistance );
 }
 
 vec4 g7mRegionLook( vec2 uv ) {
@@ -241,29 +291,23 @@ vec4 g7mRegionLook( vec2 uv ) {
 	vec4 s2 = texelFetch( g7mRegions, clamp( c + ivec2( 0, 1 ), ivec2( 0 ), top ), 0 );
 	vec4 s3 = texelFetch( g7mRegions, clamp( c + ivec2( 1, 1 ), ivec2( 0 ), top ), 0 );
 
-	int id[ 4 ] = int[ 4 ]( g7mRegionId( s0 ), g7mRegionId( s1 ), g7mRegionId( s2 ), g7mRegionId( s3 ) );
-	float d[ 4 ] = float[ 4 ]( s0.g, s1.g, s2.g, s3.g );
-	float w[ 4 ] = float[ 4 ]( ( 1.0 - f.x ) * ( 1.0 - f.y ), f.x * ( 1.0 - f.y ), ( 1.0 - f.x ) * f.y, f.x * f.y );
+	ivec4 id = ivec4( g7mRegionId( s0 ), g7mRegionId( s1 ), g7mRegionId( s2 ), g7mRegionId( s3 ) );
+	vec4 d = vec4( s0.g, s1.g, s2.g, s3.g );
+	vec4 w = vec4( ( 1.0 - f.x ) * ( 1.0 - f.y ), f.x * ( 1.0 - f.y ), ( 1.0 - f.x ) * f.y, f.x * f.y );
 
-	vec3 colour = vec3( 0.0 );
-	float glow = 0.0;
-	float total = 0.0;
-	for ( int k = 0; k < 4; k ++ ) {
-		bool seen = false;
-		for ( int j = 0; j < k; j ++ ) seen = seen || id[ j ] == id[ k ];
-		if ( seen ) continue;
+	// 1 where a lane's region is the first of its kind, 0 where it repeats.
+	float u1 = id.y != id.x ? 1.0 : 0.0;
+	float u2 = id.z != id.x && id.z != id.y ? 1.0 : 0.0;
+	float u3 = id.w != id.x && id.w != id.y && id.w != id.z ? 1.0 : 0.0;
 
-		float s = 0.0;
-		for ( int j = 0; j < 4; j ++ ) s += w[ j ] * ( id[ j ] == id[ k ] ? d[ j ] : - d[ j ] );
-		float cover = smoothstep( - ramp, ramp, s * g7mMaxDistance );
+	float c0 = g7mCover( id.x, id, d, w, ramp );
+	float c1 = u1 * g7mCover( id.y, id, d, w, ramp );
+	float c2 = u2 * g7mCover( id.z, id, d, w, ramp );
+	float c3 = u3 * g7mCover( id.w, id, d, w, ramp );
 
-		vec4 look = texelFetch( g7mColours, ivec2( id[ k ], 0 ), 0 );
-		colour += cover * look.rgb;
-		glow += cover * look.a;
-		total += cover;
-	}
-
-	if ( total < 1e-4 ) return texelFetch( g7mColours, ivec2( id[ 0 ], 0 ), 0 );
-	return vec4( colour / total, glow / total );
+	vec4 l0 = g7mColour( id.x );
+	vec4 sum = c0 * l0 + c1 * g7mColour( id.y ) + c2 * g7mColour( id.z ) + c3 * g7mColour( id.w );
+	float total = c0 + c1 + c2 + c3;
+	return total < 1e-4 ? l0 : sum / total;
 }
 `;
