@@ -8077,23 +8077,28 @@ Home, Progress and Profile share (ADR-0124, ADR-0126):
 **Tests:** no new behaviour. `friends`, `leaderboard`, `challenges` and
 `friend-profile` pass.
 
-## ADR-0128 — Learn in Home's style
+## ADR-0129 — Settings in Home's style, in three groups
 
-**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish) · **Amends:** ADR-0123
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (mobile polish)
 
-Learn now uses the shell the other tabs share (ADR-0124, ADR-0126,
-ADR-0127):
+Settings was the last tab in the older look, and thirteen cards in one
+column made it a page to scroll through looking for one switch.
 
-- **Explore / What I have trained** is Progress's pill (`SegmentedControl`)
-  instead of two chips, so the main switch looks the same on every tab. It
-  is a radio group, so the e2e test that clicked it as a button now clicks a
-  radio.
-- **The model's stage** has the large corner and a hairline edge.
-- **The muscle panel**, the answer to a tap and the reason the screen
-  exists, is the hero card: a "Muscle" label, the name, and Clear in the
-  accent on the right. Its sections use Home's small capitals, and each
-  exercise is an inset row that presses in.
-- **Worth adding** is a quiet card with a "Last 4 weeks" label.
+- **Three groups**, each under a label in Home's small capitals:
+  - **In the gym:** units, plates, rest timer.
+  - **App:** appearance, friends sharing, send feedback.
+  - **Account:** your account, sync, offline storage, where this is
+    running, your data, sign out, delete.
 
-**Tests:** no new behaviour. `plate-calculator` (Learn's layout test),
-`home-stats` (the heat-map link) and `code-splitting` pass.
+  Gym settings come first because that is what somebody opens Settings for
+  mid-workout. This moves Appearance from the top into App. Each group is a
+  labelled `role="group"`, not a `section`, because every card in it is
+  already a section, and a section around sections made "the section with
+  this heading" match two of them (the plate-sharing e2e test caught this).
+- **Cards** take the large corner. A card's icon sits in a square chip
+  beside its title, the row icons are square like Home's, and row
+  dividers are hairlines. Delete your account keeps its red edge.
+
+**Tests:** no new behaviour. `settings`, `delete-account`, `send-feedback`,
+`your-data`, `plate-calculator`, `rest-timer-and-back`, `workout-polish` and
+`code-splitting` pass.

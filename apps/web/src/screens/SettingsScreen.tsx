@@ -82,19 +82,30 @@ export function SettingsScreen() {
         <h1 className="text-2xl font-semibold text-primary">Settings</h1>
       </header>
 
-      <Appearance />
-      <Units />
-      <AvailablePlates />
-      <RestTimes />
-      <FriendsSharing />
-      <SendFeedback />
-      <Account />
-      <SyncPanel />
-      <OfflineStorage />
-      <WhereThisIsRunning />
-      <YourData />
-      <SignOut />
-      <DeleteAccount />
+      {/* Thirteen cards in one column was a page to scroll through looking
+          for one switch. Three groups under labels in Home's small capitals
+          (ADR-0129): what changes a workout first, since that is what
+          somebody opens Settings mid-session for; then the app; then the
+          account and the data, ending on the two ways out. */}
+      <Group id="settings-gym" title="In the gym">
+        <Units />
+        <AvailablePlates />
+        <RestTimes />
+      </Group>
+      <Group id="settings-app" title="App">
+        <Appearance />
+        <FriendsSharing />
+        <SendFeedback />
+      </Group>
+      <Group id="settings-account" title="Account">
+        <Account />
+        <SyncPanel />
+        <OfflineStorage />
+        <WhereThisIsRunning />
+        <YourData />
+        <SignOut />
+        <DeleteAccount />
+      </Group>
 
       <footer className="py-4 text-xs text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
@@ -924,13 +935,16 @@ function DeleteAccount() {
   const confirmed = confirmsDeletion(typed);
 
   return (
-    <section className="rounded-card border border-danger/40 bg-surface p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-primary">
-        <span className="text-danger">
-          <TrashIcon className="size-5" />
+    <section className="rounded-sheet border border-danger/40 bg-surface p-4">
+      <h3 className="mb-3 flex items-center gap-3 text-lg font-semibold text-primary">
+        <span
+          aria-hidden
+          className="flex size-8 shrink-0 items-center justify-center rounded-card bg-danger/10 text-danger"
+        >
+          <TrashIcon className="size-4" />
         </span>
         Delete your account
-      </h2>
+      </h3>
       <p className="max-w-prose text-sm text-secondary">
         Deletes your account and everything in it — every workout, set, record, weigh-in and goal —
         from the server and from this phone. It cannot be undone. If you want a copy, download your
@@ -1023,13 +1037,49 @@ function Panel({
   readonly children: ReactNode;
 }) {
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-primary">
-        {icon !== undefined && <span className="text-muted">{icon}</span>}
+    <section className="rounded-sheet border border-subtle bg-surface p-4">
+      <h3 className="mb-3 flex items-center gap-3 text-lg font-semibold text-primary">
+        {icon !== undefined && (
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-card bg-elevated text-secondary [&>svg]:size-4"
+          >
+            {icon}
+          </span>
+        )}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+/** A heading over a run of cards, in the small capitals Home labels its cards with. */
+function Group({
+  id,
+  title,
+  children,
+}: {
+  readonly id: string;
+  readonly title: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    // A group, not a section: each card inside is a section of its own, and
+    // a section around sections made "the section with this heading" match
+    // two of them.
+    <div role="group" aria-labelledby={id} className="flex flex-col gap-3 pt-2">
+      {/* Small capitals rather than a title: the cards under it already have
+          titles of this size, and a group heading as large as them would
+          read as one more card's. */}
+      <h2
+        id={id}
+        className="px-1 text-xs leading-4 font-semibold tracking-[0.08em] text-muted uppercase"
+      >
         {title}
       </h2>
       {children}
-    </section>
+    </div>
   );
 }
 
@@ -1048,7 +1098,7 @@ function IconChip({
   return (
     <span
       aria-hidden
-      className={`flex size-10 shrink-0 items-center justify-center rounded-full ${CHIP_TONES[tone]}`}
+      className={`flex size-10 shrink-0 items-center justify-center rounded-card ${CHIP_TONES[tone]}`}
     >
       {icon}
     </span>
@@ -1057,7 +1107,7 @@ function IconChip({
 
 function Row({ label, value }: { readonly label: string; readonly value: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-subtle py-2 last:border-b-0">
+    <div className="flex items-baseline justify-between gap-4 border-b border-subtle/70 py-2.5 last:border-b-0">
       <span className="text-sm text-secondary">{label}</span>
       <span className="numeric min-w-0 truncate text-base text-primary">{value}</span>
     </div>
