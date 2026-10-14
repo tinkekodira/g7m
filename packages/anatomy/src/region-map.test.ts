@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { BufferAttribute, BufferGeometry, Group, Mesh, ShaderLib } from 'three';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  type DataTexture,
+  Group,
+  Mesh,
+  ShaderLib,
+  UnsignedByteType,
+} from 'three';
 import { partsFromObject } from './model-source.js';
-import { createRegionMaterial, parseRegionExtras, regionMapFrom } from './region-map.js';
+import {
+  createRegionMaterial,
+  parseRegionExtras,
+  regionMapFrom,
+  tableEntry,
+} from './region-map.js';
 
 const EXTRAS = {
   image: 0,
@@ -108,5 +121,39 @@ describe('createRegionMaterial', () => {
       expect.arrayContaining(['g7mRegions', 'g7mColours', 'g7mIdScale', 'g7mMaxDistance']),
     );
     dispose();
+  });
+
+  /**
+   * Each of these drew an empty stage on a Galaxy A54's Mali GPU while
+   * desktops were fine (ADR-0131). A desktop cannot catch them coming back;
+   * this can.
+   */
+  it('keeps out what phone GPUs choke on', () => {
+    const { material, dispose } = createRegionMaterial(regionMapFrom(EXTRAS, {}));
+    const shader = {
+      uniforms: {} as Record<string, { value: unknown }>,
+      vertexShader: ShaderLib.standard.vertexShader,
+      fragmentShader: ShaderLib.standard.fragmentShader,
+    };
+    (material.onBeforeCompile as unknown as (s: typeof shader) => void)(shader);
+
+    const ours = shader.fragmentShader.slice(shader.fragmentShader.indexOf('g7mRegions'));
+    expect(ours).not.toMatch(/\bfor\s*\(|\bwhile\s*\(|\bcontinue\b/);
+    expect(ours).not.toMatch(/\[\s*\d*\s*\]/);
+    const table = shader.uniforms['g7mColours']?.value as DataTexture;
+    expect(table.type).toBe(UnsignedByteType);
+    dispose();
+  });
+});
+
+describe('tableEntry', () => {
+  it('writes the colour as the sRGB bytes it was given', () => {
+    expect(tableEntry('#d97a64', 0)).toEqual([0xd9, 0x7a, 0x64, 0]);
+  });
+
+  it('writes the glow as a byte, clamped', () => {
+    expect(tableEntry('#000000', 0.42)[3]).toBe(107);
+    expect(tableEntry('#000000', 2)[3]).toBe(255);
+    expect(tableEntry('#000000', -1)[3]).toBe(0);
   });
 });

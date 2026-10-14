@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import { BufferAttribute, BufferGeometry, Color, type Material, type Mesh } from 'three';
@@ -98,13 +98,20 @@ export function AnatomyViewer({
 }: AnatomyViewerProps) {
   const selectable = useMemo(() => new Set(selectableSlugs), [selectableSlugs]);
   const forms = useMemo(() => bodyForms(), []);
+  const [shaderFailed, setShaderFailed] = useState(false);
 
   // A sculpted body built with a region map is coloured from the map, so its
   // highlight has the muscle's outline rather than its triangles' (see
   // `region-map.ts`). Every part of one model shares the one map.
+  //
+  // Unless this GPU could not compile the map's shader. Then the body is
+  // drawn by piece with three's stock material: zig-zag highlight edges, but
+  // a body. A failed shader draws nothing at all, which is what a Galaxy A54
+  // showed (ADR-0131).
   const regionMap = useMemo(
-    () => parts.find((part) => part.region !== undefined)?.region?.map ?? null,
-    [parts],
+    () =>
+      shaderFailed ? null : (parts.find((part) => part.region !== undefined)?.region?.map ?? null),
+    [parts, shaderFailed],
   );
   const looks = useMemo(() => {
     const byRegion = new Map<number, RegionLook>();
@@ -146,6 +153,21 @@ export function AnatomyViewer({
         shadows={false}
         frameloop={interactive ? 'always' : 'demand'}
         {...(interactive ? {} : { style: { pointerEvents: 'none' } })}
+        onCreated={({ gl }) => {
+          // three skips any mesh whose program failed and says so only in the
+          // console, which on a phone nobody reads. This turns that into the
+          // fallback above. Taking the hook also silences three's own
+          // console.error, so the driver's log is passed on here.
+          gl.debug.onShaderError = (context, program, vertex, fragment) => {
+            console.warn(
+              'A shader failed on this GPU; drawing the body without its region map.',
+              context.getProgramInfoLog(program),
+              context.getShaderInfoLog(vertex),
+              context.getShaderInfoLog(fragment),
+            );
+            setShaderFailed(true);
+          };
+        }}
         // A tap that hits nothing is a deselect. Without this the only way out
         // of a selection is to find another muscle, which on a phone means
         // hitting a 2 cm target on purpose.

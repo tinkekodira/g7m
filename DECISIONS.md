@@ -8148,3 +8148,39 @@ wide (1.2:1) and the machine portrait (about 0.72:1); neither is outside the
 range the hero box already fits.
 
 **Tests:** `exercise-icons.spec.ts` and `exercise-hero.spec.ts` cover both.
+
+## ADR-0131 — The body draws on phone GPUs, and falls back when it cannot
+
+**Status:** accepted · **Date:** 2026-10-14 · **Phase:** out of phase (fix) · **Amends:** ADR-0091
+
+On a Samsung Galaxy A54 (Mali GPU) every 3D figure was an empty stage: Learn's
+Explore and What I have trained, and Profile's Your training. The model loaded
+(the footnote named the sculpted body) and the page did not crash, so the
+canvas was alive and only the body was missing. The body is the one thing on
+that canvas drawn with our own shader, ADR-0091's region map.
+
+Desktop browsers compile shaders through ANGLE. A phone hands them to its
+vendor's driver, and the first version used three things those drivers are
+known to get wrong:
+
+- **A float colour table.** If the driver reads it as zero, the body is black
+  on a black stage and invisible. The table is now 8-bit RGBA holding sRGB
+  bytes (`tableEntry`), decoded to linear in the shader. Linear bytes would
+  band the dark colours.
+- **Local arrays indexed inside nested loops, with `continue`.** The four
+  texels are now the four lanes of an `ivec4` and two `vec4`s. Each region's
+  coverage is a `dot`, and a region already counted is multiplied by zero
+  instead of skipped. There are no loops, arrays or branches left in it.
+
+On desktop the new shader renders the same as the old one to within one
+colour level (Learn and Profile screenshots diffed).
+
+A desktop cannot show which of these the A54 tripped on. So the viewer also
+falls back: `gl.debug.onShaderError` drops the region map and draws the body
+piece by piece with three's stock material. That is the look from before
+ADR-0091, with zig-zag highlight edges, but it is always a body. The driver's
+log goes to `console.warn`.
+
+**Tests:** `region-map.test.ts` fails if a loop, array, `continue` or float
+table comes back, and covers `tableEntry`. The fallback was checked in Chrome
+by faking a link failure on the region program: both screens drew the body.
