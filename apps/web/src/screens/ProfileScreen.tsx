@@ -277,7 +277,7 @@ function LevelLine() {
           <span className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
             Level
           </span>
-          <span className="numeric text-2xl leading-7 font-bold text-primary">{level}</span>
+          <span className="numeric text-lg leading-6 font-semibold text-primary">{level}</span>
         </p>
         <p className="numeric text-xs text-muted">
           <span className="text-secondary">{xp(xpIntoLevel)}</span> / {xp(xpForLevel)} XP
