@@ -8250,3 +8250,50 @@ the banner and the published total always agree.
 curve's thresholds and the pace it was chosen for. `friends.test.ts` checks
 `publish_xp`'s limits and that the XP goes only to friends who are shared
 with. `levels.spec.ts` checks Profile and a friend's card end to end.
+
+## ADR-0133 — A challenge is a button that opens, on two stats
+
+**Status:** accepted · **Date:** 2026-10-15 · **Phase:** out of phase (feature) · **Builds on:** ADR-0110
+
+Until now the challenge form sat open on every friend's page: Rank by, four
+stats and a Send button, about a third of the phone screen. Most visits to a
+friend are not to challenge them, and the form pushed their achievements and
+routines below the fold.
+
+**One button, closed.** "Challenge {name}", with a badge and "Seven days,
+from when {name} accepts." under it. The badge is Milan's crossed swords:
+two white blades with orange hilts, crossed inside an orange ring with a fire
+glow round it. `DuelIcon` redraws his drawing as an SVG rather than shipping
+the PNG, whose cut-out background left holes and blotches in the glow. The
+SVG stays sharp at every pixel density. The blades are bevelled (a lit half
+and a shaded half), and the front sword casts a shadow on the back one. The
+disc behind them follows the theme: near-black at night, and a soft peach by
+day, where the blades also take a thin warm edge. The ring's glow flickers
+with the button's ember. An ember runs round its edge: a hot band of accent
+and gold that goes round every 3.6 s, and a blurred copy behind it that
+flickers. It is the one thing on the page that starts something, and it
+should look like it. Reduced motion stops both on their first frame (the
+global rule in `tokens.css`), leaving a still, warm ring. Made from
+`@property` and a masked `conic-gradient` in `styles.css` (`.ember`), with
+no script and no image.
+
+**The choices are in a bottom sheet**, built like Add a friend's: from the
+bottom, Done takes focus, Escape or a tap above it closes it, and focus goes
+back to the button. A refusal is said in the sheet, under Send. A send that
+goes through closes the sheet and the waiting card appears.
+
+**Two stats: workouts and weight.** Over seven days, sets and time measure
+padding as much as training. One more junk set or a longer rest moves them,
+and neither says who trained harder. Workouts is who turned up, and weight is
+who lifted more. Most / Most improved stays, because improvement is what
+makes a duel fair between a beginner and someone who lifts twice as much.
+
+- **The leaderboard keeps all four.** Over a month among several friends,
+  sets and time still say something. `STAT_OPTIONS` is the board's list and
+  `CHALLENGE_STAT_OPTIONS` is the challenge's.
+- **The server is unchanged on purpose.** `send_challenge` still accepts
+  `sets` and `minutes`, and the table's check still allows them. Challenges
+  made on them before this change are still counted, titled ("Most sets")
+  and shown until they age out. Narrowing the check would have meant
+  rewriting or deleting those rows for no gain. An old app that still offers
+  the four stats can still send them, which is harmless.

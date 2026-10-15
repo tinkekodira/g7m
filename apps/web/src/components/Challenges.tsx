@@ -1,15 +1,20 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from './Avatar.js';
+import { ChevronRightIcon, DuelIcon } from './icons.js';
 import {
   answerChallenge,
   sendChallenge,
   withdrawChallenge,
   FriendsError,
 } from '../lib/friends/api.js';
-import { describeChallengeProblem, type ChallengeCardView } from '../screens/challenges-view.js';
-import { RANKING_OPTIONS, STAT_OPTIONS } from '../screens/leaderboard-view.js';
+import {
+  CHALLENGE_STAT_OPTIONS,
+  describeChallengeProblem,
+  type ChallengeCardView,
+} from '../screens/challenges-view.js';
+import { RANKING_OPTIONS } from '../screens/leaderboard-view.js';
 
 /**
  * One-to-one challenges (ADR-0110): the cards, and the form that sends one.
@@ -171,9 +176,10 @@ export function ChallengeList({
 }
 
 /**
- * Challenge a friend: a stat, most or most improved, and send. It starts when
- * they accept, so nothing is lost to a challenge they do not see until
- * Thursday.
+ * Challenge a friend (ADR-0133): one button, with an ember running round its
+ * edge, that opens the choices in a sheet. Most visits to a friend are not to
+ * challenge them, so the form stays shut until asked for, and the button is
+ * the one thing on the page that looks like it wants pressing.
  */
 export function SendChallenge({
   friendId,
@@ -184,11 +190,95 @@ export function SendChallenge({
   readonly name: string;
   readonly onSent: () => void;
 }) {
+  const titleId = useId();
+  const detailId = useId();
+  const [open, setOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    opener.current?.focus();
+  }, []);
+
+  return (
+    <>
+      <div className="ember rounded-sheet">
+        <button
+          ref={opener}
+          type="button"
+          aria-haspopup="dialog"
+          aria-labelledby={titleId}
+          aria-describedby={detailId}
+          onClick={() => {
+            setOpen(true);
+          }}
+          className="flex w-full items-center gap-4 rounded-sheet bg-surface p-4 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
+          <DuelBadge />
+          <span className="min-w-0 flex-1">
+            <span id={titleId} className="block truncate text-lg font-semibold text-primary">
+              Challenge {name}
+            </span>
+            <span id={detailId} className="mt-0.5 block text-sm text-muted">
+              Seven days, from when {name} accepts.
+            </span>
+          </span>
+          <ChevronRightIcon className="size-5 shrink-0 text-muted" />
+        </button>
+      </div>
+      {open && (
+        <ChallengeSheet
+          friendId={friendId}
+          name={name}
+          onClose={close}
+          onSent={() => {
+            setOpen(false);
+            onSent();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function DuelBadge() {
+  return <DuelIcon className="size-14 shrink-0" />;
+}
+
+/**
+ * The choices: most or most improved, workouts or weight, and send. From the
+ * bottom of the screen, where a thumb already is, as Add a friend is. It
+ * starts when they accept, so nothing is lost to a challenge they do not see
+ * until Thursday. What went wrong is said in place, under the button.
+ */
+function ChallengeSheet({
+  friendId,
+  name,
+  onClose,
+  onSent,
+}: {
+  readonly friendId: string;
+  readonly name: string;
+  readonly onClose: () => void;
+  readonly onSent: () => void;
+}) {
   const headingId = useId();
   const [ranking, setRanking] = useState<LeaderboardRanking>('most');
   const [stat, setStat] = useState<LeaderboardStat>('workouts');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const doneRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    doneRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    globalThis.addEventListener('keydown', onKey);
+    return () => {
+      globalThis.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
 
   const send = () => {
     setBusy(true);
@@ -207,56 +297,73 @@ export function SendChallenge({
     );
   };
 
-  // Lighter than the friend's card above it: this is something you might do,
-  // not who they are. The send button wears the same tint as the choices above
-  // it, so the card reads as one form rather than a form and a slab.
   return (
-    <section
-      aria-labelledby={headingId}
-      className="flex flex-col gap-6 rounded-sheet border border-subtle/60 bg-surface/50 p-5"
-    >
-      <div>
-        <h2 id={headingId} className="text-lg font-semibold text-primary">
-          Challenge {name}
-        </h2>
-        <p className="mt-1 text-sm text-muted">
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+        className="popup relative flex w-full max-w-2xl flex-col gap-6 rounded-t-sheet border-t border-subtle bg-surface px-5 pt-5 pb-safe-bottom shadow-floating"
+      >
+        <div className="flex items-center gap-3">
+          <DuelBadge />
+          <h2 id={headingId} className="min-w-0 flex-1 truncate text-xl font-semibold text-primary">
+            Challenge {name}
+          </h2>
+          <button
+            ref={doneRef}
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-tap shrink-0 items-center rounded-control px-3 text-sm font-medium text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            Done
+          </button>
+        </div>
+        <p className="-mt-3 text-sm text-muted">
           {ranking === 'improved'
             ? 'Seven days, each of you against your own last four weeks, so it’s fair whoever trains more.'
             : 'Seven days. Whoever does the most wins.'}
         </p>
-      </div>
-      <div className="flex flex-col gap-4">
-        <ChallengeChoice label="Rank by">
-          <SegmentedControl
-            variant="quiet"
-            label="Rank by"
-            options={RANKING_OPTIONS}
-            value={ranking}
-            onChange={setRanking}
-          />
-        </ChallengeChoice>
-        <ChallengeChoice label="Stat">
-          <SegmentedControl
-            variant="quiet"
-            label="Stat"
-            options={STAT_OPTIONS}
-            value={stat}
-            onChange={setStat}
-          />
-        </ChallengeChoice>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Button variant="quiet" fullWidth disabled={busy} onClick={send}>
-          Send challenge
-        </Button>
-        <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
-        {problem !== null && (
-          <p role="alert" className="text-sm text-danger">
-            {problem}
-          </p>
-        )}
-      </div>
-    </section>
+        <div className="flex flex-col gap-4">
+          <ChallengeChoice label="Rank by">
+            <SegmentedControl
+              variant="quiet"
+              label="Rank by"
+              options={RANKING_OPTIONS}
+              value={ranking}
+              onChange={setRanking}
+            />
+          </ChallengeChoice>
+          <ChallengeChoice label="Stat">
+            <SegmentedControl
+              variant="quiet"
+              label="Stat"
+              options={CHALLENGE_STAT_OPTIONS}
+              value={stat}
+              onChange={setStat}
+            />
+          </ChallengeChoice>
+        </div>
+        <div className="flex flex-col gap-2 pb-5">
+          <Button fullWidth disabled={busy} onClick={send}>
+            Send challenge
+          </Button>
+          <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
+          {problem !== null && (
+            <p role="alert" className="text-sm text-danger">
+              {problem}
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
 

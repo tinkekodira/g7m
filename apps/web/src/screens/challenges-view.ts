@@ -60,6 +60,20 @@ export interface ChallengeContext {
   readonly unitSystem: UnitSystem;
 }
 
+/**
+ * What a new challenge can be on (ADR-0133): who turned up, and who lifted
+ * more. Sets and time can be padded over a week — one more junk set, a longer
+ * rest — so they no longer decide one. The board still ranks all four, and a
+ * challenge already made on sets or time is still counted and shown.
+ */
+export const CHALLENGE_STAT_OPTIONS: readonly {
+  readonly value: LeaderboardStat;
+  readonly label: string;
+}[] = [
+  { value: 'workouts', label: 'Workouts' },
+  { value: 'lifted', label: 'Weight' },
+];
+
 const NOUNS: Record<LeaderboardStat, string> = {
   workouts: 'workouts',
   lifted: 'weight lifted',
