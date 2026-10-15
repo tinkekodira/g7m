@@ -81,6 +81,11 @@ export async function publishAchievements(earned: readonly EarnedAchievement[]):
   });
 }
 
+/** Your total XP, for friends to read your level from. ADR-0132. */
+export async function publishXp(total: number): Promise<void> {
+  await rpc('publish_xp', { total });
+}
+
 /**
  * The server's reply for one of a friend's workouts, undecoded, so it can be
  * kept on the device exactly as it came (`cache.ts`) and decoded on the way

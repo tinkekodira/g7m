@@ -510,7 +510,14 @@ describe('what a friend can see', () => {
         bests: { exercise_id: string; best_kg: number; last_at: string }[];
       };
     };
-    expect(Object.keys(card).sort()).toEqual(['name', 'sharing', 'since', 'training', 'user_id']);
+    expect(Object.keys(card).sort()).toEqual([
+      'name',
+      'sharing',
+      'since',
+      'training',
+      'user_id',
+      'xp',
+    ]);
     expect(Object.keys(card.training).sort()).toEqual([
       'bests',
       'big_three',
@@ -845,6 +852,44 @@ describe('a friend’s profile', () => {
     await expect(
       call(alex, 'public.publish_achievements($1)', [JSON.stringify(many)]),
     ).rejects.toThrow(/at most 200/);
+  });
+});
+
+describe('levels', () => {
+  const xpIn = async (viewer: string, other: string) => {
+    const overview = await call<{ friends: { user_id: string; xp?: number | null }[] }>(
+      viewer,
+      'public.friends_overview()',
+    );
+    return overview.friends.find((friend) => friend.user_id === other)?.xp;
+  };
+
+  it('hands a friend the XP you published, and only while you share', async () => {
+    const alex = await person('Alex');
+    const me = await person('Me');
+    await friends(me, alex);
+    expect(await xpIn(me, alex)).toBeNull();
+
+    await call(alex, 'public.publish_xp($1)', [7200]);
+    expect(await xpIn(me, alex)).toBe(7200);
+
+    // Publishing is only ever your own row.
+    const { rows } = await h.db.query<{ xp: number | null }>(
+      `select xp from public.friend_profiles where user_id = $1`,
+      [me],
+    );
+    expect(rows[0]?.xp).toBeNull();
+
+    // A level is a summary of training, so it stops with the training.
+    await call(alex, 'public.set_training_sharing(false)');
+    expect(await xpIn(me, alex)).toBeUndefined();
+  });
+
+  it('refuses a total below nothing or past any lifetime', async () => {
+    const alex = await person('Alex');
+    await expect(call(alex, 'public.publish_xp($1)', [-1])).rejects.toThrow(/between 0/);
+    await expect(call(alex, 'public.publish_xp($1)', [10_000_001])).rejects.toThrow(/between 0/);
+    await expect(call(alex, 'public.publish_xp($1)', [null])).rejects.toThrow(/between 0/);
   });
 });
 

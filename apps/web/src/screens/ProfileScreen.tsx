@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { countryName, firstName, personalRecords, type UnitSystem } from '@g7m/core';
+import { countryName, firstName, levelFor, personalRecords, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { Panel } from '../components/Panel.js';
@@ -150,6 +150,8 @@ export function ProfileScreen() {
           </div>
         </div>
 
+        <LevelLine />
+
         <GoalCard goal={goal.data} loading={goal.loading} now={now} />
       </Panel>
 
@@ -251,6 +253,50 @@ function AchievementsLink() {
             : `${String(earned)} of ${String(total)} earned`
       }
     />
+  );
+}
+
+/**
+ * Your level, and how far into it: one quiet line and a hairline, part of who
+ * you are rather than a game laid over the page. ADR-0132.
+ *
+ * The XP is read in the same pass as the achievements, from the same log, so
+ * a badge and the XP it is worth arrive together. Nothing until then: a level
+ * 1 flashed at somebody on level 30 reads as a lost level.
+ */
+function LevelLine() {
+  const state = useAchievements();
+  if (state.data?.ready !== true) return null;
+  const { level, xpIntoLevel, xpForLevel, progress } = levelFor(state.data.xp);
+  const xp = (value: number) => value.toLocaleString('en-GB');
+
+  return (
+    <div className="rise mt-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="flex items-baseline gap-2">
+          <span className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
+            Level
+          </span>
+          <span className="numeric text-2xl leading-7 font-bold text-primary">{level}</span>
+        </p>
+        <p className="numeric text-xs text-muted">
+          <span className="text-secondary">{xp(xpIntoLevel)}</span> / {xp(xpForLevel)} XP
+        </p>
+      </div>
+      <div
+        role="progressbar"
+        aria-label={`Level ${String(level)}: ${xp(xpIntoLevel)} of ${xp(xpForLevel)} XP to level ${String(level + 1)}`}
+        aria-valuemin={0}
+        aria-valuemax={xpForLevel}
+        aria-valuenow={xpIntoLevel}
+        className="mt-2 h-1 w-full overflow-hidden rounded-full bg-base/70"
+      >
+        <div
+          className="h-full rounded-full bg-accent transition-[width] duration-500 motion-reduce:transition-none"
+          style={{ width: `${String(progress * 100)}%` }}
+        />
+      </div>
+    </div>
   );
 }
 

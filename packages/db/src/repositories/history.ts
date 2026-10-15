@@ -76,6 +76,8 @@ export interface SessionSummary {
   readonly boutCount: number;
   /** `past` for a workout logged afterwards, whose clock times mean nothing. */
   readonly source: SessionSource;
+  /** When the row was written: for a `past` workout, when it was logged. */
+  readonly createdAt: Date;
   /**
    * When the first and last counted sets were ticked.
    *
@@ -288,6 +290,7 @@ export class HistoryRepository {
     const bound = limit === null ? -1 : Math.max(1, Math.trunc(limit));
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg, ws.source,
+              ws.created_at,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
               counted.set_count, counted.bout_count, counted.first_set_at, counted.last_set_at
@@ -328,6 +331,7 @@ export class HistoryRepository {
       setCount: readNumber(row, 'set_count', 0),
       boutCount: readNumber(row, 'bout_count', 0),
       source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
+      createdAt: readDate(row, 'created_at') ?? new Date(readString(row, 'started_at', '')),
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
       work: work.get(readString(row, 'session_id', '')) ?? [],

@@ -5,6 +5,7 @@ import { cx } from '@g7m/ui';
 import { useAchievements } from '../lib/db/use-achievements.js';
 import { useWrite } from '../lib/db/use-catalogue.js';
 import { usePublishAchievements } from '../lib/friends/publish-achievements.js';
+import { usePublishXp } from '../lib/friends/publish-xp.js';
 import { buzz } from '../lib/haptics.js';
 import { celebrationsFor, quietSummary } from '../screens/achievements-view.js';
 import { AchievementMedal } from './AchievementMedal.js';
@@ -43,6 +44,8 @@ export function AchievementCelebrations() {
   const data = state.data;
   // The same read, so friends see what this announces. ADR-0117.
   usePublishAchievements(data?.ready === true ? data.list : null);
+  // And the level the same log adds up to. ADR-0132.
+  usePublishXp(data?.ready === true ? data.xp : null);
 
   useEffect(() => {
     if (!data?.ready) return;
