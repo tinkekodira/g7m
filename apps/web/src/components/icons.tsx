@@ -404,6 +404,34 @@ export function AddFriendIcon(props: IconProps) {
 }
 
 /**
+ * You against them, with a slashed VS between: the challenge button. Wider
+ * than the grid, because two people and two letters do not fit 24 units, and
+ * filled where the others are drawn, so it reads as a badge rather than a
+ * glyph. You take the colour around it (the accent), they are in green, and
+ * the letters are in the ink.
+ */
+export function VersusIcon(props: IconProps) {
+  return (
+    <Glyph viewBox="0 0 32 24" {...props}>
+      <g fill="currentColor" stroke="none">
+        <circle cx="5.3" cy="9" r="2.6" />
+        <path d="M1 19.4c0-3.1 1.9-5.1 4.3-5.1s4.3 2 4.3 5.1Z" />
+      </g>
+      <g className="text-success" fill="currentColor" stroke="none">
+        <circle cx="26.7" cy="9" r="2.6" />
+        <path d="M22.4 19.4c0-3.1 1.9-5.1 4.3-5.1s4.3 2 4.3 5.1Z" />
+      </g>
+      <path d="m18.3 2.5-.8 3.2M14.5 18.3l-.8 3.2" />
+      <path
+        className="text-primary"
+        strokeWidth={2}
+        d="m11.4 8 2 7 2-7M20.6 9c-.5-.7-1.2-1-2-1-1 0-1.8.6-1.8 1.6 0 2.2 3.9 1.3 3.9 3.7 0 1.1-.9 1.7-2 1.7-.9 0-1.6-.4-2.1-1"
+      />
+    </Glyph>
+  );
+}
+
+/**
  * One branch of the laurel: where each leaf sits on the stem's arc and which
  * way it points, along the stem and leaning out. Worked out once here rather
  * than traced, so the leaves are evenly spaced.

@@ -319,3 +319,91 @@ textarea,
   transform: scaleY(0);
   transform-origin: bottom;
 }
+
+/* The challenge button's ember (ADR-0133): a hot band running round its edge,
+   and a glow behind it that flickers like coals, so the one button on a
+   friend's page that starts something looks like it does. Accent, gold and
+   the deep accent, from the tokens, so it is fire in either theme. The
+   reduced-motion rule in tokens.css stops both on their first frame: a still,
+   warm ring. */
+@property --ember-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes g7m-ember-turn {
+  to {
+    --ember-angle: 360deg;
+  }
+}
+
+@keyframes g7m-ember-flicker {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  17% {
+    opacity: 0.8;
+  }
+  29% {
+    opacity: 0.55;
+  }
+  46% {
+    opacity: 0.9;
+  }
+  63% {
+    opacity: 0.6;
+  }
+  81% {
+    opacity: 0.85;
+  }
+}
+
+.ember {
+  position: relative;
+  isolation: isolate;
+}
+
+.ember::before,
+.ember::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--ember-angle),
+    color-mix(in oklab, var(--accent) 35%, transparent) 0deg,
+    var(--accent) 190deg,
+    var(--warning) 245deg,
+    color-mix(in oklab, var(--warning) 55%, white) 262deg,
+    var(--warning) 278deg,
+    var(--accent-pressed) 315deg,
+    color-mix(in oklab, var(--accent) 35%, transparent) 360deg
+  );
+  animation: g7m-ember-turn 3.6s linear infinite;
+}
+
+/* The band: the gradient cut down to a ring over the button's edge. */
+.ember::before {
+  z-index: 1;
+  padding: 2px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+
+/* The glow: the same gradient, blurred, behind the button and spilling past it. */
+.ember::after {
+  z-index: -1;
+  inset: -3px;
+  filter: blur(14px);
+  animation:
+    g7m-ember-turn 3.6s linear infinite,
+    g7m-ember-flicker 2.3s ease-in-out infinite;
+}

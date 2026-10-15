@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BoardWorkout } from '@g7m/core';
 import type { Challenge } from '../lib/friends/api.js';
 import {
+  CHALLENGE_STAT_OPTIONS,
   challengeCard,
   challengeCards,
   challengeTimeLeft,
@@ -176,6 +177,22 @@ describe('the list', () => {
     );
     expect(cards.incoming.map((card) => card.id)).toEqual(['theirs-waiting']);
     expect(cards.others.map((card) => card.id)).toEqual(['running', 'mine-waiting', 'done']);
+  });
+});
+
+describe('what a challenge can be on', () => {
+  it('offers workouts and weight, and nothing else', () => {
+    expect(CHALLENGE_STAT_OPTIONS.map((option) => option.value)).toEqual(['workouts', 'lifted']);
+  });
+
+  it('still counts one made on time before that', () => {
+    const card = challengeCard(
+      challenge({ stat: 'minutes' }),
+      [workout(local(2026, 10, 6))],
+      CONTEXT,
+    );
+    expect(card).toMatchObject({ title: 'Most time training', phase: 'running' });
+    expect(card.sides).not.toBeNull();
   });
 });
 

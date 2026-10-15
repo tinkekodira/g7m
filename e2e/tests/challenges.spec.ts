@@ -97,34 +97,43 @@ test('challenging a friend from their page, and taking it back', async ({ page }
   await openTab(page, 'Friends');
   await page.getByRole('link', { name: 'Jordan' }).click();
 
-  const form = page.getByRole('region', { name: 'Challenge Jordan' });
+  // Shut until asked for: a button, and the choices in a sheet behind it.
+  const opener = page.getByRole('button', { name: 'Challenge Jordan', exact: true });
+  const sheet = page.getByRole('dialog', { name: 'Challenge Jordan' });
+  await expect(opener).toBeVisible();
+  await expect(sheet).toHaveCount(0);
+  await opener.click();
+
   // Neither of them has trained, so there is nothing to measure improvement against.
-  await form.getByRole('radio', { name: 'Most improved' }).click();
-  await form.getByRole('button', { name: 'Send challenge' }).click();
-  await expect(form.getByRole('alert')).toHaveText(
+  await sheet.getByRole('radio', { name: 'Most improved' }).click();
+  await sheet.getByRole('button', { name: 'Send challenge' }).click();
+  await expect(sheet.getByRole('alert')).toHaveText(
     'You have no workouts in the last four weeks to measure against. Try Most instead.',
   );
 
-  await form.getByRole('radio', { name: 'Most', exact: true }).click();
-  await form.getByRole('radio', { name: 'Weight' }).click();
-  await form.getByRole('button', { name: 'Send challenge' }).click();
+  await sheet.getByRole('radio', { name: 'Most', exact: true }).click();
+  await sheet.getByRole('radio', { name: 'Weight' }).click();
+  await sheet.getByRole('button', { name: 'Send challenge' }).click();
+  await expect(sheet).toHaveCount(0);
 
   const card = page.getByRole('article', { name: 'Most weight lifted' });
   await expect(card.getByText('Waiting for Jordan to accept')).toBeVisible();
-  // One at a time: no form while it waits.
-  await expect(page.getByRole('region', { name: 'Challenge Jordan' })).toHaveCount(0);
+  // One at a time: no button while it waits.
+  await expect(opener).toHaveCount(0);
 
   await card.getByRole('button', { name: 'Take back your challenge to Jordan' }).click();
-  await expect(page.getByRole('region', { name: 'Challenge Jordan' })).toBeVisible();
+  await expect(opener).toBeVisible();
+  await expect(sheet).toHaveCount(0);
   await expect(page.getByRole('article', { name: 'Most weight lifted' })).toHaveCount(0);
 });
 
 /**
- * The challenge form on the narrowest common phone. A label wider than its
- * share once widened its option, so the highlight (always 1/n of the track)
- * spilled past "Workouts" and sat off its centre. Measured on the live page.
+ * The challenge button and its sheet on the narrowest common phone. A label
+ * wider than its share once widened its option, so the highlight (always 1/n
+ * of the track) spilled past "Workouts" and sat off its centre. Measured on
+ * the live page.
  */
-test('the challenge form: options share the track, the highlight fits its option', async ({
+test('the challenge sheet: two stats, options share the track, the highlight fits', async ({
   page,
 }) => {
   const casey = await createUser('challenge-fit-casey', { onboarded: true, displayName: 'Casey' });
@@ -138,8 +147,23 @@ test('the challenge form: options share the track, the highlight fits its option
   await signIn(page, casey);
   await openTab(page, 'Friends');
   await page.getByRole('link', { name: 'Jordan' }).click();
-  const form = page.getByRole('region', { name: 'Challenge Jordan' });
+  const opener = page.getByRole('button', { name: 'Challenge Jordan', exact: true });
+  const form = page.getByRole('dialog', { name: 'Challenge Jordan' });
+
+  // Escape, or a tap above the sheet, puts it away and hands focus back.
+  await opener.click();
+  await expect(form).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(form).toHaveCount(0);
+  await expect(opener).toBeFocused();
+  await opener.click();
+  await page.getByRole('button', { name: 'Close' }).click({ position: { x: 20, y: 20 } });
+  await expect(form).toHaveCount(0);
+
+  await opener.click();
   await expect(form.getByRole('radio', { name: 'Workouts' })).toBeVisible();
+  // Who turned up, and who lifted more: sets and time can be padded.
+  await expect(form.getByRole('radio')).toHaveText(['Most', 'Most improved', 'Workouts', 'Weight']);
 
   /** Each group: its options' widths, and the highlight's gaps to the chosen one and the track. */
   const measure = () =>
@@ -180,7 +204,7 @@ test('the challenge form: options share the track, the highlight fits its option
   };
 
   await fits();
-  await form.getByRole('radio', { name: 'Time' }).click();
+  await form.getByRole('radio', { name: 'Weight' }).click();
   await form.getByRole('radio', { name: 'Most improved' }).click();
   await fits();
 
