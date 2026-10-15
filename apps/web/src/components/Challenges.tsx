@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from './Avatar.js';
-import { ChevronRightIcon, VersusIcon } from './icons.js';
+import { ChevronRightIcon, DuelIcon } from './icons.js';
 import {
   answerChallenge,
   sendChallenge,
@@ -214,7 +214,7 @@ export function SendChallenge({
           }}
           className="flex w-full items-center gap-4 rounded-sheet bg-surface p-4 text-left active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
         >
-          <VersusBadge />
+          <DuelBadge />
           <span className="min-w-0 flex-1">
             <span id={titleId} className="block truncate text-lg font-semibold text-primary">
               Challenge {name}
@@ -241,8 +241,8 @@ export function SendChallenge({
   );
 }
 
-function VersusBadge() {
-  return <VersusIcon className="size-14 shrink-0" />;
+function DuelBadge() {
+  return <DuelIcon className="size-14 shrink-0" />;
 }
 
 /**
@@ -313,7 +313,7 @@ function ChallengeSheet({
         className="popup relative flex w-full max-w-2xl flex-col gap-6 rounded-t-sheet border-t border-subtle bg-surface px-5 pt-5 pb-safe-bottom shadow-floating"
       >
         <div className="flex items-center gap-3">
-          <VersusBadge />
+          <DuelBadge />
           <h2 id={headingId} className="min-w-0 flex-1 truncate text-xl font-semibold text-primary">
             Challenge {name}
           </h2>

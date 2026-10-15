@@ -8260,13 +8260,16 @@ stats and a Send button, about a third of the phone screen. Most visits to a
 friend are not to challenge them, and the form pushed their achievements and
 routines below the fold.
 
-**One button, closed.** "Challenge {name}", with a VS badge and "Seven days,
-from when {name} accepts." under it. The badge is Milan's own artwork (you in
-orange, them in green, a white italic VS between red slashes, on a near-black
-tile). `VersusIcon` traces it as an SVG in the drawing's own units rather than
-shipping the PNG, so it stays sharp at every pixel density and carries no
-baked-in background. It keeps its dark tile in the light theme too, like an
-app icon. An ember runs round its edge: a hot band of accent
+**One button, closed.** "Challenge {name}", with a badge and "Seven days,
+from when {name} accepts." under it. The badge is Milan's crossed swords:
+two white blades with orange hilts, crossed inside an orange ring with a fire
+glow round it. `DuelIcon` redraws his drawing as an SVG rather than shipping
+the PNG, whose cut-out background left holes and blotches in the glow. The
+SVG stays sharp at every pixel density. The blades are bevelled (a lit half
+and a shaded half), and the front sword casts a shadow on the back one. The
+disc behind them follows the theme: near-black at night, and a soft peach by
+day, where the blades also take a thin warm edge. The ring's glow flickers
+with the button's ember. An ember runs round its edge: a hot band of accent
 and gold that goes round every 3.6 s, and a blurred copy behind it that
 flickers. It is the one thing on the page that starts something, and it
 should look like it. Reduced motion stops both on their first frame (the

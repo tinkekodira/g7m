@@ -407,3 +407,29 @@ textarea,
     g7m-ember-turn 3.6s linear infinite,
     g7m-ember-flicker 2.3s ease-in-out infinite;
 }
+
+/* The crossed swords' badge (DuelIcon): the disc behind the blades follows
+   the theme, near-black at night and a soft peach by day, where the white
+   blades also take a thin warm edge so they do not fade into it. Its glow flickers with the ember round the button. */
+.duel-disc {
+  fill: #1b1311;
+}
+
+:root[data-theme='light'] .duel-disc {
+  fill: #ffe1cf;
+}
+
+.duel-edge {
+  stroke: none;
+}
+
+:root[data-theme='light'] .duel-edge {
+  stroke: #b4532f;
+  stroke-opacity: 0.6;
+  stroke-width: 0.8;
+  stroke-linejoin: round;
+}
+
+.duel-glow {
+  animation: g7m-ember-flicker 2.3s ease-in-out infinite;
+}

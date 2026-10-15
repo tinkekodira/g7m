@@ -404,48 +404,70 @@ export function AddFriendIcon(props: IconProps) {
 }
 
 /**
- * You against them, with a slashed VS between: the challenge button's badge.
- * Not one of the set above. It is Milan's own artwork, traced from his
- * 1254px drawing in that drawing's units, tile and all, so it looks the same
- * as the drawing at any size and in either theme: you in orange, them in
- * green, white italic letters, red slashes, on a near-black rounded square.
+ * Two swords crossed in a ring of fire: the challenge button's badge, from
+ * Milan's drawing. Not one of the set above: it is filled and shaded, with
+ * the blades bevelled (a lit half and a shaded half) and the front sword
+ * casting a shadow on the back one. The disc behind them follows the theme
+ * (`.duel-disc` in styles.css), so the white blades sit on near-black at
+ * night and on a soft peach, outlined, by day. The glow round the ring flickers with the
+ * button's ember (`.duel-glow`).
  */
-export function VersusIcon(props: IconProps) {
-  // Gradients are found by id, and two badges on one page must not share one.
+export function DuelIcon(props: IconProps) {
+  // Gradients and filters are found by id, and two badges on one page must
+  // not share one.
   const id = useId().replace(/[^\w-]/g, '');
+  const sword = (turn: number) => (
+    <g
+      transform={`translate(50 50) rotate(${String(turn)}) scale(1.15) translate(-50 -46)`}
+      filter={`url(#${id}-lift)`}
+    >
+      <path d="M50 14 44.8 21V60h10.4V21Z" fill="#f6f5f2" />
+      <path d="M50 14 55.2 21V60H50Z" fill="#c8c6c1" />
+      <path className="duel-edge" d="M50 14 44.8 21V60h10.4V21Z" fill="none" />
+      <rect x="47" y="63" width="6" height="11.5" rx="1.2" fill="#c9341c" />
+      <path d="M47 66.6h6M47 70.2h6" stroke="#ff8a4d" strokeWidth={1.2} />
+      <rect x="38.5" y="59" width="23" height="5" rx="2.2" fill={`url(#${id}-hilt)`} />
+      <circle cx="50" cy="77.6" r="3.9" fill={`url(#${id}-hilt)`} />
+    </g>
+  );
   return (
-    <svg viewBox="75 72 1105 1095" aria-hidden focusable="false" {...props}>
+    <svg viewBox="0 0 100 100" overflow="visible" aria-hidden focusable="false" {...props}>
       <defs>
-        <linearGradient id={`${id}-you`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff7d42" />
-          <stop offset="1" stopColor="#ff4a2f" />
+        <linearGradient id={`${id}-ring`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ff8a3d" />
+          <stop offset="1" stopColor="#e5321d" />
         </linearGradient>
-        <linearGradient id={`${id}-them`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#7fd383" />
-          <stop offset="1" stopColor="#3c9d58" />
+        <linearGradient id={`${id}-hilt`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ff8040" />
+          <stop offset="1" stopColor="#e2381f" />
         </linearGradient>
+        <radialGradient id={`${id}-heat`}>
+          <stop offset="0" stopColor="#ff7a3c" stopOpacity={0.38} />
+          <stop offset="0.7" stopColor="#ff5a2a" stopOpacity={0.08} />
+          <stop offset="1" stopColor="#ff5a2a" stopOpacity={0} />
+        </radialGradient>
+        <filter id={`${id}-blur`} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.2" />
+        </filter>
+        <filter id={`${id}-lift`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1.2" stdDeviation="1.1" floodColor="#000" floodOpacity={0.45} />
+        </filter>
       </defs>
-      <rect x="75" y="72" width="1105" height="1095" rx="250" fill="#111" />
-      <g fill={`url(#${id}-you)`}>
-        <circle cx="343" cy="507" r="88" />
-        <path d="M178 745C178 665 250 606 339 606S500 665 500 745Q500 770 476 770H202Q178 770 178 745Z" />
-      </g>
-      <g fill={`url(#${id}-them)`}>
-        <circle cx="913" cy="507" r="88" />
-        <path d="M752 748C752 668 824 606 913 606S1074 668 1074 748Q1074 773 1050 773H776Q752 773 752 748Z" />
-      </g>
-      <g fill="#ff4a2f" stroke="#ff4a2f" strokeWidth={6} strokeLinejoin="round">
-        <path d="M709 312H741L673 495H641Z" />
-        <path d="M595 737H626L550 939H518Z" />
-      </g>
-      <path fill="#fff" d="M521 532H567L570 640L613 532H660L583 700H535Z" />
-      <path
+      <circle
+        className="duel-glow"
+        cx="50"
+        cy="50"
+        r="41"
         fill="none"
-        stroke="#fff"
-        strokeWidth={44}
-        transform="translate(0 615) skewX(-12) translate(0 -615)"
-        d="M738 574C724 557 707 553 691 553C664 553 650 568 652 587C655 608 679 613 699 621C721 629 736 639 734 657C732 673 715 679 695 679C676 679 659 672 646 659"
+        stroke="#ff3b1f"
+        strokeWidth={7}
+        filter={`url(#${id}-blur)`}
       />
+      <circle className="duel-disc" cx="50" cy="50" r="40" />
+      <circle cx="50" cy="50" r="38" fill={`url(#${id}-heat)`} />
+      <circle cx="50" cy="50" r="40" fill="none" stroke={`url(#${id}-ring)`} strokeWidth={4.5} />
+      {sword(-45)}
+      {sword(45)}
     </svg>
   );
 }
