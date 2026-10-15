@@ -1,4 +1,4 @@
-import type { ReactNode, SVGProps } from 'react';
+import { useId, type ReactNode, type SVGProps } from 'react';
 
 /**
  * The app's icons, drawn here rather than imported.
@@ -404,30 +404,49 @@ export function AddFriendIcon(props: IconProps) {
 }
 
 /**
- * You against them, with a slashed VS between: the challenge button. Wider
- * than the grid, because two people and two letters do not fit 24 units, and
- * filled where the others are drawn, so it reads as a badge rather than a
- * glyph. You take the colour around it (the accent), they are in green, and
- * the letters are in the ink.
+ * You against them, with a slashed VS between: the challenge button's badge.
+ * Not one of the set above. It is Milan's own artwork, traced from his
+ * 1254px drawing in that drawing's units, tile and all, so it looks the same
+ * as the drawing at any size and in either theme: you in orange, them in
+ * green, white italic letters, red slashes, on a near-black rounded square.
  */
 export function VersusIcon(props: IconProps) {
+  // Gradients are found by id, and two badges on one page must not share one.
+  const id = useId().replace(/[^\w-]/g, '');
   return (
-    <Glyph viewBox="0 0 32 24" {...props}>
-      <g fill="currentColor" stroke="none">
-        <circle cx="5.3" cy="9" r="2.6" />
-        <path d="M1 19.4c0-3.1 1.9-5.1 4.3-5.1s4.3 2 4.3 5.1Z" />
+    <svg viewBox="75 72 1105 1095" aria-hidden focusable="false" {...props}>
+      <defs>
+        <linearGradient id={`${id}-you`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ff7d42" />
+          <stop offset="1" stopColor="#ff4a2f" />
+        </linearGradient>
+        <linearGradient id={`${id}-them`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7fd383" />
+          <stop offset="1" stopColor="#3c9d58" />
+        </linearGradient>
+      </defs>
+      <rect x="75" y="72" width="1105" height="1095" rx="250" fill="#111" />
+      <g fill={`url(#${id}-you)`}>
+        <circle cx="343" cy="507" r="88" />
+        <path d="M178 745C178 665 250 606 339 606S500 665 500 745Q500 770 476 770H202Q178 770 178 745Z" />
       </g>
-      <g className="text-success" fill="currentColor" stroke="none">
-        <circle cx="26.7" cy="9" r="2.6" />
-        <path d="M22.4 19.4c0-3.1 1.9-5.1 4.3-5.1s4.3 2 4.3 5.1Z" />
+      <g fill={`url(#${id}-them)`}>
+        <circle cx="913" cy="507" r="88" />
+        <path d="M752 748C752 668 824 606 913 606S1074 668 1074 748Q1074 773 1050 773H776Q752 773 752 748Z" />
       </g>
-      <path d="m18.3 2.5-.8 3.2M14.5 18.3l-.8 3.2" />
+      <g fill="#ff4a2f" stroke="#ff4a2f" strokeWidth={6} strokeLinejoin="round">
+        <path d="M709 312H741L673 495H641Z" />
+        <path d="M595 737H626L550 939H518Z" />
+      </g>
+      <path fill="#fff" d="M521 532H567L570 640L613 532H660L583 700H535Z" />
       <path
-        className="text-primary"
-        strokeWidth={2}
-        d="m11.4 8 2 7 2-7M20.6 9c-.5-.7-1.2-1-2-1-1 0-1.8.6-1.8 1.6 0 2.2 3.9 1.3 3.9 3.7 0 1.1-.9 1.7-2 1.7-.9 0-1.6-.4-2.1-1"
+        fill="none"
+        stroke="#fff"
+        strokeWidth={44}
+        transform="translate(0 615) skewX(-12) translate(0 -615)"
+        d="M738 574C724 557 707 553 691 553C664 553 650 568 652 587C655 608 679 613 699 621C721 629 736 639 734 657C732 673 715 679 695 679C676 679 659 672 646 659"
       />
-    </Glyph>
+    </svg>
   );
 }
 

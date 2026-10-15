@@ -242,11 +242,7 @@ export function SendChallenge({
 }
 
 function VersusBadge() {
-  return (
-    <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent">
-      <VersusIcon className="h-9 w-12" />
-    </span>
-  );
+  return <VersusIcon className="size-14 shrink-0" />;
 }
 
 /**
