@@ -46,3 +46,4 @@ export * from './workout-title.js';
 export * from './friends.js';
 export * from './challenges.js';
 export * from './leaderboard.js';
+export * from './xp.js';

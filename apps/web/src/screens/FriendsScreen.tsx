@@ -299,6 +299,19 @@ function FriendList({
 }
 
 /**
+ * A friend's level, beside their name: small, since it is a number to glance
+ * at and compare rather than read. ADR-0132.
+ */
+function LevelPill({ level }: { readonly level: number }) {
+  return (
+    <span className="numeric shrink-0 rounded-full bg-elevated px-2 py-0.5 text-[11px] leading-4 font-semibold text-secondary">
+      <span aria-hidden>Lv {level}</span>
+      <span className="sr-only">Level {level}</span>
+    </span>
+  );
+}
+
+/**
  * One friend, calmly: who and whether they are around, this week's dots and
  * the streak, their best lifts against yours, and their last workout.
  *
@@ -312,15 +325,18 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
       <div className="flex items-center gap-3">
         <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-primary">
-            <Link
-              to={`/friends/${card.userId}`}
-              state={{ name: card.name }}
-              className="after:absolute after:inset-0 after:rounded-sheet after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
-            >
-              {card.name}
-            </Link>
-          </h2>
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="min-w-0 truncate text-lg font-semibold text-primary">
+              <Link
+                to={`/friends/${card.userId}`}
+                state={{ name: card.name }}
+                className="after:absolute after:inset-0 after:rounded-sheet after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
+              >
+                {card.name}
+              </Link>
+            </h2>
+            {card.level !== null && <LevelPill level={card.level} />}
+          </div>
           {card.presence !== null && <PresenceLine presence={card.presence} />}
         </div>
         <ChevronRightIcon className="size-5 shrink-0 text-muted" />

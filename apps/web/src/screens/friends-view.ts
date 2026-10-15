@@ -16,6 +16,7 @@ import {
   describeWorkoutDay,
   formatMinutes,
   isLegLift,
+  levelFor,
   trainingMinutes,
   weekDots,
   weeklyStreak,
@@ -150,6 +151,8 @@ export interface FriendCardView {
   /** For the avatar's initial: null shows the glyph rather than "Y". */
   readonly avatarName: string | null;
   readonly sharing: boolean;
+  /** Their level, from the XP their phone published. Null until it has, or when not sharing. */
+  readonly level: number | null;
   readonly presence: Presence | null;
   readonly dots: readonly WeekDot[] | null;
   readonly streak: string | null;
@@ -214,6 +217,7 @@ export function friendCard(friend: Friend, context: CardContext): FriendCardView
       name,
       avatarName: friend.name,
       sharing: false,
+      level: null,
       presence: null,
       dots: null,
       streak: null,
@@ -228,6 +232,7 @@ export function friendCard(friend: Friend, context: CardContext): FriendCardView
     name,
     avatarName: friend.name,
     sharing: true,
+    level: friend.xp === null ? null : levelFor(friend.xp).level,
     presence: describePresence(training.lastActiveAt, context.now),
     dots: weekDots(training.trainedAt, context.now, context.weekStartsOn),
     streak: describeStreak(

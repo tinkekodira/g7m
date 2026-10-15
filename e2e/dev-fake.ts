@@ -238,10 +238,12 @@ async function seed(): Promise<Person[]> {
     [alex.id, sam.id],
   );
 
-  // Presence: Alex is in the app, Sam was two hours ago.
+  // Presence: Alex is in the app, Sam was two hours ago. Levels as their
+  // phones would have published them (ADR-0132): Alex 11, Sam 6.
   await sql(
     `update public.friend_profiles
-        set last_active_at = case when user_id = $1 then now() else now() - interval '2 hours' end
+        set last_active_at = case when user_id = $1 then now() else now() - interval '2 hours' end,
+            xp = case when user_id = $1 then 7200 else 3100 end
       where user_id in ($1, $2)`,
     [alex.id, sam.id],
   );

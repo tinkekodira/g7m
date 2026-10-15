@@ -43,8 +43,8 @@ describe('decodeOverview', () => {
         { id: 'r1', user_id: 'u2', name: 'Jordan', requested_at: '2026-10-07T09:00:00+00:00' },
       ],
       friends: [
-        { user_id: 'u3', name: 'Alex', since: null, sharing: true, training: TRAINING },
-        { user_id: 'u4', name: '  ', since: null, sharing: false },
+        { user_id: 'u3', name: 'Alex', since: null, sharing: true, training: TRAINING, xp: 5850 },
+        { user_id: 'u4', name: '  ', since: null, sharing: false, xp: 900 },
       ],
     });
     expect(overview.me).toEqual({ code: 'K7PX4M', sharing: true });
@@ -55,7 +55,9 @@ describe('decodeOverview', () => {
     ]);
     expect(alex?.training?.trainedAt).toHaveLength(1);
     expect(alex?.training?.lastWorkout?.work).toEqual([{ exerciseId: 'e1', sets: 3 }]);
-    expect(quiet).toEqual({ userId: 'u4', name: null, sharing: false, training: null });
+    expect(alex?.xp).toBe(5850);
+    // Somebody not sharing has no level to show, whatever came back.
+    expect(quiet).toEqual({ userId: 'u4', name: null, sharing: false, training: null, xp: null });
   });
 
   it('treats an empty reply as no friends rather than an error', () => {

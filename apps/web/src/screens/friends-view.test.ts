@@ -157,6 +157,7 @@ describe('friendCard', () => {
     name: 'Alex',
     sharing: true,
     training: training(),
+    xp: 5850,
     ...over,
   });
 
@@ -210,13 +211,21 @@ describe('friendCard', () => {
     expect(card.lifts).toEqual([]);
   });
 
+  it('reads their level off the XP they published', () => {
+    expect(friendCard(friend(), CONTEXT).level).toBe(10);
+    expect(friendCard(friend({ xp: 0 }), CONTEXT).level).toBe(1);
+    // Not published yet: no level, rather than a level 1 that is not theirs.
+    expect(friendCard(friend({ xp: null }), CONTEXT).level).toBeNull();
+  });
+
   it('gives a friend who is not sharing a name and nothing else', () => {
-    const card = friendCard(friend({ sharing: false, training: null }), CONTEXT);
+    const card = friendCard(friend({ sharing: false, training: null, xp: null }), CONTEXT);
     expect(card).toEqual({
       userId: 'alex',
       name: 'Alex',
       avatarName: 'Alex',
       sharing: false,
+      level: null,
       presence: null,
       dots: null,
       streak: null,
@@ -240,9 +249,9 @@ describe('friendCard', () => {
 describe('sortFriends', () => {
   it('puts sharing friends first, then by name', () => {
     const sorted = sortFriends([
-      { userId: '1', name: 'Zoe', sharing: true, training: null },
-      { userId: '2', name: 'Ana', sharing: false, training: null },
-      { userId: '3', name: 'Ben', sharing: true, training: null },
+      { userId: '1', name: 'Zoe', sharing: true, training: null, xp: null },
+      { userId: '2', name: 'Ana', sharing: false, training: null, xp: null },
+      { userId: '3', name: 'Ben', sharing: true, training: null, xp: null },
     ]);
     expect(sorted.map((friend) => friend.name)).toEqual(['Ben', 'Zoe', 'Ana']);
   });

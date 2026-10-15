@@ -8184,3 +8184,69 @@ log goes to `console.warn`.
 **Tests:** `region-map.test.ts` fails if a loop, array, `continue` or float
 table comes back, and covers `tableEntry`. The fallback was checked in Chrome
 by faking a link failure on the region program: both screens drew the body.
+
+## ADR-0132 — Levels, worked out from the log
+
+**Status:** accepted · **Date:** 2026-10-15 · **Phase:** out of phase (feature) · **Builds on:** ADR-0072, ADR-0105, ADR-0117
+
+Every account has a level: on Profile, between the name and the goal, and as
+a small "Lv 12" beside each friend's name on the Friends tab. For now it is a
+number to compare. Later it may unlock things, such as a month of premium
+every so many levels, so the curve is chosen with that in mind.
+
+**XP is worked out from the training log and never stored**, the same as
+achievements (ADR-0072), by `xpLedger` in `packages/core/src/xp.ts`. Past
+training counts from the day levels arrive, and a deleted workout takes its
+XP with it.
+
+| Source | XP | Cap |
+|---|---|---|
+| A finished workout with ≥ 3 sets or ≥ 10 min of cardio | 100 | 2 a day |
+| Each set (`countsAsSet`: no warm-ups, drops fold into their set) | 5 | 25 a workout |
+| A personal record (`recordsInSession`'s rules) | 25 | 4 a workout |
+| A week with as many days trained as the goal in force asked for | 150 | once a week |
+| An achievement, the secret birthday one aside | 100 | — |
+
+- **Kilograms do not count.** They would rank the heaviest person first and
+  reward whoever types the biggest number. Turning up and doing the work is
+  what earns XP, so a beginner training three days a week keeps pace with a
+  strong lifter.
+- **The caps are there to stop farming.** One workout split into five is not
+  five workouts, and fifty sets of curls are not fifty sets of XP.
+- **A workout logged afterwards** (`source = 'past'`) counts only when it was
+  logged within 7 days of the day it is for (`created_at − started_at`). That
+  covers the forgotten Tuesday but not a year filled in from the calendar.
+  Such a workout still raises the bar the next record has to beat, because
+  the lift happened.
+- **The week is counted in days, not workouts**, so two sessions on one day do
+  not fill a week. The week is held to the goal in force when it ended, as
+  `weekStreaks` does.
+- **Only finished workouts earn.** Achievements earned mid-workout still count
+  when they arrive.
+
+**The curve:** level *n* to *n + 1* takes `min(400 + 50n, 2000)` XP. It is
+quick at first: level 10 in about 5 weeks at four days a week, level 20 in
+about 4 months, level 30 in about 7 months. From level 32 every level costs
+the same, about a fortnight each. A reward every N levels would therefore
+arrive at a steady pace rather than further apart each time.
+
+**Friends see the total, not the level.** The phone publishes its XP
+(`publish_xp`, which accepts 0 to 10,000,000) whenever it changes, the way it
+publishes achievements (ADR-0117). `friends_overview` returns the total next to
+`training`, so only friends you share your training with see it. Each phone
+works out the level with its own copy of the curve, so the curve can change
+without anybody republishing. The server cannot check the total, because it
+never reads the log that produced it. It also cannot check achievements, and
+every training row is the owner's to write anyway. A level is a number for
+friends, not a currency. If it ever becomes one (premium), the XP would have
+to be worked out on the server from the sets, like `board_workouts`, and
+records and achievements would need server-side equivalents first.
+
+The XP is computed in the same pass as the achievements (`loadAchievements`).
+A badge and the XP it is worth therefore arrive together, and the Profile line,
+the banner and the published total always agree.
+
+**Tests:** `xp.test.ts` covers each source and cap, the 7-day boundary, the
+curve's thresholds and the pace it was chosen for. `friends.test.ts` checks
+`publish_xp`'s limits and that the XP goes only to friends who are shared
+with. `levels.spec.ts` checks Profile and a friend's card end to end.

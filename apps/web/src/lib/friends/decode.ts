@@ -51,6 +51,8 @@ export interface Friend {
   readonly sharing: boolean;
   /** Null when they are not sharing. */
   readonly training: FriendTraining | null;
+  /** Their total XP, as their phone last published it. Null when not sharing or not yet sent. */
+  readonly xp: number | null;
 }
 
 export interface FriendRequest {
@@ -363,6 +365,7 @@ export function decodeOverview(value: unknown): FriendsOverview {
         sharing,
         training:
           sharing && training !== null && training !== undefined ? decodeTraining(training) : null,
+        xp: sharing ? optionalNumber(friend['xp']) : null,
       };
     }),
   };

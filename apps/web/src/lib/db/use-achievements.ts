@@ -1,8 +1,10 @@
 /**
- * Every achievement, worked out from this device's copy of the training log.
+ * Every achievement, and the XP and level they come with, worked out from
+ * this device's copy of the training log.
  *
  * One read for the Achievements screen, the Profile button and the banner
- * that celebrates new ones, so all three always agree. It re-runs after every
+ * that celebrates new ones, so all three always agree — and the level is read
+ * from the same log in the same pass, since an achievement is worth XP. It re-runs after every
  * write — a set ticked mid-workout included — which is what lets a 100 kg
  * bench be celebrated at the bench rather than on the way home. ADR-0072.
  */
@@ -10,6 +12,7 @@ import {
   CLUB_LIFT_SLUGS,
   DEFAULT_WEEK_START,
   achievements,
+  xpLedger,
   type Achievement,
   type ClubLift,
   type UnitSystem,
@@ -22,6 +25,8 @@ export interface AchievementsData {
   readonly list: readonly Achievement[];
   /** Keys already celebrated, on this device or another. */
   readonly seen: readonly string[];
+  /** Total XP, everything the log has earned. ADR-0132. */
+  readonly xp: number;
   readonly unitSystem: UnitSystem;
   /**
    * Whether this device has its profile yet.
@@ -56,6 +61,7 @@ export async function loadAchievements(r: Repositories, now: Date): Promise<Achi
   }
 
   const unitSystem = profile?.unitSystem ?? 'metric';
+  const weekStartsOn = (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart;
   const list = achievements(
     {
       sessions: summaries.map((summary) => ({
@@ -74,12 +80,33 @@ export async function loadAchievements(r: Repositories, now: Date): Promise<Achi
       birthDate: profile?.birthDate ?? null,
       bodyweightKg: metrics?.weightKg ?? profile?.bodyweightKg ?? null,
       unitSystem,
-      weekStartsOn: (profile?.weekStartsOn ?? DEFAULT_WEEK_START) as WeekStart,
+      weekStartsOn,
     },
     now,
   );
 
-  return { list, seen: profile?.achievementsSeen ?? [], unitSystem, ready: profile !== null };
+  const xp = xpLedger({
+    sessions: summaries.map((summary) => ({
+      sessionId: summary.sessionId,
+      startedAt: summary.startedAt,
+      loggedAt: summary.createdAt,
+      backdated: summary.source === 'past',
+      finished: summary.endedAt !== null,
+    })),
+    sets,
+    bouts,
+    goals,
+    achievements: list,
+    weekStartsOn,
+  }).total;
+
+  return {
+    list,
+    seen: profile?.achievementsSeen ?? [],
+    xp,
+    unitSystem,
+    ready: profile !== null,
+  };
 }
 
 export function useAchievements(): QueryState<AchievementsData> {
