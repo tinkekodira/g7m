@@ -447,14 +447,20 @@ textarea,
    height every other field has. iOS only (the touch-callout test), so Chrome
    keeps its calendar button. */
 @supports (-webkit-touch-callout: none) {
+  /* Without the native look the value sits at the top of the box, where
+     every other field centres its text. Centred both ways: as a flex item,
+     and by a line as tall as the field inside its 1px border. */
   input[type='date'] {
     -webkit-appearance: none;
     appearance: none;
-    display: block;
+    display: flex;
+    align-items: center;
     min-width: 0;
+    line-height: calc(var(--spacing-tap) - 2px);
   }
 
   input[type='date']::-webkit-date-and-time-value {
+    margin: 0;
     text-align: left;
   }
 }
