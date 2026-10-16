@@ -67,6 +67,8 @@ import declineBenchIcon from '../assets/equipment/decline-bench.png';
 import declineBenchHero from '../assets/equipment/decline-bench-hero.webp';
 import preacherCurlMachineIcon from '../assets/equipment/preacher-curl-machine.png';
 import preacherCurlMachineHero from '../assets/equipment/preacher-curl-machine-hero.webp';
+import rearDeltFlyMachineIcon from '../assets/equipment/rear-delt-fly-machine.png';
+import rearDeltFlyMachineHero from '../assets/equipment/rear-delt-fly-machine-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -148,6 +150,10 @@ const DECLINE_BENCH: EquipmentArt = { icon: declineBenchIcon, hero: declineBench
 const PREACHER_CURL_MACHINE: EquipmentArt = {
   icon: preacherCurlMachineIcon,
   hero: preacherCurlMachineHero,
+};
+const REAR_DELT_FLY_MACHINE: EquipmentArt = {
+  icon: rearDeltFlyMachineIcon,
+  hero: rearDeltFlyMachineHero,
 };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
@@ -264,6 +270,11 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
   'pec-deck': PEC_DECK,
+
+  // Filed under the pec deck, which it is turned round, but drawn as its own
+  // station: a stack tower with one arm reaching down to an upright chest pad.
+  // The dumbbell Rear Delt Fly keeps the dumbbell.
+  'rear-delt-fly-machine': REAR_DELT_FLY_MACHINE,
 
   // A wall-mounted dip bar, not a free-standing dip station. Both dips: the
   // lean is the difference, not the bars.

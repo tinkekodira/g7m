@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { countryName, firstName, levelFor, personalRecords, type UnitSystem } from '@g7m/core';
 import { cx } from '@g7m/ui';
@@ -6,6 +6,7 @@ import { Avatar } from '../components/Avatar.js';
 import { Panel } from '../components/Panel.js';
 import { StatValue } from '../components/StatValue.js';
 import { AchievementsCard, BestLiftsCard, TrainingBodyCard } from '../components/ProfileParts.js';
+import { WeighInSheet } from '../components/WeighInSheet.js';
 import { ChevronRightIcon, ClipboardIcon, PencilIcon, TargetIcon } from '../components/icons.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
 import { prefersReducedMotion } from '../lib/use-reduced-motion.js';
@@ -109,6 +110,13 @@ export function ProfileScreen() {
 
   const error = profile.error ?? metrics.error ?? goal.error;
 
+  // Today's weight from here, without going through Edit: the one number on
+  // the page that changes week to week.
+  const [weighing, setWeighing] = useState(false);
+  const closeWeighIn = useCallback(() => {
+    setWeighing(false);
+  }, []);
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-center justify-between gap-3 pt-6">
@@ -164,38 +172,64 @@ export function ProfileScreen() {
             // An odd tile out at the end takes the whole row rather than
             // leaving a hole beside it.
             const alone = left && index === tiles.length - 1;
+            // Weight opens the weigh-in in place. The button lies under the
+            // tile's text and fills it, so the whole tile is the target.
+            const weighable = tile.key === 'weight';
+            const text = weighable ? 'pointer-events-none relative z-10' : undefined;
             return (
               <div
                 key={tile.key}
                 className={cx(
-                  'min-w-0 py-3',
+                  'relative min-w-0 py-3',
                   alone && 'col-span-2',
                   left && !alone && 'border-r border-subtle/70 pr-3',
                   !left && 'pl-4',
                   index >= 2 && 'border-t border-subtle/70',
                 )}
               >
-                <dt className="text-xs text-muted">{tile.label}</dt>
+                <dt className={cx('flex items-center gap-1.5 text-xs text-muted', text)}>
+                  {tile.label}
+                  {weighable && <PencilIcon aria-hidden className="size-3" />}
+                </dt>
                 <dd className="mt-0.5">
-                  {tile.value === null ? (
-                    <Link
-                      to="/you"
-                      className="text-sm text-secondary underline-offset-4 hover:underline"
-                    >
-                      Not set — add it
-                    </Link>
-                  ) : /\d/.test(tile.value) ? (
-                    <StatValue text={tile.value} size="text-xl leading-7" />
-                  ) : (
-                    <span className="block truncate text-lg leading-7 font-bold text-primary">
-                      {tile.value}
-                    </span>
+                  {weighable && (
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-label={
+                        tile.value === null
+                          ? 'Add your weight'
+                          : `Weight ${tile.value}. Log today’s weight`
+                      }
+                      onClick={() => {
+                        setWeighing(true);
+                      }}
+                      className="absolute inset-0 z-0 rounded-control transition-colors duration-150 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    />
                   )}
-                  {tile.detail !== undefined && (
-                    <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
-                      {tile.detail}
-                    </span>
-                  )}
+                  <span className={cx('block', text)}>
+                    {tile.value === null && weighable ? (
+                      <span className="text-sm text-secondary">Not set — add it</span>
+                    ) : tile.value === null ? (
+                      <Link
+                        to="/you"
+                        className="text-sm text-secondary underline-offset-4 hover:underline"
+                      >
+                        Not set — add it
+                      </Link>
+                    ) : /\d/.test(tile.value) ? (
+                      <StatValue text={tile.value} size="text-xl leading-7" />
+                    ) : (
+                      <span className="block truncate text-lg leading-7 font-bold text-primary">
+                        {tile.value}
+                      </span>
+                    )}
+                    {tile.detail !== undefined && (
+                      <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
+                        {tile.detail}
+                      </span>
+                    )}
+                  </span>
                 </dd>
               </div>
             );
@@ -208,6 +242,16 @@ export function ProfileScreen() {
           <p className="mt-2 border-t border-subtle/70 pt-3 text-xs text-muted">{note}</p>
         )}
       </Panel>
+
+      {weighing && (
+        <WeighInSheet
+          unitSystem={unitSystem}
+          currentKg={facts.weightKg}
+          weightAt={facts.weightAt}
+          now={now}
+          onClose={closeWeighIn}
+        />
+      )}
 
       <AchievementsLink />
 

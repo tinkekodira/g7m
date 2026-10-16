@@ -66,7 +66,7 @@ test('BMI is judged against a band that widens as the app learns about you', asy
   await expect(bmiTile(page)).toContainText('Not set');
 
   await page.getByRole('link', { name: 'Edit' }).click();
-  await expect(page.getByRole('heading', { name: 'You', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Edit profile', level: 1 })).toBeVisible();
 
   // The way out is Back, to the profile it was opened from. It used to say
   // Home — scoped to the header, since the tab bar has a Home link regardless,
@@ -78,12 +78,14 @@ test('BMI is judged against a band that widens as the app learns about you', asy
   // Where you are from, findable, and holding the answer given at signup.
   await expect(page.getByLabel('Where you are from')).toHaveValue('HR');
 
-  // 82.6 kg at 180 cm is a BMI of 25.5 — over the textbook 25.
-  const save = page.locator('button:enabled').filter({ hasText: /^Save$/ });
+  // 82.6 kg at 180 cm is a BMI of 25.5 — over the textbook 25. Height is
+  // part of the one About you form; the weight has its own field and button.
   await page.getByLabel('Height (cm)').fill('180');
-  await save.click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Height (cm)')).toHaveValue('180');
   await page.getByLabel(/weight \(kg\)/i).fill('82.6');
-  await save.click();
+  await page.getByRole('button', { name: 'Save weight' }).click();
 
   await page.getByRole('link', { name: 'Back' }).click();
   await expect(page.getByRole('heading', { name: 'Your profile' })).toBeVisible();
@@ -98,13 +100,73 @@ test('BMI is judged against a band that widens as the app learns about you', asy
 
   // Now tell it about the other twenty-three hours.
   await page.getByRole('link', { name: 'Edit' }).click();
-  await page.getByRole('button', { name: 'Very active' }).click();
+  // The label is the target, as on a phone; the radio itself is visually hidden.
+  await page.getByText('Very active', { exact: true }).click();
+  await expect(page.getByRole('radio', { name: /^Very active/ })).toBeChecked();
   await page.getByRole('link', { name: 'Back' }).click();
 
   // The same ratio, a wider band, and no longer a verdict against them.
   await expect(tile).toContainText('25.5');
   await expect(tile).toContainText('Healthy');
   expect(await bandTop(tile)).toBeGreaterThan(narrow);
+});
+
+/**
+ * Today's weight from Profile itself (ADR-0136): the tile opens a sheet with
+ * the last weight in it, ready to be typed over, and the tile shows the new
+ * one once it is saved. Edit is still the long way round.
+ */
+test('the weight on Profile opens a weigh-in and shows what was logged', async ({ page }) => {
+  const user = await createUser('weigh-in', { onboarded: true, displayName: 'Ana' });
+  await signIn(page, user);
+  await openTab(page, 'Profile');
+
+  const weight = page.locator('dl > div').filter({ hasText: /^Weight/ });
+  await expect(weight).toContainText('Not set');
+  await page.getByRole('button', { name: 'Add your weight' }).click();
+
+  const sheet = page.getByRole('dialog', { name: 'Log your weight' });
+  await expect(sheet.getByLabel('Today’s weight (kg)')).toBeFocused();
+  await sheet.getByLabel('Today’s weight (kg)').fill('80,4');
+  await sheet.getByRole('button', { name: 'Save weight' }).click();
+
+  await expect(sheet).toHaveCount(0);
+  await expect(weight).toContainText('80.4');
+  await expect(weight).toContainText('kg');
+
+  // Opened again, the last weight is already there to change.
+  await page.getByRole('button', { name: /Log today’s weight/ }).click();
+  await expect(sheet.getByLabel('Today’s weight (kg)')).toHaveValue('80.4');
+  await sheet.getByRole('button', { name: 'Cancel' }).click();
+  await expect(sheet).toHaveCount(0);
+});
+
+/**
+ * The Edit screen is one form for who you are: the stored answers already in
+ * the fields, Save lit only once something differs. The goal is Profile's
+ * card now, so Edit no longer links to it.
+ */
+test('Edit holds the stored answers and saves only what changed', async ({ page }) => {
+  const user = await createUser('edit-form', { onboarded: true, displayName: 'Ana' });
+  await signIn(page, user);
+  await openTab(page, 'Profile');
+  await page.getByRole('link', { name: 'Edit' }).click();
+
+  await expect(page.getByRole('link', { name: /Your goal/ })).toHaveCount(0);
+  const name = page.getByLabel('Your name');
+  await expect(name).toHaveValue('Ana');
+
+  const save = page.getByRole('button', { name: 'Save changes' });
+  await expect(save).toBeDisabled();
+  await name.fill('Ana ');
+  await expect(save).toBeDisabled();
+  await name.fill('Ana Marija');
+  await save.click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await expect(save).toBeDisabled();
+
+  await page.getByRole('link', { name: 'Back' }).click();
+  await expect(page.getByText('Ana Marija', { exact: true })).toBeVisible();
 });
 
 test('the Progress chart shows the view picked from its dropdown, and keeps it', async ({
