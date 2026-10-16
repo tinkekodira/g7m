@@ -323,11 +323,22 @@ export function BestLiftsCard({
                     )}
                   >
                     {place === 1 && <CrownIcon className="size-4 shrink-0 podium-badge" />}
-                    <span className={cx(place === 1 && 'podium-gleam')}>
-                      {String(load.value)}
-                      {/* The unit a size down, as on Home; the space kept, so it
-                          still reads "60 kg". */}
-                      <span className="text-xs font-semibold whitespace-pre opacity-75">
+                    <span className="flex items-baseline">
+                      <span className={cx(place === 1 && 'podium-gleam')}>
+                        {String(load.value)}
+                      </span>
+                      {/* The unit a size down, as on Home, and beside the gleam
+                          rather than inside it. Inside, it inherited the gleam's
+                          transparent ink, and Safari leaves a child with its own
+                          opacity out of the text clip, so first place lost its
+                          "kg" on iPhones. The space is real text, so it still
+                          reads "60 kg". */}
+                      <span
+                        className={cx(
+                          'text-xs font-semibold whitespace-pre',
+                          place === undefined ? 'text-muted' : 'podium-unit',
+                        )}
+                      >
                         {` ${load.unit}`}
                       </span>
                     </span>

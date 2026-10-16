@@ -51,12 +51,12 @@ describe('volumes', () => {
    * machines (ADR-0069), and eleven more (ADR-0098): seven curls, the seated
    * cable row, the T-bar row, the cable lat pullover and the wall sit, then
    * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
-   * curl machine and two crunches. Counted rather than left open, because an exercise
+   * curl machine and two crunches, and the rear delt fly machine. Counted rather than left open, because an exercise
    * that fails to insert — a bad slug in a join, a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(84);
+    expect(await count('select count(*) n from public.exercises')).toBe(85);
   });
 });
 
@@ -447,6 +447,21 @@ describe('the exercises asked for after the first fifty', () => {
       { slug: 'ab-crunch', station: 'bodyweight-only', is_primary: true },
       { slug: 'decline-ab-crunch', station: 'bodyweight-only', is_primary: true },
       { slug: 'decline-ab-crunch', station: 'decline-bench', is_primary: false },
+    ]);
+  });
+
+  /** The pec deck turned round: no machine of its own in the equipment picker. */
+  it('puts the machine rear delt fly on the pec deck, apart from the dumbbell one', async () => {
+    const { rows } = await h.db.query<{ slug: string; name: string; station: string }>(
+      `select e.slug, e.name, q.slug as station from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id and ee.is_primary
+         join public.equipment q on q.id = ee.equipment_id
+        where e.slug in ('rear-delt-fly','rear-delt-fly-machine')
+        order by e.slug`,
+    );
+    expect(rows).toEqual([
+      { slug: 'rear-delt-fly', name: 'Rear Delt Fly', station: 'dumbbell' },
+      { slug: 'rear-delt-fly-machine', name: 'Rear Delt Fly (Machine)', station: 'pec-deck' },
     ]);
   });
 });

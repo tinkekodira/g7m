@@ -53,7 +53,7 @@ test('every exercise row has an icon square, and the text lines up either way', 
  * raise machine, the dip bar, the lying leg curl, the exercise mat, the
  * incline bench, the T-bar, the standing calf raise, the seated cable row, the
  * rowing machine, the ski erg, the stair climber, the kettlebell, the decline
- * bench and the preacher curl machine followed it into the same
+ * bench, the preacher curl machine and the rear delt fly machine followed it into the same
  * map (see `equipment-art.ts`). One row per piece is enough
  * to say the join still works for each new key — the square itself is
  * already covered above.
@@ -93,6 +93,7 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Cable Lat Pullover', 'cable-machine'],
     ['Hack Squat', 'hack-squat'],
     ['Pec Deck', 'pec-deck'],
+    ['Rear Delt Fly (Machine)', 'rear-delt-fly-machine'],
     ['Seated Calf Raise', 'calf-raise-machine'],
     ['Dips (Chest focused)', 'dip-bar'],
     ['Dips (Triceps focused)', 'dip-bar'],

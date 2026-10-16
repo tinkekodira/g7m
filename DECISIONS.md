@@ -8387,3 +8387,71 @@ returns the change.
 Not covered: the exercise demonstration loops are also outside the precache
 under fixed names. A loop re-encoded under the same name reaches a phone
 only with the next deploy that changes the app itself.
+
+## ADR-0136 — Edit profile is one form, and Profile logs a weight in place
+
+**Status:** accepted · **Date:** 2026-10-16 · **Phase:** out of phase (polish) · **Amends:** ADR-0071, ADR-0080, ADR-0126
+
+Four changes asked for together, all on Profile and the screen its Edit
+button opens, plus one exercise.
+
+**The weight on Profile is a button.** Tapping the Weight tile under Your
+numbers opens a bottom sheet, the same shape as the challenge sheet: "Log
+your weight", one field with the last weight already in it and selected, and
+Save weight. Typing replaces the old number; somebody who weighs the same
+taps Save. The sheet closes and the tile shows the new number. A small pencil
+beside the label says the tile can be tapped. The button sits under the
+tile's text and fills the tile, so the whole cell is the target without
+putting a button inside the `<dl>`. Edit can still log a weight. The rules
+for what counts as a weight (`readWeight`), and the two writes (a
+`body_metrics` row plus `profiles.bodyweight_kg`), are shared by both places
+(`screens/edit-profile.ts`, `lib/db/use-log-weight.ts`).
+
+**Edit profile is rebuilt in Home's cards.** It was titled "You", with a
+Save button under every field, a red-edged box around the country, a long
+paragraph under Sex, and a "Your goal" row at the end that Profile's goal
+card (ADR-0071) had already replaced. That row is gone. Top to bottom, the
+screen is now:
+
+- **Weight**, the hero card. The last weight is large on the right, the
+  weigh-in prompt sits in a quiet inset when one is due, then the trend and
+  one row with the field and Save weight.
+- **About you**, one form. Name, height and date of birth hold the stored
+  answers instead of showing them as placeholders. Height and date sit side
+  by side, then come the country and Sex (read-only once answered, "Set when
+  you signed up"). One Save changes button lights up only when something
+  differs, saves only what changed, and says "Saved" beside itself. The
+  country is now saved with the form and not on change.
+- **Outside the gym.** The activity levels are a radio list with each one's
+  description under it, saved when picked, as a Settings choice is.
+- **Recent readings.** Rows with a trash icon (labelled "Remove 75.1 kg,
+  2 days ago") instead of a red Remove button on every line.
+
+**Best lifts lost first place's unit on iPhones.** The gold weight is drawn
+with `background-clip: text` and a transparent colour. The "kg" was a child
+of that span with its own `opacity`, and WebKit leaves a child with its own
+opacity out of the parent's text clip, so it inherited the transparent ink
+and drew nothing. Chrome drew it, which is why it was missed. A static page
+with the same markup reproduced it in Playwright's WebKit. The unit is now a
+sibling of the gleam, coloured by `.podium-unit` (the place's ink mixed at
+75%, no opacity). The friends' leaderboard already put its unit outside the
+gleam. The same card shows a friend's best lifts, so both are fixed.
+
+**Rear Delt Fly (Machine)** joins the catalogue next to the dumbbell Rear
+Delt Fly, which is unchanged. It wears `3d-models/rear-delt-fly` (the Life
+Fitness pectoral fly / rear deltoid station), made with ADR-0084's two steps.
+The same recipe reproduces the committed pec deck icon and hero within
+recompression noise. It is filed under the **pec deck** and gets no
+equipment row of its own: the machine drawn is a pec deck used facing the
+other way, so anybody with a pec deck has the exercise, and the equipment
+picker doesn't grow (ADR-0010). Assets: `rear-delt-fly-machine.png` /
+`rear-delt-fly-machine-hero.webp` (portrait, about 0.8:1). It has no
+demonstration loop yet.
+
+**Tests:** `edit-profile.test.ts` covers the readers. `profile-and-progress.spec.ts`
+now covers the weigh-in sheet (focus, a comma decimal, the tile updating,
+the last weight in the field) and the Edit form (stored answers, Save only
+when changed, no goal link), and drives the BMI test through the new
+buttons. `seed.test.ts` counts 85 exercises and checks the machine is on the
+pec deck. `exercise-icons.spec.ts` and `exercise-hero.spec.ts` cover the new
+render.

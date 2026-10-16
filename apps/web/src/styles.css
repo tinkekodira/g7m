@@ -164,6 +164,12 @@ textarea,
   color: var(--podium-badge);
 }
 
+/* A podium weight's unit: its place's ink, a step quieter. Mixed rather than
+   faded with opacity, which Safari drops from a gleaming parent's text clip. */
+.podium-unit {
+  color: color-mix(in srgb, var(--podium-ink) 75%, transparent);
+}
+
 /* First on Profile alone gets a hairline of brighter gold along its top and
    bottom, shaped like its wash, over the divider below it. The leaderboard's
    first has its metal edge instead. */

@@ -127,6 +127,7 @@ test('a portrait or a very wide render still fits without cropping', async ({ pa
     ['kettlebell-swing', 'kettlebell-hero'],
     ['decline-ab-crunch', 'decline-bench-hero'],
     ['preacher-curl-machine', 'preacher-curl-machine-hero'],
+    ['rear-delt-fly-machine', 'rear-delt-fly-machine-hero'],
   ] as const) {
     await page.goto(`/#/exercises/${slug}`);
     const hero = page.locator(`img[src*="${srcMatch}"]`);
