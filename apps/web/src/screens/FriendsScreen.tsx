@@ -32,6 +32,7 @@ import {
 } from '../lib/friends/use-friends-data.js';
 import type { ChallengeCardView } from './challenges-view.js';
 import { FriendsLeaderboard } from './FriendsLeaderboard.js';
+import { useKeyboardInset } from '../lib/use-keyboard-inset.js';
 import {
   describeCodeProblem,
   describeSendResult,
@@ -576,6 +577,7 @@ function AddFriendSheet({
   readonly onClose: () => void;
   readonly onSent: () => void;
 }) {
+  const keyboard = useKeyboardInset();
   const titleId = useId();
   const [typed, setTyped] = useState('');
   const [sending, setSending] = useState(false);
@@ -621,7 +623,12 @@ function AddFriendSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    // Lifted by the keyboard's height while one is open: iOS leaves a fixed
+    // sheet under the keyboard otherwise, field and button included.
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center"
+      style={keyboard > 0 ? { bottom: keyboard } : undefined}
+    >
       <button
         type="button"
         aria-label="Close"

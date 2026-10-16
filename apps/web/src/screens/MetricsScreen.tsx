@@ -588,7 +588,7 @@ function Readings({
                 onClick={() => {
                   void write((r) => r.bodyMetrics.remove(entry.id));
                 }}
-                className="inline-flex size-tap shrink-0 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:text-destructive active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                className="inline-flex size-tap shrink-0 items-center justify-center rounded-full text-destructive transition-colors duration-150 active:bg-danger/15 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
               >
                 <TrashIcon aria-hidden className="size-5" />
               </button>
