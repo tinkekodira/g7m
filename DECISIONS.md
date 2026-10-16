@@ -8297,3 +8297,60 @@ makes a duel fair between a beginner and someone who lifts twice as much.
   and shown until they age out. Narrowing the check would have meant
   rewriting or deleting those rows for no gain. An old app that still offers
   the four stats can still send them, which is harmless.
+
+## ADR-0134 — The male body's muscle map is painted by hand
+
+**Status:** accepted · **Date:** 2026-10-16 · **Phase:** out of phase (fix) · **Amends:** ADR-0091
+
+ADR-0091 to ADR-0095 drew the muscle borders by rule: labels from the
+procedural atlas, smoothing, and watersheds along the sculpt's grooves. Each
+round fixed a few muscles and left others wrong, because a rule can only find
+a border the sculpt makes visible. So the male body's map is now painted by
+hand, in Blender, on the installed model's own UV layout: one flat colour per
+muscle, both sides sharing a colour. `tools/repaint.py` turns the painting
+into the region map and the part meshes. `split.py` stays as the way to cut a
+new sculpt, and the female body still comes from it.
+
+**The painting decides, and the tool only tidies it.**
+
+- **Colours snap to the palette, and black means unpainted.** The canvas
+  outside the islands is black, which is not in the palette. A covered texel
+  nearest black would take the colour of the nearest painted texel on the
+  body. The painting has none: every covered texel is painted, and 2,913
+  anti-aliased texels snapped to a palette colour.
+- **Sides come from 3D position.** One colour covers both sides, so each
+  texel is placed on the body through its triangle, and the sign of x picks
+  the side. Which sign is `_l` is read from the existing parts (`_l` at −x),
+  not assumed.
+- **Specks are measured on the body.** A patch under 20 texels (about 0.2 cm², a texel being a millimetre of skin)
+  goes to the majority of its larger neighbours, counted in the map and
+  across UV seams. Twenty-nine small patches agree with the skin around them
+  and stay. They are pieces of a larger muscle on their own tiny UV islands.
+- **Edge distance is measured on the body.** The green channel is the 3D
+  distance to the nearest place the region changes, in this triangle's texel
+  lengths. The edge of a UV island is a border only where the region changes
+  across the seam. The encoding is unchanged: red = index × 3, green =
+  distance / 8 × 255.
+- **Parts are cut from the paint.** Each vertex takes the majority of the
+  3×3 texels around each of its UVs, and each triangle the majority of its
+  three vertices. 99% of triangles match the map under them, the same
+  within-a-triangle agreement ADR-0091 gives. The fallback for GPUs that
+  cannot compile the shader (ADR-0131) and taps both follow the painting.
+- **The geometry is untouched.** Positions, normals and UVs are read from
+  the input GLB and written back as they were. The body is never unwrapped
+  again, because Smart UV Project could lay it out differently and the
+  painting would land on the wrong skin. Node names and their order, and the
+  `g7mRegions` extras including the region order, are identical.
+
+87% of covered texels keep their region. The biggest changes are the groin
+(about 3.6 times larger), the front delts (twice the size), the biceps and
+serratus (about +45%), and the lateral triceps (about half). The painter
+meant these. Every region still has geometry, and the contract checks pass.
+
+**Noticed, not changed:** `atlas.ts` says +x is the figure's own right. But a
+figure facing +z with +y up has its right at −x, and the viewer's camera at
+z = +2.6 shows +x on the viewer's right. So every `_l` and `_r` in the
+project may be the anatomical opposite. The app never shows a side (a tap
+and the heat map both use the slug), so nothing visible is wrong. The
+painting keeps the existing convention. Fixing it would be a separate change,
+to the atlas and both bodies at once.
