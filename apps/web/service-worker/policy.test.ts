@@ -18,6 +18,20 @@ describe('strategyFor', () => {
     );
   });
 
+  it('asks the network for the anatomy manifest first, so a new model is found', () => {
+    // Same name in every build, and outside the precache, so it never changes
+    // the build id: cache-first kept a phone on the old model for good.
+    expect(strategyFor(request({ url: `${SCOPE}anatomy/manifest.json` }), SCOPE)).toBe(
+      'network-first',
+    );
+  });
+
+  it('keeps the model itself cache-first, because its name is its contents', () => {
+    expect(strategyFor(request({ url: `${SCOPE}anatomy/body-9307a978.glb` }), SCOPE)).toBe(
+      'cache-first',
+    );
+  });
+
   it('leaves Supabase alone', () => {
     // A cached auth response is a signed-in user who cannot sign out.
     expect(

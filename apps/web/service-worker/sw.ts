@@ -68,7 +68,8 @@ sw.addEventListener('fetch', (event) => {
   // browser handles the request exactly as it would with no worker installed.
   if (strategy === 'passthrough') return;
 
-  event.respondWith(strategy === 'network-first' ? shell(request) : asset(request));
+  if (strategy === 'cache-first') event.respondWith(asset(request));
+  else event.respondWith(request.mode === 'navigate' ? shell(request) : fresh(request));
 });
 
 async function precache(): Promise<void> {
@@ -139,6 +140,27 @@ async function shell(request: Request): Promise<Response> {
       status: 503,
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     });
+  }
+}
+
+/**
+ * A file that keeps its name across builds: network, then the cached copy.
+ *
+ * The shell's rule for one that is not the shell. Kept under its own URL, and
+ * looked up in every cache on the way out, so the first offline open after an
+ * update still finds the copy the previous build stored.
+ */
+async function fresh(request: Request): Promise<Response> {
+  try {
+    const response = await fetch(request.url, { cache: 'no-store', credentials: 'same-origin' });
+    if (response.status === 200 && response.type === 'basic') {
+      const cache = await caches.open(CACHE);
+      await cache.put(request.url, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request.url);
+    return cached ?? Response.error();
   }
 }
 

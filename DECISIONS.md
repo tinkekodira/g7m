@@ -8354,3 +8354,35 @@ project may be the anatomical opposite. The app never shows a side (a tap
 and the heat map both use the slug), so nothing visible is wrong. The
 painting keeps the existing convention. Fixing it would be a separate change,
 to the atlas and both bodies at once.
+
+## ADR-0135 — A new model reaches phones: the anatomy manifest is fetched network-first
+
+**Status:** accepted · **Date:** 2026-10-16 · **Phase:** out of phase (fix) · **Amends:** ADR-0052
+
+After the painted body (ADR-0134) was deployed, the site served the new
+manifest and the new model, but the phone kept drawing the old one. The
+content-hashed model name was supposed to prevent this. It didn't, because
+the manifest pointing at the model was stuck.
+
+The service worker served everything under its scope cache-first except the
+page itself. That is right for a fingerprinted file and wrong for
+`anatomy/manifest.json`, which keeps its name in every build. A new build
+normally clears the old cache anyway. But the build id is a hash of the
+precached files, and `anatomy/` is deliberately left out of the precache, so
+a deploy that only swaps the model produces the same `sw.js`. No update is
+offered and no cache is cleared. The phone serves its first copy of the
+manifest for good, and that copy names the old model.
+
+**The manifest is now network-first, like the page.** It is fetched with the
+HTTP cache bypassed, the copy is stored under its own URL, and that copy is
+served only when there is no network. The model itself stays cache-first,
+because its name is its contents.
+
+**Tests:** `policy.test.ts` checks that the manifest is network-first and the
+model cache-first. A browser check against a preview build fetched the
+manifest through the worker, changed the file on disk without changing the
+build, and fetched again. The old worker returned the old copy; the new one
+returns the change.
+
+Not covered: the exercise demonstration loops are also outside the precache
+under fixed names. They are only replaced when their file names change.
