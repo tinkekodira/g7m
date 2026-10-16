@@ -76,9 +76,16 @@ test('a heavy set is celebrated at the bench, the workout on Finish, and each on
   await page.waitForTimeout(1500);
   await expect(banner(page)).toHaveCount(0);
 
-  // And Profile shows the count, with the way in.
+  // And Profile shows the count, with the way in. Counted from what the server
+  // says was earned, not written down as 4: the same workout also earns Night
+  // Owl before 4 am, Early Bird before 6, and a date badge on 1 January,
+  // Christmas, 29 February or the test user's birthday. CI ran it at 00:40.
+  const earned = (await seenOnServer(user.id)).split(',').filter(Boolean).length;
+  expect(earned).toBeGreaterThanOrEqual(4);
   await openTab(page, 'Profile');
-  await expect(page.getByRole('link', { name: /Achievements/ })).toContainText(/4 of 52 earned/);
+  await expect(page.getByRole('link', { name: /Achievements/ })).toContainText(
+    `${String(earned)} of 52 earned`,
+  );
 });
 
 test('training done before is summed up quietly, not announced badge by badge', async ({
