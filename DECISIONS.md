@@ -8385,4 +8385,5 @@ build, and fetched again. The old worker returned the old copy; the new one
 returns the change.
 
 Not covered: the exercise demonstration loops are also outside the precache
-under fixed names. They are only replaced when their file names change.
+under fixed names. A loop re-encoded under the same name reaches a phone
+only with the next deploy that changes the app itself.
