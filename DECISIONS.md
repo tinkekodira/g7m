@@ -8488,3 +8488,16 @@ Remove buttons' red), so removing a reading reads as destructive.
 the keyboard, a panned viewport, and rounding. The keyboard itself and the
 iOS date control cannot be driven from Playwright's WebKit on Windows, which
 draws neither, so both are left to be checked on a phone.
+
+## ADR-0138 — The iOS date field centres its value
+
+**Status:** accepted · **Date:** 2026-10-16 · **Phase:** out of phase (fix) · **Amends:** ADR-0137
+
+ADR-0137 took the native look off date fields on iOS so they fit their box.
+That also dropped the native vertical centring, so the date of birth sat at
+the top edge of its field, while every other field centres its text. The
+field is now a flex box that centres the value, and its line height is the
+field's inner height (the tap height less the 1px borders). Either one
+centres a single line, so the value is centred even if iOS ignores flex on
+a date input. The value's own margin is zeroed. Still iOS only. Not
+reproducible in Windows WebKit, so it is checked on a phone.
