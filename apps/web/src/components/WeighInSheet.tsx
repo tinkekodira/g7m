@@ -1,7 +1,8 @@
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { describeWhen, toDisplayWeight, type UnitSystem } from '@g7m/core';
-import { Button, TextField } from '@g7m/ui';
+import { Button, TextField, cx } from '@g7m/ui';
 import { useLogWeight } from '../lib/db/use-log-weight.js';
+import { useKeyboardInset } from '../lib/use-keyboard-inset.js';
 import { ScaleIcon } from './icons.js';
 
 /**
@@ -27,6 +28,16 @@ export function WeighInSheet({
 }) {
   const headingId = useId();
   const { log, busy } = useLogWeight(unitSystem);
+  const keyboard = useKeyboardInset();
+  const form = useRef<HTMLFormElement>(null);
+
+  // Focused in the same commit the tap opened the sheet in, so iOS still
+  // brings the keyboard up, and without scrolling: Safari otherwise scrolls the
+  // page under the sheet to reach a field it thinks the keyboard will cover,
+  // and Profile came back from the sheet scrolled to the bottom.
+  useLayoutEffect(() => {
+    form.current?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
   const shown = currentKg === null ? null : toDisplayWeight(currentKg, unitSystem);
   const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
   const [draft, setDraft] = useState(shown === null ? '' : String(shown.value));
@@ -50,7 +61,12 @@ export function WeighInSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    // Lifted by the keyboard's height while one is open: iOS leaves a fixed
+    // sheet under the keyboard otherwise, field and button included.
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center"
+      style={keyboard > 0 ? { bottom: keyboard } : undefined}
+    >
       <button
         type="button"
         aria-label="Close"
@@ -62,7 +78,10 @@ export function WeighInSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        className="popup relative flex w-full max-w-2xl flex-col gap-5 rounded-t-sheet border-t border-subtle bg-surface px-5 pt-5 pb-safe-bottom shadow-floating"
+        className={cx(
+          'popup relative flex w-full max-w-2xl flex-col gap-5 rounded-t-sheet border-t border-subtle bg-surface px-5 pt-5 shadow-floating',
+          keyboard === 0 && 'pb-safe-bottom',
+        )}
       >
         <div className="flex items-center gap-3">
           <span
@@ -91,6 +110,7 @@ export function WeighInSheet({
         </div>
 
         <form
+          ref={form}
           className="flex flex-col gap-4 pb-4"
           onSubmit={(event) => {
             void submit(event);
@@ -101,9 +121,7 @@ export function WeighInSheet({
             inputMode="decimal"
             enterKeyHint="done"
             autoComplete="off"
-            // Opened by a tap, so the keyboard may come up with it; the last
-            // weight is selected, so typing replaces it.
-            autoFocus
+            // The last weight is selected when focused, so typing replaces it.
             onFocus={(event) => {
               event.currentTarget.select();
             }}

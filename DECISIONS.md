@@ -8455,3 +8455,36 @@ when changed, no goal link), and drives the BMI test through the new
 buttons. `seed.test.ts` counts 85 exercises and checks the machine is on the
 pec deck. `exercise-icons.spec.ts` and `exercise-hero.spec.ts` cover the new
 render.
+
+## ADR-0137 — Bottom sheets sit on the keyboard, and Edit profile fits an iPhone
+
+**Status:** accepted · **Date:** 2026-10-16 · **Phase:** out of phase (fix) · **Amends:** ADR-0136
+
+Three things from using ADR-0136 on an iPhone.
+
+**The weigh-in sheet opened under the keyboard.** iOS Safari does not
+shrink the page when the keyboard opens; it shrinks and pans the visual
+viewport. A sheet fixed to `bottom: 0` stayed under the keyboard, so tapping
+the weight on Profile showed only the keyboard, and the sheet was found by
+scrolling. `useKeyboardInset` (`lib/use-keyboard-inset.ts`) reads
+`visualViewport` and gives the keyboard's height. The sheet's `bottom` is set
+to it, so the sheet sits on top of the keyboard. Its home-indicator padding
+is dropped while the keyboard covers that area. The field is focused with
+`preventScroll`, so Safari no longer scrolls the page behind the sheet to the
+bottom. Add a friend is the other bottom sheet with a text field, and it has
+the same problem, so it gets the same lift. Android Chrome resizes the page
+itself, so the inset stays 0 there.
+
+**The date of birth ran out of the About you card.** Safari gives a native
+date input its own width, wider than half a phone, and ignores `width` while
+it keeps the native look. On iOS only (`@supports (-webkit-touch-callout:
+none)`), date inputs drop the native look, so they fill their box and match
+the other fields' height. Chrome keeps its calendar button.
+
+**The trash icons in Recent readings are red** (`text-destructive`, the
+Remove buttons' red), so removing a reading reads as destructive.
+
+**Tests:** `use-keyboard-inset.test.ts` covers the arithmetic: no keyboard,
+the keyboard, a panned viewport, and rounding. The keyboard itself and the
+iOS date control cannot be driven from Playwright's WebKit on Windows, which
+draws neither, so both are left to be checked on a phone.

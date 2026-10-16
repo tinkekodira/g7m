@@ -439,3 +439,22 @@ textarea,
 .duel-glow {
   animation: g7m-ember-flicker 2.3s ease-in-out infinite;
 }
+
+/* A date field the width of its box on iOS. Safari gives a native date input
+   an intrinsic width, wider than half a phone, and ignores `width` while it
+   keeps its native look; side by side with the height on Edit profile it ran
+   out of the card. Without the native look it takes the box's width and the
+   height every other field has. iOS only (the touch-callout test), so Chrome
+   keeps its calendar button. */
+@supports (-webkit-touch-callout: none) {
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+  }
+
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
