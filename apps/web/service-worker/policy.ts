@@ -8,8 +8,14 @@
  * not in the room.
  */
 
+/** Where the app looks for the anatomy model's name. See `anatomy-model.ts`. */
+const ANATOMY_MANIFEST = 'anatomy/manifest.json';
+
 export type Strategy =
-  /** Ask the network, fall back to the cached copy. For the page itself. */
+  /**
+   * Ask the network, fall back to the cached copy. For the page itself, and
+   * for the one other file whose name never changes but whose contents do.
+   */
   | 'network-first'
   /** Serve the cached copy, fetch and cache on a miss. For hashed assets. */
   | 'cache-first'
@@ -48,6 +54,19 @@ export function strategyFor(request: RequestFacts, scope: string): Strategy {
   // The document. Network-first because a stale shell is exactly the bug this
   // worker exists to fix, and because it is one small request.
   if (request.isNavigation) return 'network-first';
+
+  /**
+   * The anatomy manifest, for the same reason as the document.
+   *
+   * It names the model's hashed file, so it is how a new model is found — and
+   * it keeps one name in every build. Nor does it change the build id: the
+   * model is left out of the precache, manifest and all, so a deploy that
+   * only swaps the model ships the same worker, no update is offered, and a
+   * cache-first manifest pointed at the old model for good (ADR-0135).
+   */
+  if (new URL(request.url).pathname === new URL(ANATOMY_MANIFEST, scope).pathname) {
+    return 'network-first';
+  }
 
   // Everything else under the scope is a build artefact. Vite fingerprints the
   // ones that change, so a hit is always the right answer and never stale.
