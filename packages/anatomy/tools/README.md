@@ -167,6 +167,48 @@ keep shading like one. This is also why the pieces are built directly instead
 of with `mesh.separate`, which gives no way to know which original vertex a
 duplicate came from.
 
+## Pass four, painted — the map by hand (the male body today)
+
+```
+python packages/anatomy/tools/repaint.py \
+  apps/web/public/anatomy/body-<hash>.glb \
+  packages/anatomy/assets/licensed/paint/muscle-paint.png \
+  packages/anatomy/assets/licensed/paint/palette.json \
+  packages/anatomy/assets/licensed/full_body/body.glb
+```
+
+Replaces pass four's generated borders with a painted map (ADR-0134). The
+painting is a 2048² RGB PNG in the input GLB's own UV layout: one flat colour
+per muscle, both sides one colour, black wherever nothing is painted.
+`palette.json` holds `names`, the GLB's region order, and `palette`, slug to
+hex, with `skin-head`, `skin-hand`, `skin-groin` and `skin-foot` for bare
+skin. Plain Python with numpy, scipy and Pillow; no Blender.
+
+The input is the GLB the painting was made on — normally the installed one —
+and its geometry and UVs are kept exactly. Do not unwrap again and repaint on
+the old layout: Smart UV Project need not lay the body out the same way twice.
+The script snaps the paint to the palette, splits sides by 3D position, clears
+specks under `G7M_MIN_ISLAND` texels (default 20, measured on the body,
+across seams), measures edge distance on the body, re-cuts the seventy parts
+from the paint, and writes the GLB with the map inside it. It prints, and
+writes to `<out>_report.json`, texels and triangles per region before and
+after.
+
+Look at the result before installing it:
+
+```
+blender --background --factory-startup --python packages/anatomy/tools/render-map.py -- \
+  packages/anatomy/assets/licensed/full_body/body.glb <prefix> \
+  packages/anatomy/assets/licensed/paint/muscle-paint.png \
+  packages/anatomy/assets/licensed/full_body/body_view_new.png \
+  packages/anatomy/assets/licensed/full_body/body_view_old.png
+```
+
+That draws the painting, the new map and the old one on the body, from the
+front, the back and both sides. `repaint.py` writes the two `_view_` pictures:
+each region in its palette colour, the `_l` side a shade darker, so the split
+down the middle shows.
+
 ## Pass five — put it in front of the app
 
 ```
