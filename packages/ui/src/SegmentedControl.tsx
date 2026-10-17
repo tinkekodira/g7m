@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from './cx.js';
 
 export interface SegmentedOption<T extends string> {
   readonly value: T;
-  readonly label: string;
+  readonly label: ReactNode;
 }
 
 /**
@@ -20,6 +20,8 @@ export interface SegmentedControlProps<T extends string> {
   readonly onChange: (value: T) => void;
   /** Names the group for a screen reader — "Period", "Weight unit". */
   readonly label: string;
+  /** Use tabs when each choice switches the content below the control. */
+  readonly role?: 'radiogroup' | 'tablist';
   readonly disabled?: boolean;
   readonly variant?: SegmentedVariant;
   readonly className?: string;
@@ -45,10 +47,11 @@ const indicatorClasses: Record<SegmentedVariant, string> = {
 /**
  * One of a few, side by side, with the choice sliding between them.
  *
- * A radio group, not a row of buttons: the options are mutually exclusive and
+ * A radio group by default: the options are mutually exclusive and
  * a screen reader should say "Weekly, radio button, 1 of 3, checked". That
  * brings the keyboard contract with it — one tab stop for the group, arrows to
  * move within it — which is what `tabIndex` and `onKeyDown` are doing.
+ * `role="tablist"` keeps the same interaction for choices that switch pages.
  *
  * The highlight is one element that moves, rather than a background on
  * whichever option is chosen. Swapping backgrounds reads as a flicker; moving
@@ -65,6 +68,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   label,
+  role = 'radiogroup',
   disabled = false,
   variant = 'solid',
   className,
@@ -89,6 +93,10 @@ export function SegmentedControl<T extends string>({
     // The width changes with the screen and when a font arrives late.
     const observer = new ResizeObserver(measure);
     observer.observe(track.current);
+    // A badge can widen an option without changing the track's total width.
+    for (const button of buttons.current) {
+      if (button !== null) observer.observe(button);
+    }
     return () => {
       observer.disconnect();
     };
@@ -107,7 +115,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       ref={track}
-      role="radiogroup"
+      role={role}
       aria-label={label}
       aria-disabled={disabled || undefined}
       className={cx('relative flex p-1', trackClasses[variant], className)}
@@ -136,8 +144,9 @@ export function SegmentedControl<T extends string>({
               buttons.current[index] = element;
             }}
             type="button"
-            role="radio"
-            aria-checked={selected}
+            role={role === 'tablist' ? 'tab' : 'radio'}
+            aria-checked={role === 'radiogroup' ? selected : undefined}
+            aria-selected={role === 'tablist' ? selected : undefined}
             tabIndex={selected ? 0 : -1}
             disabled={disabled}
             onClick={() => {
@@ -150,6 +159,12 @@ export function SegmentedControl<T extends string>({
               } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 move(index - 1);
+              } else if (role === 'tablist' && event.key === 'Home') {
+                event.preventDefault();
+                move(0);
+              } else if (role === 'tablist' && event.key === 'End') {
+                event.preventDefault();
+                move(options.length - 1);
               }
             }}
             className={cx(

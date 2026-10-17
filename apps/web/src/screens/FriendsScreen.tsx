@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { checkFriendCode } from '@g7m/core';
-import { Button, TextField, cx } from '@g7m/ui';
+import { Button, SegmentedControl, TextField, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { Panel } from '../components/Panel.js';
 import { StatValue } from '../components/StatValue.js';
@@ -174,9 +174,8 @@ export function FriendsScreen() {
 /**
  * Friends | Leaderboard | Requests. Tabs in the ARIA sense: one is selected.
  *
- * Drawn as the pill Progress chooses its period with, so the two screens'
- * main switch reads the same; still tabs underneath, not radios, because
- * each one swaps the whole page below it.
+ * Uses Learn's sliding highlight; still tabs underneath, not radios,
+ * because each one swaps the whole page below it.
  */
 function SubTabs({
   value,
@@ -187,65 +186,37 @@ function SubTabs({
   readonly requests: number;
   readonly onChange: (tab: SubTab) => void;
 }) {
-  const tabClass = (selected: boolean) =>
-    cx(
-      'flex min-h-tap flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-sm font-medium whitespace-nowrap transition-colors duration-200',
-      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-      selected ? 'bg-accent text-on-accent' : 'text-secondary',
-    );
-
   return (
-    <div
+    <SegmentedControl
       role="tablist"
-      aria-label="Friends"
-      className="flex rounded-full border border-subtle bg-input p-1"
-    >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={value === 'friends'}
-        className={tabClass(value === 'friends')}
-        onClick={() => {
-          onChange('friends');
-        }}
-      >
-        Friends
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={value === 'leaderboard'}
-        className={tabClass(value === 'leaderboard')}
-        onClick={() => {
-          onChange('leaderboard');
-        }}
-      >
-        Leaderboard
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={value === 'requests'}
-        className={tabClass(value === 'requests')}
-        onClick={() => {
-          onChange('requests');
-        }}
-      >
-        Requests
-        {requests > 0 && (
-          <span
-            className={cx(
-              'numeric flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold',
-              // On the filled pill the count turns inside out, or it vanishes into it.
-              value === 'requests' ? 'bg-on-accent text-accent' : 'bg-accent text-on-accent',
-            )}
-          >
-            {requests}
-            <span className="sr-only"> waiting</span>
-          </span>
-        )}
-      </button>
-    </div>
+      label="Friends"
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: 'friends', label: 'Friends' },
+        { value: 'leaderboard', label: 'Leaderboard' },
+        {
+          value: 'requests',
+          label: (
+            <span className="flex items-center gap-1.5">
+              Requests
+              {requests > 0 && (
+                <span
+                  className={cx(
+                    'numeric flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold',
+                    // On the filled pill the count turns inside out, or it vanishes into it.
+                    value === 'requests' ? 'bg-on-accent text-accent' : 'bg-accent text-on-accent',
+                  )}
+                >
+                  {requests}
+                  <span className="sr-only"> waiting</span>
+                </span>
+              )}
+            </span>
+          ),
+        },
+      ]}
+    />
   );
 }
 
