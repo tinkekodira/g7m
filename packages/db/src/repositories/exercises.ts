@@ -86,6 +86,13 @@ export interface MuscleInvolvement {
   readonly recruitmentWeight: number;
 }
 
+/** The strongest primary muscle, used for both a library row's label and tint. */
+export interface PrimaryMuscle {
+  readonly name: string;
+  /** Null while an incomplete taxonomy has no matching group. */
+  readonly groupSlug: string | null;
+}
+
 export interface ExerciseEquipment {
   readonly equipmentId: string;
   readonly slug: string;
@@ -379,21 +386,33 @@ export class ExerciseRepository {
    * app ends up feeling slower than an online one.
    */
   async primaryMuscleNames(): Promise<ReadonlyMap<string, string>> {
+    const muscles = await this.primaryMuscles();
+    return new Map([...muscles].map(([id, muscle]) => [id, muscle.name]));
+  }
+
+  /** One local read for the whole list, independent of the active filters. */
+  async primaryMuscles(): Promise<ReadonlyMap<string, PrimaryMuscle>> {
     const rows = await this.db.getAll<RawRow>(
-      `SELECT em.exercise_id, m.common_name, em.recruitment_weight
+      `SELECT em.exercise_id, m.common_name, mg.slug AS group_slug
          FROM exercise_muscles em
          JOIN muscles m ON m.id = em.muscle_id
+         LEFT JOIN muscle_groups mg ON mg.id = m.muscle_group_id
         WHERE em.role = 'primary'
-        ORDER BY em.exercise_id ASC, em.recruitment_weight DESC, m.common_name ASC`,
+        ORDER BY em.exercise_id ASC, em.recruitment_weight DESC, m.common_name ASC, m.id ASC`,
     );
-    const names = new Map<string, string>();
+    const muscles = new Map<string, PrimaryMuscle>();
     for (const row of rows) {
       const id = readString(row, 'exercise_id', '');
       // The ordering above puts the heaviest involvement first, so the first
       // row seen for an exercise is the one to keep.
-      if (id !== '' && !names.has(id)) names.set(id, readString(row, 'common_name', ''));
+      if (id !== '' && !muscles.has(id)) {
+        muscles.set(id, {
+          name: readString(row, 'common_name', ''),
+          groupSlug: readOptionalString(row, 'group_slug'),
+        });
+      }
     }
-    return names;
+    return muscles;
   }
 
   /**

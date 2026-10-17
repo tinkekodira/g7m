@@ -168,6 +168,7 @@ export {
   type Force,
   type Mechanic,
   type MuscleInvolvement,
+  type PrimaryMuscle,
   type MuscleRole,
   type VideoProvider,
 } from './repositories/exercises.js';

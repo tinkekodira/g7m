@@ -8523,3 +8523,39 @@ URL persistence, resizing, light/dark themes, keyboard navigation, reduced
 motion, and the badge disappearing after accepting a request. Screenshots
 are inspected at phone and desktop widths. Native device behavior remains
 to be checked on a phone.
+
+
+## ADR-0140 — Browse shares faint muscle colors with a sticky filter rail
+
+**Status:** accepted · **Date:** 2026-10-17 · **Phase:** out of phase (mobile polish)
+
+Browse gives every muscle group its own faint diagonal wash, derived from
+Home's existing region palette. The group button and an exercise whose
+strongest primary muscle belongs to that group share exactly the same wash:
+8% fading to transparent in dark mode, 6% in light. Text stays in the neutral
+text tokens, and equipment squares take their row's hue. All, Cardio, unknown
+groups and exercises without primary-muscle metadata stay neutral.
+
+`ExerciseRepository.primaryMuscles()` returns the strongest primary muscle's
+name and group slug together in one local query. Recruitment weight wins,
+then common name, then muscle ID. A left join preserves the muscle name when
+its group has not synced yet. `primaryMuscleNames()` remains compatible by
+projecting that result. Colors never depend on the selected filter: a bench
+press found through Triceps still wears Chest's tint. No schema or sync change.
+
+The muscle buttons sit in one rounded, horizontally scrolling rail, sticky
+8px below the top safe area. Overflow fades appear only on sides with more
+content. Selection has its own fill and outline, with 48px targets and native
+button semantics. A selected or focused button is revealed by scrolling only
+the rail, so the document does not jump. Resize observers account for both
+the track and the labels. The rail stays below dialogs; focused exercise rows
+leave room above for it. The shared workout/routine picker gets the same
+colors, keeping its stronger superset ring and order badges.
+
+**Validation:** repository tests cover strongest-muscle selection, deterministic
+ties, incomplete groups and missing primaries. Palette coverage checks the
+seeded taxonomy. Browser tests cover matching gradients, filter independence,
+search, offline browsing, sticky placement, overflow fades, focus, URL restore,
+resizing, themes, reduced motion and superset selection. Phone and desktop
+screenshots are inspected in both themes; native device behavior remains to
+be checked on a phone.
