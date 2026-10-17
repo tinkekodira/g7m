@@ -258,11 +258,27 @@ export function suggestGoal(context: GoalContext): GoalSuggestion | null {
 export function goalChangedAt(
   history: readonly { readonly goal: TrainingGoal; readonly startedAt: Date }[],
 ): Date | null {
-  const [latest, ...older] = history;
+  // Merge restatements before measuring how long a goal lasted. Otherwise a
+  // last-minute restatement could hide a genuinely different, month-long goal.
+  const runs: { goal: TrainingGoal; startedAt: Date }[] = [];
+  for (const entry of history) {
+    const previous = runs.at(-1);
+    if (previous?.goal === entry.goal) previous.startedAt = entry.startedAt;
+    else runs.push({ ...entry });
+  }
+
+  const [latest, ...older] = runs;
   if (latest === undefined) return null;
 
   let since = latest.startedAt;
+  let replacedAt = latest.startedAt;
   for (const entry of older) {
+    const duration = replacedAt.getTime() - entry.startedAt.getTime();
+    replacedAt = entry.startedAt;
+    // The goal picker saves each selection. Trying options and returning to
+    // the original goal in seconds is not a new training phase (ADR-0141).
+    // Only superseded runs are ignored: a new current goal applies at once.
+    if (duration >= 0 && duration < 5 * 60 * 1000) continue;
     // A different goal: the current run began at the last row we accepted.
     if (entry.goal !== latest.goal) return since;
     since = entry.startedAt;

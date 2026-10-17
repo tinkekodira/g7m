@@ -8559,3 +8559,26 @@ search, offline browsing, sticky placement, overflow fades, focus, URL restore,
 resizing, themes, reduced motion and superset selection. Phone and desktop
 screenshots are inspected in both themes; native device behavior remains to
 be checked on a phone.
+
+## ADR-0141 — Brief goal selections do not restart the training review
+
+**Status:** accepted · **Date:** 2026-10-17 · **Follows:** ADR-0056
+
+An account with a month of finished workouts saw "0 of 4 sessions logged".
+Read-only server inspection confirmed the workouts existed. Three goal choices
+saved within seven seconds ended on the account's original goal, but the
+review treated the intervening choices as training phases and cut off the log.
+
+`goalChangedAt` now ignores superseded goal runs shorter than five minutes.
+This deliberately narrow correction window covers trying the picker without
+treating a day spent on another goal as the same phase. Consecutive restatements
+are merged before measuring duration, so restating a long-running goal just
+before changing it cannot hide the real change. The current goal always takes
+effect immediately; settling on a different goal still starts a new review.
+
+Only the interpretation changes. Goal rows and workout history are preserved,
+and existing accounts recover on the next local review without a data migration
+or a connection. The six-week window and four-session/twelve-day evidence gate
+remain in place. Unit regressions cover returning to the original goal, a real
+switch, restatements and the five-minute boundary. Browser tests cover the Home
+note, detailed review and offline navigation at phone and desktop widths.

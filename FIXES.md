@@ -1,3 +1,18 @@
+# Follow-up — offline cold start in the browser test build
+
+During ADR-0141 validation on 2026-10-17, the restored training review rendered
+correctly at phone and desktop widths, but a full offline reload of the test
+build produced a blank screen. This also happened after awaiting
+`navigator.serviceWorker.ready`. Chrome reported `net::ERR_FAILED` loading the
+entry JavaScript, achievements chunk and stylesheet from `/assets/`.
+
+Reproduction: run the production build against the fake backend, sign in,
+open Progress, wait for the service worker, set the browser context offline,
+then reload the page. Investigate asset caching and service-worker control
+separately from the review's goal-history cutoff. Whether this also affects
+the deployed phone app has not been established. The review regression tests
+exercise local queries by navigating Home → review while offline instead.
+
 # Cosmetic notes — plate calculator rebuild
 
 Nothing here blocks the feature; everything below is a suggestion, not a bug
