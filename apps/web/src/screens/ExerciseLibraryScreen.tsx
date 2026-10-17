@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g7m/ui';
-import type { Exercise } from '@g7m/db';
+import type { Exercise, PrimaryMuscle } from '@g7m/db';
+import { MuscleFilterRail } from '../components/MuscleFilterRail.js';
+import { muscleColorStyle } from '../components/muscle-colors.js';
 import { ExerciseIcon } from '../components/ExerciseIcon.js';
 import { FavouriteMark } from '../components/Favourite.js';
 import { HeaderLink } from '../components/HeaderLink.js';
@@ -179,7 +181,7 @@ export function ExerciseLibraryScreen() {
     if (!ready) return null;
     const [exercises, muscles, profile] = await Promise.all([
       repositories.exercises.browse(criteria, filters.query),
-      repositories.exercises.primaryMuscleNames(),
+      repositories.exercises.primaryMuscles(),
       repositories.profile.current(),
     ]);
     const favourites = new Set(profile?.favouriteExercises ?? []);
@@ -244,43 +246,14 @@ export function ExerciseLibraryScreen() {
         }}
       />
 
-      {/* A scrolling row rather than a wrapping grid: one thumb-swipe reaches
-          every group, and the list below never moves down as chips wrap. */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        <Chip
-          selected={filters.muscleGroup === null && !filters.cardio}
-          onClick={() => {
-            update({ ...filters, muscleGroup: null, cardio: false });
-          }}
-        >
-          All
-        </Chip>
-        {/* Second, straight after All: the row scrolls sideways past ten muscle
-            groups, and a chip at the far end is one nobody finds. The machines
-            train no muscle the map counts, so they are a kind, not a group. */}
-        <Chip
-          selected={filters.cardio}
-          onClick={() => {
-            update({ ...filters, muscleGroup: null, cardio: !filters.cardio });
-          }}
-        >
-          Cardio
-        </Chip>
-        {(taxonomy.data?.groups ?? []).map((group) => (
-          <Chip
-            key={group.id}
-            selected={filters.muscleGroup === group.slug}
-            onClick={() => {
-              // Tapping the selected group again clears it, which is what a
-              // single-select row of chips has to do to be usable at all.
-              const next = filters.muscleGroup === group.slug ? null : group.slug;
-              update({ ...filters, muscleGroup: next, cardio: false });
-            }}
-          >
-            {group.name}
-          </Chip>
-        ))}
-      </div>
+      <MuscleFilterRail
+        groups={taxonomy.data?.groups ?? []}
+        muscleGroup={filters.muscleGroup}
+        cardio={filters.cardio}
+        onChange={(muscleGroup, cardio) => {
+          update({ ...filters, muscleGroup, cardio });
+        }}
+      />
 
       <section className="rounded-card bg-surface">
         <button
@@ -409,7 +382,7 @@ function ExerciseRow({
   selecting = false,
 }: {
   readonly exercise: Exercise;
-  readonly muscle: string | null;
+  readonly muscle: PrimaryMuscle | null;
   readonly favourite: boolean;
   /** Non-null while picking an exercise for a workout in progress. */
   readonly onAdd: (() => void) | null;
@@ -422,14 +395,17 @@ function ExerciseRow({
   const detail = (
     exercise.cardioKind !== null
       ? ['Cardio']
-      : [muscle, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
+      : [muscle?.name ?? null, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
   )
     .filter((part): part is string => part !== null)
     .join(' · ');
 
+  const group = exercise.cardioKind === null ? (muscle?.groupSlug ?? null) : null;
+  const tint = muscleColorStyle(group);
+
   const body = (
     <>
-      <ExerciseIcon slug={exercise.slug} />
+      <ExerciseIcon slug={exercise.slug} className="browse-exercise-icon" />
       {/* `min-w-0` so a long name wraps inside its own column rather than
           growing the row and pushing the square off the left edge. The two
           lines are untouched; they have only moved right. */}
@@ -453,7 +429,8 @@ function ExerciseRow({
         disabled={busy}
         onClick={onAdd}
         {...(selecting ? { 'aria-pressed': picked !== null } : {})}
-        className={`flex min-h-tap w-full items-center gap-3 rounded-card px-4 py-3 text-left active:bg-elevated disabled:opacity-60 ${
+        style={tint}
+        className={`browse-exercise-row muscle-wash flex min-h-tap w-full items-center gap-3 rounded-card px-4 py-3 text-left active:bg-elevated disabled:opacity-60 ${
           picked !== null ? 'bg-accent-subtle ring-2 ring-accent' : 'bg-surface'
         }`}
       >
@@ -474,7 +451,8 @@ function ExerciseRow({
   return (
     <Link
       to={`/exercises/${exercise.slug}`}
-      className="flex min-h-tap items-center gap-3 rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      style={tint}
+      className="browse-exercise-row muscle-wash flex min-h-tap items-center gap-3 rounded-card bg-surface px-4 py-3 active:bg-elevated"
     >
       {body}
     </Link>

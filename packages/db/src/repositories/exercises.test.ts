@@ -594,6 +594,73 @@ describe('primaryMuscleNames', () => {
   });
 });
 
+describe('primaryMuscles', () => {
+  beforeEach(async () => {
+    await seedExercise({ id: 'bench', slug: 'bench-press' });
+    await seedExercise({ id: 'cardio', slug: 'bike', cardio_kind: 'cycle' });
+    for (const group of ['chest', 'triceps', 'back']) {
+      await db.seed('muscle_groups', { id: group, slug: group, name: group });
+    }
+    for (const [id, name, group] of [
+      ['m-pec', 'Chest', 'chest'],
+      ['m-tri', 'Triceps', 'triceps'],
+      ['m-back', 'Back', 'back'],
+    ] as const) {
+      await db.seed('muscles', { id, common_name: name, muscle_group_id: group });
+    }
+  });
+
+  async function link(muscle: string, weight: number, role = 'primary'): Promise<void> {
+    await db.seed('exercise_muscles', {
+      id: `bench-${muscle}`,
+      exercise_id: 'bench',
+      muscle_id: muscle,
+      role,
+      recruitment_weight: weight,
+    });
+  }
+
+  it('returns the strongest primary name and its group together for the whole catalogue', async () => {
+    await link('m-tri', 0.6);
+    await link('m-pec', 0.9);
+    await link('m-back', 1, 'secondary');
+    expect(await exercises.primaryMuscles()).toEqual(
+      new Map([['bench', { name: 'Chest', groupSlug: 'chest' }]]),
+    );
+    expect(await exercises.primaryMuscleNames()).toEqual(new Map([['bench', 'Chest']]));
+  });
+
+  it('breaks equal weights alphabetically, then by muscle ID for identical names', async () => {
+    await link('m-tri', 1);
+    await link('m-pec', 1);
+    expect((await exercises.primaryMuscles()).get('bench')?.groupSlug).toBe('chest');
+    await db.seed('muscles', {
+      id: 'a-pec',
+      common_name: 'Chest',
+      muscle_group_id: 'back',
+    });
+    await link('a-pec', 1);
+    expect((await exercises.primaryMuscles()).get('bench')).toEqual({
+      name: 'Chest',
+      groupSlug: 'back',
+    });
+  });
+
+  it('preserves the muscle label when its group has not synced yet', async () => {
+    await db.seed('muscles', { id: 'missing-group', common_name: 'Chest' });
+    await link('missing-group', 1);
+    expect((await exercises.primaryMuscles()).get('bench')).toEqual({
+      name: 'Chest',
+      groupSlug: null,
+    });
+  });
+
+  it('omits exercises with no primary muscle, including cardio and stabilizers', async () => {
+    await link('m-pec', 1, 'stabilizer');
+    expect((await exercises.primaryMuscles()).size).toBe(0);
+  });
+});
+
 describe('primaryMovers', () => {
   beforeEach(async () => {
     await db.seed('muscle_groups', { id: 'g-chest', slug: 'chest', name: 'Chest' });
