@@ -218,4 +218,57 @@ describe('goalChangedAt', () => {
   it('has nothing to say about an empty history', () => {
     expect(goalChangedAt([])).toBeNull();
   });
+
+  it('keeps training history when rapid goal selections return to the original goal', () => {
+    const history = [
+      { goal: 'recomp' as const, startedAt: at('2026-10-16T17:01:30.821Z') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-10-16T17:01:26.877Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-10-16T17:01:23.969Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-10T08:45:58.598Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-07T22:22:32.488Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-09-07T22:22:30.230Z') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-09-07T22:22:27.479Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-07T15:24:36.310Z') },
+    ];
+    expect(goalChangedAt(history)).toBeNull();
+  });
+
+  it('still cuts immediately when rapid selections settle on a different goal', () => {
+    const history = [
+      { goal: 'get_stronger' as const, startedAt: at('2026-10-16T17:01:30Z') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-10-16T17:01:26Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-10-16T17:01:23Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-10') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-10-16T17:01:30Z'));
+  });
+
+  it('looks past rapid selections to the real start of the current goal', () => {
+    const history = [
+      { goal: 'recomp' as const, startedAt: at('2026-10-16T17:01:30Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-10-16T17:01:23Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-10') },
+      { goal: 'build_muscle' as const, startedAt: at('2026-08-01') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-09-10'));
+  });
+
+  it('does not discard a different goal that lasted five minutes', () => {
+    const history = [
+      { goal: 'recomp' as const, startedAt: at('2026-10-16T17:05:00Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-10-16T17:00:00Z') },
+      { goal: 'recomp' as const, startedAt: at('2026-09-10') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-10-16T17:05:00Z'));
+  });
+
+  it('measures a superseded goal across restatements before ignoring it', () => {
+    const history = [
+      { goal: 'recomp' as const, startedAt: at('2026-10-16T17:01:30Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-10-16T17:01:23Z') },
+      { goal: 'lose_fat' as const, startedAt: at('2026-09-10') },
+      { goal: 'recomp' as const, startedAt: at('2026-08-01') },
+    ];
+    expect(goalChangedAt(history)).toEqual(at('2026-10-16T17:01:30Z'));
+  });
 });
