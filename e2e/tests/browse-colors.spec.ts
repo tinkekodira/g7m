@@ -147,7 +147,8 @@ test('reduced motion and superset selection retain a clear state', async ({ page
   await expect(bench).toHaveAttribute('aria-pressed', 'true');
   expect(await gradient(bench)).toBe(original);
   await expect(bench.locator('span[aria-hidden="true"]').last()).toHaveText('1');
-  expect(await bench.evaluate((node) => getComputedStyle(node).boxShadow)).toContain('2px');
+  // The pressed state can precede the browser's ring-shadow update by a frame.
+  await expect(bench).toHaveCSS('box-shadow', /0px 0px 0px 2px/);
   await page.getByLabel('Search').fill('Barbell Curl');
   await page.getByRole('button', { name: /^Barbell Curl/ }).click();
   await expect(page.getByRole('button', { name: 'Confirm (2)' })).toBeVisible();
