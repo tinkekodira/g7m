@@ -8501,3 +8501,25 @@ field's inner height (the tap height less the 1px borders). Either one
 centres a single line, so the value is centred even if iOS ignores flex on
 a date input. The value's own margin is zeroed. Still iOS only. Not
 reproducible in Windows WebKit, so it is checked on a phone.
+
+## ADR-0139 — Friends shares Learn's sliding tab highlight
+
+**Status:** accepted · **Date:** 2026-10-17 · **Phase:** out of phase (fix) · **Amends:** ADR-0127, ADR-0128
+
+Friends looked like Learn's segmented control but changed each tab's
+background instead of sliding one highlight. It now uses `SegmentedControl`
+itself, so both screens share the same 300 ms transition and reduced-motion
+behavior. The shared control accepts `role="tablist"` and rich option labels
+to retain Friends' tab semantics and request badge; existing consumers remain
+radio groups. Tabs have one tab stop, wrapping arrow navigation, and Home/End.
+
+The highlight still measures the selected button. Its resize observer now
+watches the buttons as well as the track: removing a request badge can change
+their widths without changing the track's width.
+
+**Tests:** `friends-slider.spec.ts` compares the computed transition with
+Learn's and checks an actual intermediate animation position, rapid changes,
+URL persistence, resizing, light/dark themes, keyboard navigation, reduced
+motion, and the badge disappearing after accepting a request. Screenshots
+are inspected at phone and desktop widths. Native device behavior remains
+to be checked on a phone.
