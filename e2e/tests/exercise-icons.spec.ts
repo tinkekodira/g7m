@@ -34,7 +34,7 @@ test('every exercise row has an icon square, and the text lines up either way', 
   await expect(withoutArt).toBeVisible();
   // The one without a render falls back to the app's own glyph.
   await expect(withoutArt.locator('img')).toHaveCount(0);
-  await expect(withoutArt.locator('svg')).toHaveCount(1);
+  await expect(withoutArt.locator('.browse-exercise-icon svg')).toHaveCount(1);
   const glyph = await withoutArt.locator('svg').first().boundingBox();
   const other = await page.getByText('Air Bike', { exact: true }).boundingBox();
   expect(glyph).not.toBeNull();

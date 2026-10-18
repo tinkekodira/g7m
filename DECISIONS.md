@@ -8582,3 +8582,44 @@ or a connection. The six-week window and four-session/twelve-day evidence gate
 remain in place. Unit regressions cover returning to the original goal, a real
 switch, restatements and the five-minute boundary. Browser tests cover the Home
 note, detailed review and offline navigation at phone and desktop widths.
+
+## ADR-0142 — Browse previews each exercise's last six working weights
+
+**Status:** accepted · **Date:** 2026-10-18 · **Phase:** out of phase (feature)
+
+Each Browse row shows a small weight chart beside its name and equipment art,
+using the existing muscle wash and theme tokens. The latest weight sits above
+an orange line, the latest point has a ring, and the caption reports the actual
+number of sessions (up to six). One session draws one point; an unlogged lift
+has an empty baseline and “Not logged yet”. Cardio says “No weight data”. The
+whole row still opens exercise details. Workout and routine pickers retain
+their compact layout and superset controls.
+
+`exerciseWeightProgress` groups completed non-warm-up sets by exercise and
+workout, selects the largest logged load, sorts by workout start with session
+ID as a deterministic tie-break, and retains the last six per exercise. Zero
+reps and invalid numbers are omitted. Repeated exercise slots within one
+workout yield one point; backdated workouts are placed by when they happened.
+The existing history repository supplies only finished strength workouts.
+
+This is logged weight, not the effective-load metric on the detailed Progress
+screen: bodyweight is zero and labeled BW, added weight is positive and labeled
+with +, and assistance is negative and labeled with −. Less assistance rises
+on the chart and wins the session's comparison. Changes in the lifter's own
+weight never manufacture progress, and a missing weigh-in does not hide a
+bodyweight exercise. The legend explains these signs. Kilograms stay in the
+data; labels follow the profile's kg/lb preference.
+
+One local history read serves the entire list, independently of search and
+filters. The existing catalogue hook refreshes it after local writes and sync;
+the picker skips this read. No schema, sync rule, network request or chart
+library is added. SVG descriptions include every displayed date and weight,
+and the chart introduces no extra tap target or animation. Layout adapts from
+320px phones to desktop and uses both themes' existing colors.
+
+**Validation:** unit tests cover aggregation, windowing, backdated ordering,
+ties, warm-ups, unticked and invalid sets, zero loads, bodyweight, added load
+and assistance. Browser coverage exercises synced history, empty and single
+points, units, finishing offline, reloads, account isolation, keyboard access,
+filters and the unchanged picker. Phone and desktop screenshots are reviewed
+in both themes; native device behavior remains to be checked on a phone.

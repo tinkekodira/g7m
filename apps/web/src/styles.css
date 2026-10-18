@@ -130,6 +130,93 @@
   );
 }
 
+/* Keep the sparkline aligned while names wrap naturally at phone widths. */
+.browse-exercise-progress {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 96px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+}
+
+.browse-exercise-progress .browse-exercise-icon {
+  width: 48px;
+  height: 56px;
+}
+
+.exercise-weight-chart {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 10px;
+  color: var(--accent);
+}
+
+.exercise-weight-chart svg {
+  display: block;
+  width: 100%;
+  height: 44px;
+  overflow: visible;
+}
+
+.exercise-weight-caption {
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (min-width: 400px) {
+  .browse-exercise-progress {
+    grid-template-columns: 56px minmax(0, 1fr) 110px;
+    padding: 16px;
+  }
+
+  .browse-exercise-progress .browse-exercise-icon {
+    width: 56px;
+    height: 64px;
+  }
+}
+
+@media (min-width: 640px) {
+  .browse-exercise-progress {
+    grid-template-columns: 64px minmax(0, 1fr) 144px;
+    gap: 18px;
+  }
+
+  .browse-exercise-progress .browse-exercise-icon {
+    width: 64px;
+    height: 72px;
+  }
+
+  .exercise-weight-caption {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 359px) {
+  .browse-exercise-progress {
+    grid-template-columns: 40px minmax(0, 1fr) 84px;
+    gap: 8px;
+  }
+
+  .browse-exercise-progress .browse-exercise-icon {
+    width: 40px;
+    height: 48px;
+  }
+
+  .browse-exercise-progress .browse-exercise-copy > :first-child {
+    font-size: 14px;
+  }
+
+  .browse-exercise-progress .browse-exercise-copy > :last-child {
+    font-size: 12px;
+  }
+
+  .exercise-weight-chart {
+    padding-left: 8px;
+  }
+}
+
 /* Keyboard navigation must leave focused rows clear of the sticky rail. */
 .browse-exercise-row,
 .muscle-filter-rail ~ section button {
