@@ -23,6 +23,8 @@ What it does:
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.
   Star the exercises you use most and they come first in every list
   ([ADR-0108](./DECISIONS.md#adr-0108--kettlebell-art-twelve-more-loops-and-favourite-exercises)).
+  Browse also charts your best working weight over each exercise's last six
+  finished workouts, with empty charts for exercises you have not logged.
 - **Coach.** Answer a few questions — height, weight, age, how active your week
   is, what you are training for — and Home has today's workout written for you.
   Prefer to program your own? Do that; it will still tell you how it is going

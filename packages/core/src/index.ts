@@ -28,6 +28,7 @@ export * from './prefill.js';
 export * from './week.js';
 export * from './explain.js';
 export * from './progress.js';
+export * from './exercise-weight-progress.js';
 export * from './periods.js';
 export * from './month-stats.js';
 export * from './calendar.js';

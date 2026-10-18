@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise, PrimaryMuscle } from '@g7m/db';
+import { exerciseWeightProgress, type ExerciseWeightPoint, type UnitSystem } from '@g7m/core';
+import { ExerciseWeightChart } from '../components/ExerciseWeightChart.js';
 import { MuscleFilterRail } from '../components/MuscleFilterRail.js';
 import { muscleColorStyle } from '../components/muscle-colors.js';
 import { ExerciseIcon } from '../components/ExerciseIcon.js';
@@ -188,8 +190,18 @@ export function ExerciseLibraryScreen() {
     return { exercises: favouritesFirst(exercises, favourites), muscles, favourites };
   });
 
-  const error = taxonomy.error ?? results.error;
-  const loading = taxonomy.loading || results.loading || !ready;
+  // One history read for the list, independent of search and filter changes.
+  const progress = useCatalogue(`library-progress:${String(picking)}`, async (repositories) => {
+    if (picking) return null;
+    const [sets, profile] = await Promise.all([
+      repositories.history.completedSets(),
+      repositories.profile.current(),
+    ]);
+    return { points: exerciseWeightProgress(sets), unitSystem: profile?.unitSystem ?? 'metric' };
+  });
+
+  const error = taxonomy.error ?? results.error ?? progress.error;
+  const loading = taxonomy.loading || results.loading || progress.loading || !ready;
   const exercises = results.data?.exercises ?? [];
 
   return (
@@ -310,6 +322,12 @@ export function ExerciseLibraryScreen() {
           <p className="text-sm text-secondary" aria-live="polite">
             {exercises.length === 1 ? '1 exercise' : `${String(exercises.length)} exercises`}
           </p>
+          {!picking && exercises.length > 0 && (
+            <p className="-mt-2 text-xs text-muted">
+              Weight per workout · Last 6 sessions. Best working set; + added, − assistance, BW
+              bodyweight.
+            </p>
+          )}
 
           {exercises.length === 0 ? (
             <EmptyLibrary
@@ -345,6 +363,8 @@ export function ExerciseLibraryScreen() {
                     // A treadmill has no sets to alternate with anything.
                     busy={busy || (superset && exercise.cardioKind !== null)}
                     selecting={superset}
+                    progress={progress.data?.points.get(exercise.id) ?? []}
+                    unitSystem={progress.data?.unitSystem ?? 'metric'}
                   />
                 </li>
               ))}
@@ -380,6 +400,8 @@ function ExerciseRow({
   busy,
   picked = null,
   selecting = false,
+  progress,
+  unitSystem,
 }: {
   readonly exercise: Exercise;
   readonly muscle: PrimaryMuscle | null;
@@ -391,6 +413,8 @@ function ExerciseRow({
   readonly picked?: number | null;
   /** Taps pick rather than add, so the row says whether it is picked. */
   readonly selecting?: boolean;
+  readonly progress: readonly ExerciseWeightPoint[];
+  readonly unitSystem: UnitSystem;
 }) {
   const detail = (
     exercise.cardioKind !== null
@@ -409,7 +433,7 @@ function ExerciseRow({
       {/* `min-w-0` so a long name wraps inside its own column rather than
           growing the row and pushing the square off the left edge. The two
           lines are untouched; they have only moved right. */}
-      <span className="flex min-w-0 flex-col">
+      <span className="browse-exercise-copy flex min-w-0 flex-col">
         <span className="text-base font-medium text-primary">
           {exercise.name}
           {favourite && <FavouriteMark />}
@@ -452,9 +476,14 @@ function ExerciseRow({
     <Link
       to={`/exercises/${exercise.slug}`}
       style={tint}
-      className="browse-exercise-row muscle-wash flex min-h-tap items-center gap-3 rounded-card bg-surface px-4 py-3 active:bg-elevated"
+      className="browse-exercise-row browse-exercise-progress muscle-wash min-h-tap rounded-card bg-surface active:bg-elevated"
     >
       {body}
+      <ExerciseWeightChart
+        points={progress}
+        unitSystem={unitSystem}
+        cardio={exercise.cardioKind !== null}
+      />
     </Link>
   );
 }
