@@ -86,6 +86,7 @@ test('every piece of kit draws its own icon', async ({ page }) => {
     ['Abductor Machine', 'abductor-machine'],
     ['Adductor Machine', 'adductor-machine'],
     ['Machine Chest Press', 'chest-press-machine'],
+    ['Shoulder press machine', 'shoulder-press-machine'],
     ['Trap Bar Deadlift', 'trap-bar'],
     ['Treadmill', 'treadmill'],
     ['Seated Row Machine', 'seated-row-machine'],

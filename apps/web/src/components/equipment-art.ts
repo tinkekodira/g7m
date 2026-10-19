@@ -69,6 +69,8 @@ import preacherCurlMachineIcon from '../assets/equipment/preacher-curl-machine.p
 import preacherCurlMachineHero from '../assets/equipment/preacher-curl-machine-hero.webp';
 import rearDeltFlyMachineIcon from '../assets/equipment/rear-delt-fly-machine.png';
 import rearDeltFlyMachineHero from '../assets/equipment/rear-delt-fly-machine-hero.webp';
+import shoulderPressMachineIcon from '../assets/equipment/shoulder-press-machine.png';
+import shoulderPressMachineHero from '../assets/equipment/shoulder-press-machine-hero.webp';
 
 /**
  * The renders an exercise wears, by exercise slug.
@@ -154,6 +156,10 @@ const PREACHER_CURL_MACHINE: EquipmentArt = {
 const REAR_DELT_FLY_MACHINE: EquipmentArt = {
   icon: rearDeltFlyMachineIcon,
   hero: rearDeltFlyMachineHero,
+};
+const SHOULDER_PRESS_MACHINE: EquipmentArt = {
+  icon: shoulderPressMachineIcon,
+  hero: shoulderPressMachineHero,
 };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
@@ -269,6 +275,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   't-bar-row': T_BAR,
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
+  'shoulder-press-machine': SHOULDER_PRESS_MACHINE,
   'pec-deck': PEC_DECK,
 
   // Filed under the pec deck, which it is turned round, but drawn as its own
