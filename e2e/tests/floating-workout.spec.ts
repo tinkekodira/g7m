@@ -8,6 +8,7 @@ async function revealSummary(page: Page): Promise<void> {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(summary(page)).toBeVisible();
   await expect(summary(page).locator('..')).toHaveCSS('opacity', '1');
+  await expect(summary(page)).toHaveCSS('transform', 'none');
 }
 
 async function expectSets(page: Page, count: number): Promise<void> {
@@ -38,7 +39,11 @@ test('the compact summary follows scrolling, resizing and exercise navigation', 
       }, theme);
       await page.evaluate(() => window.scrollTo(0, 0));
       await expect(summary(page)).toHaveCount(0);
+      await expect(
+        page.getByRole('group', { name: 'Workout summary', includeHidden: true }).locator('..'),
+      ).toHaveCSS('opacity', '0');
       await expect(page.locator('header').getByText(/elapsed/)).toBeInViewport();
+      await page.screenshot({ path: info.outputPath(`header-${String(width)}-${theme}.png`) });
       await expectSets(page, 0);
       const bounds = await summary(page).boundingBox();
       expect(bounds).not.toBeNull();
@@ -97,6 +102,7 @@ test('the tally follows working sets, warm-ups, drops, deletion and undo', async
   await logSet(page, 1, '100', '8');
   await page.getByRole('button', { name: 'Warm-up', exact: true }).click();
   await page.getByRole('button', { name: 'Complete warm-up 1', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Undo warm-up 1', exact: true })).toBeVisible();
   await expectSets(page, 1);
   await page.getByRole('button', { name: 'Drop after set 1', exact: true }).click();
   await page.getByRole('button', { name: 'Complete drop 1 of set 1' }).click();

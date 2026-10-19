@@ -7,6 +7,18 @@
 @source '../../../packages/ui/src';
 @source '../../../packages/anatomy/src';
 
+/* The inline clock and its floating counterpart share a quiet outline and icon. */
+.workout-header-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border-radius: 999px;
+  background: var(--bg-surface);
+  white-space: nowrap;
+}
+
 /* A small readout above the log; rest and undo retain the bottom of the screen. */
 .workout-summary-position {
   position: fixed;
@@ -17,7 +29,7 @@
   justify-content: center;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 140ms ease-out;
+  transition: opacity 220ms ease-out;
 }
 
 .workout-summary-position[data-visible='true'] {
@@ -36,6 +48,20 @@
   background: var(--bg-surface);
   box-shadow: var(--shadow-floating-value);
   white-space: nowrap;
+  /* Animate the pill, keeping the wrapper's measured safe-area boundary still. */
+  transform: translateY(-10px);
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.workout-summary-position[data-visible='true'] .workout-summary {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workout-summary {
+    transform: none;
+    transition: none;
+  }
 }
 
 .workout-summary-sets {

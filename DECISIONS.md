@@ -8656,3 +8656,14 @@ cardio, missing bodyweight, offline logging, reloads and hour rollover. The
 existing bottom padding is asserted so Finish remains clear of the rest bar.
 Screenshots are visually inspected; unit tests, type checking and the web
 build pass. Native device behavior remains to be checked on a phone.
+
+## ADR-0144 — The workout clock shares the island's outline and slides into view
+
+**Status:** accepted · **Date:** 2026-10-19 · **Amends:** ADR-0143
+
+The live header timer gains a small rounded border and the same orange stopwatch
+as the floating summary. Lifted weight stays beside it when space allows and
+wraps below on narrow phones. The island fades and slides down 10px over 220ms,
+reversing when the header returns. Only the inner pill moves, so the observer's
+safe-area boundary remains stable. Reduced motion removes the translation and
+timed transition. Past-workout dates retain their existing presentation.

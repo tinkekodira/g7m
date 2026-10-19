@@ -758,14 +758,27 @@ export function WorkoutScreen() {
           <h1 className="text-2xl font-semibold text-primary">
             {past ? 'Past workout' : 'Workout'}
           </h1>
-          <p className="numeric mt-1 text-sm text-secondary">
+          <p
+            className={
+              past
+                ? 'numeric mt-1 text-sm text-secondary'
+                : 'numeric mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-secondary'
+            }
+          >
             {past ? (
               dayTitle(session.startedAt)
             ) : (
-              <span ref={headerTimer}>{formatElapsed(session.startedAt, now)} elapsed</span>
+              <span ref={headerTimer} className="workout-header-timer">
+                <StopwatchIcon className="size-4 shrink-0 text-accent" />
+                <span>{formatElapsed(session.startedAt, now)} elapsed</span>
+              </span>
             )}
-            {volume.countedSets > 0 &&
-              ` · ${formatWeightExact(volume.volumeKg, unitSystem)} lifted`}
+            {volume.countedSets > 0 && (
+              <span className="whitespace-nowrap">
+                {past && ' · '}
+                {formatWeightExact(volume.volumeKg, unitSystem)} lifted
+              </span>
+            )}
           </p>
         </div>
         {past ? (
