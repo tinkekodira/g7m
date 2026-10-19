@@ -45,12 +45,18 @@ test('a superset is picked together and done round by round', async ({ page }) =
   // The curl: no rest, and on to the pushdown.
   await page.getByRole('button', { name: 'Complete set 1' }).first().click();
   await expect(page.getByRole('button', { name: 'Undo set 1' })).toHaveCount(1);
+  await expect(
+    page.getByRole('group', { name: 'Workout summary', includeHidden: true }),
+  ).toContainText('1 set');
   await expect(page.getByText('Resting')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Complete set 1' })).toBeInViewport();
 
   // The pushdown finishes the round, and now the rest runs.
   await page.getByRole('button', { name: 'Complete set 1' }).click();
   await expect(page.getByRole('button', { name: 'Undo set 1' })).toHaveCount(2);
+  await expect(
+    page.getByRole('group', { name: 'Workout summary', includeHidden: true }),
+  ).toContainText('2 sets');
   await expect(page.getByText('Resting')).toBeVisible();
 
   // Ungroup keeps every set; only the grouping goes.

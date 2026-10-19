@@ -75,6 +75,9 @@ test('a workout logged for a day that has gone lands on that day', async ({ page
   await page.getByRole('button', { name: /Log a workout for this day/ }).click();
 
   await expect(page.getByText('Past workout')).toBeVisible();
+  await expect(
+    page.getByRole('group', { name: 'Workout summary', includeHidden: true }),
+  ).toHaveCount(0);
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
   await page.getByLabel('Search').fill('Barbell Bench Press');
   await page.getByRole('button', { name: /^Barbell Bench Press/ }).click();

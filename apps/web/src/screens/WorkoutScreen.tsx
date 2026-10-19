@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Button, Stepper, TextField } from '@g7m/ui';
 import {
@@ -7,6 +7,7 @@ import {
   bestsFrom,
   canAddWeight,
   canDrop,
+  countSets,
   dropTemplate,
   dropsOf,
   finalTopSet,
@@ -52,7 +53,7 @@ import { useAuthStore } from '../auth/auth-store.js';
 import { readFriendWorkoutNote } from '../lib/friends/cache.js';
 import { describeReference, friendName } from './friends-view.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { ArrowUpIcon } from '../components/icons.js';
+import { ArrowUpIcon, StopwatchIcon } from '../components/icons.js';
 import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
@@ -138,6 +139,7 @@ export function WorkoutScreen() {
   const { write, busy, error: writeError } = useWrite();
 
   const [now, setNow] = useState(() => new Date());
+  const headerTimer = useRef<HTMLSpanElement>(null);
 
   /**
    * When "still training?" was last answered — or last made unnecessary.
@@ -252,11 +254,16 @@ export function WorkoutScreen() {
   const past = workout?.session.source === 'past';
   useEffect(() => {
     if (!ticking) return;
-    const timer = setInterval(() => {
+    const refresh = (): void => {
       setNow(new Date());
-    }, 1000);
+    };
+    const timer = setInterval(refresh, 1000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('pageshow', refresh);
     return () => {
       clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('pageshow', refresh);
     };
   }, [ticking]);
 
@@ -533,7 +540,8 @@ export function WorkoutScreen() {
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
   // Lifts only: a bout's weight and reps are zero by design, and counting it
   // as a set would put "0 kg lifted" at the top of a treadmill session.
-  const allSets = liftBlocks(blocks).flatMap((block) =>
+  const strengthBlocks = liftBlocks(blocks);
+  const allSets = strengthBlocks.flatMap((block) =>
     block.sets.map((set) => ({
       setType: set.setType,
       loadType: set.loadType,
@@ -744,16 +752,18 @@ export function WorkoutScreen() {
     );
 
   return (
-    <Shell>
+    <Shell live={!past}>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <div>
           <h1 className="text-2xl font-semibold text-primary">
             {past ? 'Past workout' : 'Workout'}
           </h1>
           <p className="numeric mt-1 text-sm text-secondary">
-            {past
-              ? dayTitle(session.startedAt)
-              : `${formatElapsed(session.startedAt, now)} elapsed`}
+            {past ? (
+              dayTitle(session.startedAt)
+            ) : (
+              <span ref={headerTimer}>{formatElapsed(session.startedAt, now)} elapsed</span>
+            )}
             {volume.countedSets > 0 &&
               ` · ${formatWeightExact(volume.volumeKg, unitSystem)} lifted`}
           </p>
@@ -764,6 +774,15 @@ export function WorkoutScreen() {
           <HeaderLink to="/">Home</HeaderLink>
         )}
       </header>
+
+      {!past && (
+        <FloatingWorkoutSummary
+          headerTimer={headerTimer}
+          startedAt={session.startedAt}
+          now={now}
+          completedSets={strengthBlocks.length > 0 ? countSets(allSets) : null}
+        />
+      )}
 
       {writeError !== null && (
         <p role="alert" className="text-sm text-danger">
@@ -1042,9 +1061,92 @@ function removedMessage(name: string, sets: number): string {
   return `${name} removed, with ${String(sets)} ${sets === 1 ? 'set' : 'sets'}.`;
 }
 
-function Shell({ children }: { readonly children: React.ReactNode }) {
+/** The header hands its clock to this pill only after it leaves the top edge. */
+function FloatingWorkoutSummary({
+  headerTimer,
+  startedAt,
+  now,
+  completedSets,
+}: {
+  readonly headerTimer: React.RefObject<HTMLSpanElement | null>;
+  readonly startedAt: Date;
+  readonly now: Date;
+  readonly completedSets: number | null;
+}) {
+  const position = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    const anchor = headerTimer.current;
+    const floating = position.current;
+    if (anchor === null || floating === null) return;
+
+    let observer: IntersectionObserver | undefined;
+    const observe = (): void => {
+      observer?.disconnect();
+      // Reading the fixed wrapper includes the platform's current safe area.
+      const top = floating.getBoundingClientRect().top;
+      setVisible(anchor.getBoundingClientRect().bottom <= top);
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry !== undefined) setVisible(entry.boundingClientRect.bottom <= top);
+        },
+        { rootMargin: `-${String(top)}px 0px 0px 0px`, threshold: 0 },
+      );
+      observer.observe(anchor);
+    };
+
+    observe();
+    window.addEventListener('resize', observe);
+    window.addEventListener('pageshow', observe);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', observe);
+      window.removeEventListener('pageshow', observe);
+    };
+  }, [headerTimer]);
+
+  const minutes = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 60_000));
+  const elapsed = formatElapsed(startedAt, now);
+  const elapsedLabel =
+    minutes >= 60
+      ? `${String(Math.floor(minutes / 60))} ${minutes < 120 ? 'hour' : 'hours'} ${String(minutes % 60)} minutes elapsed`
+      : `${elapsed} elapsed`;
+
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-32">
+    <div
+      ref={position}
+      className="workout-summary-position"
+      data-visible={visible}
+      aria-hidden={!visible}
+    >
+      <div className="workout-summary numeric" role="group" aria-label="Workout summary">
+        <StopwatchIcon className="size-5 shrink-0 text-accent" />
+        <span role="timer" aria-label={elapsedLabel} className="text-lg font-semibold text-primary">
+          {elapsed}
+        </span>
+        {completedSets !== null && (
+          <span className="workout-summary-sets text-sm text-secondary">
+            <span className="sr-only">Completed working sets: </span>
+            {completedSets} {completedSets === 1 ? 'set' : 'sets'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Shell({
+  children,
+  live = false,
+}: {
+  readonly children: React.ReactNode;
+  readonly live?: boolean;
+}) {
+  return (
+    <main
+      className={`mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-32 ${live ? 'workout-live' : ''}`}
+    >
       {children}
     </main>
   );

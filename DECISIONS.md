@@ -8623,3 +8623,36 @@ and assistance. Browser coverage exercises synced history, empty and single
 points, units, finishing offline, reloads, account isolation, keyboard access,
 filters and the unchanged picker. Phone and desktop screenshots are reviewed
 in both themes; native device behavior remains to be checked on a phone.
+
+## ADR-0143 — Elapsed time follows the workout as a compact floating summary
+
+**Status:** accepted · **Date:** 2026-10-19 · **Phase:** out of phase (mobile polish)
+
+The workout's header clock disappears on a long exercise list. A 44px rounded
+pill now shows elapsed time and completed working sets once that clock passes
+above the top safe area. It sits centered 8px below the safe area, with the
+existing theme colors, a small orange stopwatch and a floating shadow. The
+header retains its elapsed time and weight lifted. Rest controls stay below;
+dialogs and notifications stay above the pill.
+
+Milan chose completed sets over lifted weight for the floating second number.
+The existing `countSets` rule counts completed working, failure and AMRAP sets,
+excludes warm-ups, and folds drops into their parent set. Strength blocks alone
+contribute; bodyweight sets need no weigh-in. Empty and cardio-only sessions
+show time alone. Past-workout editing has no floating clock.
+
+An intersection observer watches the header timer, distinguishing it leaving
+above the viewport from being below it. Resizing and restored pages remeasure
+the safe-area boundary. Both displays share the screen's timestamp-based clock,
+refreshed immediately on visibility changes and page restoration. The readout
+has no actions or live announcements every second. Its short opacity transition
+respects reduced motion, and exercise anchors and focused inputs leave room
+above for it. There is no schema, sync or storage change.
+
+**Validation:** browser tests cover scrolling and resizing, both themes at
+320px, 412px and desktop widths, reduced motion, focus clearance, dialogs,
+exercise-picker return, count changes and undo, warm-ups, drops, supersets,
+cardio, missing bodyweight, offline logging, reloads and hour rollover. The
+existing bottom padding is asserted so Finish remains clear of the rest bar.
+Screenshots are visually inspected; unit tests, type checking and the web
+build pass. Native device behavior remains to be checked on a phone.

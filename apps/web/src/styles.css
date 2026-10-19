@@ -7,6 +7,49 @@
 @source '../../../packages/ui/src';
 @source '../../../packages/anatomy/src';
 
+/* A small readout above the log; rest and undo retain the bottom of the screen. */
+.workout-summary-position {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  inset-inline: 16px;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease-out;
+}
+
+.workout-summary-position[data-visible='true'] {
+  opacity: 1;
+}
+
+.workout-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 6px 16px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border-radius: 999px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-floating-value);
+  white-space: nowrap;
+}
+
+.workout-summary-sets {
+  margin-inline-start: 4px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--border-strong);
+}
+
+/* Match the safe area + 8px inset + 44px pill, with 16px breathing room.
+   This also covers cardio anchors, superset rows and keyboard focus targets. */
+.workout-live :where([id], input, select, textarea, :focus-visible) {
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 68px);
+}
+
 /* Browse's group buttons and exercise rows share precisely the same wash.
    The hue is metadata, never text or the only indication of selection. */
 .muscle-wash {
