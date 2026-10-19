@@ -8667,3 +8667,32 @@ wraps below on narrow phones. The island fades and slides down 10px over 220ms,
 reversing when the header returns. Only the inner pill moves, so the observer's
 safe-area boundary remains stable. Reduced motion removes the translation and
 timed transition. Past-workout dates retain their existing presentation.
+
+## ADR-0145 — Shoulder press machine joins the catalogue
+
+**Status:** accepted · **Date:** 2026-10-19 · **Phase:** out of phase (exercise library)
+
+Shoulder press machine is a separate beginner compound push, with its own
+`shoulder-press-machine` exercise and machine equipment row. Machine loads stay
+apart from the standing barbell and seated dumbbell presses, and the planner
+requires the actual station. The front delt is the prime mover; the side delt,
+triceps and upper traps assist. The supported torso does not inherit the
+standing press's abdominal contribution.
+
+The existing detail screen provides six instruction steps, four cues, four
+common mistakes, muscle roles, equipment and an 8–12 rep starting range with
+120 seconds of rest. Search also recognises “machine shoulder press” and
+“machine overhead press”. No new screen or sync rule is needed.
+
+The supplied renders in `C:/Users/milan/3d-models/shoulder-press-machine` are
+the source: `shoulder_press_icon.png` becomes the 168px PNG list icon, and
+`shoulder_press_hero.png` becomes a trimmed, shadow-free 1200px-wide WebP at
+quality 82, following ADR-0083. The original hero, normal icon, master icon and
+editable model remain unchanged outside the app bundle. Both list and detail
+art use the single equipment-art map and the existing offline precache.
+
+Validation covers catalogue integrity, the machine station and shoulder
+mapping, alias search, both artwork surfaces, detail content in both themes
+at phone and desktop widths, offline navigation and a logged set synced against
+the new exercise. Production rollout requires applying migration
+`20261019120000_shoulder_press_machine.sql` before releasing the app assets.

@@ -41,8 +41,8 @@ describe('volumes', () => {
   it('seeds the equipment list', async () => {
     // 28 from Brief §5, plus the back extension bench the §5 list omits, the
     // six cardio machines (ADR-0069), the two hip machines, and the preacher
-    // curl machine.
-    expect(await count('select count(*) n from public.equipment')).toBe(38);
+    // curl machine and shoulder press machine.
+    expect(await count('select count(*) n from public.equipment')).toBe(39);
   });
 
   /**
@@ -51,12 +51,13 @@ describe('volumes', () => {
    * machines (ADR-0069), and eleven more (ADR-0098): seven curls, the seated
    * cable row, the T-bar row, the cable lat pullover and the wall sit, then
    * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
-   * curl machine and two crunches, and the rear delt fly machine. Counted rather than left open, because an exercise
+   * curl machine and two crunches, the rear delt fly machine and the shoulder
+   * press machine. Counted rather than left open, because an exercise
    * that fails to insert — a bad slug in a join, a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(85);
+    expect(await count('select count(*) n from public.exercises')).toBe(86);
   });
 });
 
@@ -428,6 +429,34 @@ describe('the exercises asked for after the first fifty', () => {
         where e.slug = 'preacher-curl-machine'`,
     );
     expect(rows).toEqual([{ name: 'Preacher Curl (Machine)', station: 'preacher-curl-machine' }]);
+  });
+
+  it('gives the shoulder press its own machine and makes it discoverable under shoulders', async () => {
+    const { rows } = await h.db.query(
+      `select e.name, e.mechanic, e.force, q.slug as station, q.category,
+              m.slug as muscle, em.role
+         from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id and ee.is_primary
+         join public.equipment q on q.id = ee.equipment_id
+         join public.exercise_muscles em on em.exercise_id = e.id and em.role = 'primary'
+         join public.muscles m on m.id = em.muscle_id
+        where e.slug = 'shoulder-press-machine'`,
+    );
+    expect(rows).toEqual([
+      {
+        name: 'Shoulder press machine',
+        mechanic: 'compound',
+        force: 'push',
+        station: 'shoulder-press-machine',
+        category: 'machine',
+        muscle: 'anterior-deltoid',
+        role: 'primary',
+      },
+    ]);
+    expect(
+      await slugs(`select slug from public.exercises
+      where 'machine overhead press' = any(aliases)`),
+    ).toEqual(['shoulder-press-machine']);
   });
 
   /**
