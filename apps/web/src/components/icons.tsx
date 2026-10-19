@@ -16,6 +16,15 @@ import { useId, type ReactNode, type SVGProps } from 'react';
 
 export type IconProps = Omit<SVGProps<SVGSVGElement>, 'children'>;
 
+export function StopwatchIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M10 2h4M12 2v3m6 1 1.5-1.5M12 9v4" />
+      <circle cx="12" cy="13" r="8" />
+    </Glyph>
+  );
+}
+
 function Glyph({ children, ...rest }: IconProps & { readonly children: ReactNode }) {
   return (
     <svg
