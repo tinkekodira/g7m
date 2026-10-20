@@ -336,9 +336,11 @@ test('comparison cards group equipment, best sets and trends for a full workout'
   await signIn(page, user);
   await waitForCatalogue(page);
   await page.goto(`/#/progress/session/${sessions[0]!.id}`);
+  // Two new cardio banners can precede the historical-achievement summary.
+  // Their combined, intentional display time exceeds the usual 15-second wait.
   await expect(
     page.getByRole('status').filter({ hasText: /Achievement unlocked|From your past training/ }),
-  ).toBeHidden();
+  ).toBeHidden({ timeout: 30_000 });
   for (const [width, height] of [
     [320, 568],
     [390, 844],
