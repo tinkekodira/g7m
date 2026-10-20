@@ -4,19 +4,38 @@ import { signIn, waitForCatalogue } from './support/app.js';
 
 const titles = ['Your session', 'Muscles trained', 'Compared with last time', 'Exercise log'];
 
-async function expectActionsClearOfNavigation(page: Page) {
+async function expectCardFits(page: Page, title: string) {
+  const card = page.getByRole('region', { name: title, exact: true });
+  await expect
+    .poll(() => card.evaluate((el) => el.scrollHeight - el.clientHeight))
+    .toBeLessThanOrEqual(1);
+  await expect(card).toBeInViewport({ ratio: 1 });
+  if (title === 'Your session') {
+    await expect
+      .poll(() =>
+        card.locator('.recap-totals > div').evaluateAll((facts) =>
+          facts
+            .filter((fact) => {
+              const box = fact.getBoundingClientRect();
+              const value = fact.querySelector('dd')!.getBoundingClientRect();
+              return value.bottom > box.bottom + 1 || value.right > box.right + 1;
+            })
+            .map((fact) => fact.textContent),
+        ),
+      )
+      .toEqual([]);
+  }
+}
+
+async function expectRecapActions(page: Page) {
   const actions = page.getByRole('group', { name: 'Workout actions', exact: true });
-  const navigation = await page
-    .getByRole('navigation', { name: 'Main', exact: true })
-    .boundingBox();
+  await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeHidden();
   for (const action of [
     actions.getByRole('link', { name: 'Done', exact: true }),
     actions.getByRole('button', { name: 'Save as a routine' }),
     actions.getByRole('button', { name: 'Delete workout' }),
   ]) {
     await expect(action).toBeInViewport({ ratio: 1 });
-    const box = await action.boundingBox();
-    expect(box!.y + box!.height).toBeLessThanOrEqual(navigation!.y);
   }
   expect(await page.evaluate(() => scrollY)).toBe(0);
 }
@@ -95,7 +114,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await page.goto(`/#/progress/session/${sessions[2]!}`);
   const totals = page.getByRole('region', { name: 'Your session', exact: true });
   await expect(totals).toContainText('2.4 t');
-  await expectActionsClearOfNavigation(page);
+  await expectRecapActions(page);
   await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
   await expect(totals).not.toContainText('Includes applicable');
   await expect(page.getByRole('heading', { name: 'Muscles trained', exact: true })).toHaveCount(0);
@@ -174,6 +193,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   for (const [width, height] of [
     [320, 568],
     [390, 667],
+    [390, 844],
     [412, 850],
     [1280, 1000],
   ] as const) {
@@ -189,11 +209,19 @@ test('recap pages show session-only muscles, bounded weight history and accessib
         await dark.click();
       await page.goto(`/#/progress/session/${sessions[2]!}`);
       await expect(totals).toContainText('2.4 t');
+      if (height === 844)
+        await page.locator('.recap-screen').evaluate((el: HTMLElement) => {
+          el.style.paddingTop = '47px';
+          el.style.paddingBottom = '34px';
+        });
       for (const title of titles) {
         await show(page, title);
         await page.getByRole('region', { name: title, exact: true }).evaluate((el) => {
           el.scrollTop = 0;
         });
+        if (title === 'Your session' || title === 'Muscles trained') {
+          await expectCardFits(page, title);
+        }
         if (title === 'Muscles trained') {
           await expect(page.locator('canvas')).toHaveCount(2);
           // Wait for demand-rendered frames, rather than screenshotting empty canvases.
@@ -206,7 +234,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
           await page.waitForTimeout(500); // Let the on-demand WebGL frame reach the compositor.
         }
         await expect(actions.getByRole('link', { name: 'Done', exact: true })).toBeVisible();
-        await expectActionsClearOfNavigation(page);
+        await expectRecapActions(page);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
         );
@@ -218,6 +246,17 @@ test('recap pages show session-only muscles, bounded weight history and accessib
           page.getByRole('button', { name: `Show ${title}`, exact: true }),
         ).toHaveAttribute('aria-pressed', 'true');
       }
+      await page.goto(`/#/progress/session/${sessions[1]!}`);
+      await expect(level).toContainText('Level up!');
+      if (height === 844)
+        await page.locator('.recap-screen').evaluate((el: HTMLElement) => {
+          el.style.paddingTop = '47px';
+          el.style.paddingBottom = '34px';
+        });
+      await expectCardFits(page, 'Your session');
+      await page.screenshot({ path: info.outputPath(`${width}-${theme}-level-up.png`) });
+      await page.goto(`/#/progress/session/${sessions[2]!}`);
+      await show(page, 'Exercise log');
     }
   }
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -257,6 +296,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await page.getByLabel('Routine name').fill('Upper replay');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your routines' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
 });
 
 test('comparison cards group equipment, best sets and trends for a full workout', async ({
@@ -286,9 +326,43 @@ test('comparison cards group equipment, best sets and trends for a full workout'
     ) select id from workouts order by started_at desc`,
     [user.id],
   );
+  await sql(
+    `with entry as (
+      insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+      select $1, $2, id, 'zz' from public.exercises where slug = 'treadmill' returning id
+    ) insert into public.session_sets (user_id, session_exercise_id, order_key, reps, weight_kg, duration_seconds, calories_kcal, is_completed, completed_at)
+      select $1, id, 'a0', 0, 0, 1800, 300, true, now() from entry`,
+    [user.id, sessions[0]!.id],
+  );
   await signIn(page, user);
   await waitForCatalogue(page);
   await page.goto(`/#/progress/session/${sessions[0]!.id}`);
+  // Two new cardio banners can precede the historical-achievement summary.
+  // Their combined, intentional display time exceeds the usual 15-second wait.
+  await expect(
+    page.getByRole('status').filter({ hasText: /Achievement unlocked|From your past training/ }),
+  ).toBeHidden({ timeout: 30_000 });
+  for (const [width, height] of [
+    [320, 568],
+    [390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    if (width === 390) {
+      // Simulate the space reserved by an iPhone notch and home indicator.
+      await page.locator('.recap-screen').evaluate((el: HTMLElement) => {
+        el.style.paddingTop = '47px';
+        el.style.paddingBottom = '34px';
+      });
+    }
+    await expectCardFits(page, 'Your session');
+    await expectRecapActions(page);
+    await page.screenshot({ path: info.outputPath(`mixed-session-${width}.png`) });
+    await show(page, 'Muscles trained');
+    await expectCardFits(page, 'Muscles trained');
+    await page.screenshot({ path: info.outputPath(`full-body-${width}.png`) });
+    await show(page, 'Your session');
+  }
+  await page.locator('.recap-screen').evaluate((el: HTMLElement) => el.removeAttribute('style'));
   await show(page, 'Compared with last time');
   const cards = page.locator('.recap-comparison');
   await expect(cards).toHaveCount(3);
@@ -303,9 +377,10 @@ test('comparison cards group equipment, best sets and trends for a full workout'
     [1280, 1000],
   ] as const) {
     await page.setViewportSize({ width, height });
-    await expectActionsClearOfNavigation(page);
+    await expectRecapActions(page);
     await page.screenshot({ path: info.outputPath(`comparison-${width}.png`) });
   }
   await cards.filter({ hasText: 'Romanian Deadlift' }).click();
   await expect(page.getByRole('heading', { name: 'Romanian Deadlift', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
 });

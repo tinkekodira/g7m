@@ -22,6 +22,8 @@ export async function openTab(
   tab: 'Learn' | 'Friends' | 'Progress' | 'Home' | 'Profile' | 'Settings',
 ): Promise<void> {
   const bar = page.getByRole('navigation');
+  if (await page.getByRole('region', { name: 'Workout recap', exact: true }).isVisible())
+    await page.getByRole('link', { name: 'Done', exact: true }).click();
   if (tab === 'Progress') {
     await bar.getByRole('link', { name: 'Home' }).click();
     await page.getByRole('link', { name: /^Progress/ }).click();
@@ -55,12 +57,9 @@ export async function logSet(page: Page, set: number, weight: string, reps: stri
 /** Finish the workout that is open, and wait to be back among the tabs. */
 export async function finishWorkout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Finish workout' }).click();
-  await expect(page.getByRole('navigation')).toBeVisible();
-  if (await page.getByRole('heading', { name: 'Workout saved', exact: true }).isVisible()) {
-    // The top link can sit behind a newly earned achievement banner. Use the
-    // footer action so the helper does not wait for (and consume) that banner.
-    await page.getByRole('link', { name: 'Done', exact: true }).last().click();
-  }
+  await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeHidden();
+  await page.getByRole('link', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('navigation')).toBeVisible();
 }
 

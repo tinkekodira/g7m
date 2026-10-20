@@ -8823,3 +8823,30 @@ phone and desktop sizes in both themes, plus count-up frames, level-up and
 reduced-motion states, equipment images, comparison links, swipe/keyboard
 navigation, long logs, routine saving and offline reload. Unit tests cover
 change-badge load semantics and pounds conversion.
+
+## ADR-0150 — Workout recaps use the full screen without bottom tabs
+
+**Status:** accepted · **Date:** 2026-10-21 · **Amends:** ADR-0149
+
+The saved-workout route hides the shared tab bar and its reserved padding.
+Its main element uses the dynamic viewport, including top and bottom safe-area
+padding. Done exits to the original destination after finishing or to Progress
+from history; regular navigation returns on those screens. The route stays
+inside the existing boundary and loading layout, so chunk and error handling
+are retained. Friends' workout pages and other tabbed screens are unaffected.
+
+The carousel gives each slide a size container. Session figures and spacing
+respond to the available card height, rather than the larger viewport height.
+Short cards use compact rewards and, for mixed cardio/strength totals, three
+columns. Achievement names wrap together instead of stacking in a tall list.
+The muscle model fills the space remaining above two columns of percentage
+bars. Both summary cards fit typical short and notched phone viewports without
+scrolling; comparison cards and the exercise log retain independent scrolling.
+Content is not hidden to make overflow checks pass.
+
+Browser checks measure summary-card overflow with level gains, achievements,
+mixed cardio totals and several muscle groups, at 320 × 568 through desktop
+sizes in both themes, including simulated iPhone safe areas. They also verify
+the absence of tabs on the recap, visible shared actions, navigation returning
+after Done, routine saving, deletion and offline reload. Test navigation helpers
+now exit the recap with Done before using the regular tabs.

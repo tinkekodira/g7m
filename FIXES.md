@@ -1,3 +1,17 @@
+# Resolved — recap overflow with wider system fonts and a double Done click in tests
+
+PR #187's Linux screenshots showed the history heading wrapping onto a second
+line at 320px. That reduced the totals grid's height enough for its four values
+to extend below their cells during a level-up. Scale history headings to phone
+width and reduce compact-grid spacing, preserving the individual-value overflow
+checks. Their failures now identify the affected stats.
+
+The offline workout-upgrade scenario also clicked Done and immediately called
+the tab helper, which could still see the outgoing recap and attempt Done a
+second time. Wait for the recap to disappear and Main navigation to return
+before using tabs. This keeps the test on the same visible navigation path as
+the user and avoids force-clicking a detached element.
+
 # Resolved — stale assertions after the workout recap redesign
 
 PR #186's full browser run caught an older offline recap test still requiring
