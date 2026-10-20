@@ -57,7 +57,9 @@ export async function finishWorkout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Finish workout' }).click();
   await expect(page.getByRole('navigation')).toBeVisible();
   if (await page.getByRole('heading', { name: 'Workout saved', exact: true }).isVisible()) {
-    await page.getByRole('link', { name: 'Done', exact: true }).first().click();
+    // The top link can sit behind a newly earned achievement banner. Use the
+    // footer action so the helper does not wait for (and consume) that banner.
+    await page.getByRole('link', { name: 'Done', exact: true }).last().click();
   }
   await expect(page.getByRole('navigation')).toBeVisible();
 }

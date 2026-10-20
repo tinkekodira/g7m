@@ -1,13 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createUser, eventually, sql } from './support/backend.js';
-import {
-  finishWorkout,
-  logSet,
-  openTab,
-  signIn,
-  startWith,
-  waitForCatalogue,
-} from './support/app.js';
+import { logSet, openTab, signIn, startWith, waitForCatalogue } from './support/app.js';
 
 /**
  * Achievements (ADR-0072): earned from the training log, announced once by a
@@ -47,7 +40,8 @@ test('a heavy set is celebrated at the bench, the workout on Finish, and each on
   await expect(banner(page)).toContainText('Two-Plate Bench');
   await expect(banner(page)).toContainText('Bench Your Body');
 
-  await finishWorkout(page);
+  await page.getByRole('button', { name: 'Finish workout', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
   await expect(banner(page)).toContainText('Day One');
 
   // Remembered on the server, so no other device plays them again.

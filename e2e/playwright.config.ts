@@ -22,7 +22,12 @@ export default defineConfig({
   reporter:
     process.env['CI'] === undefined
       ? [['list']]
-      : [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+      : [
+          ['github'],
+          // Keep per-test progress when a slow runner reaches the job limit.
+          ['list'],
+          ['html', { open: 'never', outputFolder: 'playwright-report' }],
+        ],
   globalSetup: './global-setup.ts',
 
   use: {
