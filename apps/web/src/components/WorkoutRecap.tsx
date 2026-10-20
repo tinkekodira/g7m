@@ -281,7 +281,12 @@ function Fact({ label, value }: { readonly label: string; readonly value: string
   return (
     <div className="min-w-0">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="mt-1 text-xl leading-tight font-semibold text-primary">{value}</dd>
+      <dd
+        data-wide={value.length > 6 || undefined}
+        className="mt-1 text-xl leading-tight font-semibold text-primary"
+      >
+        {value}
+      </dd>
     </div>
   );
 }

@@ -95,6 +95,9 @@
 .recap-totals:has(> :nth-child(5)) dd {
   font-size: clamp(18px, 12cqh, 42px);
 }
+.recap-totals:not(:has(> :nth-child(5))) dd[data-wide='true'] {
+  font-size: clamp(20px, min(20cqh, 10cqw), 40px);
+}
 .recap-rewards {
   flex-shrink: 0;
   border-top: 1px solid var(--border-subtle);
