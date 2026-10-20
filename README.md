@@ -14,8 +14,10 @@ What it does:
   bouts, with a timer and a calorie estimate
   ([ADR-0069](./DECISIONS.md#adr-0069--cardio-is-gym-machines-logged-as-bouts-inside-workouts)).
   A workout you forgot to log can be added to its day on the calendar.
-  Finish opens a recap with totals, exercise comparisons, records, trained muscles
-  and earned rewards; reopen it from history. The exercise picker can suggest
+  Finish opens a four-card swipeable recap: session totals and rewards, a 3D body
+  highlighting trained muscles with percentages, exercise weight trends, and the
+  complete exercise log. Reopen it from history; Done, routine saving and deletion
+  stay below every card. The exercise picker can suggest
   useful complements based on your own training, queued work and recent history.
   See [how recommendations work](./docs/workout-recommendations.md).
 - **Repeat.** Keep a workout as a routine when you finish it, or save any past

@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { loadWorkoutRecap } from '../lib/db/workout-recap.js';
 import { WorkoutRecap } from '../components/WorkoutRecap.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { SessionBody } from '../components/SessionBody.js';
-import { ChevronRightIcon, TrashIcon } from '../components/icons.js';
+import { TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -49,40 +48,23 @@ export function SessionDetailScreen() {
         </p>
       ) : (
         <>
-          <WorkoutRecap data={data} />
-          <details open className="group rounded-sheet border border-subtle bg-surface p-4">
-            <summary className="flex min-h-tap cursor-pointer items-center justify-between gap-3 rounded-control text-base font-semibold text-primary hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent">
-              Exercise log
-              <ChevronRightIcon className="size-4 shrink-0 text-muted group-open:rotate-90" />
-            </summary>
-            <SessionBody
-              showSummary={false}
-              startedAt={data.session.startedAt}
-              bodyweightKg={data.session.bodyweightKg}
-              unitSystem={data.profile?.unitSystem ?? 'metric'}
-              blocks={data.blocks}
-            />
-          </details>
-          <KeepAsRoutine
-            sessionId={sessionId}
-            suggestion={data.session.name ?? ''}
-            /* Nothing to template from a session with nothing ticked in it. */
-            enabled={
-              (!fresh || (data.session.routineId === null && data.session.source !== 'past')) &&
-              data.blocks.some((block) =>
-                block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
-              )
-            }
-          />
-          {fresh && (
+          <WorkoutRecap key={sessionId} data={data} />
+          <div className="grid grid-cols-2 gap-2 pb-4" aria-label="Workout actions" role="group">
             <Link
-              to={afterwards}
-              className="flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              to={fresh ? afterwards : '/progress'}
+              className="col-span-2 flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Done
             </Link>
-          )}
-          <DeleteWorkout sessionId={sessionId} />
+            <KeepAsRoutine
+              sessionId={sessionId}
+              suggestion={data.session.name ?? ''}
+              enabled={data.blocks.some((block) =>
+                block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
+              )}
+            />
+            <DeleteWorkout sessionId={sessionId} />
+          </div>
         </>
       )}
     </main>
@@ -111,10 +93,8 @@ function KeepAsRoutine({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(suggestion);
 
-  if (!enabled) return null;
-
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
+    <section className={open ? 'col-span-2' : 'min-w-0'}>
       {open ? (
         <>
           <h2 className="mb-3 text-base font-semibold text-primary">Name the routine</h2>
@@ -159,6 +139,8 @@ function KeepAsRoutine({
         <>
           <Button
             variant="secondary"
+            className="px-2 text-sm"
+            disabled={!enabled}
             fullWidth
             onClick={() => {
               setOpen(true);
@@ -166,9 +148,6 @@ function KeepAsRoutine({
           >
             Save as a routine
           </Button>
-          <p className="mt-2 text-xs text-muted">
-            Keeps the movements and rep ranges, so you can start this session again in one tap.
-          </p>
         </>
       )}
     </section>
@@ -192,9 +171,11 @@ function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
   const { write, busy, error } = useWrite();
 
   return (
-    <div className="py-4">
+    <div>
       <Button
-        variant="danger"
+        variant="danger-outline"
+        fullWidth
+        className="px-2 text-sm"
         disabled={busy}
         onClick={() => {
           if (!globalThis.confirm("Delete this workout? This can't be undone.")) return;
@@ -205,7 +186,7 @@ function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
           });
         }}
       >
-        <TrashIcon className="size-5" />
+        <TrashIcon className="hidden size-4 shrink-0 sm:block" />
         Delete workout
       </Button>
       {error !== null && (

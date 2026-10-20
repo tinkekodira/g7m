@@ -104,9 +104,19 @@ test('a treadmill workout is logged as bouts, with calories', async ({ page }) =
   // On the workout's page: bouts in the display's words, cardio totals, and
   // no lifting numbers for a workout that had no lifting.
   await recentWorkoutLink(page).click();
+  await expect(page.getByText('760 kcal')).toBeVisible();
+  await page.getByRole('button', { name: 'Show Muscles trained' }).click();
+  await expect(
+    page.getByText('No primary muscle distribution recorded for this session.'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Show Compared with last time' }).click();
+  await expect(
+    page.getByText('No working strength sets to compare in this session.'),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Show Exercise log' }).click();
   await expect(page.getByText('30:00 · 5 km · 6:00 /km · ≈ 460 kcal')).toBeVisible();
   await expect(page.getByText('30:00 · 5 km · 6:00 /km · 300 kcal')).toBeVisible();
+  await page.getByRole('button', { name: 'Show Your session' }).click();
   await expect(page.getByText('1:00:00')).toBeVisible();
-  await expect(page.getByText('760 kcal')).toBeVisible();
-  await expect(page.getByText('Volume')).toHaveCount(0);
+  await expect(page.getByText('Volume', { exact: true })).toHaveCount(0);
 });

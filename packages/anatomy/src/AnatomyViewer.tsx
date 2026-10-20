@@ -64,6 +64,8 @@ export interface AnatomyViewerProps {
   readonly closedSurface?: boolean;
   /** Front by default. The back is where the lats, glutes and hamstrings are. */
   readonly view?: AnatomyView;
+  /** Starting distance; compact still views can leave margin around the full body. */
+  readonly cameraDistance?: number;
   /**
    * Whether the figure can be turned and tapped.
    *
@@ -92,6 +94,7 @@ export function AnatomyViewer({
   intensity,
   closedSurface = false,
   view = 'front',
+  cameraDistance = CAMERA_DISTANCE,
   interactive = true,
   background = '#17161a',
   className,
@@ -147,7 +150,7 @@ export function AnatomyViewer({
         // difference nobody can see on a 6 cm figure.
         dpr={[1, 2]}
         camera={{
-          position: [0, CAMERA_HEIGHT, view === 'back' ? -CAMERA_DISTANCE : CAMERA_DISTANCE],
+          position: [0, CAMERA_HEIGHT, view === 'back' ? -cameraDistance : cameraDistance],
           fov: 38,
         }}
         shadows={false}

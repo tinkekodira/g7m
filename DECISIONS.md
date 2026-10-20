@@ -8755,3 +8755,39 @@ external requests still bypass the worker. A browser regression finishes and
 reopens a recap offline, then reloads the app; pure policy tests cover scope
 boundaries. This fixes the underlying cache miss rather than masking it with a
 network-dependent retry.
+
+## ADR-0148 — Workout recaps page through four swipeable cards
+
+**Status:** accepted · **Date:** 2026-10-20 · **Amends:** ADR-0146
+
+The saved-workout detail route now pages horizontally through Your session,
+Muscles trained, Compared with last time, and Exercise log, in that order.
+Native scroll snapping handles swipes; four labelled 48px dot buttons provide
+tap and keyboard navigation. Arrow keys, Home and End move between cards.
+Inactive cards are inert and hidden from assistive technology. Reduced motion
+uses instant button navigation. Resizing keeps the selected card aligned.
+Long content scrolls inside the card; shared Done, Save as a routine and Delete
+workout actions remain below the carousel. Routine saving is also offered for
+backdated and routine-based workouts, disabled only when nothing was completed.
+The existing confirmation and repository write paths remain in use.
+
+Totals retain their saved-row semantics. XP, records and achievements stay in
+the first card rather than adding a fifth page. Front and back still views use
+the existing anatomy viewer, profile-selected sculpt and generated fallback.
+Only selectable primary and assisting muscles mapped to completed non-warm-up
+strength work are highlighted. Highlighting is binary and session-specific;
+the percentage bars still attribute sets across primary muscle groups. These
+are distinct, explicitly labelled measures. Still views let touches scroll
+the recap instead of rotating a model. Model loading starts on the muscle card.
+
+Comparisons reuse Browse's SVG weight chart and logged-load rules, with up to
+six finished sessions through the selected workout. Later and simultaneous
+other sessions are excluded before truncation, so old recaps never show future
+history. Timed exercises retain duration comparisons without a weight chart.
+Cardio-only sessions retain all four cards with explicit empty states. No
+schema, sync, asset licensing or storage policy changes are involved.
+
+Validation covers phone and desktop layouts in both themes, swipe and keyboard
+navigation, resizing, reduced motion, session-only muscle labels, historical
+chart cutoff, long logs, offline reload and routine saving. Existing finish,
+cardio, routine and deletion browser checks follow the new card navigation.

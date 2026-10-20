@@ -60,7 +60,9 @@ test('shoulder machine logs offline into a reusable recap in both themes and siz
   await expect(totals).toContainText('Logged training');
   await expect(totals).toContainText('720 kg');
   await expect(page.getByRole('heading', { name: 'Earned this session' })).toBeVisible();
+  await page.getByRole('button', { name: 'Show Compared with last time' }).click();
   await expect(page.getByText('First logged session', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Show Your session' }).click();
   await expect(page.getByLabel('Routine name')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Day One/ })).toBeHidden();
   for (const width of [320, 412, 1280])
