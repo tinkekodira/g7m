@@ -1,3 +1,4 @@
+import { RECOMMENDATION_PROFILES } from '@g7m/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startHarness, type Harness } from './testing/pglite-harness.js';
 
@@ -492,5 +493,14 @@ describe('the exercises asked for after the first fifty', () => {
       { slug: 'rear-delt-fly', name: 'Rear Delt Fly', station: 'dumbbell' },
       { slug: 'rear-delt-fly-machine', name: 'Rear Delt Fly (Machine)', station: 'pec-deck' },
     ]);
+  });
+});
+
+describe('recommendation catalogue audit', () => {
+  it('explicitly reviews every active strength exercise and no retired or cardio rows', async () => {
+    const active = await slugs(
+      `select slug from public.exercises where is_active and cardio_kind is null order by slug`,
+    );
+    expect(Object.keys(RECOMMENDATION_PROFILES).sort()).toEqual(active);
   });
 });

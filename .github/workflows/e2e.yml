@@ -22,7 +22,9 @@ jobs:
   e2e:
     name: Browser tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The production build plus 123 serial scenarios can exceed 15 minutes on
+    # shared runners. Each test still has its own Playwright timeout.
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v7

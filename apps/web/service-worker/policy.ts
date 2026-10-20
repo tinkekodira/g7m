@@ -95,6 +95,15 @@ export function isImmutable(path: string): boolean {
 }
 
 /**
+ * A module import sends Origin where the install-time fetch does not. Hosts
+ * with Vary: Origin otherwise make a precached identical asset miss offline.
+ * Only the scoped build assets qualify; never auth, sync or external URLs.
+ */
+export function ignoreAssetVary(url: string, scope: string): boolean {
+  return url.startsWith(new URL('assets/', scope).href);
+}
+
+/**
  * Caches this worker owns. Anything else in `caches` belongs to someone else.
  */
 const CACHE_PREFIX = 'g7m-app-';

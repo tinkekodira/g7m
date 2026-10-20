@@ -35,7 +35,7 @@ export function isRestOver(remaining: number | null): boolean {
 }
 
 /**
- * How long the workout has been going, as `h:mm` or `m:ss`.
+ * How long the workout has been going, as `h:mm:ss` or `m:ss`.
  *
  * Switches unit at an hour because a lifter forty minutes in wants to see
  * `41:20`, and one two hours in does not want to read `127:04` and do the
@@ -46,7 +46,8 @@ export function formatElapsed(startedAt: Date, now: Date): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (hours > 0) return `${String(hours)}:${String(minutes).padStart(2, '0')}`;
+  if (hours > 0)
+    return `${String(hours)}:${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
   return `${String(minutes)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 

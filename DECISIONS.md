@@ -8696,3 +8696,62 @@ mapping, alias search, both artwork surfaces, detail content in both themes
 at phone and desktop widths, offline navigation and a logged set synced against
 the new exercise. Production rollout requires applying migration
 `20261019120000_shoulder_press_machine.sql` before releasing the app assets.
+
+## ADR-0146 — A saved-workout recap and recommendations grounded in personal training
+
+**Status:** accepted · **Date:** 2026-10-20
+
+Finish now opens the saved workout's own detail route after the local write
+succeeds. A ref guards duplicate Finish taps; a failed write stays in the logger.
+The recap derives totals, exercise comparisons, muscle-set distribution and
+rewards from saved rows. It labels elapsed open time and the existing logged
+training span separately, and omits unavailable clocks for backdated work.
+Routine saving follows the recap as an eligible secondary action. The complete
+set log, routine saving and deletion remain accessible.
+
+Comparisons use each exercise's previous session strictly before this workout,
+while PRs use all earlier history and the existing record rules. Reward evaluation
+replays chronological prefixes, preventing future sessions and achievements from
+leaking into old recaps. Nothing is awarded or celebrated by opening a recap.
+Batch repository queries include retired exercise details and are owner scoped.
+
+The active Add an exercise picker promotes up to three useful matches with a
+muted Recommended label. Three distinct, fully completed strength exercises gate
+inference. Direct work establishes intent; queued work reserves budget. Expanding
+a split needs two-thirds support in at least two of the latest three comparable
+sessions over 90 days. A user's chest-and-triceps sessions that omit shoulders
+remain that way. Rolling seven-day work, existing goal and experience limits,
+exercise overlap and queued sets reduce additions. Unknown mappings fail closed.
+
+All active strength exercises have explicit curated profiles, checked against the
+real migrated catalogue. Numerical coverage is a documented product heuristic,
+not biological measurement. The policy, evidence and deliberate uncertainty are
+in docs/workout-recommendations.md. This introduces no schema, endpoint or paid API.
+
+The floating Home link independently follows its original header control at the
+top-right safe area. It matches the timer's 44px pill styling and entrance motion.
+Narrow layouts omit the secondary set count to keep the central clock clear.
+Both clock surfaces show h:mm:ss after an hour, with quieter seconds. Reduced
+motion, keyboard access and session/rest persistence retain existing conventions.
+
+The linked production migration list revealed that the already-deployed shoulder
+machine was absent because 20261019120000_shoulder_press_machine.sql was unapplied.
+The rollout uses that existing migration, preserving its exercise identity and
+history; no duplicate or client-side catalogue seed is introduced.
+
+## ADR-0147 — Offline asset matching ignores Origin variation within the build
+
+**Status:** accepted · **Date:** 2026-10-20
+
+The documented offline cold-start failure was reproduced by navigating from a
+finished recap to Progress offline. Trace requests showed Vary: Origin on the
+preview server's JavaScript. Install-time fetches omitted Origin, while module
+imports supplied it, so Cache.match rejected the identical precached asset.
+
+Only build assets under this worker's own scoped assets/ directory ignore Vary
+when read. Reuse of immutable assets from previous owned caches follows the same
+rule. Shell and anatomy-manifest strategies are unchanged, and auth, sync and
+external requests still bypass the worker. A browser regression finishes and
+reopens a recap offline, then reloads the app; pure policy tests cover scope
+boundaries. This fixes the underlying cache miss rather than masking it with a
+network-dependent retry.

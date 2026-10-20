@@ -173,7 +173,7 @@ test('the same clock survives offline logging, reload and hour rollover', async 
   await expectSets(page, 1);
   for (const [seconds, label] of [
     [3599, '59:59'],
-    [3600, '1:00'],
+    [3600, '1:00:00'],
   ] as const) {
     await page.clock.setFixedTime(new Date(start.getTime() + seconds * 1000));
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
@@ -181,7 +181,7 @@ test('the same clock survives offline logging, reload and hour rollover', async 
   }
   await expect(summary(page).getByRole('timer')).toHaveAttribute(
     'aria-label',
-    '1 hour 0 minutes elapsed',
+    '1 hour 0 minutes 0 seconds elapsed',
   );
   await context.setOffline(false);
   await eventually(

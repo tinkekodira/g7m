@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { workoutTitle } from '@g7m/core';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { loadWorkoutRecap } from '../lib/db/workout-recap.js';
+import { WorkoutRecap } from '../components/WorkoutRecap.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { SessionBody } from '../components/SessionBody.js';
-import { TrashIcon } from '../components/icons.js';
+import { ChevronRightIcon, TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -18,42 +19,21 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 export function SessionDetailScreen() {
   const { sessionId = '' } = useParams();
 
-  const state = useCatalogue(`session:${sessionId}`, async (repositories) => {
-    const session = await repositories.sessions.byId(sessionId);
-    if (session === null) return null;
-
-    const [profile, entries, work] = await Promise.all([
-      repositories.profile.current(),
-      repositories.sessions.exercisesFor(sessionId),
-      repositories.history.primaryWork(sessionId),
-    ]);
-
-    const blocks = await Promise.all(
-      entries.map(async (entry) => {
-        const [exercise, sets] = await Promise.all([
-          repositories.exercises.byId(entry.exerciseId),
-          repositories.sessions.setsFor(entry.id),
-        ]);
-        return { entry, exercise, sets };
-      }),
-    );
-
-    const bouts = blocks
-      .filter((block) => block.exercise?.cardioKind != null)
-      .reduce((sum, block) => sum + block.sets.filter((set) => set.isCompleted).length, 0);
-    // The same name the history list gave it, so the row and the page agree.
-    const title = session.name ?? workoutTitle(work.get(sessionId) ?? [], bouts);
-
-    return { session, profile, blocks, title };
-  });
+  const location = useLocation();
+  const navigation = location.state as { workoutFinished?: boolean; afterwards?: string } | null;
+  const fresh = navigation?.workoutFinished === true;
+  const afterwards = navigation?.afterwards ?? '/';
+  const state = useCatalogue(`session:${sessionId}`, (r) => loadWorkoutRecap(r, sessionId));
 
   const data = state.data;
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">{data?.title ?? 'Workout'}</h1>
-        <HeaderLink to="/progress">Progress</HeaderLink>
+        <h1 className="min-w-0 text-2xl font-semibold break-words text-primary">
+          {fresh ? 'Workout saved' : (data?.title ?? 'Workout')}
+        </h1>
+        <HeaderLink to={fresh ? afterwards : '/progress'}>{fresh ? 'Done' : 'Progress'}</HeaderLink>
       </header>
 
       {state.error !== null ? (
@@ -69,20 +49,39 @@ export function SessionDetailScreen() {
         </p>
       ) : (
         <>
-          <SessionBody
-            startedAt={data.session.startedAt}
-            bodyweightKg={data.session.bodyweightKg}
-            unitSystem={data.profile?.unitSystem ?? 'metric'}
-            blocks={data.blocks}
-          />
+          <WorkoutRecap data={data} />
+          <details open className="group rounded-sheet border border-subtle bg-surface p-4">
+            <summary className="flex min-h-tap cursor-pointer items-center justify-between gap-3 rounded-control text-base font-semibold text-primary hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent">
+              Exercise log
+              <ChevronRightIcon className="size-4 shrink-0 text-muted group-open:rotate-90" />
+            </summary>
+            <SessionBody
+              showSummary={false}
+              startedAt={data.session.startedAt}
+              bodyweightKg={data.session.bodyweightKg}
+              unitSystem={data.profile?.unitSystem ?? 'metric'}
+              blocks={data.blocks}
+            />
+          </details>
           <KeepAsRoutine
             sessionId={sessionId}
             suggestion={data.session.name ?? ''}
             /* Nothing to template from a session with nothing ticked in it. */
-            enabled={data.blocks.some((block) =>
-              block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
-            )}
+            enabled={
+              (!fresh || (data.session.routineId === null && data.session.source !== 'past')) &&
+              data.blocks.some((block) =>
+                block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
+              )
+            }
           />
+          {fresh && (
+            <Link
+              to={afterwards}
+              className="flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Done
+            </Link>
+          )}
           <DeleteWorkout sessionId={sessionId} />
         </>
       )}

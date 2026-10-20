@@ -271,9 +271,9 @@ test('Cancel leaves the workout exactly as it was, on both screens', async ({ pa
 
   // The detail screen: dismiss, and it is still the same workout.
   await page.goto(`/#/progress/session/${session.id}`);
-  await expect(page.getByText('70 kg')).toBeVisible();
+  await expect(page.locator('details').getByText('70 kg')).toBeVisible();
   await page.getByRole('button', { name: /Delete workout/ }).click();
-  await expect(page.getByText('70 kg')).toBeVisible();
+  await expect(page.locator('details').getByText('70 kg')).toBeVisible();
   await expect(page).toHaveURL(new RegExp(session.id));
 
   const rows = await sql('select id from public.workout_sessions where id = $1', [session.id]);

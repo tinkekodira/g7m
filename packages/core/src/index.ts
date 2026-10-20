@@ -48,3 +48,6 @@ export * from './friends.js';
 export * from './challenges.js';
 export * from './leaderboard.js';
 export * from './xp.js';
+export * from './recommendation-catalogue.js';
+export * from './recommendations.js';
+export * from './workout-recap.js';

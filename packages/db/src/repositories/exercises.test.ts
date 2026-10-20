@@ -878,3 +878,39 @@ describe('idsBySlug', () => {
     expect(await exercises.idsBySlug([])).toEqual(new Map());
   });
 });
+
+describe('batch catalogue reads for saved workouts', () => {
+  it('keeps retired exercise details and handles empty/missing ids', async () => {
+    await db.seed('exercises', {
+      id: 'retired-recap',
+      slug: 'retired-recap',
+      name: 'Retired',
+      is_active: 0,
+    });
+    expect((await exercises.byIds(['retired-recap', 'missing'])).map((e) => e.name)).toEqual([
+      'Retired',
+    ]);
+    expect(await exercises.byIds([])).toEqual([]);
+  });
+  it('reads all required equipment, including non-primary pieces', async () => {
+    await db.seed('equipment', { id: 'recap-bar', slug: 'recap-bar', name: 'Bar' });
+    await db.seed('equipment', { id: 'recap-bench', slug: 'recap-bench', name: 'Bench' });
+    await db.seed('exercises', { id: 'recap-press', slug: 'recap-press', name: 'Press' });
+    await db.seed('exercise_equipment', {
+      id: 'recap-a',
+      exercise_id: 'recap-press',
+      equipment_id: 'recap-bar',
+      is_primary: 1,
+    });
+    await db.seed('exercise_equipment', {
+      id: 'recap-b',
+      exercise_id: 'recap-press',
+      equipment_id: 'recap-bench',
+      is_primary: 0,
+    });
+    expect((await exercises.equipmentByExercise()).get('recap-press')).toEqual([
+      'recap-bar',
+      'recap-bench',
+    ]);
+  });
+});

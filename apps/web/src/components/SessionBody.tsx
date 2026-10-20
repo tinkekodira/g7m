@@ -63,6 +63,7 @@ export function SessionBody({
   blocks,
   linkTo = trendOrPage,
   explainUnmeasured = true,
+  showSummary = true,
 }: {
   readonly startedAt: Date;
   readonly bodyweightKg: number | null;
@@ -76,6 +77,7 @@ export function SessionBody({
    * see, so it is never sent, and the note would blame a missing weigh-in.
    */
   readonly explainUnmeasured?: boolean;
+  readonly showSummary?: boolean;
 }) {
   // Sets and volume are lifting numbers; a bout's zeros would only inflate
   // the count and add nothing to the weight.
@@ -116,28 +118,30 @@ export function SessionBody({
 
   return (
     <>
-      <section className="rounded-card bg-surface p-4">
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Stat label="Date" value={startedAt.toLocaleDateString()} />
-          {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
-          {/* Drops folded into their sets: a set with two drops is one set,
+      {showSummary && (
+        <section className="rounded-card bg-surface p-4">
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Stat label="Date" value={startedAt.toLocaleDateString()} />
+            {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
+            {/* Drops folded into their sets: a set with two drops is one set,
               as it is on the leaderboard (ADR-0112). */}
-          {hasLifts && <Stat label="Sets" value={String(countSets(allSets))} />}
-          {hasLifts && (
-            <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
+            {hasLifts && <Stat label="Sets" value={String(countSets(allSets))} />}
+            {hasLifts && (
+              <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
+            )}
+            {cardioSeconds > 0 && <Stat label="Cardio" value={formatDuration(cardioSeconds)} />}
+            {cardioKcal > 0 && (
+              <Stat label="Calories" value={`${cardioKcal.toLocaleString('en-GB')} kcal`} />
+            )}
+          </div>
+          {explainUnmeasured && volume.unknownSets > 0 && (
+            <p className="mt-3 text-xs text-muted">
+              {volume.unknownSets === 1 ? 'One set is' : `${String(volume.unknownSets)} sets are`}{' '}
+              not counted — no bodyweight was recorded for this workout, so they cannot be measured.
+            </p>
           )}
-          {cardioSeconds > 0 && <Stat label="Cardio" value={formatDuration(cardioSeconds)} />}
-          {cardioKcal > 0 && (
-            <Stat label="Calories" value={`${cardioKcal.toLocaleString('en-GB')} kcal`} />
-          )}
-        </div>
-        {explainUnmeasured && volume.unknownSets > 0 && (
-          <p className="mt-3 text-xs text-muted">
-            {volume.unknownSets === 1 ? 'One set is' : `${String(volume.unknownSets)} sets are`} not
-            counted — no bodyweight was recorded for this workout, so they cannot be measured.
-          </p>
-        )}
-      </section>
+        </section>
+      )}
 
       {workoutUnits(blocks, (block) => block.entry.supersetId ?? null).map((unit) =>
         unit.kind === 'single' ? (

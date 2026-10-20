@@ -564,6 +564,20 @@ export class SessionRepository {
     });
   }
 
+  /** All rows of one owned workout, ordered for recap and picker batch reads. */
+  async setsForSession(sessionId: string): Promise<SessionSet[]> {
+    const { userId } = resolveContext(this.context);
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT ss.* FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+         JOIN workout_sessions ws ON ws.id = se.session_id
+        WHERE ws.id = ? AND ws.user_id = ? AND ss.user_id = ?
+        ORDER BY se.order_key ASC, ss.order_key ASC, ss.id ASC`,
+      [sessionId, userId, userId],
+    );
+    return rows.map(toSessionSet);
+  }
+
   async setsFor(sessionExerciseId: string): Promise<SessionSet[]> {
     const { userId } = resolveContext(this.context);
     const rows = await this.db.getAll<RawRow>(
