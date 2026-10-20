@@ -277,6 +277,19 @@ function placeholders(count: number): string {
 export class ExerciseRepository {
   constructor(private readonly db: QueryableDatabase) {}
 
+  /** All required equipment, not just the illustrated primary station. */
+  async equipmentByExercise(): Promise<Map<string, string[]>> {
+    const rows = await this.db.getAll<RawRow>(
+      'SELECT exercise_id, equipment_id FROM exercise_equipment ORDER BY exercise_id, equipment_id',
+    );
+    const result = new Map<string, string[]>();
+    for (const row of rows) {
+      const id = readString(row, 'exercise_id', '');
+      result.set(id, [...(result.get(id) ?? []), readString(row, 'equipment_id', '')]);
+    }
+    return result;
+  }
+
   /** Every exercise a user may pick, best-known first. */
   async list(): Promise<Exercise[]> {
     const rows = await this.db.getAll<RawRow>(
@@ -446,6 +459,16 @@ export class ExerciseRepository {
   async byId(id: string): Promise<Exercise | null> {
     const row = await this.db.getOptional<RawRow>('SELECT * FROM exercises WHERE id = ?', [id]);
     return row === null ? null : toExercise(row);
+  }
+
+  /** Saved workouts retain names and kinds even after a catalogue row retires. */
+  async byIds(ids: readonly string[]): Promise<Exercise[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT * FROM exercises WHERE id IN (${placeholders(ids.length)}) ${LIST_ORDER}`,
+      [...ids],
+    );
+    return rows.map(toExercise);
   }
 
   async bySlug(slug: string): Promise<Exercise | null> {

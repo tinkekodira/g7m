@@ -76,8 +76,10 @@ describe('formatElapsed', () => {
    * Two hours in, `127:04` makes the lifter do the division themselves.
    */
   it('switches to hours and minutes past the hour', () => {
-    expect(formatElapsed(START, at(3600))).toBe('1:00');
-    expect(formatElapsed(START, at(2 * 3600 + 7 * 60 + 4))).toBe('2:07');
+    expect(formatElapsed(START, at(3599))).toBe('59:59');
+    expect(formatElapsed(START, at(3600))).toBe('1:00:00');
+    expect(formatElapsed(START, at(3729))).toBe('1:02:09');
+    expect(formatElapsed(START, at(2 * 3600 + 7 * 60 + 4))).toBe('2:07:04');
   });
 
   it('does not show a negative time when the clock disagrees', () => {

@@ -53,6 +53,8 @@ import { useAuthStore } from '../auth/auth-store.js';
 import { readFriendWorkoutNote } from '../lib/friends/cache.js';
 import { describeReference, friendName } from './friends-view.js';
 import { HeaderLink } from '../components/HeaderLink.js';
+import { ElapsedTime } from '../components/ElapsedTime.js';
+import { FloatingHome } from '../components/FloatingHome.js';
 import { ArrowUpIcon, StopwatchIcon } from '../components/icons.js';
 import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
 import { UndoToast } from '../components/UndoToast.js';
@@ -62,7 +64,6 @@ import { PlateLine } from '../components/PlateLine.js';
 import { CardioCard } from '../components/CardioCard.js';
 import { describeRecord, type RecordLine } from './record-copy.js';
 import {
-  formatElapsed,
   idleLimitMinutes,
   idleMinutes,
   isRestOver,
@@ -140,6 +141,8 @@ export function WorkoutScreen() {
 
   const [now, setNow] = useState(() => new Date());
   const headerTimer = useRef<HTMLSpanElement>(null);
+  const headerHome = useRef<HTMLDivElement>(null);
+  const finishing = useRef(false);
 
   /**
    * When "still training?" was last answered — or last made unnecessary.
@@ -163,19 +166,6 @@ export function WorkoutScreen() {
   useEffect(() => {
     writeRunningRest(rest);
   }, [rest]);
-  /**
-   * Set once the workout is finished and is worth keeping as a routine.
-   *
-   * Carries the session's id, its suggested name and where to go on skipping,
-   * rather than reading them when it renders: `sessions.active()` returns null
-   * the moment a workout is finished, so by the time this is on screen there
-   * is no open workout left to ask.
-   */
-  const [offerRoutine, setOfferRoutine] = useState<{
-    readonly sessionId: string;
-    readonly suggestion: string;
-    readonly afterwards: string;
-  } | null>(null);
   const [undo, setUndo] = useState<Undoable | null>(null);
   // Only ever increments, so removing the same thing twice still restarts the
   // toast's clock rather than reading as one event.
@@ -425,40 +415,6 @@ export function WorkoutScreen() {
     buzz('success');
   }, [fresh]);
 
-  /**
-   * The offer is checked before every other branch, and has to be.
-   *
-   * Finishing the workout is exactly what makes `active()` return null, so the
-   * "nothing in progress" branch would swallow this screen the instant it was
-   * earned — and the re-read that discovers it flips `loading` on the way,
-   * which unmounted this component mid-typing and threw away the name. It
-   * carries everything it needs, so it depends on no read at all.
-   *
-   * The training is saved either way. All that is left is whether to keep its
-   * shape.
-   */
-  if (offerRoutine !== null) {
-    const offer = offerRoutine;
-    return (
-      <Shell>
-        <SaveAsRoutine
-          suggestion={offer.suggestion}
-          busy={busy}
-          onSave={(name) => {
-            void write((r) =>
-              r.routines.createFromSession({ sessionId: offer.sessionId, name }),
-            ).then((saved) => {
-              if (saved !== null) void navigate('/routines');
-            });
-          }}
-          onSkip={() => {
-            void navigate(offer.afterwards);
-          }}
-        />
-      </Shell>
-    );
-  }
-
   if (state.error !== null) {
     return (
       <Shell>
@@ -508,34 +464,26 @@ export function WorkoutScreen() {
    */
   const afterwards = past ? `/calendar?day=${dateKey(session.startedAt)}` : '/';
 
-  /**
-   * One way to finish, whether from the button or from "still training?".
-   *
-   * A workout worth keeping is offered as a routine before the screen goes,
-   * because this is the only moment somebody has the whole session in mind.
-   * Nothing worth keeping — a past log, an empty session, or one already
-   * started from a routine — goes straight out as it always did.
-   */
+  // useWrite returns null on failure; never leave before the local finish succeeded.
   const finishWorkout = (): void => {
-    buzz('success');
-    void write((r) => r.sessions.finish(session.id)).then(() => {
-      if (worthSaving) {
-        setOfferRoutine({ sessionId: session.id, suggestion: session.name ?? '', afterwards });
-      } else void navigate(afterwards);
+    if (finishing.current) return;
+    finishing.current = true;
+    void write(async (r) => {
+      await r.sessions.finish(session.id);
+      return true;
+    }).then((saved) => {
+      finishing.current = false;
+      if (saved !== true) return;
+      buzz('success');
+      const didWork = blocks.some((block) =>
+        block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
+      );
+      void navigate(didWork ? `/progress/session/${session.id}` : afterwards, {
+        replace: true,
+        state: { workoutFinished: true, afterwards },
+      });
     });
   };
-  /**
-   * Whether finishing this one is worth offering to keep.
-   *
-   * Something was actually done, it is a live session rather than a log of one,
-   * and it did not come from a routine already — saving a routine's own output
-   * back as a second routine is how somebody ends up with four copies of Push
-   * Day.
-   */
-  const worthSaving =
-    !past &&
-    session.routineId === null &&
-    blocks.some((block) => block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'));
 
   const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
   // Lifts only: a bout's weight and reps are zero by design, and counting it
@@ -770,7 +718,9 @@ export function WorkoutScreen() {
             ) : (
               <span ref={headerTimer} className="workout-header-timer">
                 <StopwatchIcon className="size-4 shrink-0 text-accent" />
-                <span>{formatElapsed(session.startedAt, now)} elapsed</span>
+                <span>
+                  <ElapsedTime startedAt={session.startedAt} now={now} /> elapsed
+                </span>
               </span>
             )}
             {volume.countedSets > 0 && (
@@ -784,10 +734,13 @@ export function WorkoutScreen() {
         {past ? (
           <HeaderLink to={afterwards}>Calendar</HeaderLink>
         ) : (
-          <HeaderLink to="/">Home</HeaderLink>
+          <div ref={headerHome}>
+            <HeaderLink to="/">Home</HeaderLink>
+          </div>
         )}
       </header>
 
+      {!past && <FloatingHome anchor={headerHome} />}
       {!past && (
         <FloatingWorkoutSummary
           headerTimer={headerTimer}
@@ -1119,12 +1072,9 @@ function FloatingWorkoutSummary({
     };
   }, [headerTimer]);
 
-  const minutes = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 60_000));
-  const elapsed = formatElapsed(startedAt, now);
-  const elapsedLabel =
-    minutes >= 60
-      ? `${String(Math.floor(minutes / 60))} ${minutes < 120 ? 'hour' : 'hours'} ${String(minutes % 60)} minutes elapsed`
-      : `${elapsed} elapsed`;
+  const seconds = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000));
+  const hours = Math.floor(seconds / 3600);
+  const elapsedLabel = `${String(hours)} ${hours === 1 ? 'hour' : 'hours'} ${String(Math.floor((seconds % 3600) / 60))} minutes ${String(seconds % 60)} seconds elapsed`;
 
   return (
     <div
@@ -1136,7 +1086,7 @@ function FloatingWorkoutSummary({
       <div className="workout-summary numeric" role="group" aria-label="Workout summary">
         <StopwatchIcon className="size-5 shrink-0 text-accent" />
         <span role="timer" aria-label={elapsedLabel} className="text-lg font-semibold text-primary">
-          {elapsed}
+          <ElapsedTime startedAt={startedAt} now={now} />
         </span>
         {completedSets !== null && (
           <span className="workout-summary-sets text-sm text-secondary">
@@ -1185,73 +1135,7 @@ function StartWorkout({ busy, onStart }: { readonly busy: boolean; readonly onSt
   );
 }
 
-/**
- * "Keep this as a routine?", asked once, after the workout is already saved.
- *
- * After rather than before, and on its own screen rather than in a dialog over
- * the log: the training is recorded whatever happens here, and the question is
- * about next week rather than about this session. Skipping is a button of
- * equal weight, not a cross in a corner — most workouts are not worth keeping
- * and saying so should not feel like a refusal.
- */
-function SaveAsRoutine({
-  suggestion,
-  busy,
-  onSave,
-  onSkip,
-}: {
-  readonly suggestion: string;
-  readonly busy: boolean;
-  readonly onSave: (name: string) => void;
-  readonly onSkip: () => void;
-}) {
-  const [name, setName] = useState(suggestion);
-
-  return (
-    <>
-      <header className="pt-8 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Workout saved</h1>
-        <p className="mt-1 max-w-prose text-sm text-secondary">
-          Keep its shape as a routine and you can start the same session again in one tap. The
-          movements and rep ranges are saved; the weights always come from what you last lifted.
-        </p>
-      </header>
-
-      <section className="rounded-card border border-subtle bg-surface p-4">
-        <TextField
-          label="Routine name"
-          value={name}
-          placeholder="Push Day"
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-        />
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button
-            disabled={busy || name.trim() === ''}
-            onClick={() => {
-              onSave(name);
-            }}
-          >
-            Save as a routine
-          </Button>
-          <Button variant="ghost" disabled={busy} onClick={onSkip}>
-            Not this one
-          </Button>
-        </div>
-      </section>
-    </>
-  );
-}
-
-/**
- * Asked once, inline, at the moment it first matters.
- *
- * Not at sign-up, where it is one more field between somebody and the app, and
- * not in a settings screen they would have to know to visit. The first
- * bodyweight exercise is when the number becomes load-bearing, and it is
- * obvious in context why it is being asked for.
- */
+/** Ask for a bodyweight snapshot only when a lift actually needs it. */
 function BodyweightPrompt({
   unitSystem,
   busy,

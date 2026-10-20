@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SetTemplate } from '@g7m/core';
 import { SessionRepository } from './sessions.js';
 import type { RepositoryContext } from './database.js';
@@ -50,6 +50,15 @@ afterEach(() => {
 });
 
 describe('starting and finishing a workout', () => {
+  it('keeps the workout active when the local finish write fails', async () => {
+    const session = await sessions.start();
+    const failure = vi.spyOn(db, 'execute').mockRejectedValueOnce(new Error('disk full'));
+    await expect(sessions.finish(session.id)).rejects.toThrow('disk full');
+    failure.mockRestore();
+    expect((await sessions.active())?.id).toBe(session.id);
+    expect((await sessions.byId(session.id))?.endedAt).toBeNull();
+  });
+
   it('starts one that is in progress', async () => {
     const session = await sessions.start();
     expect(session.endedAt).toBeNull();
@@ -782,5 +791,23 @@ describe('drop sets', () => {
     const listed = await sessions.setsFor(entry.id);
     expect(listed.map((set) => set.id)).toEqual([top.id, drop?.id, next.id]);
     expect(listed[0]?.isCompleted).toBe(true);
+  });
+});
+
+describe('workout batch read', () => {
+  it('returns all owned sets in exercise/set order and isolates other users', async () => {
+    const session = await sessions.start();
+    const first = await sessions.addExercise(session.id, 'bench');
+    const second = await sessions.addExercise(session.id, 'squat');
+    const a = await sessions.addSet(first.id, template());
+    const b = await sessions.addSet(second.id, template());
+    await sessions.completeSet(a.id);
+    expect((await sessions.setsForSession(session.id)).map((s) => [s.id, s.isCompleted])).toEqual([
+      [a.id, true],
+      [b.id, false],
+    ]);
+    const stranger = new SessionRepository(db, { ...context(), userId: 'other' });
+    expect(await stranger.setsForSession(session.id)).toEqual([]);
+    expect(await sessions.setsForSession('missing')).toEqual([]);
   });
 });

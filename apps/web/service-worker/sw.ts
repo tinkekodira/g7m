@@ -18,7 +18,7 @@
  * Bundled by `plugin.ts` into `dist/sw.js`, which substitutes the two constants
  * below. Nothing here is imported by the app.
  */
-import { cacheName, isImmutable, staleCaches, strategyFor } from './policy.js';
+import { cacheName, ignoreAssetVary, isImmutable, staleCaches, strategyFor } from './policy.js';
 
 /** Every file in `dist` worth precaching, relative to the scope. */
 declare const __PRECACHE__: readonly string[];
@@ -87,7 +87,7 @@ async function store(cache: Cache, previous: readonly Cache[], path: string): Pr
 
   if (isImmutable(path)) {
     for (const old of previous) {
-      const carried = await old.match(url);
+      const carried = await old.match(url, { ignoreVary: true });
       if (carried !== undefined) {
         await cache.put(url, carried);
         return;
@@ -166,7 +166,10 @@ async function fresh(request: Request): Promise<Response> {
 
 /** Everything else under the scope: cache, then network. */
 async function asset(request: Request): Promise<Response> {
-  const cached = await caches.match(request, { cacheName: CACHE });
+  const cached = await caches.match(request, {
+    cacheName: CACHE,
+    ignoreVary: ignoreAssetVary(request.url, SCOPE),
+  });
   if (cached !== undefined) return cached;
 
   const response = await fetch(request);

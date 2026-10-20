@@ -55,19 +55,10 @@ export async function logSet(page: Page, set: number, weight: string, reps: stri
 /** Finish the workout that is open, and wait to be back among the tabs. */
 export async function finishWorkout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Finish workout' }).click();
-  // A live workout with something ticked in it is offered as a routine before
-  // the screen goes. Most tests are not about that, so decline it — but the
-  // offer only appears for some workouts, and racing the two means this works
-  // either way.
-  const decline = page.getByRole('button', { name: 'Not this one' });
-  await Promise.race([
-    decline.waitFor({ state: 'visible' }).catch(() => undefined),
-    page
-      .getByRole('navigation')
-      .waitFor({ state: 'visible' })
-      .catch(() => undefined),
-  ]);
-  if (await decline.isVisible()) await decline.click();
+  await expect(page.getByRole('navigation')).toBeVisible();
+  if (await page.getByRole('heading', { name: 'Workout saved', exact: true }).isVisible()) {
+    await page.getByRole('link', { name: 'Done', exact: true }).first().click();
+  }
   await expect(page.getByRole('navigation')).toBeVisible();
 }
 
@@ -75,8 +66,9 @@ export async function finishWorkout(page: Page): Promise<void> {
 export async function finishAndKeepAsRoutine(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'Finish workout' }).click();
   await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible();
-  await page.getByLabel('Routine name').fill(name);
   await page.getByRole('button', { name: 'Save as a routine' }).click();
+  await page.getByLabel('Routine name').fill(name);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your routines' })).toBeVisible();
 }
 

@@ -91,7 +91,14 @@ const FriendRoutineScreen = lazyScreen(
  * are opened deliberately, from a screen that is already up, and load fast
  * enough on demand.
  */
-const WARM = [LearnScreen, FriendsScreen, ProfileScreen, SettingsScreen, WorkoutScreen];
+const WARM = [
+  LearnScreen,
+  FriendsScreen,
+  ProfileScreen,
+  SettingsScreen,
+  WorkoutScreen,
+  SessionDetailScreen,
+];
 
 /**
  * The two watchers that run everywhere, also loaded on demand.

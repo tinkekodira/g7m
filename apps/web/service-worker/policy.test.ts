@@ -1,3 +1,4 @@
+import { ignoreAssetVary } from './policy.js';
 import { describe, expect, it } from 'vitest';
 import { cacheName, isImmutable, staleCaches, strategyFor, type RequestFacts } from './policy.js';
 
@@ -109,5 +110,21 @@ describe('staleCaches', () => {
   it('never proposes deleting a cache it does not own', () => {
     // The whole point: `caches` is shared across the origin.
     expect(staleCaches(['some-library-cache', 'v1'], 'g7m-app-9f2c1a')).toEqual([]);
+  });
+});
+
+describe('immutable asset Vary matching', () => {
+  it('ignores header differences only for build assets within this app scope', () => {
+    const scope = 'https://example.test/g7m/';
+    expect(ignoreAssetVary('https://example.test/g7m/assets/recap-abc.js', scope)).toBe(true);
+    expect(ignoreAssetVary('https://example.test/g7m/assets/sqlite-abc.wasm', scope)).toBe(true);
+    for (const url of [
+      'https://api.test/assets/sync',
+      'https://example.test/assets/a.js',
+      'https://example.test/g7m/index.html',
+      'https://example.test/g7m/anatomy/manifest.json',
+    ]) {
+      expect(ignoreAssetVary(url, scope)).toBe(false);
+    }
   });
 });

@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g7m/ui';
 import type { Exercise, PrimaryMuscle } from '@g7m/db';
-import { exerciseWeightProgress, type ExerciseWeightPoint, type UnitSystem } from '@g7m/core';
+import {
+  exerciseWeightProgress,
+  recommendExercises,
+  type ExerciseWeightPoint,
+  type UnitSystem,
+} from '@g7m/core';
+import { loadWorkoutRecommendations } from '../lib/db/workout-recommendations.js';
 import { ExerciseWeightChart } from '../components/ExerciseWeightChart.js';
 import { MuscleFilterRail } from '../components/MuscleFilterRail.js';
 import { muscleColorStyle } from '../components/muscle-colors.js';
@@ -200,9 +206,29 @@ export function ExerciseLibraryScreen() {
     return { points: exerciseWeightProgress(sets), unitSystem: profile?.unitSystem ?? 'metric' };
   });
 
+  const recommendationData = useCatalogue(`recommendations:${String(adding)}`, async (r) =>
+    adding ? loadWorkoutRecommendations(r) : null,
+  );
+  const recommended = useMemo(
+    () =>
+      !adding || recommendationData.data == null
+        ? []
+        : recommendExercises({
+            ...recommendationData.data,
+            eligibleIds: new Set((results.data?.exercises ?? []).map((e) => e.id)),
+            selectedIds: new Set(picked.map((e) => e.id)),
+          }),
+    [adding, recommendationData.data, results.data, picked],
+  );
+  const recommendationIds = new Set(recommended.map((r) => r.exerciseId));
+  const ordinary = results.data?.exercises ?? [];
+  const exercises = [
+    ...recommended.flatMap((r) => ordinary.filter((e) => e.id === r.exerciseId)),
+    ...ordinary.filter((e) => !recommendationIds.has(e.id)),
+  ];
   const error = taxonomy.error ?? results.error ?? progress.error;
-  const loading = taxonomy.loading || results.loading || progress.loading || !ready;
-  const exercises = results.data?.exercises ?? [];
+  const loading =
+    taxonomy.loading || results.loading || progress.loading || recommendationData.loading || !ready;
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
@@ -344,6 +370,7 @@ export function ExerciseLibraryScreen() {
                     exercise={exercise}
                     muscle={results.data?.muscles.get(exercise.id) ?? null}
                     favourite={results.data?.favourites.has(exercise.slug) ?? false}
+                    recommended={recommendationIds.has(exercise.id)}
                     onAdd={
                       superset
                         ? () => {
@@ -396,6 +423,7 @@ function ExerciseRow({
   exercise,
   muscle,
   favourite,
+  recommended,
   onAdd,
   busy,
   picked = null,
@@ -406,6 +434,7 @@ function ExerciseRow({
   readonly exercise: Exercise;
   readonly muscle: PrimaryMuscle | null;
   readonly favourite: boolean;
+  readonly recommended: boolean;
   /** Non-null while picking an exercise for a workout in progress. */
   readonly onAdd: (() => void) | null;
   readonly busy: boolean;
@@ -437,6 +466,9 @@ function ExerciseRow({
         <span className="text-base font-medium text-primary">
           {exercise.name}
           {favourite && <FavouriteMark />}
+          {recommended && (
+            <span className="ml-2 inline-block text-xs font-normal text-muted">Recommended</span>
+          )}
         </span>
         <span className="text-sm text-secondary">{detail}</span>
       </span>

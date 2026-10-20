@@ -1,4 +1,10 @@
-# Follow-up — offline cold start in the browser test build
+# Resolved — offline cold start in the browser test build
+
+ADR-0147 identifies the cause: `Vary: Origin` on preview assets made module and
+worker requests miss copies cached by install-time fetches without an Origin
+header. Scoped build-asset cache reads now ignore Vary. Regression coverage
+finishes a workout, revisits its recap and reloads offline. Auth, sync and
+external requests keep their existing behavior. The original investigation:
 
 During ADR-0141 validation on 2026-10-17, the restored training review rendered
 correctly at phone and desktop widths, but a full offline reload of the test

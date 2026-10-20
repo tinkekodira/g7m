@@ -6,3 +6,6 @@ apps/mobile/ios/
 apps/mobile/android/
 apps/desktop/src-tauri/target/
 *.md
+# Locally installed agent skills are independent tooling, not application sources.
+.agents/
+.vitest-cache/

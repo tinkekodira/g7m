@@ -70,6 +70,61 @@
   border-inline-start: 1px solid var(--border-strong);
 }
 
+.workout-home-position {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: max(16px, env(safe-area-inset-right, 0px));
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease-out;
+}
+
+.workout-home {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border-radius: 50%;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-floating-value);
+  transform: translateY(-10px);
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.workout-home:hover,
+.workout-home:active {
+  background: var(--bg-elevated);
+}
+.workout-home-position[data-visible='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.workout-home-position[data-visible='true'] .workout-home {
+  transform: none;
+}
+
+/* Preserve the central clock and reserve the right-hand 44px control's lane. */
+@media (max-width: 380px) {
+  .workout-summary-sets {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workout-home-position,
+  .workout-summary-position,
+  .workout-home {
+    transition: none;
+  }
+  .workout-home {
+    transform: none;
+  }
+}
+
 /* Match the safe area + 8px inset + 44px pill, with 16px breathing room.
    This also covers cardio anchors, superset rows and keyboard focus targets. */
 .workout-live :where([id], input, select, textarea, :focus-visible) {
