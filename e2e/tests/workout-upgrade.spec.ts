@@ -57,11 +57,32 @@ test('shoulder machine logs offline into a reusable recap in both themes and siz
   await expect(page.getByRole('heading', { name: 'Your session' })).toBeVisible();
   const totals = page.getByRole('region', { name: 'Your session' });
   await expect(totals).toContainText('Workout time');
-  await expect(totals).toContainText('Logged training');
+  await expect(totals).not.toContainText('Logged training');
+  await expect(
+    totals
+      .locator('dt')
+      .filter({ hasText: /^Working sets$/ })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('3');
   await expect(totals).toContainText('720 kg');
   await expect(page.getByRole('heading', { name: 'Earned this session' })).toBeVisible();
   await page.getByRole('button', { name: 'Show Compared with last time' }).click();
-  await expect(page.getByText('First logged session', { exact: true })).toBeVisible();
+  const comparison = page.getByRole('region', { name: 'Compared with last time', exact: true });
+  await expect(
+    comparison
+      .locator('dt')
+      .filter({ hasText: /^Previous$/ })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('First session');
+  await expect(
+    comparison
+      .locator('dt')
+      .filter({ hasText: /^Best set$/ })
+      .locator('..')
+      .locator('dd'),
+  ).toHaveText('30 kg × 8');
   await page.getByRole('button', { name: 'Show Your session' }).click();
   await expect(page.getByLabel('Routine name')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Day One/ })).toBeHidden();
@@ -80,7 +101,8 @@ test('shoulder machine logs offline into a reusable recap in both themes and siz
         fullPage: true,
       });
     }
-  await page.getByRole('link', { name: 'Done', exact: true }).first().click();
+  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
+  await page.getByRole('link', { name: 'Done', exact: true }).click();
   await openTab(page, 'Progress');
   await recentWorkoutLink(page).click();
   await expect(page.getByRole('heading', { name: 'Your session' })).toBeVisible();

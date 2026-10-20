@@ -1,3 +1,13 @@
+# Resolved — stale assertions after the workout recap redesign
+
+PR #186's full browser run caught an older offline recap test still requiring
+the removed “Logged training” explanation and the old “First logged session”
+label. Update that test to verify the explanation is absent, three working
+sets remain, the comparison shows its best set and first-session previous
+state, and there is exactly one Done action. Retain its offline finish,
+history reopening, reload and upload checks. The recap's focused browser tests
+passed; validation must also include this existing workout-upgrade scenario.
+
 # Resolved — offline cold start in the browser test build
 
 ADR-0147 identifies the cause: `Vary: Origin` on preview assets made module and
