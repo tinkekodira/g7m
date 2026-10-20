@@ -4,7 +4,8 @@
 /* A thumb can page horizontally anywhere on a recap, including the still body.
    Long logs scroll inside their own card without moving the shared actions. */
 .recap-screen {
-  height: calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px));
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .recap-carousel {
   display: flex;
@@ -26,6 +27,8 @@
   display: none;
 }
 .recap-slide {
+  container-type: size;
+  container-name: recap-slide;
   flex: 0 0 100%;
   min-width: 0;
   height: 100%;
@@ -43,37 +46,125 @@
   overscroll-behavior-y: contain;
 }
 .recap-body {
-  height: clamp(180px, 30dvh, 290px);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.recap-muscles {
+  display: flex;
+  flex-direction: column;
+}
+.recap-muscle-model {
+  flex: 1;
+  min-height: 80px;
+  margin-top: 12px;
+}
+.recap-muscle-model figcaption {
+  flex-shrink: 0;
+}
+.recap-muscle-shares {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin-top: 12px;
+  flex-shrink: 0;
 }
 .recap-session {
   display: flex;
   flex-direction: column;
 }
 .recap-totals {
-  flex: 1 0 auto;
+  container-type: size;
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
   align-content: space-evenly;
-  gap: 20px;
-  padding-block: clamp(20px, 4dvh, 40px);
+  gap: clamp(8px, 3cqh, 24px);
+  padding-block: clamp(8px, 4cqh, 32px);
 }
 .recap-totals dt {
   color: var(--text-secondary);
-  font-size: clamp(12px, 1.8dvh, 16px);
+  font-size: clamp(11px, 7cqh, 16px);
+  line-height: 1.3;
 }
 .recap-totals dd {
-  font-size: clamp(32px, 5.5dvh, 52px);
+  font-size: clamp(20px, 20cqh, 52px);
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
+}
+.recap-totals:has(> :nth-child(5)) dd {
+  font-size: clamp(18px, 12cqh, 42px);
 }
 .recap-rewards {
   flex-shrink: 0;
   border-top: 1px solid var(--border-subtle);
-  padding-top: 16px;
+  padding-top: clamp(8px, 2cqh, 16px);
 }
 .recap-xp {
-  font-size: clamp(24px, 3.5dvh, 36px);
+  font-size: clamp(22px, 5cqh, 36px);
 }
 .recap-level {
+  margin-top: clamp(6px, 2cqh, 12px);
+  padding: clamp(6px, 2cqh, 12px);
   animation: recap-level-up 500ms 750ms both;
+}
+.recap-achievements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 8px;
+}
+.recap-volume-note {
+  margin-block: 0 8px;
+}
+@container recap-slide (max-height: 450px) {
+  .recap-session {
+    padding: 12px;
+  }
+  .recap-totals {
+    gap: 8px 16px;
+    padding-block: 8px;
+  }
+  .recap-totals dd {
+    margin-top: 0;
+  }
+  .recap-totals:has(> :nth-child(5)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 10px;
+    padding-block: 6px;
+  }
+  .recap-totals:has(> :nth-child(5)) dd {
+    font-size: clamp(18px, 6cqw, 22px);
+  }
+  .recap-totals:has(> :nth-child(5)) dt {
+    font-size: 11px;
+    line-height: 14px;
+  }
+  .recap-session > p {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .recap-xp-row h3 {
+    font-size: 12px;
+  }
+  .recap-level-copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 8px;
+  }
+  .recap-level-copy p {
+    font-size: 12px;
+  }
+  .recap-level > svg {
+    width: 18px;
+    height: 18px;
+  }
+  .recap-achievements li {
+    font-size: 12px;
+    line-height: 16px;
+  }
 }
 @keyframes recap-level-up {
   from {

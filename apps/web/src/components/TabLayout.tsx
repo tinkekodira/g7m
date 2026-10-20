@@ -1,12 +1,12 @@
 import { Suspense, useLayoutEffect } from 'react';
-import { NavigationType, Outlet, useLocation, useNavigationType } from 'react-router';
+import { NavigationType, Outlet, useLocation, useMatch, useNavigationType } from 'react-router';
 import { TabBar } from './TabBar.js';
 import { RouteBoundary } from './ErrorBoundary.js';
 import { ScreenFallback } from './ScreenFallback.js';
 import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 
 /**
- * Every screen with the tab bar under it.
+ * Shared screens, with a full-screen exception for saved-workout recaps.
  *
  * The padding is the bar's height, so the last card on a screen can always be
  * scrolled clear of it. The safe area under the bar is already in each
@@ -15,22 +15,21 @@ import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 export function TabLayout() {
   useScrollToTop();
   const alarm = useSyncAlarm();
+  const recap = useMatch('/progress/session/:sessionId') !== null;
 
   return (
     <>
-      <div className="pb-16">
-        {/* Inside the layout, so a screen that throws takes itself down and
-            leaves the tab bar to get out by. The same goes for a screen still
-            being loaded: with the boundary and the fallback both in here, the
-            bar never blinks, and the tab you tapped is already lit while its
-            screen arrives. ADR-0078. */}
+      <div className={recap ? undefined : 'pb-16'}>
+        {/* Tabbed routes keep their navigation while loading or recovering
+            from an error (ADR-0078). Recaps use the full height and their own
+            Done action instead. */}
         <RouteBoundary>
           <Suspense fallback={<ScreenFallback />}>
             <Outlet />
           </Suspense>
         </RouteBoundary>
       </div>
-      <TabBar alert={isAlarming(alarm)} />
+      {!recap && <TabBar alert={isAlarming(alarm)} />}
     </>
   );
 }

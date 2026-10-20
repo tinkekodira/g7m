@@ -26,10 +26,10 @@ export function WorkoutMuscleBody({
     <div
       role="img"
       aria-label={`Muscles worked this session: ${muscles.map((m) => m.commonName).join(', ') || 'none recorded'}. Front and back views.`}
-      className="mt-4 grid grid-cols-2 overflow-hidden rounded-card bg-stage"
+      className="recap-muscle-model grid grid-cols-2 overflow-hidden rounded-card bg-stage"
     >
       {(['front', 'back'] as const).map((view) => (
-        <figure key={view} aria-hidden className="min-w-0">
+        <figure key={view} aria-hidden className="flex min-h-0 min-w-0 flex-col">
           {sculpted.loading ? (
             <Placeholder />
           ) : (

@@ -22,7 +22,7 @@ export function RecapRewards({ rewards }: { readonly rewards: Rewards }) {
   if (rewards.xp <= 0 && rewards.achievements.length === 0) return null;
   return (
     <section aria-label="Earned this session" className="recap-rewards">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="recap-xp-row flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-primary">Earned this session</h3>
         <p className="recap-xp numeric font-semibold text-accent">
           <span className="sr-only">+{rewards.xp} XP</span>
@@ -32,9 +32,9 @@ export function RecapRewards({ rewards }: { readonly rewards: Rewards }) {
         </p>
       </div>
       {rewards.levelAfter > rewards.levelBefore && (
-        <div className="recap-level mt-3 flex items-center gap-3 rounded-control border border-accent/30 bg-accent/10 p-3">
+        <div className="recap-level flex items-center gap-3 rounded-control border border-accent/30 bg-accent/10">
           <TrophyIcon className="size-6 shrink-0 text-accent" />
-          <div>
+          <div className="recap-level-copy">
             <p className="font-semibold text-primary">Level up!</p>
             <p className="numeric text-sm text-secondary">
               Level {rewards.levelBefore} → Level {rewards.levelAfter}
@@ -43,7 +43,7 @@ export function RecapRewards({ rewards }: { readonly rewards: Rewards }) {
         </div>
       )}
       {rewards.achievements.length > 0 && (
-        <ul className="mt-3 space-y-2">
+        <ul className="recap-achievements">
           {rewards.achievements.map((a) => (
             <li key={a.key} className="text-sm font-medium text-primary">
               {a.name}

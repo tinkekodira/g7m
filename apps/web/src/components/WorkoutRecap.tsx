@@ -82,13 +82,13 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                 )}
                 {recap.cardioKcal > 0 && (
                   <Fact
-                    label="Estimated cardio calories"
+                    label="Est. cardio calories"
                     value={`${String(Math.round(recap.cardioKcal))} kcal`}
                   />
                 )}
               </dl>
               {recap.volume.unknownSets > 0 && (
-                <p className="mt-4 text-xs text-muted">
+                <p className="recap-volume-note text-xs text-muted">
                   Volume excludes {recap.volume.unknownSets}{' '}
                   {recap.volume.unknownSets === 1 ? 'set' : 'sets'} without a recorded bodyweight.
                 </p>
@@ -100,7 +100,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
         {
           title: 'Muscles trained',
           content: (active) => (
-            <Panel title="Muscles trained" className="recap-card">
+            <Panel title="Muscles trained" className="recap-card recap-muscles">
               {active && (
                 <WorkoutMuscleBody sex={data.profile?.sex ?? null} muscles={data.trainedMuscles} />
               )}
@@ -109,7 +109,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   No primary muscle distribution recorded for this session.
                 </p>
               )}
-              <ul className="mt-4 space-y-3">
+              <ul className="recap-muscle-shares">
                 {recap.muscles.map((muscle) => (
                   <li key={muscle.group} style={muscleColorStyle(muscle.group)}>
                     <div className="mb-1 flex justify-between gap-3 text-sm">
