@@ -64,7 +64,11 @@ export function RecapCarousel({
   }
 
   return (
-    <section aria-label="Workout recap" aria-roledescription="carousel" className="min-w-0">
+    <section
+      aria-label="Workout recap"
+      aria-roledescription="carousel"
+      className="recap-carousel min-w-0"
+    >
       <div
         ref={track}
         className="recap-track"
