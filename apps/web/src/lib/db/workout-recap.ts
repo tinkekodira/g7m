@@ -1,5 +1,6 @@
 import {
   buildWorkoutRecap,
+  exerciseWeightProgress,
   workoutRecapRewards,
   workoutTitle,
   CLUB_LIFT_SLUGS,
@@ -25,6 +26,8 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
     goals,
     ids,
     muscleGroups,
+    muscles,
+    shares,
   ] = await Promise.all([
     r.profile.current(),
     r.sessions.setsForSession(sessionId),
@@ -37,6 +40,8 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
     r.goals.history(1000),
     r.exercises.idsBySlug(Object.values(CLUB_LIFT_SLUGS).flat()),
     r.muscles.groups(),
+    r.muscles.list(),
+    r.history.muscleShares(),
   ]);
   const exercises = new Map(catalogue.map((e) => [e.id, e]));
   const blocks = entries.map((entry) => ({
@@ -68,6 +73,25 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
       sets: b.sets,
     })),
   });
+  // Session-only highlighting includes assisting muscles, independent of load
+  // and bodyweight availability. Uncompleted work and warm-ups never light it.
+  const trainedIds = new Set(
+    blocks
+      .filter(
+        (b) =>
+          b.exercise?.cardioKind == null &&
+          b.sets.some((s) => s.isCompleted && s.setType !== 'warmup'),
+      )
+      .flatMap((b) =>
+        (shares.get(b.entry.exerciseId) ?? [])
+          .filter((share) => share.recruitmentWeight > 0)
+          .map((share) => share.muscleId),
+      ),
+  );
+  const trainedMuscles = muscles.filter((m) => m.isSelectable && trainedIds.has(m.id));
+  const weightProgress = exerciseWeightProgress(
+    history.filter((s) => s.sessionId === sessionId || s.performedAt < session.startedAt),
+  );
   const lifts = new Map<string, ClubLift>();
   for (const [lift, slugs] of Object.entries(CLUB_LIFT_SLUGS) as [ClubLift, string[]][])
     for (const slug of slugs) {
@@ -104,6 +128,8 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
     recap,
     rewards,
     exercises,
+    weightProgress,
+    trainedMuscles,
     muscleNames: new Map(muscleGroups.map((g) => [g.slug, g.name])),
   };
 }

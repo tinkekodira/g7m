@@ -1,6 +1,50 @@
 @import 'tailwindcss';
 @import '@g7m/ui/tokens.css';
 
+/* A thumb can page horizontally anywhere on a recap, including the still body.
+   Long logs scroll inside their own card without moving the shared actions. */
+.recap-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  border-radius: var(--radius-sheet);
+}
+.recap-track::-webkit-scrollbar {
+  display: none;
+}
+.recap-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  height: clamp(390px, 60svh, 580px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  border-radius: var(--radius-sheet);
+}
+.recap-slide:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.recap-card {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.recap-body {
+  height: clamp(210px, 30svh, 290px);
+}
+.recap-weight-history .exercise-weight-chart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 114px;
+  align-items: center;
+  border-left: 0;
+  padding-left: 0;
+}
+.recap-weight-history .exercise-weight-caption {
+  grid-column: 1 / -1;
+}
+
 /* Tailwind v4 only scans this app's own sources by default. @g7m/ui lives
    outside that tree, so its class names must be registered explicitly or the
    Button's utilities get tree-shaken out of the build. */
