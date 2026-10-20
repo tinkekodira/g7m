@@ -4,6 +4,23 @@ import { signIn, waitForCatalogue } from './support/app.js';
 
 const titles = ['Your session', 'Muscles trained', 'Compared with last time', 'Exercise log'];
 
+async function expectActionsClearOfNavigation(page: Page) {
+  const actions = page.getByRole('group', { name: 'Workout actions', exact: true });
+  const navigation = await page
+    .getByRole('navigation', { name: 'Main', exact: true })
+    .boundingBox();
+  for (const action of [
+    actions.getByRole('link', { name: 'Done', exact: true }),
+    actions.getByRole('button', { name: 'Save as a routine' }),
+    actions.getByRole('button', { name: 'Delete workout' }),
+  ]) {
+    await expect(action).toBeInViewport({ ratio: 1 });
+    const box = await action.boundingBox();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(navigation!.y);
+  }
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+}
+
 async function show(page: Page, title: string) {
   const dot = page.getByRole('button', { name: `Show ${title}`, exact: true });
   await dot.click();
@@ -61,10 +78,50 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   }
   await signIn(page, user);
   await waitForCatalogue(page);
+  const xpFrames: string[] = [];
+  await page.exposeFunction('recordRecapXp', (value: string) => xpFrames.push(value));
+  await page.evaluate(() => {
+    let last = '';
+    new MutationObserver(() => {
+      const value = document.querySelector('.recap-xp [aria-hidden]')?.textContent ?? '';
+      if (value !== '' && value !== last) {
+        last = value;
+        void (
+          globalThis as typeof globalThis & { recordRecapXp: (value: string) => Promise<void> }
+        ).recordRecapXp(value);
+      }
+    }).observe(document.documentElement, { childList: true, characterData: true, subtree: true });
+  });
   await page.goto(`/#/progress/session/${sessions[2]!}`);
   const totals = page.getByRole('region', { name: 'Your session', exact: true });
   await expect(totals).toContainText('2.4 t');
+  await expectActionsClearOfNavigation(page);
+  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
+  await expect(totals).not.toContainText('Includes applicable');
   await expect(page.getByRole('heading', { name: 'Muscles trained', exact: true })).toHaveCount(0);
+  const xp = page.locator('.recap-xp');
+  const finalXp = await xp.locator('.sr-only').innerText();
+  await expect(xp.locator('[aria-hidden]')).toHaveText(finalXp);
+  expect(xpFrames).toContain('+1 XP');
+  expect(xpFrames.some((value) => value !== '+1 XP' && value !== finalXp)).toBe(true);
+
+  // This session crosses the first level threshold. Recreate the state passed by Finish.
+  await page.goto(`/#/progress/session/${sessions[1]!}`);
+  await page.evaluate(() =>
+    history.replaceState({ ...history.state, usr: { workoutFinished: true } }, ''),
+  );
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
+  const level = page.locator('.recap-level');
+  await expect(level).toContainText('Level up!');
+  await expect(level).toHaveCSS('animation-name', 'recap-level-up');
+  await expect(level).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: info.outputPath('level-up.png') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(level).toHaveCSS('animation-name', 'none');
+  await page.goto(`/#/progress/session/${sessions[2]!}`);
+  await expect(xp.locator('[aria-hidden]')).toHaveText(await xp.locator('.sr-only').innerText());
 
   await show(page, 'Muscles trained');
   const body = page.getByRole('img', { name: /^Muscles worked this session:/ });
@@ -73,6 +130,9 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await expect(page.getByRole('region', { name: 'Muscles trained', exact: true })).toContainText(
     '100%',
   );
+  await expect(
+    page.getByRole('region', { name: 'Muscles trained', exact: true }),
+  ).not.toContainText('The model highlights');
   await expect(page.locator('canvas')).toHaveCount(2);
   await expect(
     page.getByRole('status').filter({ hasText: 'From your past training' }),
@@ -85,7 +145,13 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await expect(graph).not.toHaveAttribute('aria-label', /200 kg/);
   await expect(
     page.getByRole('region', { name: 'Compared with last time', exact: true }),
-  ).toContainText('Previous: 30 kg');
+  ).toContainText('Previous30 kg');
+  const comparison = page.locator('.recap-comparison');
+  await expect(comparison).toContainText('Best set25 kg');
+  await expect(comparison.locator('img')).toBeVisible();
+  await expect
+    .poll(() => comparison.locator('img').evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
 
   // Keyboard navigation moves focus with the selected page; inactive pages are inert.
   const third = page.getByRole('button', { name: 'Show Compared with last time' });
@@ -105,8 +171,13 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await expect(actions.getByRole('button', { name: 'Delete workout' })).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
 
-  for (const width of [320, 412, 1280]) {
-    await page.setViewportSize({ width, height: width === 1280 ? 1000 : 850 });
+  for (const [width, height] of [
+    [320, 568],
+    [390, 667],
+    [412, 850],
+    [1280, 1000],
+  ] as const) {
+    await page.setViewportSize({ width, height });
     await expect(last).toHaveAttribute('aria-pressed', 'true');
     await expect(log).toBeInViewport({ ratio: 0.9 });
     for (const theme of ['dark', 'light']) {
@@ -135,6 +206,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
           await page.waitForTimeout(500); // Let the on-demand WebGL frame reach the compositor.
         }
         await expect(actions.getByRole('link', { name: 'Done', exact: true })).toBeVisible();
+        await expectActionsClearOfNavigation(page);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
         );
@@ -185,4 +257,55 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await page.getByLabel('Routine name').fill('Upper replay');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your routines' })).toBeVisible();
+});
+
+test('comparison cards group equipment, best sets and trends for a full workout', async ({
+  page,
+}, info) => {
+  const user = await createUser('recap-comparison-layout', { onboarded: true });
+  const sessions = await sql<{ id: string }>(
+    `with workouts as (
+      insert into public.workout_sessions (user_id, name, started_at, ended_at)
+      select $1, 'Full body', now() - n * interval '2 days' - interval '45 minutes', now() - n * interval '2 days'
+      from generate_series(0,5) n returning id, started_at
+    ), entries as (
+      insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+      select $1, w.id, e.id, e.slug from workouts w, public.exercises e
+      where e.slug in ('barbell-back-squat', 'romanian-deadlift', 'barbell-row')
+      returning id, session_id, exercise_id
+    ), sets as (
+      insert into public.session_sets (user_id, session_exercise_id, order_key, weight_kg, reps, is_completed, completed_at)
+      select $1, se.id, 'a' || n,
+        case e.slug when 'barbell-back-squat' then 130 - 5 * floor(extract(epoch from (now() - w.started_at)) / 172800)
+          when 'romanian-deadlift' then 95 - 2.5 * floor(extract(epoch from (now() - w.started_at)) / 172800)
+          else 30 end,
+        case e.slug when 'barbell-back-squat' then 5 when 'romanian-deadlift' then 8 else 6 end,
+        true, w.started_at + interval '40 minutes'
+      from entries se join workouts w on w.id = se.session_id join public.exercises e on e.id = se.exercise_id,
+        generate_series(1,3) n
+    ) select id from workouts order by started_at desc`,
+    [user.id],
+  );
+  await signIn(page, user);
+  await waitForCatalogue(page);
+  await page.goto(`/#/progress/session/${sessions[0]!.id}`);
+  await show(page, 'Compared with last time');
+  const cards = page.locator('.recap-comparison');
+  await expect(cards).toHaveCount(3);
+  await expect(cards.filter({ hasText: 'Barbell Back Squat' })).toContainText('130 kg × 5');
+  await expect(cards.filter({ hasText: 'Barbell Row' })).toContainText('No change');
+  await expect(cards.filter({ hasText: 'Romanian Deadlift' })).toContainText('2.5 kg');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'From your past training' }),
+  ).toBeHidden();
+  for (const [width, height] of [
+    [390, 844],
+    [1280, 1000],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await expectActionsClearOfNavigation(page);
+    await page.screenshot({ path: info.outputPath(`comparison-${width}.png`) });
+  }
+  await cards.filter({ hasText: 'Romanian Deadlift' }).click();
+  await expect(page.getByRole('heading', { name: 'Romanian Deadlift', exact: true })).toBeVisible();
 });

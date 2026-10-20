@@ -1,18 +1,30 @@
+import type { ReactNode } from 'react';
 import {
   describePreviousSet,
   formatDuration,
   regionOf,
   type LiftMark,
-  type ExerciseWeightPoint,
   type UnitSystem,
 } from '@g7m/core';
 import type { loadWorkoutRecap } from '../lib/db/workout-recap.js';
 import { RecapCarousel } from './RecapCarousel.js';
+import { RecapRewards } from './RecapRewards.js';
+import { ExerciseIcon } from './ExerciseIcon.js';
+import { Link } from 'react-router';
+import {
+  ArrowUpIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  DumbbellIcon,
+  ClipboardIcon,
+  TrophyIcon,
+} from './icons.js';
+import { formatRecapWeight, recapChange } from './recap-change.js';
 import { WorkoutMuscleBody } from './WorkoutMuscleBody.js';
 import { ExerciseWeightChart } from './ExerciseWeightChart.js';
 import { SessionBody } from './SessionBody.js';
 import { Panel } from './Panel.js';
-import { formatWeightExact, formatWeightTotal } from './chart-scale.js';
+import { formatWeightTotal } from './chart-scale.js';
 import { muscleColorStyle } from './muscle-colors.js';
 
 type RecapData = NonNullable<Awaited<ReturnType<typeof loadWorkoutRecap>>>;
@@ -32,7 +44,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
             <Panel
               title="Your session"
               tone="hero"
-              className="recap-card"
+              className="recap-card recap-session"
               aside={
                 records > 0 ? (
                   <span className="text-sm font-semibold text-accent">
@@ -50,7 +62,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                 })}
                 {data.session.source === 'past' ? ' · Logged afterwards' : ''}
               </p>
-              <dl className="recap-totals numeric mt-5 grid grid-cols-2 gap-x-5 gap-y-4">
+              <dl className="recap-totals numeric grid grid-cols-2">
                 <Fact
                   label="Workout time"
                   value={
@@ -81,41 +93,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   {recap.volume.unknownSets === 1 ? 'set' : 'sets'} without a recorded bodyweight.
                 </p>
               )}
-              {recap.elapsedSeconds !== null && recap.trainingMinutes !== null && (
-                <p className="mt-4 text-xs text-muted">
-                  Workout time runs from start to finish. Logged training:{' '}
-                  {formatDuration(recap.trainingMinutes * 60)}, spanning your completed work.
-                </p>
-              )}
-              {(rewards.xp > 0 || rewards.achievements.length > 0) && (
-                <section
-                  aria-label="Earned this session"
-                  className="mt-5 border-t border-subtle pt-4"
-                >
-                  <h3 className="text-sm font-semibold text-primary">
-                    Earned this session{' '}
-                    <span className="numeric text-accent">+{rewards.xp} XP</span>
-                  </h3>
-                  {rewards.levelAfter > rewards.levelBefore && (
-                    <p className="mt-2 text-sm font-medium text-primary">
-                      Level {rewards.levelBefore} → Level {rewards.levelAfter}
-                    </p>
-                  )}
-                  {rewards.achievements.length > 0 && (
-                    <ul className="mt-3 space-y-2">
-                      {rewards.achievements.map((a) => (
-                        <li key={a.key}>
-                          <p className="text-sm font-medium text-primary">{a.name}</p>
-                          <p className="text-xs text-muted">{a.description}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="mt-3 text-xs text-muted">
-                    Includes applicable workout, set, record and milestone rewards.
-                  </p>
-                </section>
-              )}
+              <RecapRewards rewards={rewards} />
             </Panel>
           ),
         },
@@ -131,10 +109,6 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   No primary muscle distribution recorded for this session.
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted">
-                The model highlights primary and assisting muscles from this session. Percentages
-                show working sets across primary muscle groups.
-              </p>
               <ul className="mt-4 space-y-3">
                 {recap.muscles.map((muscle) => (
                   <li key={muscle.group} style={muscleColorStyle(muscle.group)}>
@@ -156,10 +130,6 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 text-xs text-muted">
-                Shared sets are split between primary movers. This shows what you logged, not
-                measured muscle stimulus.
-              </p>
             </Panel>
           ),
         },
@@ -172,53 +142,119 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   No working strength sets to compare in this session.
                 </p>
               )}
-              <ul className="mt-3 divide-y divide-subtle">
+              <ul className="recap-comparisons mt-3 space-y-3">
                 {recap.comparisons.map((comparison) => {
                   const exercise = data.exercises.get(comparison.exerciseId);
                   const points = data.weightProgress.get(comparison.exerciseId) ?? [];
+                  const change = recapChange(comparison, units);
+                  const sets = data.blocks
+                    .filter((b) => b.entry.exerciseId === comparison.exerciseId)
+                    .reduce(
+                      (n, b) =>
+                        n + b.sets.filter((s) => s.isCompleted && s.setType !== 'warmup').length,
+                      0,
+                    );
                   return (
-                    <li key={comparison.exerciseId} className="py-3 first:pt-0 last:pb-0">
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                        <p className="text-sm font-medium text-primary">
-                          {exercise?.name ?? 'Exercise'}
-                        </p>
-                        {comparison.records.length > 0 && (
-                          <span className="text-xs font-semibold text-accent">
-                            {comparison.records.some((r) => r.kind === 'heaviest')
-                              ? 'Heaviest yet'
-                              : 'Best estimated 1RM'}
+                    <li key={comparison.exerciseId}>
+                      <Link
+                        to={`/progress/exercise/${comparison.exerciseId}`}
+                        className="recap-comparison block rounded-control border border-subtle p-3 hover:border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        <div className="recap-comparison-heading">
+                          <ExerciseIcon slug={exercise?.slug ?? ''} />
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-semibold break-words text-primary">
+                              {exercise?.name ?? 'Exercise'}
+                            </h3>
+                            <p className="mt-0.5 flex items-center gap-2 text-xs text-secondary">
+                              {sets} {sets === 1 ? 'set' : 'sets'}
+                              {comparison.records.length > 0 && (
+                                <span className="text-accent">
+                                  <TrophyIcon className="size-3.5" />
+                                  <span className="sr-only">
+                                    {comparison.records.some((r) => r.kind === 'heaviest')
+                                      ? 'Heaviest yet'
+                                      : 'Best estimated 1RM'}
+                                  </span>
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <ChevronRightIcon className="size-4 text-muted" />
+                          <span className="recap-change numeric" data-direction={change.direction}>
+                            {change.direction !== 0 && (
+                              <span className="sr-only">
+                                {change.direction > 0 ? 'Up ' : 'Down '}
+                              </span>
+                            )}
+                            {change.direction !== 0 && (
+                              <ArrowUpIcon
+                                className={`size-3.5 shrink-0 ${change.direction < 0 ? 'rotate-180' : ''}`}
+                              />
+                            )}
+                            <span>
+                              {change.direction === 0 ? '− ' : ''}
+                              {change.label}
+                            </span>
                           </span>
-                        )}
-                      </div>
-                      {!comparison.timed && (
-                        <div className="recap-weight-history mt-3">
-                          <ExerciseWeightChart points={points} unitSystem={units} cardio={false} />
-                          <p className="mt-1 text-xs text-secondary">
-                            {weightChange(points, units)}
-                          </p>
                         </div>
-                      )}
-                      <div className="numeric mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                        {comparison.current !== null && (
-                          <p className="text-primary">
-                            This session: {showSet(comparison.current, comparison.timed, units)}
-                          </p>
-                        )}
-                        <p className="text-muted">
-                          {comparison.previous === null
-                            ? 'First logged session'
-                            : `Previous: ${showSet(comparison.previous, comparison.timed, units)}`}
-                        </p>
-                      </div>
+                        <div
+                          className={`recap-comparison-detail numeric ${comparison.timed ? 'recap-comparison-timed' : ''}`}
+                        >
+                          <dl className="recap-best-sets">
+                            <div>
+                              <dt>Best set</dt>
+                              <dd className="font-semibold text-primary">
+                                {comparison.current === null
+                                  ? '—'
+                                  : showSet(comparison.current, comparison.timed, units)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Previous</dt>
+                              <dd className="text-secondary">
+                                {comparison.previous === null
+                                  ? 'First session'
+                                  : showSet(comparison.previous, comparison.timed, units)}
+                              </dd>
+                            </div>
+                          </dl>
+                          {!comparison.timed && (
+                            <div className="recap-sparkline">
+                              <ExerciseWeightChart
+                                points={points}
+                                unitSystem={units}
+                                cardio={false}
+                                compact
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </Link>
                     </li>
                   );
                 })}
               </ul>
-              <p className="mt-3 text-xs text-muted">
-                Best logged weight over up to six workouts, oldest to newest, ending here. BW:
-                bodyweight; +: added load; &minus;: assistance. Sets compare weight and reps or
-                duration.
-              </p>
+              {strength && (
+                <dl className="recap-comparison-totals numeric mt-3 grid grid-cols-4 rounded-control border border-subtle py-3">
+                  <SummaryFact
+                    icon={<DumbbellIcon />}
+                    label="Exercises"
+                    value={String(recap.exercises)}
+                  />
+                  <SummaryFact icon={<ClipboardIcon />} label="Sets" value={String(recap.sets)} />
+                  <SummaryFact
+                    icon={<ClockIcon />}
+                    label="Minutes"
+                    value={
+                      recap.elapsedSeconds === null
+                        ? '—'
+                        : String(Math.round(recap.elapsedSeconds / 60))
+                    }
+                  />
+                  <SummaryFact icon={<TrophyIcon />} label="PRs" value={String(records)} />
+                </dl>
+              )}
             </Panel>
           ),
         },
@@ -249,18 +285,26 @@ function Fact({ label, value }: { readonly label: string; readonly value: string
     </div>
   );
 }
-function weightChange(points: readonly ExerciseWeightPoint[], units: UnitSystem): string {
-  const latest = points.at(-1);
-  const previous = points.at(-2);
-  if (latest === undefined || previous === undefined) return '';
-  if (latest.loadType !== previous.loadType) return 'Load type changed';
-  const delta = latest.weightKg - previous.weightKg;
-  if (delta === 0) return 'Same logged weight as last time';
-  const weight = formatWeightExact(Math.abs(delta), units);
-  if (latest.loadType === 'assisted') return `${weight} ${delta > 0 ? 'less' : 'more'} assistance`;
-  return `${delta > 0 ? 'Up' : 'Down'} ${weight} from last time`;
+function SummaryFact({
+  icon,
+  label,
+  value,
+}: {
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly value: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1 border-r border-subtle px-1 last:border-0">
+      <dt className="order-2 text-[11px] text-secondary">{label}</dt>
+      <dd className="flex flex-col items-center gap-1 text-lg font-semibold text-primary">
+        <span className="text-accent [&>svg]:size-5">{icon}</span>
+        {value}
+      </dd>
+    </div>
+  );
 }
 function showSet(mark: LiftMark, timed: boolean, units: UnitSystem): string {
   if (timed) return `${String(mark.reps)} sec`;
-  return describePreviousSet(mark, (kg) => formatWeightExact(kg, units));
+  return describePreviousSet(mark, (kg) => formatRecapWeight(kg, units));
 }

@@ -27,12 +27,12 @@ export function SessionDetailScreen() {
   const data = state.data;
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
+    <main className="recap-screen mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 pt-safe-top">
+      <header className="flex shrink-0 items-baseline justify-between gap-4 pt-4 pb-1">
         <h1 className="min-w-0 text-2xl font-semibold break-words text-primary">
           {fresh ? 'Workout saved' : (data?.title ?? 'Workout')}
         </h1>
-        <HeaderLink to={fresh ? afterwards : '/progress'}>{fresh ? 'Done' : 'Progress'}</HeaderLink>
+        {!fresh && <HeaderLink to="/progress">Progress</HeaderLink>}
       </header>
 
       {state.error !== null ? (
@@ -49,7 +49,11 @@ export function SessionDetailScreen() {
       ) : (
         <>
           <WorkoutRecap key={sessionId} data={data} />
-          <div className="grid grid-cols-2 gap-2 pb-4" aria-label="Workout actions" role="group">
+          <div
+            className="recap-actions grid shrink-0 grid-cols-2 gap-2 pb-3"
+            aria-label="Workout actions"
+            role="group"
+          >
             <Link
               to={fresh ? afterwards : '/progress'}
               className="col-span-2 flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

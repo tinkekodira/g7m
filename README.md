@@ -17,7 +17,9 @@ What it does:
   Finish opens a four-card swipeable recap: session totals and rewards, a 3D body
   highlighting trained muscles with percentages, exercise weight trends, and the
   complete exercise log. Reopen it from history; Done, routine saving and deletion
-  stay below every card. The exercise picker can suggest
+  stay visible above navigation on every card. Session rewards count up with
+  a subtle level-up animation, and comparison cards pair equipment artwork
+  with best sets and weight trends. The exercise picker can suggest
   useful complements based on your own training, queued work and recent history.
   See [how recommendations work](./docs/workout-recommendations.md).
 - **Repeat.** Keep a workout as a routine when you finish it, or save any past

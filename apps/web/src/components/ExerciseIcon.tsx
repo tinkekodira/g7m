@@ -65,7 +65,7 @@ export function ExerciseIcon({
       ) : (
         // Contained, never cropped: these are renders of real objects and a
         // bench with its feet cut off is worse than a smaller bench.
-        <img src={art.icon} alt="" className="size-full object-contain" />
+        <img src={art.icon} alt="" width={56} height={56} className="size-full object-contain" />
       )}
     </span>
   );

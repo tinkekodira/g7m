@@ -8791,3 +8791,35 @@ Validation covers phone and desktop layouts in both themes, swipe and keyboard
 navigation, resizing, reduced motion, session-only muscle labels, historical
 chart cutoff, long logs, offline reload and routine saving. Existing finish,
 cardio, routine and deletion browser checks follow the new card navigation.
+
+## ADR-0149 — Recap actions fit the viewport and comparisons read as exercise cards
+
+**Status:** accepted · **Date:** 2026-10-21 · **Amends:** ADR-0148
+
+The recap screen takes the dynamic viewport height above the tab bar and its
+bottom safe area. The header and shared action footer keep their natural
+heights; the carousel fills the remainder, with long content scrolling inside
+each card. This replaces the minimum slide height that pushed routine saving
+and deletion behind navigation on phones. A freshly finished workout has only
+the footer Done action. History retains its Progress link.
+
+The session card spreads larger totals across its available height. Repeated
+explanatory copy is removed from session, muscle and comparison cards. A saved
+session's XP counts from 1 to its final value over 750 ms; a level gain follows
+with one small trophy pulse. Both respect reduced motion, and assistive
+technology reads the final XP rather than every animation frame. These are
+presentation effects, with no new awards or writes.
+
+Each comparison groups the existing equipment artwork, completed working-set
+count, best and previous sets, a change badge and a compact accessible trend
+chart. The whole card links to that exercise's history. Badges compare the
+displayed sets, including reps at equal weight, timed durations, added load
+and the reversed direction of assistance. Load-type changes and first sessions
+are explicit. A short totals strip follows the exercise cards. The history
+cutoff, offline data paths and licensed assets are unchanged.
+
+Validation checks actions against the navigation's actual bounds at small
+phone and desktop sizes in both themes, plus count-up frames, level-up and
+reduced-motion states, equipment images, comparison links, swipe/keyboard
+navigation, long logs, routine saving and offline reload. Unit tests cover
+change-badge load semantics and pounds conversion.

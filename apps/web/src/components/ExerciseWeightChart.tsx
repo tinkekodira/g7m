@@ -17,10 +17,13 @@ export function ExerciseWeightChart({
   points,
   unitSystem,
   cardio,
+  compact = false,
 }: {
   readonly points: readonly ExerciseWeightPoint[];
   readonly unitSystem: UnitSystem;
   readonly cardio: boolean;
+  /** Recap cards already show the best set, so only the sparkline is needed. */
+  readonly compact?: boolean;
 }) {
   const gradientId = useId();
   const latest = points.at(-1);
@@ -59,9 +62,11 @@ export function ExerciseWeightChart({
 
   return (
     <span className="exercise-weight-chart" role="img" aria-label={summary}>
-      <span aria-hidden="true" className="numeric text-sm font-medium text-primary">
-        {latest === undefined ? '—' : describeWeight(latest, unitSystem)}
-      </span>
+      {!compact && (
+        <span aria-hidden="true" className="numeric text-sm font-medium text-primary">
+          {latest === undefined ? '—' : describeWeight(latest, unitSystem)}
+        </span>
+      )}
       <svg viewBox="0 0 114 48" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -112,9 +117,11 @@ export function ExerciseWeightChart({
           <line x1="7" x2="107" y1="35" y2="35" stroke="var(--border-subtle)" />
         )}
       </svg>
-      <span aria-hidden="true" className="exercise-weight-caption text-secondary">
-        {caption}
-      </span>
+      {!compact && (
+        <span aria-hidden="true" className="exercise-weight-caption text-secondary">
+          {caption}
+        </span>
+      )}
     </span>
   );
 }

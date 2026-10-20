@@ -3,8 +3,19 @@
 
 /* A thumb can page horizontally anywhere on a recap, including the still body.
    Long logs scroll inside their own card without moving the shared actions. */
+.recap-screen {
+  height: calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px));
+}
+.recap-carousel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
 .recap-track {
   display: flex;
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
@@ -17,7 +28,7 @@
 .recap-slide {
   flex: 0 0 100%;
   min-width: 0;
-  height: clamp(390px, 60svh, 580px);
+  height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
   border-radius: var(--radius-sheet);
@@ -32,17 +43,180 @@
   overscroll-behavior-y: contain;
 }
 .recap-body {
-  height: clamp(210px, 30svh, 290px);
+  height: clamp(180px, 30dvh, 290px);
 }
-.recap-weight-history .exercise-weight-chart {
+.recap-session {
+  display: flex;
+  flex-direction: column;
+}
+.recap-totals {
+  flex: 1 0 auto;
+  align-content: space-evenly;
+  gap: 20px;
+  padding-block: clamp(20px, 4dvh, 40px);
+}
+.recap-totals dt {
+  color: var(--text-secondary);
+  font-size: clamp(12px, 1.8dvh, 16px);
+}
+.recap-totals dd {
+  font-size: clamp(32px, 5.5dvh, 52px);
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.recap-rewards {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 16px;
+}
+.recap-xp {
+  font-size: clamp(24px, 3.5dvh, 36px);
+}
+.recap-level {
+  animation: recap-level-up 500ms 750ms both;
+}
+@keyframes recap-level-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0) scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.recap-comparison {
+  background: color-mix(in oklab, var(--accent) 3%, var(--bg-surface));
+}
+.recap-comparison-heading {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 114px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0 10px;
   align-items: center;
-  border-left: 0;
-  padding-left: 0;
 }
-.recap-weight-history .exercise-weight-caption {
-  grid-column: 1 / -1;
+.recap-change {
+  grid-column: 2 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.recap-change[data-direction='1'] {
+  background: color-mix(in oklab, var(--success) 15%, var(--bg-surface));
+  color: var(--text-primary);
+}
+.recap-change[data-direction='1'] svg {
+  color: var(--success);
+}
+.recap-comparison-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(80px, 0.7fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.recap-best-sets {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.recap-best-sets dt {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.recap-best-sets dd {
+  margin-top: 2px;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.recap-sparkline .exercise-weight-chart {
+  display: block;
+  border: 0;
+  padding: 0;
+  width: 100%;
+}
+.recap-sparkline .exercise-weight-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.recap-comparison-timed {
+  grid-template-columns: 1fr;
+}
+.recap-comparison-timed .recap-best-sets {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 390px) {
+  .recap-comparison-heading {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    column-gap: 8px;
+  }
+  .recap-comparison-heading > svg {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .recap-change {
+    grid-column: 3;
+    grid-row: 1;
+    max-width: 100px;
+    margin-top: 0;
+  }
+  .recap-best-sets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .recap-best-sets > div + div {
+    border-left: 1px solid var(--border-subtle);
+    padding-left: 10px;
+  }
+  .recap-comparison-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(64px, 0.42fr);
+    gap: 8px;
+  }
+  .recap-best-sets dd {
+    font-size: 15px;
+  }
+}
+@media (min-width: 640px) {
+  .recap-comparison-heading {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+  .recap-comparison-heading > svg {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .recap-change {
+    grid-column: 3;
+    grid-row: 1;
+    margin-top: 0;
+  }
+  .recap-comparison {
+    padding: 16px;
+  }
+  .recap-comparison-heading h3 {
+    font-size: 16px;
+  }
+  .recap-best-sets dd {
+    font-size: 21px;
+  }
+  .recap-comparison-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(80px, 0.55fr);
+    gap: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recap-level {
+    animation: none;
+  }
 }
 
 /* Tailwind v4 only scans this app's own sources by default. @g7m/ui lives
