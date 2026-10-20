@@ -7,6 +7,9 @@
   height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+.recap-screen > header:has(a) h1 {
+  font-size: clamp(22px, 6.5vw, 31px);
+}
 .recap-carousel {
   display: flex;
   flex: 1;
@@ -125,8 +128,8 @@
     padding: 12px;
   }
   .recap-totals {
-    gap: 8px 16px;
-    padding-block: 8px;
+    gap: 6px 16px;
+    padding-block: 4px;
   }
   .recap-totals dd {
     margin-top: 0;

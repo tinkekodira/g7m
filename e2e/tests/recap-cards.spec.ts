@@ -13,16 +13,17 @@ async function expectCardFits(page: Page, title: string) {
   if (title === 'Your session') {
     await expect
       .poll(() =>
-        card.locator('.recap-totals > div').evaluateAll(
-          (facts) =>
-            facts.filter((fact) => {
+        card.locator('.recap-totals > div').evaluateAll((facts) =>
+          facts
+            .filter((fact) => {
               const box = fact.getBoundingClientRect();
               const value = fact.querySelector('dd')!.getBoundingClientRect();
               return value.bottom > box.bottom + 1 || value.right > box.right + 1;
-            }).length,
+            })
+            .map((fact) => fact.textContent),
         ),
       )
-      .toBe(0);
+      .toEqual([]);
   }
 }
 
