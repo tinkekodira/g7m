@@ -25,8 +25,8 @@ import {
  *
  * Name first because it is the one question that is not about a body, and
  * being asked your height by something that does not know your name is a form.
- * Goal last because it is the only one that changes what the app then does,
- * and it reads as a decision rather than a detail.
+ * Goal then workout recommendations: what they train for, and whether they
+ * want the app to suggest what to train.
  */
 export const ONBOARDING_STEPS = [
   'name',
@@ -37,6 +37,7 @@ export const ONBOARDING_STEPS = [
   'activity',
   'country',
   'goal',
+  'guidance',
 ] as const;
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
@@ -51,6 +52,7 @@ export interface OnboardingAnswers {
   readonly activityLevel: ActivityLevel | null;
   readonly country: string | null;
   readonly goal: TrainingGoal | null;
+  readonly workoutRecommendations: boolean | null;
 }
 
 export const NO_ANSWERS: OnboardingAnswers = {
@@ -62,6 +64,7 @@ export const NO_ANSWERS: OnboardingAnswers = {
   activityLevel: null,
   country: null,
   goal: null,
+  workoutRecommendations: null,
 };
 
 /**
@@ -95,6 +98,8 @@ export function isAnswered(step: OnboardingStep, answers: OnboardingAnswers): bo
       return answers.country !== null;
     case 'goal':
       return answers.goal !== null;
+    case 'guidance':
+      return answers.workoutRecommendations !== null;
   }
 }
 
@@ -126,7 +131,7 @@ export function previousStep(step: OnboardingStep): OnboardingStep | null {
   return index <= 0 ? null : (ONBOARDING_STEPS[index - 1] ?? null);
 }
 
-/** One-based position and the total, for "3 of 8". */
+/** One-based position and the total. */
 export function progressOf(step: OnboardingStep): { position: number; total: number } {
   return { position: ONBOARDING_STEPS.indexOf(step) + 1, total: ONBOARDING_STEPS.length };
 }

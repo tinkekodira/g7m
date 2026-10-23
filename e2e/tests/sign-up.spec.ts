@@ -5,7 +5,7 @@ import { PASSWORD, eventually, sql, uniqueEmail } from './support/backend.js';
  * A new account, from the sign-in screen to Home.
  *
  * The one path every user takes, and the one nobody re-tests by hand once
- * they have an account: sign up, answer all eight welcome questions, land on
+ * they have an account: sign up, answer the welcome questions, land on
  * Home. Then check the server, not just the screen — the answers are only
  * saved once they are in Postgres under the right user.
  */
@@ -50,6 +50,12 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
 
   await expect(page.getByRole('heading', { name: 'What are you training for?' })).toBeVisible();
   await page.getByRole('button', { name: 'Get stronger' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Who plans your workouts?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Finish' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Choose how you want to plan your training.');
+  await page.getByRole('radio', { name: /Suggest workouts for me/ }).check();
   await page.getByRole('button', { name: 'Finish' }).click();
 
   // Home, greeting by name, with the tab bar.
@@ -59,15 +65,25 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
   // And on the server, under this user.
   const [profile] = await eventually(
     () =>
-      sql<{ display_name: string; sex: string; bodyweight_kg: string; onboarded: boolean }>(
-        `select p.display_name, p.sex, p.bodyweight_kg, p.onboarded_at is not null as onboarded
+      sql<{
+        display_name: string;
+        sex: string;
+        bodyweight_kg: string;
+        onboarded: boolean;
+        workout_recommendations: boolean;
+      }>(
+        `select p.display_name, p.sex, p.bodyweight_kg, p.workout_recommendations, p.onboarded_at is not null as onboarded
            from public.profiles p join auth.users u on u.id = p.user_id
           where u.email = $1`,
         [email],
       ),
     (rows) => rows[0]?.onboarded === true,
   );
-  expect(profile).toMatchObject({ display_name: 'Alex', sex: 'female' });
+  expect(profile).toMatchObject({
+    display_name: 'Alex',
+    sex: 'female',
+    workout_recommendations: true,
+  });
   expect(Number(profile?.bodyweight_kg)).toBe(64.5);
 
   const goals = await sql<{ goal: string }>(

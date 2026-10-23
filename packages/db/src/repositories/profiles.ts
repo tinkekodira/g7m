@@ -29,6 +29,7 @@ import {
 } from './database.js';
 import {
   readDate,
+  readBoolean,
   readEnum,
   readNumber,
   readOptionalNumber,
@@ -70,6 +71,8 @@ export interface Profile {
   /** 1 = Monday, matching ISO 8601. */
   readonly weekStartsOn: number;
   readonly onboardedAt: Date | null;
+  /** Null until chosen; existing accounts retain recommendations until they opt out. */
+  readonly workoutRecommendations: boolean | null;
   /** Keys of the achievements already celebrated, on any device. ADR-0072. */
   readonly achievementsSeen: readonly string[];
   /** Slugs of the starred exercises, sorted. ADR-0108. */
@@ -100,6 +103,7 @@ export interface ProfileChanges {
   readonly restSecondsDefault?: number;
   readonly weekStartsOn?: number;
   readonly onboardedAt?: Date | null;
+  readonly workoutRecommendations?: boolean;
 }
 
 function toProfile(row: RawRow): Profile {
@@ -116,6 +120,8 @@ function toProfile(row: RawRow): Profile {
     restSecondsDefault: readNumber(row, 'rest_seconds_default', 120),
     weekStartsOn: readNumber(row, 'week_starts_on', 1),
     onboardedAt: readDate(row, 'onboarded_at'),
+    workoutRecommendations:
+      row.workout_recommendations == null ? null : readBoolean(row, 'workout_recommendations'),
     achievementsSeen: parseKeys(readOptionalString(row, 'achievements_seen')),
     favouriteExercises: parseKeys(readOptionalString(row, 'favourite_exercises')),
   };
@@ -180,6 +186,8 @@ export class ProfileRepository {
     }
     if (changes.unitSystem !== undefined) set('unit_system', changes.unitSystem);
     if (changes.experienceLevel !== undefined) set('experience_level', changes.experienceLevel);
+    if (changes.workoutRecommendations !== undefined)
+      set('workout_recommendations', changes.workoutRecommendations ? 1 : 0);
     if (changes.birthDate !== undefined) {
       // Stored as the date the column is, not as an instant. A timestamp here
       // would be read back a day earlier anywhere west of Greenwich.

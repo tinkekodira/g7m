@@ -186,6 +186,8 @@ const profiles = new Table({
   rest_seconds_default: column.integer,
   week_starts_on: column.integer,
   onboarded_at: column.text,
+  /** Null until chosen during onboarding; false opts out of generated training. */
+  workout_recommendations: column.integer,
   /**
    * Comma-separated keys of the achievements already celebrated, so the banner
    * plays once per badge across devices. Earned is worked out, never stored.
