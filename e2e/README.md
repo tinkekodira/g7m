@@ -27,7 +27,7 @@ The fake backend stands in for:
 
 ## What is tested
 
-- **Signing up.** All eight welcome questions, landing on Home, the answers checked in Postgres, and a reload that neither signs you out nor asks again.
+- **Signing up.** All nine welcome questions, including workout recommendations, landing on Home, the answers checked in Postgres, and a reload that neither signs you out nor asks again.
 - **Logging a workout.** Sets ticked in the logger arrive on the server, completed and owned by the right user.
 - **A workout logged for a past day.** It is saved with `source = 'past'` at noon on that day.
 - **Two accounts on one phone.** Each sees only their own training. Signing back in restores the first account's workout from the server.

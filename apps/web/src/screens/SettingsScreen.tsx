@@ -88,6 +88,7 @@ export function SettingsScreen() {
           somebody opens Settings mid-session for; then the app; then the
           account and the data, ending on the two ways out. */}
       <Group id="settings-gym" title="In the gym">
+        <WorkoutRecommendations />
         <Units />
         <AvailablePlates />
         <RestTimes />
@@ -145,14 +146,46 @@ function Appearance() {
   );
 }
 
-/**
- * Kilograms or pounds.
- *
- * The switch the app never had. Every screen already converted — weights are
- * stored in kilograms and turned into pounds only when drawn (Brief §5) — but
- * nothing let anybody choose, so a lifter who thinks in pounds was stuck in
- * kilograms. Switching changes no number that was logged, only how it reads.
- */
+/** Account preference shared with onboarding, persisted locally before syncing. */
+function WorkoutRecommendations() {
+  const profile = useCatalogue('profile', (r) => r.profile.current());
+  const { write, busy, error } = useWrite();
+  const [pending, setPending] = useState<boolean | null>(null);
+  const saved = profile.data?.workoutRecommendations !== false;
+  const shown = pending ?? saved;
+
+  useEffect(() => {
+    if (pending !== null && pending === saved) setPending(null);
+  }, [pending, saved]);
+
+  return (
+    <Panel title="Training" icon={<DumbbellIcon className="size-5" />}>
+      <Switch
+        label="Workout recommendations"
+        checked={shown}
+        disabled={busy || profile.data === null}
+        description={
+          shown
+            ? 'Get today’s workout and exercise suggestions.'
+            : 'Off — choose your own exercises, workouts and routines.'
+        }
+        onChange={(next) => {
+          setPending(next);
+          void write((r) => r.profile.update({ workoutRecommendations: next })).then((updated) => {
+            if (updated === null) setPending(null);
+          });
+        }}
+      />
+      {(error ?? profile.error) !== null && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {error ?? profile.error}
+        </p>
+      )}
+    </Panel>
+  );
+}
+
+/** Kilograms or pounds, without changing any stored workout loads. */
 function Units() {
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const { write, busy, error } = useWrite();

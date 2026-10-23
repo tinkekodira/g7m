@@ -25,6 +25,7 @@ const EVERYTHING: OnboardingAnswers = {
   activityLevel: 'moderate',
   country: 'HR',
   goal: 'build_muscle',
+  workoutRecommendations: true,
 };
 
 describe('the order of the flow', () => {
@@ -32,27 +33,28 @@ describe('the order of the flow', () => {
     expect(ONBOARDING_STEPS[0]).toBe('name');
   });
 
-  it('leaves the goal until last, because it is the one that decides something', () => {
-    expect(ONBOARDING_STEPS.at(-1)).toBe('goal');
+  it('finishes with the choice of workout recommendations, after the goal', () => {
+    expect(nextStep('goal')).toBe('guidance');
+    expect(ONBOARDING_STEPS.at(-1)).toBe('guidance');
   });
 
   it('walks forwards and back without falling off either end', () => {
     expect(previousStep('name')).toBeNull();
     expect(nextStep('name')).toBe('dob');
     expect(previousStep('dob')).toBe('name');
-    expect(nextStep('goal')).toBeNull();
+    expect(nextStep('guidance')).toBeNull();
   });
 
   /** The number the flow forgot: bodyweight, asked straight after height. */
   it('asks for a weight, after the height', () => {
     expect(nextStep('height')).toBe('weight');
     expect(nextStep('weight')).toBe('activity');
-    expect(ONBOARDING_STEPS).toHaveLength(8);
+    expect(ONBOARDING_STEPS).toHaveLength(9);
   });
 
-  it('counts from one, so "1 of 8" is the first question', () => {
+  it('counts from one, so "1 of 9" is the first question', () => {
     expect(progressOf('name')).toEqual({ position: 1, total: ONBOARDING_STEPS.length });
-    expect(progressOf('goal').position).toBe(ONBOARDING_STEPS.length);
+    expect(progressOf('guidance').position).toBe(ONBOARDING_STEPS.length);
   });
 });
 
@@ -74,6 +76,11 @@ describe('readStep', () => {
 });
 
 describe('isAnswered', () => {
+  it('counts opting out as an answer and resumes an unanswered preference', () => {
+    expect(isAnswered('guidance', { ...EVERYTHING, workoutRecommendations: false })).toBe(true);
+    expect(firstUnanswered({ ...EVERYTHING, workoutRecommendations: null })).toBe('guidance');
+    expect(firstUnanswered({ ...EVERYTHING, workoutRecommendations: false })).toBeNull();
+  });
   it('is true for every step once everything has been given', () => {
     for (const step of ONBOARDING_STEPS) {
       expect(isAnswered(step, EVERYTHING), step).toBe(true);

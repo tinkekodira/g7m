@@ -53,6 +53,13 @@ describe('the tables an export covers', () => {
 });
 
 describe('AccountRepository.exportData', () => {
+  it.each([null, 0, 1])('exports the workout preference %s as null or a boolean', async (value) => {
+    await db.seed('profiles', { id: 'profile-me', user_id: 'me', workout_recommendations: value });
+    const { tables } = await new AccountRepository(db, context('me')).exportData();
+    expect(tables.profiles[0]?.['workout_recommendations']).toBe(
+      value === null ? null : value === 1,
+    );
+  });
   it('carries every row the user owns, and nobody else’s', async () => {
     await benchDay('me');
     await benchDay('someone-else');

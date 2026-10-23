@@ -44,6 +44,17 @@ afterEach(() => {
 });
 
 describe('current', () => {
+  it('distinguishes an unanswered preference from both SQLite boolean values', async () => {
+    await seedProfile();
+    expect((await profiles.current())?.workoutRecommendations).toBeNull();
+    expect((await profiles.update({ workoutRecommendations: false }))?.workoutRecommendations).toBe(
+      false,
+    );
+    expect((await profiles.update({ workoutRecommendations: true }))?.workoutRecommendations).toBe(
+      true,
+    );
+    expect((await profiles.current())?.displayName).toBe('Milan');
+  });
   it('reads the row the signup trigger created', async () => {
     await seedProfile({ bodyweight_kg: 80.5, unit_system: 'imperial' });
     const profile = await profiles.current();
