@@ -8850,3 +8850,18 @@ sizes in both themes, including simulated iPhone safe areas. They also verify
 the absence of tabs on the recap, visible shared actions, navigation returning
 after Done, routine saving, deletion and offline reload. Test navigation helpers
 now exit the recap with Done before using the regular tabs.
+
+## ADR-0151 — Long muscle percentage lists scroll beneath the body
+
+**Status:** accepted · **Date:** 2026-10-23 · **Amends:** ADR-0150
+
+The muscle percentage grid has its own bounded vertical scroll area. Its height
+responds to the recap card, leaving room for the front and back body views while
+every percentage remains reachable in sessions that train many muscle groups.
+The list is labelled and keyboard-focusable, with a visible focus outline and
+native scrolling. Horizontal carousel swipes and the shared actions remain
+available. The set distribution calculation and offline data paths are unchanged.
+
+Browser validation covers long lists in both themes at short phone, notched
+phone and desktop sizes, keyboard and touch scrolling, and stationary body
+views and actions.

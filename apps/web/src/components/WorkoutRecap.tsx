@@ -109,7 +109,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                   No primary muscle distribution recorded for this session.
                 </p>
               )}
-              <ul className="recap-muscle-shares">
+              <ul className="recap-muscle-shares" aria-label="Muscle percentages" tabIndex={0}>
                 {recap.muscles.map((muscle) => (
                   <li key={muscle.group} style={muscleColorStyle(muscle.group)}>
                     <div className="mb-1 flex justify-between gap-3 text-sm">
