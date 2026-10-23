@@ -8865,3 +8865,26 @@ available. The set distribution calculation and offline data paths are unchanged
 Browser validation covers long lists in both themes at short phone, notched
 phone and desktop sizes, keyboard and touch scrolling, and stationary body
 views and actions.
+
+## ADR-0153 — Browser CI uses preinstalled dependencies and isolated shards
+
+**Status:** accepted · **Date:** 2026-10-23 · **Amends:** ADR-0067
+
+PR #188's browser job spent 10 min 10 s downloading Ubuntu packages before
+starting its production build and tests. All 91 completed scenarios passed
+before the runner cancelled the job at twenty minutes. Extending the deadline
+again would leave the slow package mirror on the critical path.
+
+CI uses the official Playwright Noble image, pinned to the same version as
+`@playwright/test`, with browsers and OS dependencies already present. Two jobs
+split the complete suite by file using Playwright's `--shard` option. Each has
+its own fake backend, build and single browser worker, preserving isolation for
+tests that disable the entire backend. Local `pnpm e2e` still runs every file
+serially against installed Chrome.
+
+The job limit returns to fifteen minutes. Playwright's CI-only ten-minute
+global deadline includes build and backend setup and lets reporters finish
+before the runner kills the job. Both shards upload separate reports even on
+success, so timings remain inspectable. An aggregate retains the protected
+`Browser tests (Playwright)` check name and succeeds only if both shards pass;
+failure, cancellation or skipping cannot produce a green required check.
