@@ -18,7 +18,8 @@ What it does:
   highlighting trained muscles with percentages, exercise weight trends, and the
   complete exercise log. Reopen it from history; Done, routine saving and deletion
   stay visible below every card in a full-screen recap without the tab bar.
-  Session totals and muscle percentages fit their cards without scrolling.
+  Session totals fit their card, and long muscle percentage lists scroll beneath
+  the body views.
   Session rewards count up with
   a subtle level-up animation, and comparison cards pair equipment artwork
   with best sets and weight trends. The exercise picker can suggest

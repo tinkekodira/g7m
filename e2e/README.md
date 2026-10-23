@@ -8,7 +8,9 @@ pnpm --filter @g7m/e2e exec playwright test tests/workout.spec.ts   # one file
 pnpm --filter @g7m/e2e exec playwright show-report                  # after a CI failure
 ```
 
-Locally the tests use the Chrome you already have installed; CI installs Playwright's Chromium. Every run builds the app first, even when something is already listening on the port, so a run always tests the code in front of it.
+Locally the tests use the Chrome you already have installed; CI uses the browsers and system libraries bundled in Playwright's official image. Keep its version in `.github/workflows/e2e.yml` aligned with `@playwright/test` in `e2e/package.json`. Every run builds the app first, even when something is already listening on the port, so a run always tests the code in front of it.
+
+CI runs all test files across two isolated shards (`--shard=1/2` and `--shard=2/2`). Each has its own production build, fake backend and single worker: tests that take the backend offline still run serially. The existing **Browser tests (Playwright)** check passes only when both shards pass. Each shard uploads its own HTML report, screenshots and failure traces, including on success for timing inspection. Playwright stops a CI run after ten minutes, including setup, so it can finish the report before the fifteen-minute job limit. Local runs have no suite-wide deadline.
 
 ## What runs
 

@@ -1,3 +1,19 @@
+# Resolved — browser CI spent half its deadline installing OS packages
+
+PR #188's timed-out run spent 10 min 10 s fetching 25.9 MB from Ubuntu's
+package mirror (42.5 kB/s). Browser tests only started eleven minutes into the
+job; all 91 completed scenarios passed before the twenty-minute cancellation.
+Raising the old fifteen-minute deadline in PR #184 did not address this setup
+bottleneck.
+
+Use Playwright's version-matched official image with browsers and OS libraries
+already installed. Split the complete suite into two isolated CI jobs, retaining
+one worker per backend because outage tests affect every account. Restore the
+fifteen-minute job limit and stop Playwright at ten minutes so it writes reports
+before runner cancellation. Upload each shard's report on success or failure,
+and preserve the existing required check with an aggregate that requires both
+shards to succeed.
+
 # Resolved — recap overflow with wider system fonts and a double Done click in tests
 
 PR #187's Linux screenshots showed the history heading wrapping onto a second

@@ -299,6 +299,106 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
 });
 
+test('long muscle percentages scroll independently by keyboard and touch', async ({
+  page,
+  context,
+}, info) => {
+  test.setTimeout(120_000);
+  const user = await createUser('recap-muscle-scroll', { onboarded: true });
+  const [session] = await sql<{ id: string }>(
+    `with workout as (
+      insert into public.workout_sessions (user_id, name, started_at, ended_at)
+      values ($1, 'Full body', now() - interval '1 hour', now()) returning id
+    ), exercises as (
+      select distinct on (m.muscle_group_id) em.exercise_id
+      from public.exercise_muscles em join public.muscles m on m.id = em.muscle_id
+      where em.role = 'primary' order by m.muscle_group_id, em.exercise_id
+    ), entries as (
+      insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+      select $1, workout.id, exercise_id, exercise_id::text
+      from workout, (select distinct exercise_id from exercises) e returning id
+    ), sets as (
+      insert into public.session_sets (user_id, session_exercise_id, order_key, weight_kg, reps, is_completed, completed_at)
+      select $1, id, 'a0', 20, 8, true, now() from entries
+    ) select id from workout`,
+    [user.id],
+  );
+  await signIn(page, user);
+  await waitForCatalogue(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const theme of ['dark', 'light']) {
+    await page.goto('/#/settings');
+    const dark = page.getByRole('switch', { name: 'Dark mode' });
+    await expect(dark).toBeVisible();
+    if ((await dark.getAttribute('aria-checked')) !== String(theme === 'dark')) await dark.click();
+    await page.goto(`/#/progress/session/${session!.id}`);
+    await show(page, 'Muscles trained');
+    await expect(
+      page.getByRole('status').filter({ hasText: /Achievement unlocked|From your past training/ }),
+    ).toBeHidden({ timeout: 30_000 });
+    const shares = page.getByRole('list', { name: 'Muscle percentages' });
+    expect(await shares.getByRole('listitem').count()).toBeGreaterThan(8);
+    await expect(shares).toContainText('Hamstrings');
+    await expect(shares).toContainText('Glutes');
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [1280, 1000],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.locator('.recap-screen').evaluate((el: HTMLElement, notched) => {
+        el.style.paddingTop = notched ? '47px' : '';
+        el.style.paddingBottom = notched ? '34px' : '';
+      }, width === 390);
+      await expectCardFits(page, 'Muscles trained');
+      await expectRecapActions(page);
+      expect(await shares.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+      const body = page.getByRole('img', { name: /^Muscles worked this session:/ });
+      const bodyBefore = await body.boundingBox();
+      await shares.focus();
+      await shares.press('Home');
+      await expect.poll(() => shares.evaluate((el) => el.scrollTop)).toBe(0);
+      await page.screenshot({ path: info.outputPath(`muscle-list-${width}-${theme}-top.png`) });
+      await shares.press('End');
+      await expect
+        .poll(() => shares.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
+        .toBeLessThanOrEqual(1);
+      // Fractional container heights can leave less than a pixel outside the scrollport.
+      await expect(shares.getByRole('listitem').last()).toBeInViewport({ ratio: 0.99 });
+      if (width < 1280) {
+        await shares.press('Home');
+        await expect.poll(() => shares.evaluate((el) => el.scrollTop)).toBe(0);
+        const box = (await shares.boundingBox())!;
+        const cdp = await context.newCDPSession(page);
+        const x = box.x + box.width / 2;
+        const y = box.y + box.height - 4;
+        await cdp.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x, y }],
+        });
+        for (let step = 1; step <= 12; step++) {
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ x, y: y - (step * (box.height - 8)) / 12 }],
+          });
+          await page.waitForTimeout(16);
+        }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await cdp.detach();
+        await expect.poll(() => shares.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+        await shares.press('End');
+      }
+      await expect(shares.getByRole('listitem').last()).toBeInViewport({ ratio: 0.99 });
+      expect(await body.boundingBox()).toEqual(bodyBefore);
+      await expectRecapActions(page);
+      await page.screenshot({ path: info.outputPath(`muscle-list-${width}-${theme}-bottom.png`) });
+      // Horizontal navigation still works after interacting with the nested list.
+      await show(page, 'Compared with last time');
+      await show(page, 'Muscles trained');
+    }
+  }
+});
+
 test('comparison cards group equipment, best sets and trends for a full workout', async ({
   page,
 }, info) => {

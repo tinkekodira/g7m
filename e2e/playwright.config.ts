@@ -8,14 +8,17 @@ import { APP_URL, BACKEND_URL } from './tests/support/urls.js';
  * ordinary environment variables pointed at the fake, then serves the output
  * with `vite preview`. `globalSetup` starts the fake. See e2e/README.md.
  *
- * One worker, in order. The fake is one Postgres connection and the tests are
- * few; parallel runs would buy seconds and cost the ability to read a failure.
+ * One worker per backend, in order: some tests take the entire fake offline.
+ * CI splits files across isolated jobs, each with its own fake and browser.
  */
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
   workers: 1,
   retries: process.env['CI'] === undefined ? 0 : 1,
+  // Stop through Playwright so reporters flush before CI's 15-minute job limit.
+  // Includes the production build and backend setup, as well as the tests.
+  globalTimeout: process.env['CI'] === undefined ? 0 : 10 * 60_000,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   forbidOnly: process.env['CI'] !== undefined,
