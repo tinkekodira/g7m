@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import {
   FOCUS_LABELS,
   GOAL_LABELS,
@@ -46,7 +46,8 @@ const TIME_OPTIONS = [
 export function PlanScreen() {
   const navigate = useNavigate();
   const now = useMemo(() => new Date(), []);
-  const { profile, goal, noGoal, ready, plan, unitSystem, error } = useTodaysPlan(now);
+  const { profile, goal, noGoal, ready, plan, unitSystem, error, recommendationsEnabled } =
+    useTodaysPlan(now);
 
   const { write, busy } = useWrite();
   const sessionMinutes = useSessionTimeStore((state) => state.minutes);
@@ -100,6 +101,8 @@ export function PlanScreen() {
       }}
     />
   );
+
+  if (profile !== null && !recommendationsEnabled) return <Navigate to="/" replace />;
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">

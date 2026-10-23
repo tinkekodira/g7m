@@ -8866,6 +8866,40 @@ Browser validation covers long lists in both themes at short phone, notched
 phone and desktop sizes, keyboard and touch scrolling, and stationary body
 views and actions.
 
+## ADR-0152 — Workout recommendations are an account choice
+
+**Status:** accepted · **Date:** 2026-10-23 · **Amends:** ADR-0037, ADR-0051
+
+The final onboarding question asks who plans the user's workouts. Users can
+choose their own training or ask for suggested workouts, with original copy
+and the app's existing theme tokens. This is independent of experience level
+and training goal. A required choice avoids assuming that an experienced
+lifter wants recommendations, or that a beginner does not want to plan.
+
+`profiles.workout_recommendations` is a nullable boolean. Null means this
+question is unanswered during onboarding. Existing onboarded users keep the
+current recommendation behavior until they change it; `onboarded_at` remains
+the only onboarding gate. Settings → In the gym → Workout recommendations
+edits the same preference locally and syncs it between devices. Exports retain
+null or a real boolean.
+
+Off means the shared planner does not load its training inputs or generate a
+session. Home hides today's workout and the active-session plan shortcut,
+direct plan URLs return Home, and the exercise picker does not infer or promote
+recommendations. Starting a generated session rechecks the saved preference
+before writing. Existing workouts, manual logging, routines, goals and progress
+feedback remain available. Turning recommendations back on restores the planner.
+
+Rollout requires applying `20261023120000_workout_recommendations.sql`, then
+deploying the regenerated `powersync/sync-rules.yaml`, before releasing the app.
+No production database or sync configuration is changed by this pull request.
+
+Validation covers both onboarding choices, unanswered-step resumption, SQLite
+boolean persistence and exports, migrated schema and sync contracts, Home with
+and without an active workout, direct plan URLs, offline changes and reloads,
+keyboard toggling and cross-device sync. Phone and desktop screenshots cover
+onboarding and Settings in both themes.
+
 ## ADR-0153 — Browser CI uses preinstalled dependencies and isolated shards
 
 **Status:** accepted · **Date:** 2026-10-23 · **Amends:** ADR-0067

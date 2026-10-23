@@ -5,10 +5,16 @@ import { RECOMMENDATION_POLICY, type RecommendationInput } from '@g7m/core';
 export async function loadWorkoutRecommendations(
   r: Repositories,
 ): Promise<Omit<RecommendationInput, 'eligibleIds'> | null> {
-  const session = await r.sessions.active();
-  if (session === null || session.source === 'past') return null;
+  const [session, profile] = await Promise.all([r.sessions.active(), r.profile.current()]);
+  if (
+    session === null ||
+    session.source === 'past' ||
+    profile === null ||
+    profile.workoutRecommendations === false
+  )
+    return null;
   const now = new Date();
-  const [catalogue, equipment, entries, sets, history, profile, goal] = await Promise.all([
+  const [catalogue, equipment, entries, sets, history, goal] = await Promise.all([
     r.exercises.list(),
     r.exercises.equipmentByExercise(),
     r.sessions.exercisesFor(session.id),
@@ -17,7 +23,6 @@ export async function loadWorkoutRecommendations(
       from: new Date(now.getTime() - RECOMMENDATION_POLICY.patternDays * 86_400_000),
       to: now,
     }),
-    r.profile.current(),
     r.goals.current(),
   ]);
   const strength = new Set(catalogue.filter((e) => e.cardioKind === null).map((e) => e.id));

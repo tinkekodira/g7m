@@ -49,6 +49,7 @@ export interface TodaysPlan {
   readonly goal: Goal | null;
   /** Read, and there is no goal. Different from not having read it yet. */
   readonly noGoal: boolean;
+  readonly recommendationsEnabled: boolean;
   /** Every input has arrived, so `plan` is the answer rather than a gap. */
   readonly ready: boolean;
   readonly plan: PlannedSession | null;
@@ -59,6 +60,8 @@ export interface TodaysPlan {
 export function useTodaysPlan(now: Date): TodaysPlan {
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const goal = useCatalogue('goal-current', (r) => r.goals.current());
+  const recommendationsEnabled =
+    profile.data !== null && profile.data.workoutRecommendations !== false;
   // Time today, from the plan screen. Read here so Home's card and the plan
   // describe the same session, paired or not (ADR-0112).
   const sessionMinutes = useSessionTimeStore((state) => state.minutes);
@@ -70,16 +73,21 @@ export function useTodaysPlan(now: Date): TodaysPlan {
   const historyFrom = useMemo(() => daysBefore(today, HISTORY_DAYS), [today]);
   const dayKey = today.toISOString();
 
-  const catalogue = useCatalogue('plan-candidates', (r) => r.planner.candidates());
-  const performances = useCatalogue(`plan-history-${dayKey}`, (r) =>
-    r.planner.lastPerformances(historyFrom),
+  const catalogue = useCatalogue(`plan-candidates-${String(recommendationsEnabled)}`, (r) =>
+    recommendationsEnabled ? r.planner.candidates() : Promise.resolve(null),
   );
-  const weekSets = useCatalogue(`plan-trailing-${dayKey}`, (r) =>
-    r.planner.setsByGroupSince(trailingWeek),
+  const performances = useCatalogue(
+    `plan-history-${dayKey}-${String(recommendationsEnabled)}`,
+    (r) =>
+      recommendationsEnabled ? r.planner.lastPerformances(historyFrom) : Promise.resolve(null),
+  );
+  const weekSets = useCatalogue(`plan-trailing-${dayKey}-${String(recommendationsEnabled)}`, (r) =>
+    recommendationsEnabled ? r.planner.setsByGroupSince(trailingWeek) : Promise.resolve(null),
   );
 
   const plan = useMemo<PlannedSession | null>(() => {
     if (
+      !recommendationsEnabled ||
       goal.data === null ||
       catalogue.data === null ||
       performances.data === null ||
@@ -105,6 +113,7 @@ export function useTodaysPlan(now: Date): TodaysPlan {
       sessionMinutes,
     });
   }, [
+    recommendationsEnabled,
     goal.data,
     catalogue.data,
     performances.data,
@@ -118,7 +127,9 @@ export function useTodaysPlan(now: Date): TodaysPlan {
     profile: profile.data,
     goal: goal.data,
     noGoal: goal.data === null && !goal.loading && goal.error === null,
+    recommendationsEnabled,
     ready:
+      recommendationsEnabled &&
       goal.data !== null &&
       catalogue.data !== null &&
       performances.data !== null &&
@@ -145,6 +156,10 @@ export async function startPlannedWorkout(
     readonly bodyweightKg: number | null;
   },
 ): Promise<WorkoutSession> {
+  const profile = await repositories.profile.current();
+  if (profile === null || profile.workoutRecommendations === false) {
+    throw new Error('Workout recommendations are turned off.');
+  }
   const session = await repositories.sessions.start({
     source: 'generated',
     name: FOCUS_LABELS[input.plan.focus],

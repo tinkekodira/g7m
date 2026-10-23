@@ -66,6 +66,7 @@ export function schemaUserTables(): string[] {
 export const EXPORT_COLUMN_TYPES: Readonly<
   Partial<Record<UserTableName, Readonly<Record<string, 'boolean' | 'json'>>>>
 > = {
+  profiles: { workout_recommendations: 'boolean' },
   workout_sessions: { generation_metadata: 'json' },
   session_sets: { is_completed: 'boolean' },
 };

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import {
   ACTIVITY_DESCRIPTIONS,
@@ -46,7 +46,7 @@ import {
  * somebody who does not exist. Asking at the start is the difference between a
  * program and a guess.
  *
- * One question per screen. A single form with eight fields is faster to build
+ * One question per screen. A single form with every field is faster to build
  * and worse to answer on a phone — it opens as a wall, and the first thing it
  * asks of somebody who has just signed up is to scroll.
  *
@@ -85,6 +85,7 @@ export function WelcomeScreen() {
     activityLevel: metrics.data?.activityLevel ?? null,
     country: profile.data?.country ?? null,
     goal: goal.data?.goal ?? null,
+    workoutRecommendations: profile.data?.workoutRecommendations ?? null,
   };
 
   // Answers in progress. The component stays mounted as the step changes, so
@@ -97,6 +98,8 @@ export function WelcomeScreen() {
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [choice, setChoice] = useState<TrainingGoal | null>(null);
+  const [recommendations, setRecommendations] = useState<boolean | null>(null);
+  const firstGuidanceOption = useRef<HTMLInputElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const loading = profile.loading || metrics.loading || goal.loading;
@@ -123,6 +126,17 @@ export function WelcomeScreen() {
 
   async function save(): Promise<boolean> {
     switch (step) {
+      case 'guidance': {
+        const selected = recommendations ?? answers.workoutRecommendations;
+        if (selected === null) {
+          setProblem('Choose how you want to plan your training.');
+          firstGuidanceOption.current?.focus();
+          return false;
+        }
+        return (
+          (await write((r) => r.profile.update({ workoutRecommendations: selected }))) !== null
+        );
+      }
       case 'name': {
         if (name.trim() === '') {
           setProblem('What should we call you?');
@@ -367,6 +381,42 @@ export function WelcomeScreen() {
           />
         )}
 
+        {step === 'guidance' && (
+          <fieldset className="flex flex-col gap-3" disabled={busy}>
+            <legend className="sr-only">Workout recommendations</legend>
+            {[
+              {
+                value: false,
+                label: 'I’ll choose my own training',
+                detail: 'Plan your sessions without suggestions.',
+              },
+              {
+                value: true,
+                label: 'Suggest workouts for me',
+                detail: 'Get today’s workout and exercise suggestions.',
+              },
+            ].map((option) => (
+              <label
+                key={String(option.value)}
+                className="flex min-h-tap cursor-pointer items-center gap-3 rounded-control border border-subtle p-4 hover:border-strong has-checked:border-accent has-checked:bg-accent-subtle has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+              >
+                <input
+                  type="radio"
+                  ref={option.value ? undefined : firstGuidanceOption}
+                  name="workout-recommendations"
+                  className="size-5 shrink-0 accent-accent"
+                  checked={(recommendations ?? answers.workoutRecommendations) === option.value}
+                  onChange={() => setRecommendations(option.value)}
+                />
+                <span>
+                  <span className="block text-base font-medium text-primary">{option.label}</span>
+                  <span className="mt-1 block text-sm text-secondary">{option.detail}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+
         {step === 'goal' && (
           <Choices
             options={TRAINING_GOALS}
@@ -438,6 +488,7 @@ const TITLES: Record<OnboardingStep, string> = {
   activity: 'How active is your week?',
   country: 'Where are you from?',
   goal: 'What are you training for?',
+  guidance: 'Who plans your workouts?',
 };
 
 /**
@@ -456,7 +507,8 @@ const BLURBS: Record<OnboardingStep, string> = {
     'Pull-ups and dips are measured against it, and your weekly weigh-in starts from here. Nobody else sees it.',
   activity: 'Everything outside the gym. It changes what your training has to fit around.',
   country: 'Only changes the language of the greeting. Skip it and you get English.',
-  goal: 'This one decides what the app builds you. You can change it whenever it changes.',
+  goal: 'Helps tailor your training and progress feedback. You can change it whenever it changes.',
+  guidance: 'You can change workout recommendations in Settings anytime.',
 };
 
 function Choices<T extends string>({

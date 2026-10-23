@@ -152,7 +152,7 @@ export function HomeScreen() {
           Quick access
         </h2>
         <ul className="grid grid-cols-2 gap-3">
-          {tilesFor(open !== null).map((tile, index) => (
+          {tilesFor(open !== null, today.recommendationsEnabled).map((tile, index) => (
             <li
               key={tile.to}
               className="rise"
@@ -172,7 +172,9 @@ export function HomeScreen() {
       {/* With a workout open, the strip at the top is the way back in and the
           first tile is the way to the plan; a third card saying the same
           would be one too many. */}
-      {open === null && <TodayCard today={today} trainedToday={month.data?.trainedToday ?? null} />}
+      {open === null && today.recommendationsEnabled && (
+        <TodayCard today={today} trainedToday={month.data?.trainedToday ?? null} />
+      )}
 
       <footer className="mt-1 border-t border-subtle/60 pt-4 pb-4 text-xs leading-relaxed text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
@@ -516,9 +518,9 @@ const TILE_TONES = {
  * see how it went (ADR-0105). The routines are on Profile and the 3D model is
  * on Learn, so neither is out of reach for not having a tile here.
  */
-function tilesFor(workoutOpen: boolean): readonly Tile[] {
+function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readonly Tile[] {
   return [
-    workoutOpen
+    workoutOpen && recommendationsEnabled
       ? {
           to: '/plan',
           title: 'Today’s plan',
@@ -528,8 +530,8 @@ function tilesFor(workoutOpen: boolean): readonly Tile[] {
         }
       : {
           to: '/workout',
-          title: 'Start your own workout',
-          detail: 'Build it as you go',
+          title: workoutOpen ? 'Continue your workout' : 'Start your own workout',
+          detail: workoutOpen ? 'Back to your session' : 'Build it as you go',
           icon: DumbbellIcon,
           tone: 'success',
         },
