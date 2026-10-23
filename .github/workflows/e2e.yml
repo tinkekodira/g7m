@@ -37,6 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The runner owns the mounted checkout; the container runs as root.
+      # Allow only this workspace so pnpm's prepare hook can configure Git.
+      - name: Trust the mounted checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Install pnpm
         uses: pnpm/action-setup@v5
 
