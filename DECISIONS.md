@@ -8963,3 +8963,30 @@ Validation covers combined/legacy goals, invalid selections, schema constraints,
 signup, goal editing and reloads, offline weighted crunches, unit conversion and
 prefill. Screenshots cover every signup step at phone and desktop widths in
 both themes, plus weighted-set controls.
+
+## ADR-0155 — One browser CI check with two workers
+
+**Status:** accepted · **Date:** 2026-10-25 · **Amends:** ADR-0153
+
+Run the full browser suite in one job named `Browser tests (Playwright)`,
+preserving the required check name. Remove the shard matrix and aggregate:
+one failing scenario should produce one failing browser check and one report.
+Keep the version-matched official Playwright image to avoid the OS-package
+download delay that motivated ADR-0153.
+
+Two workers run files concurrently against one build and fake backend, locally
+and in CI. Tests inside each file remain sequential. Each test already owns its
+accounts and browser contexts; account addresses now use UUIDs across workers.
+The backend serializes database requests with their own role and claims.
+Offline workouts use browser-context network emulation. Account deletion and
+feedback failures abort only their own context's API request, preserving the
+server-error path while the browser reports online. The backend-wide outage
+endpoint is removed so one scenario cannot disconnect another worker.
+No scenarios are skipped or removed, and the existing retry and reporting
+behavior remains. The ten-minute Playwright deadline and fifteen-minute job
+ceiling retain time for diagnostics if a run stalls.
+
+PR #192 also exposed a test navigation race: clicking Save did not mean the
+asynchronous write had finished before reload. Wait for the expected saved
+bodyweight load, weight and reps before reloading. Keep the assertions for
+reload, offline prefill, clearing added load and uploading in both units.

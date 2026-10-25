@@ -1,3 +1,24 @@
+# Resolved — added-weight reload raced Save, and browser CI showed duplicate failures
+
+PR #192's added-weight scenario clicked Save and immediately reloaded. Under
+CI load the navigation could interrupt the asynchronous local write; the
+reloaded set still had its old load type. Poll for the expected saved load,
+weight and reps on the server before reloading, then retain the reload,
+offline prefill, weight clearing and upload assertions in both unit systems.
+
+The two red browser checks represented that one failure: one shard and its
+aggregate. Replace the shards and aggregate with one Browser tests (Playwright)
+job using two workers, one build and one backend. Keep the preinstalled browser
+image that addressed the original installation delay. Offline scenarios now
+disconnect only their own browser context; remove the backend-wide outage
+switch, and use UUID-based account names across workers. Retain every scenario
+and upload one report with failure traces. See ADR-0155.
+
+The full two-worker run also exposed an existing Profile layout assertion
+reading the goal's bounding box while its query refreshed and temporarily
+unmounted the card. Retry the whole name/level/goal ordering assertion until
+the elements are rendered; retain both positional comparisons.
+
 # Resolved — browser CI spent half its deadline installing OS packages
 
 PR #188's timed-out run spent 10 min 10 s fetching 25.9 MB from Ubuntu's
@@ -13,6 +34,9 @@ fifteen-minute job limit and stop Playwright at ten minutes so it writes reports
 before runner cancellation. Upload each shard's report on success or failure,
 and preserve the existing required check with an aggregate that requires both
 shards to succeed.
+
+ADR-0155 subsequently replaces the shards and aggregate with one job and two
+workers after making connection failures local to each browser context.
 
 # Resolved — recap overflow with wider system fonts and a double Done click in tests
 

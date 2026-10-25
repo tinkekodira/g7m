@@ -43,8 +43,6 @@ export async function startFakeBackend(port = 54321): Promise<FakeBackend> {
   const sync = await SyncService.start(db, rules);
   const auth = new AuthService(db);
   const rest = new RestService(db, schema, (userId) => sync.changed(userId));
-  /** While true, the app's requests fail as if there were no network. */
-  let outage = false;
 
   const server = createServer((request, response) => {
     void route(request, response).catch((cause: unknown) => {
@@ -68,13 +66,6 @@ export async function startFakeBackend(port = 54321): Promise<FakeBackend> {
         'Access-Control-Max-Age': '600',
       });
       response.end();
-      return;
-    }
-
-    // An outage looks, from the app, like no network: the connection just
-    // drops. Only the tests' own routes still answer, so a test can end it.
-    if (outage && !url.pathname.startsWith('/__e2e/')) {
-      request.socket.destroy();
       return;
     }
 
@@ -159,12 +150,6 @@ export async function startFakeBackend(port = 54321): Promise<FakeBackend> {
         );
       }
       return send(response, { status: 201, body: { id: user.id } });
-    }
-    if (path === '/__e2e/outage' && request.method === 'POST') {
-      outage = asObject(body)['on'] === true;
-      // Open sync streams go down with everything else.
-      if (outage) sync.close();
-      return send(response, { status: 204 });
     }
     if (path === '/__e2e/sql' && request.method === 'POST') {
       const { sql, params } = asObject(body) as { sql: string; params?: unknown[] };

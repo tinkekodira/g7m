@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { createUser, outage, sql } from './support/backend.js';
+import { createUser, sql } from './support/backend.js';
+import { BACKEND_URL } from './support/urls.js';
 import { openTab, signIn } from './support/app.js';
 
 /**
@@ -39,6 +40,7 @@ test('feedback reaches the developer, with its context attached', async ({ page 
 
 test('a message over the limit cannot be sent, and an unreachable server fails loudly', async ({
   page,
+  context,
 }) => {
   const user = await createUser('feedback-limits', { onboarded: true });
   await signIn(page, user);
@@ -49,12 +51,14 @@ test('a message over the limit cannot be sent, and an unreachable server fails l
   await expect(page.getByText(/too long/)).toBeVisible();
 
   await page.getByLabel('Message').fill('Short message');
-  await outage(true);
+  // Exercise the server-error path while the browser still reports online.
+  const endpoint = `${BACKEND_URL}/rest/v1/feedback*`;
+  await context.route(endpoint, (route) => route.abort('connectionfailed'));
   try {
     await page.getByRole('button', { name: 'Send feedback' }).click();
     await expect(page.getByText(/Cannot reach the server/)).toBeVisible();
   } finally {
-    await outage(false);
+    await context.unroute(endpoint);
   }
 
   // The message is still there after the failure, and sending now goes through.

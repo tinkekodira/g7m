@@ -134,6 +134,20 @@ for (const units of ['metric', 'imperial']) {
     await page.getByRole('textbox', { name: /^Added/ }).fill(units === 'metric' ? '10' : '22');
     await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('12');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
+    // Save writes asynchronously. Wait for the saved values to reach the server
+    // before reloading, so navigation cannot cancel the local write under load.
+    await eventually(
+      () =>
+        sql<{ load_type: string; weight_kg: number; reps: number }>(
+          'select load_type, weight_kg::float, reps from public.session_sets where user_id = $1',
+          [user.id],
+        ),
+      (rows) =>
+        rows.length === 1 &&
+        rows[0]?.load_type === 'bodyweight_plus' &&
+        Math.abs(Number(rows[0].weight_kg) - (units === 'metric' ? 10 : 9.98)) < 0.01 &&
+        rows[0].reps === 12,
+    );
     await page.reload();
     await expect(page.getByRole('radio', { name: 'Added weight', exact: true })).toBeChecked();
     await expect(page.getByRole('textbox', { name: /^Added/ })).toHaveValue(
