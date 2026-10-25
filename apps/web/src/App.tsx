@@ -55,10 +55,6 @@ const ExerciseTrendScreen = lazyScreen(
 );
 const WelcomeScreen = lazyScreen(() => import('./screens/WelcomeScreen.js'), 'WelcomeScreen');
 const ProfileScreen = lazyScreen(() => import('./screens/ProfileScreen.js'), 'ProfileScreen');
-const ChallengeHistoryScreen = lazyScreen(
-  () => import('./screens/ChallengeHistoryScreen.js'),
-  'ChallengeHistoryScreen',
-);
 const ChallengeResults = lazy(() =>
   import('./components/ChallengeResults.js').then((m) => ({ default: m.ChallengeResults })),
 );
@@ -326,7 +322,7 @@ function AppScreens() {
         <Route path="/learn/plates" element={<PlateCalculatorScreen />} />
         <Route path="/progress" element={<ProgressScreen />} />
         <Route path="/profile" element={<ProfileScreen />} />
-        <Route path="/profile/challenges" element={<ChallengeHistoryScreen />} />
+        <Route path="/profile/challenges" element={<Navigate to="/profile" replace />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/exercises" element={<ExerciseLibraryScreen />} />
         <Route path="/exercises/:slug" element={<ExerciseDetailScreen />} />

@@ -15,9 +15,8 @@ import {
   decodeChallengeAnswer,
   decodeChallengeSend,
   decodeChallenges,
-  decodeChallengeHistory,
-  type ChallengeFilter,
-  type ChallengeHistory,
+  decodeChallengeRecord,
+  type ChallengeRecord,
   decodeDetail,
   decodeFriendProfile,
   decodeLeaderboard,
@@ -137,13 +136,8 @@ export async function claimChallengeResults(): Promise<readonly Challenge[]> {
   return results;
 }
 
-export async function fetchChallengeHistory(
-  filter: ChallengeFilter = 'all',
-  offset = 0,
-): Promise<ChallengeHistory> {
-  return decodeChallengeHistory(
-    await rpc('challenge_history', { result_filter: filter, page_offset: offset }),
-  );
+export async function fetchChallengeRecord(): Promise<ChallengeRecord> {
+  return decodeChallengeRecord(await rpc('challenge_history'));
 }
 
 export async function sendChallenge(

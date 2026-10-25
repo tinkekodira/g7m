@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
-import { Link } from 'react-router';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from './Avatar.js';
 import { ChevronRightIcon, DuelIcon, TrophyIcon } from './icons.js';
@@ -32,11 +31,9 @@ import { RANKING_OPTIONS } from '../screens/leaderboard-view.js';
 export function ChallengeCard({
   card,
   onChanged,
-  history = false,
 }: {
   readonly card: ChallengeCardView;
   readonly onChanged: () => void;
-  readonly history?: boolean;
 }) {
   const titleId = useId();
   const [busy, setBusy] = useState(false);
@@ -172,28 +169,20 @@ export function ChallengeCard({
               record.
             </p>
           )}
-          {!history && (
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-subtle/70 pt-3">
-              <Link
-                to="/profile/challenges"
-                className="inline-flex min-h-tap items-center text-sm text-secondary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                Challenge history
-              </Link>
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() => {
-                  act(async () => {
-                    await acknowledgeChallenge(card.id);
-                    return null;
-                  });
-                }}
-              >
-                Got it
-              </Button>
-            </div>
-          )}
+          <div className="mt-4 flex justify-end border-t border-subtle/70 pt-3">
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => {
+                act(async () => {
+                  await acknowledgeChallenge(card.id);
+                  return null;
+                });
+              }}
+            >
+              Got it
+            </Button>
+          </div>
         </>
       )}
 
