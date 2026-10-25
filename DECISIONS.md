@@ -8994,3 +8994,84 @@ PR #192 also exposed a test navigation race: clicking Save did not mean the
 asynchronous write had finished before reload. Wait for the expected saved
 bodyweight load, weight and reps before reloading. Keep the assertions for
 reload, offline prefill, clearing added load and uploading in both units.
+
+## ADR-0156 — Challenge results are fixed, acknowledged and kept on your profile
+
+**Date:** 2026-10-25
+
+The old challenge card buried “You won” below the scores and disappeared after
+seven days. Milan missed a win and asked for a noticeable result, an explicit
+dismissal, a permanent profile record and a popup on the next app visit.
+This supersedes ADR-0110's finished-result lifetime and lack of history.
+
+**A result gets a day to settle.** The competition still lasts 168 elapsed
+hours from acceptance. For the next 24 hours the card says “Finalizing result”
+and uploads of eligible workouts still count. At 192 hours the server score
+is fixed. Later uploads, edits and deletions cannot change it. Pending,
+declined, withdrawn and expired invitations never count as competitive losses.
+
+**The cutoff does not depend on a scheduler or an app visit.** Private columns
+on `friend_challenges` hold both participants' provisional scores. Triggers
+refresh them on session, exercise, set and sharing changes only before the
+cutoff, with challenge-row locks serializing updates. Acceptance initializes
+the snapshot. After the cutoff reads return that saved score without reading
+either person's workouts. Weight is stored in kilograms, with whole-kilogram
+comparison and existing whole-percent improvement rounding determining one
+outcome for both participants; display conversion cannot change the winner.
+Improvement uses 672 elapsed hours before acceptance and a seven-day usual
+of one quarter of that total, independent of either phone's timezone.
+
+**A win has a gold trophy, headline and score.** Gold text uses accessible ink
+in each theme rather than treating the decorative medal edge as body text.
+Losses and draws use the same hierarchy with quieter styling. Finished cards
+do not animate. “Got it” acknowledges only that participant's result, on the
+server, across devices. Looking at a card or history is not acknowledgment.
+Running challenges stay first, followed by outgoing invitations, finalizing
+cards and unacknowledged finals. Failed acknowledgment leaves the card and a
+retryable error in place.
+
+**The popup is separate from dismissal.** Once signed in and onboarded, the
+app checks on entry, focus, visibility and once a minute while online. It
+defers the popup during a workout, workout recap, another dialog or an
+achievement banner. A server-side atomic claim records popup delivery per
+participant, so simultaneous devices cannot both announce it. A native modal
+dialog traps focus, restores focus on close, permits Escape and offers a
+brief result reveal, “View challenge” and “Later”. Multiple results, at most
+20 per claim, can be stepped through. View challenge links to the leaderboard
+and focuses the exact result card. The reveal respects reduced motion. A
+claimed popup interrupted by app closure does not replay; its card still waits
+for Got it. Later closes the claimed group without clearing any cards.
+
+**Profile owns the record.** A Challenge record card below Achievements shows
+wins, losses and draws. `/profile/challenges` provides dated final cards,
+result filters and 20-row pagination, with filter/page state in the URL.
+Totals span all finished challenges, not just the current page. An unavailable
+result stays in All but contributes to none of the three totals. The history
+is private, read live and never synced or published; offline training is
+unchanged. Removing a friend retains finalized snapshots, cancels unfinished
+challenges and grants no further access to their training. Account deletion
+continues cascading through challenges. This is not a public trophy cabinet
+or a new lifetime head-to-head ranking.
+
+**Old results are recovered honestly.** The migration snapshots completed rows
+from training still available and marks them “Recovered result”; original
+final scores were never stored. Recovered challenges that ended more than a
+week ago are already acknowledged and popup-delivered, avoiding an onboarding
+flood. More recent results wait to be acknowledged. Rows already deleted by
+friend or account removal cannot be recovered. Sharing unavailable at cutoff
+makes a result unavailable; re-enabling it later cannot rewrite the record.
+
+**Deployment:** apply `20261025120000_challenge_results.sql` before releasing
+the web app. There is no PowerSync schema, publication or sync-rule change.
+The existing challenge RPC remains callable; new clients decode missing result
+fields conservatively and surface history errors with Retry. No production
+migration is applied merely by opening the PR.
+
+**Validation:** database tests cover uploaded score changes, late uploads,
+frozen results, improvement, legacy metrics, access control, popup claims,
+independent/idempotent acknowledgment, retained results, account cleanup and
+pagination. View/decoder tests cover finalizing states, saved outcomes, unit
+conversion and malformed replies. Browser tests cover the popup-to-card link,
+reduced motion, multiple results, repeat visits and devices, acknowledgment
+failure/retry, profile history, filters and offline history. Result layouts are
+inspected on phones and desktop in both themes.

@@ -15,6 +15,7 @@ import {
   type LeaderboardRanking,
   type LeaderboardStat,
   type UnitSystem,
+  kgToLb,
 } from '@g7m/core';
 import type {
   Challenge,
@@ -28,7 +29,7 @@ import { amountText, scoreText } from './leaderboard-view.js';
  * Sent to you and waiting for your answer; sent by you and waiting for
  * theirs; running; or over, with a result.
  */
-export type ChallengePhase = 'incoming' | 'outgoing' | 'running' | 'finished';
+export type ChallengePhase = 'incoming' | 'outgoing' | 'running' | 'finalizing' | 'finished';
 
 export interface ChallengeSideView {
   readonly name: string;
@@ -38,6 +39,10 @@ export interface ChallengeSideView {
 }
 
 export interface ChallengeCardView {
+  readonly outcome: 'win' | 'loss' | 'draw' | 'unavailable' | null;
+  readonly recovered: boolean;
+  readonly metric: string;
+  readonly endedAt: Date | null;
   readonly id: string;
   readonly friendId: string;
   readonly name: string;
@@ -124,6 +129,10 @@ export function challengeCard(
     name,
     avatarName: challenge.name,
     title,
+    outcome: null,
+    recovered: challenge.recovered === true,
+    metric: ranking === 'improved' ? '% of usual' : NOUNS[stat],
+    endedAt: challenge.startsAt === null ? null : challengeSpan(challenge.startsAt).end,
   };
   const describe = (when: string, verdict: string, sides: ChallengeCardView['sides']) =>
     [
@@ -150,13 +159,65 @@ export function challengeCard(
 
   const span = challengeSpan(challenge.startsAt);
   const over = now.getTime() >= span.end.getTime();
-  const phase: ChallengePhase = over ? 'finished' : 'running';
+  const phase: ChallengePhase = over ? 'finalizing' : 'running';
   const when = over
     ? `Ended ${lowerFirst(describeWhen(span.end, now))}`
     : challengeTimeLeft(span.end, now);
 
+  if (challenge.result != null) {
+    const { outcome, mine: yours, theirs } = challenge.result;
+    const format = (side: typeof yours) =>
+      ranking === 'improved'
+        ? side.score === null
+          ? 'New'
+          : `${String(side.score)}%`
+        : scoreText(
+            stat === 'lifted'
+              ? Math.round(unitSystem === 'imperial' ? kgToLb(side.amount) : side.amount)
+              : (side.score ?? 0),
+            stat,
+            unitSystem,
+          );
+    const sides: ChallengeCardView['sides'] =
+      outcome === 'unavailable'
+        ? null
+        : [
+            { name: 'You', score: format(yours), leading: outcome === 'win' },
+            { name, score: format(theirs), leading: outcome === 'loss' },
+          ];
+    const verdict =
+      outcome === 'win'
+        ? 'You won'
+        : outcome === 'loss'
+          ? `${name} won`
+          : outcome === 'draw'
+            ? 'A draw'
+            : 'Result unavailable';
+    return {
+      ...base,
+      outcome,
+      phase: 'finished',
+      when,
+      sides,
+      verdict,
+      description: describe(when, verdict, sides),
+    };
+  }
+
+  if (over) {
+    const verdict = 'Finalizing result';
+    return {
+      ...base,
+      phase,
+      when,
+      sides: null,
+      verdict,
+      description: describe(when, verdict, null),
+    };
+  }
+
   if (challenge.workouts === null) {
-    const verdict = `${name} isn’t sharing their training now, so this can’t be scored.`;
+    const verdict = 'Training sharing is off, so this challenge can’t be scored.';
     return {
       ...base,
       phase,
@@ -179,13 +240,8 @@ export function challengeCard(
     { name, score: shown(theirs, stat, ranking, unitSystem), leading: standing.kind === 'behind' },
   ];
 
-  const verdict = over
-    ? standing.kind === 'ahead'
-      ? 'You won'
-      : standing.kind === 'behind'
-        ? `${name} won`
-        : 'A draw'
-    : standing.kind === 'ahead'
+  const verdict =
+    standing.kind === 'ahead'
       ? `${amountText(standing.by, stat, unitSystem)} ahead of ${name}`
       : standing.kind === 'behind'
         ? `${amountText(standing.by, stat, unitSystem)} behind ${name}`
@@ -194,7 +250,13 @@ export function challengeCard(
   return { ...base, phase, when, sides, verdict, description: describe(when, verdict, sides) };
 }
 
-const ORDER: Record<ChallengePhase, number> = { running: 0, outgoing: 1, finished: 2, incoming: 3 };
+const ORDER: Record<ChallengePhase, number> = {
+  running: 0,
+  outgoing: 1,
+  finalizing: 2,
+  finished: 3,
+  incoming: 4,
+};
 
 /**
  * Every card, split: the ones waiting for your answer, which belong with

@@ -179,7 +179,7 @@ export interface Challenge {
   readonly sentByMe: boolean;
   readonly stat: LeaderboardStat;
   readonly ranking: LeaderboardRanking;
-  /** Waiting to be accepted, or accepted (running, or finished in the last week). */
+  /** Waiting to be accepted, or accepted (running, finalizing or finished). */
   readonly status: 'pending' | 'active';
   readonly sentAt: Date;
   /** When it was accepted. Null while it waits. */
@@ -191,6 +191,29 @@ export interface Challenge {
    * while it waits, and when they are not sharing.
    */
   readonly workouts: readonly BoardWorkout[] | null;
+  readonly result?: ChallengeResult | null;
+  readonly acknowledged?: boolean;
+  readonly recovered?: boolean;
+}
+
+export type ChallengeOutcome = 'win' | 'loss' | 'draw' | 'unavailable';
+export interface SavedChallengeScore {
+  readonly amount: number;
+  readonly score: number | null;
+  readonly usual: number;
+}
+export interface ChallengeResult {
+  readonly outcome: ChallengeOutcome;
+  readonly mine: SavedChallengeScore;
+  readonly theirs: SavedChallengeScore;
+}
+export type ChallengeFilter = 'all' | 'win' | 'loss' | 'draw';
+export interface ChallengeHistory {
+  readonly challenges: readonly Challenge[];
+  readonly wins: number;
+  readonly losses: number;
+  readonly draws: number;
+  readonly hasMore: boolean;
 }
 
 export const CHALLENGE_SEND_OUTCOMES = [
@@ -521,8 +544,45 @@ export function decodeChallenges(value: unknown): readonly Challenge[] {
         status === 'active' && sent !== null && sent !== undefined
           ? list(sent).map(decodeBoardWorkout)
           : null,
+      acknowledged: data['acknowledged'] === true,
+      recovered: data['recovered'] === true,
+      result: decodeChallengeResult(data['result']),
     };
   });
+}
+
+function decodeChallengeResult(value: unknown): ChallengeResult | null {
+  if (value === null || value === undefined) return null;
+  const data = record(value);
+  const score = (value: unknown): SavedChallengeScore => {
+    const side = record(value);
+    const finite = (value: unknown): number => {
+      const parsed = optionalNumber(value);
+      if (parsed === null || parsed < 0) throw new Malformed('invalid challenge score');
+      return parsed;
+    };
+    return {
+      amount: finite(side['amount']),
+      score: side['score'] === null ? null : finite(side['score']),
+      usual: finite(side['usual']),
+    };
+  };
+  return {
+    outcome: oneOf(data['outcome'], ['win', 'loss', 'draw', 'unavailable'] as const),
+    mine: score(data['mine']),
+    theirs: score(data['theirs']),
+  };
+}
+
+export function decodeChallengeHistory(value: unknown): ChallengeHistory {
+  const data = record(value);
+  return {
+    challenges: decodeChallenges(value),
+    wins: number(data['wins'], 0),
+    losses: number(data['losses'], 0),
+    draws: number(data['draws'], 0),
+    hasMore: data['has_more'] === true,
+  };
 }
 
 export function decodeChallengeSend(value: unknown): {

@@ -142,15 +142,21 @@ export function useChallengeCards(
   challenges: readonly Challenge[] | null,
   unitSystem: UnitSystem,
 ): ReturnType<typeof challengeCards> | null {
-  // The leaderboard's own history window, which reaches past the four weeks
-  // before any challenge still shown, so the two share one read.
+  // The board's history window covers the baseline of every live challenge.
+  // Older finished challenges read their saved scores, not local training.
   const since = useMemo(() => boardSince(new Date()), []);
   const mine = useMyBoard(since);
-  return useMemo(
-    () =>
-      challenges === null || mine.data === null
-        ? null
-        : challengeCards(challenges, mine.data, { now: new Date(), unitSystem }),
-    [challenges, mine.data, unitSystem],
-  );
+  const [, setClock] = useState(0);
+  useEffect(() => {
+    const tick = () => setClock((value) => value + 1);
+    const timer = globalThis.setInterval(tick, 60_000);
+    globalThis.addEventListener('focus', tick);
+    return () => {
+      clearInterval(timer);
+      globalThis.removeEventListener('focus', tick);
+    };
+  }, []);
+  return challenges === null || mine.data === null
+    ? null
+    : challengeCards(challenges, mine.data, { now: new Date(), unitSystem });
 }

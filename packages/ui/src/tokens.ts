@@ -38,6 +38,7 @@ export const colorTokens = {
   'badge-secret': '#a88bd9',
 
   'medal-gold': '#cfab35',
+  'text-victory': '#edcb72',
   'medal-silver': '#b4b5b9',
   'medal-bronze': '#c27a38',
 
@@ -97,6 +98,7 @@ export const lightColorTokens = {
   'badge-secret': '#6b4aa5',
 
   'medal-gold': '#9c7a14',
+  'text-victory': '#765809',
   'medal-silver': '#86878c',
   'medal-bronze': '#a0612a',
 

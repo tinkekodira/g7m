@@ -113,27 +113,53 @@ describe('a running challenge', () => {
   it('cannot be scored once the friend stops sharing', () => {
     const card = challengeCard(challenge({ workouts: null, sharing: false }), [], CONTEXT);
     expect(card.sides).toBeNull();
-    expect(card.verdict).toBe('Alex isn’t sharing their training now, so this can’t be scored.');
+    expect(card.verdict).toBe('Training sharing is off, so this challenge can’t be scored.');
   });
 });
 
 describe('a finished challenge', () => {
   const later: ChallengeContext = { now: local(2026, 10, 13, 9), unitSystem: 'metric' };
 
-  it('names the winner', () => {
+  it('waits for final scores instead of declaring a provisional winner', () => {
     expect(challengeCard(challenge(), [], later)).toMatchObject({
-      phase: 'finished',
+      phase: 'finalizing',
       when: 'Ended yesterday',
-      verdict: 'Alex won',
+      verdict: 'Finalizing result',
     });
     const mine = [workout(local(2026, 10, 8), { sets: 25 })];
-    expect(challengeCard(challenge(), mine, later).verdict).toBe('You won');
-    expect(challengeCard(challenge(), challenge().workouts ?? [], later).verdict).toBe('A draw');
+    expect(challengeCard(challenge(), mine, later).sides).toBeNull();
   });
 
-  it('counts nothing after it ended', () => {
+  it('uses the saved winner even when local workouts change', () => {
     const mine = [workout(local(2026, 10, 12, 19), { sets: 50 })];
-    expect(challengeCard(challenge(), mine, later).verdict).toBe('Alex won');
+    const saved = challenge({
+      result: {
+        outcome: 'win',
+        mine: { score: 25, amount: 25, usual: 0 },
+        theirs: { score: 20, amount: 20, usual: 0 },
+      },
+    });
+    expect(challengeCard(saved, mine, later)).toMatchObject({
+      phase: 'finished',
+      outcome: 'win',
+      verdict: 'You won',
+      sides: [{ score: '25' }, { score: '20' }],
+    });
+  });
+
+  it('converts saved weight for display without changing the winner', () => {
+    const saved = challenge({
+      stat: 'lifted',
+      result: {
+        outcome: 'win',
+        mine: { score: 400, amount: 400, usual: 0 },
+        theirs: { score: 300, amount: 300, usual: 0 },
+      },
+    });
+    expect(challengeCard(saved, [], { ...later, unitSystem: 'imperial' })).toMatchObject({
+      outcome: 'win',
+      sides: [{ score: '882 lb' }, { score: '661 lb' }],
+    });
   });
 });
 
