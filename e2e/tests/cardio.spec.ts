@@ -23,8 +23,7 @@ test('a treadmill workout is logged as bouts, with calories', async ({ page }) =
   await signIn(page, user);
   await waitForCatalogue(page);
 
-  await page.getByRole('link', { name: /Start your own workout/ }).click();
-  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await page.getByRole('button', { name: /^Start a workout/ }).click();
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
 
   // Found under its own chip, not among the muscles.

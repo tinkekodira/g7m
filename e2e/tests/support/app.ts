@@ -34,8 +34,7 @@ export async function openTab(
 
 /** Open the logger, start a workout and add one exercise from the library. */
 export async function startWith(page: Page, exercise: string): Promise<void> {
-  await page.getByRole('link', { name: /Start your own workout/ }).click();
-  await page.getByRole('button', { name: 'Start a workout' }).click();
+  await page.getByRole('button', { name: /^Start a workout/ }).click();
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
   await page.getByLabel('Search').fill(exercise);
   await page.getByRole('button', { name: new RegExp(`^${exercise}`) }).click();

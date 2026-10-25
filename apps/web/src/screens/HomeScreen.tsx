@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type ReactNode,
@@ -72,6 +73,27 @@ const StatsHero = lazy(async () => ({
  * that is losing data or not working, still shows here.
  */
 export function HomeScreen() {
+  const navigate = useNavigate();
+  const { write, busy, error } = useWrite();
+  const starting = useRef(false);
+
+  async function startWorkout(): Promise<void> {
+    if (starting.current) return;
+    starting.current = true;
+    buzz('tick');
+    try {
+      const session = await write(async (r) => {
+        const active = await r.sessions.active();
+        if (active !== null) return active;
+        const profile = await r.profile.current();
+        return r.sessions.start({ bodyweightKg: profile?.bodyweightKg ?? null });
+      });
+      if (session !== null) void navigate('/workout');
+    } finally {
+      starting.current = false;
+    }
+  }
+
   const now = useMemo(() => new Date(), []);
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const open = useOpenSession();
@@ -158,10 +180,16 @@ export function HomeScreen() {
               className="rise"
               style={{ animationDelay: `${String(index * 40)}ms` }}
             >
-              <QuickTile {...tile} />
+              <QuickTile
+                {...tile}
+                {...(tile.to === '/workout' && open === null
+                  ? { onStart: () => void startWorkout(), busy }
+                  : {})}
+              />
             </li>
           ))}
         </ul>
+        <WriteError error={error} />
       </section>
 
       {/* The heads-up ADR-0032 asked for, under the ways in: the month and
@@ -530,7 +558,7 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
         }
       : {
           to: '/workout',
-          title: workoutOpen ? 'Continue your workout' : 'Start your own workout',
+          title: workoutOpen ? 'Continue your workout' : 'Start a workout',
           detail: workoutOpen ? 'Back to your session' : 'Build it as you go',
           icon: DumbbellIcon,
           tone: 'success',
@@ -559,12 +587,19 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
   ];
 }
 
-function QuickTile({ to, title, detail, icon: Icon, tone }: Tile) {
-  return (
-    <Link
-      to={to}
-      className="flex h-full min-h-32 flex-col justify-between gap-4 rounded-card border border-subtle bg-surface p-4 transition-colors active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-    >
+function QuickTile({
+  to,
+  title,
+  detail,
+  icon: Icon,
+  tone,
+  onStart,
+  busy = false,
+}: Tile & { readonly onStart?: () => void; readonly busy?: boolean }) {
+  const className =
+    'flex h-full min-h-32 w-full flex-col justify-between gap-4 rounded-card border border-subtle bg-surface p-4 text-left transition-colors active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50';
+  const content = (
+    <>
       <span
         aria-hidden
         className={cx('flex size-11 items-center justify-center rounded-control', TILE_TONES[tone])}
@@ -575,6 +610,15 @@ function QuickTile({ to, title, detail, icon: Icon, tone }: Tile) {
         <span className="block text-base leading-snug font-semibold text-primary">{title}</span>
         <span className="mt-0.5 block text-xs text-muted">{detail}</span>
       </span>
+    </>
+  );
+  return onStart !== undefined ? (
+    <button type="button" onClick={onStart} disabled={busy} className={className}>
+      {content}
+    </button>
+  ) : (
+    <Link to={to} className={className}>
+      {content}
     </Link>
   );
 }
