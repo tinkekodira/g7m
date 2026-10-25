@@ -1,15 +1,14 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import {
   ACTIVITY_DESCRIPTIONS,
   ACTIVITY_LABELS,
   ACTIVITY_LEVELS,
-  GOAL_LABELS,
   MAX_AGE,
   MIN_AGE,
   SEXES,
   SEX_LABELS,
-  TRAINING_GOALS,
+  trainingFocus,
   fromDisplayHeight,
   fromDisplayWeight,
   parseBirthDate,
@@ -21,8 +20,9 @@ import {
   type TrainingGoal,
   type UnitSystem,
 } from '@g7m/core';
-import { Button, Chip, SegmentedControl, TextField } from '@g7m/ui';
+import { Button, SegmentedControl, TextField } from '@g7m/ui';
 import { CountryPicker } from '../components/CountryPicker.js';
+import { TrainingGoalChoices } from '../components/TrainingGoalChoices.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
   firstUnanswered,
@@ -90,17 +90,22 @@ export function WelcomeScreen() {
 
   // Answers in progress. The component stays mounted as the step changes, so
   // going back to a question still shows what was typed into it.
-  const [name, setName] = useState('');
-  const [dob, setDob] = useState('');
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
+  const [name, setName] = useState<string | null>(null);
+  const [dob, setDob] = useState<string | null>(null);
+  const [height, setHeight] = useState<string | null>(null);
+  const [weight, setWeight] = useState<string | null>(null);
   const [sex, setSex] = useState<Sex | null>(null);
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
-  const [country, setCountry] = useState<string | null>(null);
-  const [choice, setChoice] = useState<TrainingGoal | null>(null);
+  const [country, setCountry] = useState<string | null | undefined>(undefined);
+  const [choices, setChoices] = useState<TrainingGoal[] | null>(null);
   const [recommendations, setRecommendations] = useState<boolean | null>(null);
   const firstGuidanceOption = useRef<HTMLInputElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    heading.current?.focus();
+  }, [raw]);
 
   const loading = profile.loading || metrics.loading || goal.loading;
 
@@ -123,6 +128,17 @@ export function WelcomeScreen() {
   // What is selected right now: this session's pick, or what is already on
   // file for somebody stepping back through the flow.
   const chosenActivity = activity ?? answers.activityLevel;
+  const chosenCountry = country === undefined ? answers.country : country;
+  const error = problem ?? writeError ?? profile.error ?? metrics.error ?? goal.error;
+  const selectedGoals = choices ?? goal.data?.selectedGoals ?? [];
+  const enteredName = name ?? answers.displayName ?? '';
+  const enteredDob = dob ?? (answers.birthDate === null ? '' : toDateOnly(answers.birthDate));
+  const enteredHeight =
+    height ??
+    (answers.heightCm === null ? '' : String(toDisplayHeight(answers.heightCm, unitSystem).value));
+  const enteredWeight =
+    weight ??
+    (answers.weightKg === null ? '' : String(toDisplayWeight(answers.weightKg, unitSystem).value));
 
   async function save(): Promise<boolean> {
     switch (step) {
@@ -138,79 +154,86 @@ export function WelcomeScreen() {
         );
       }
       case 'name': {
-        if (name.trim() === '') {
+        if (enteredName.trim() === '') {
           setProblem('What should we call you?');
           return false;
         }
-        await write((r) => r.profile.update({ displayName: name }));
-        return true;
+        return (await write((r) => r.profile.update({ displayName: enteredName }))) !== null;
       }
       case 'dob': {
-        const born = parseBirthDate(dob);
+        const born = parseBirthDate(enteredDob);
         if (!isUsableBirthDate(born, now)) {
           setProblem(
             `Enter the day you were born. Between ${String(MIN_AGE)} and ${String(MAX_AGE)}.`,
           );
           return false;
         }
-        await write((r) => r.profile.update({ birthDate: born }));
-        return true;
+        return (await write((r) => r.profile.update({ birthDate: born }))) !== null;
       }
       case 'sex': {
-        if (sex === null) {
+        const selected = sex ?? answers.sex;
+        if (selected === null) {
           setProblem('Pick one to carry on.');
           return false;
         }
-        await write((r) => r.profile.update({ sex }));
-        return true;
+        return (await write((r) => r.profile.update({ sex: selected }))) !== null;
       }
       case 'height': {
-        const typed = Number(height.replace(',', '.'));
+        const typed = Number(enteredHeight.replace(',', '.'));
         const cm = Number.isFinite(typed) ? fromDisplayHeight(typed, unitSystem) : Number.NaN;
         if (!Number.isFinite(cm) || cm <= 50 || cm >= 300) {
           setProblem(`Enter your height in ${heightUnit}.`);
           return false;
         }
-        await write((r) => r.bodyMetrics.record({ heightCm: cm }));
-        return true;
+        return (await write((r) => r.bodyMetrics.record({ heightCm: cm }))) !== null;
       }
       case 'weight': {
-        const typed = Number(weight.replace(',', '.'));
+        const typed = Number(enteredWeight.replace(',', '.'));
         const kg = Number.isFinite(typed) ? fromDisplayWeight(typed, unitSystem) : Number.NaN;
         if (!isUsableBodyweight(kg)) {
           setProblem(`Enter your weight in ${weightUnit}.`);
           return false;
         }
-        await write(async (r) => {
-          // The series the weekly weigh-in extends, and the current value a
-          // pull-up is measured against. The same two writes the You screen
-          // makes, so the first reading is no different from any later one.
-          await r.bodyMetrics.record({ weightKg: kg });
-          await r.profile.update({ bodyweightKg: kg });
-        });
-        return true;
+        return (
+          (await write(async (r) => {
+            // The series the weekly weigh-in extends, and the current value a
+            // pull-up is measured against. The same two writes the You screen
+            // makes, so the first reading is no different from any later one.
+            await r.bodyMetrics.record({ weightKg: kg });
+            await r.profile.update({ bodyweightKg: kg });
+          })) !== null
+        );
       }
       case 'activity': {
-        if (activity === null) {
+        if (chosenActivity === null) {
           setProblem('Pick the one that sounds most like your week.');
           return false;
         }
-        await write((r) => r.bodyMetrics.record({ activityLevel: activity }));
-        return true;
+        return (
+          (await write((r) => r.bodyMetrics.record({ activityLevel: chosenActivity }))) !== null
+        );
       }
       case 'country': {
         // Optional, and skipping is handled by its own button. Reaching here
         // means something was chosen.
-        if (country !== null) await write((r) => r.profile.update({ country }));
-        return true;
+        return (await write((r) => r.profile.update({ country: chosenCountry }))) !== null;
       }
       case 'goal': {
-        if (choice === null) {
+        if (selectedGoals.length === 0) {
           setProblem('Pick what you are training for.');
           return false;
         }
-        await write((r) => r.goals.set({ goal: choice }));
-        return true;
+        if (
+          goal.data !== null &&
+          selectedGoals.length === goal.data.selectedGoals.length &&
+          selectedGoals.every((value) => goal.data?.selectedGoals.includes(value))
+        )
+          return true;
+        return (
+          (await write((r) =>
+            r.goals.set({ goal: trainingFocus(selectedGoals), selectedGoals }),
+          )) !== null
+        );
       }
     }
   }
@@ -228,15 +251,18 @@ export function WelcomeScreen() {
         ? String(toDisplayHeight(fromDisplayHeight(typed, unitSystem), next).value)
         : String(toDisplayWeight(fromDisplayWeight(typed, unitSystem), next).value);
     };
-    setHeight((text) => convert(text, 'height'));
-    setWeight((text) => convert(text, 'weight'));
+    setHeight(convert(enteredHeight, 'height'));
+    setWeight(convert(enteredWeight, 'weight'));
     setUnits(next);
     void write((r) => r.profile.update({ unitSystem: next }));
   }
 
   async function advance(): Promise<void> {
     setProblem(null);
-    if (!(await save())) return;
+    if (!(await save())) {
+      form.current?.querySelector<HTMLElement>('input, select')?.focus();
+      return;
+    }
     await go();
   }
 
@@ -262,218 +288,244 @@ export function WelcomeScreen() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="pt-8 pb-2">
-        <p className="numeric text-xs text-muted">
-          {position} of {total}
+    <main className="mx-auto flex min-h-svh max-w-xl flex-col px-5 pt-safe-top pb-safe-bottom sm:px-8">
+      <header className="pt-6 sm:pt-12">
+        <div className="mb-3 flex items-center justify-between text-sm text-secondary">
+          <span className="font-semibold text-primary">Your training starts here</span>
+          <span className="numeric">
+            {position} of {total}
+          </span>
+        </div>
+        <div
+          role="progressbar"
+          aria-label="Signup progress"
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={position}
+          className="h-1 overflow-hidden rounded-full bg-elevated"
+        >
+          <div
+            className="h-full rounded-full bg-accent"
+            style={{ width: `${String((position / total) * 100)}%` }}
+          />
+        </div>
+        <h1
+          id="welcome-question"
+          ref={heading}
+          tabIndex={-1}
+          className="mt-10 text-3xl leading-tight font-semibold text-balance text-primary outline-none sm:text-4xl"
+        >
+          {TITLES[step]}
+        </h1>
+        <p id="question-hint" className="mt-3 text-base leading-relaxed text-secondary">
+          {BLURBS[step]}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-primary">{TITLES[step]}</h1>
-        <p className="mt-2 text-sm text-secondary">{BLURBS[step]}</p>
       </header>
 
-      <section className="rounded-card bg-surface p-4">
-        {step === 'name' && (
-          <TextField
-            label="Your name"
-            value={name}
-            placeholder={answers.displayName ?? ''}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-          />
-        )}
+      <form
+        ref={form}
+        aria-labelledby="welcome-question"
+        aria-describedby="question-hint"
+        className="flex flex-1 flex-col"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy) void advance();
+        }}
+      >
+        <fieldset disabled={busy || loading} className="mt-7 mb-6 min-w-0">
+          <legend className="sr-only">{TITLES[step]}</legend>
+          {step === 'name' && (
+            <TextField
+              label="Your name"
+              name="name"
+              autoComplete="given-name"
+              value={enteredName}
+              onChange={(event) => {
+                setName(event.target.value);
+              }}
+            />
+          )}
 
-        {/* A real date input, so a phone opens its own date picker rather
+          {/* A real date input, so a phone opens its own date picker rather
             than a keyboard and three separators to get wrong. */}
-        {step === 'dob' && (
-          <TextField
-            label="Date of birth"
-            type="date"
-            value={dob === '' && answers.birthDate !== null ? toDateOnly(answers.birthDate) : dob}
-            max={toDateOnly(now)}
-            onChange={(event) => {
-              setDob(event.target.value);
-            }}
-          />
-        )}
-
-        {step === 'sex' && (
-          <Choices
-            options={SEXES}
-            label={(option) => SEX_LABELS[option]}
-            selected={sex ?? answers.sex}
-            disabled={busy}
-            onPick={setSex}
-          />
-        )}
-
-        {step === 'height' && (
-          <>
+          {step === 'dob' && (
             <TextField
-              label={`Height (${heightUnit})`}
-              inputMode="decimal"
-              value={height}
+              label="Date of birth"
+              type="date"
+              name="birth-date"
+              autoComplete="bday"
+              value={enteredDob}
+              max={toDateOnly(now)}
               onChange={(event) => {
-                setHeight(event.target.value);
+                setDob(event.target.value);
               }}
             />
-            <UnitToggle
-              label="Height unit"
-              options={[
-                { value: 'metric', label: 'Centimetres' },
-                { value: 'imperial', label: 'Inches' },
-              ]}
-              value={unitSystem}
-              disabled={busy}
-              onChange={switchUnits}
-            />
-          </>
-        )}
+          )}
 
-        {step === 'weight' && (
-          <>
-            <TextField
-              label={`Weight (${weightUnit})`}
-              inputMode="decimal"
-              value={weight}
-              onChange={(event) => {
-                setWeight(event.target.value);
-              }}
-            />
-            <UnitToggle
-              label="Weight unit"
-              options={[
-                { value: 'metric', label: 'Kilograms' },
-                { value: 'imperial', label: 'Pounds' },
-              ]}
-              value={unitSystem}
+          {step === 'sex' && (
+            <Choices
+              options={SEXES}
+              name="sex"
+              label={(option) => SEX_LABELS[option]}
+              selected={sex ?? answers.sex}
               disabled={busy}
-              onChange={switchUnits}
+              onPick={setSex}
             />
-          </>
-        )}
+          )}
 
-        {step === 'activity' && (
-          <>
+          {step === 'height' && (
+            <>
+              <TextField
+                label={`Height (${heightUnit})`}
+                inputMode="decimal"
+                name="height"
+                autoComplete="off"
+                value={enteredHeight}
+                onChange={(event) => {
+                  setHeight(event.target.value);
+                }}
+              />
+              <UnitToggle
+                label="Height unit"
+                options={[
+                  { value: 'metric', label: 'Centimetres' },
+                  { value: 'imperial', label: 'Inches' },
+                ]}
+                value={unitSystem}
+                disabled={busy}
+                onChange={switchUnits}
+              />
+            </>
+          )}
+
+          {step === 'weight' && (
+            <>
+              <TextField
+                label={`Weight (${weightUnit})`}
+                inputMode="decimal"
+                name="weight"
+                autoComplete="off"
+                value={enteredWeight}
+                onChange={(event) => {
+                  setWeight(event.target.value);
+                }}
+              />
+              <UnitToggle
+                label="Weight unit"
+                options={[
+                  { value: 'metric', label: 'Kilograms' },
+                  { value: 'imperial', label: 'Pounds' },
+                ]}
+                value={unitSystem}
+                disabled={busy}
+                onChange={switchUnits}
+              />
+            </>
+          )}
+
+          {step === 'activity' && (
             <Choices
               options={ACTIVITY_LEVELS}
+              name="activity"
               label={(option) => ACTIVITY_LABELS[option]}
+              detail={(option) => ACTIVITY_DESCRIPTIONS[option]}
               selected={chosenActivity}
               disabled={busy}
               onPick={setActivity}
             />
-            {/* What the chosen level actually means, under the chips rather
-                than inside them: five labels are a row, five sentences are a
-                wall. */}
-            {chosenActivity !== null && (
-              <p className="mt-3 text-sm text-muted">{ACTIVITY_DESCRIPTIONS[chosenActivity]}</p>
-            )}
-          </>
+          )}
+
+          {step === 'country' && (
+            <CountryPicker
+              value={chosenCountry}
+              disabled={busy}
+              label="Where you are from"
+              hint="Only changes the language of the greeting on the home screen."
+              onChange={setCountry}
+            />
+          )}
+
+          {step === 'guidance' && (
+            <fieldset className="flex flex-col gap-3" disabled={busy}>
+              <legend className="sr-only">Workout recommendations</legend>
+              {[
+                {
+                  value: false,
+                  label: 'I’ll choose my own training',
+                  detail: 'Plan your sessions without suggestions.',
+                },
+                {
+                  value: true,
+                  label: 'Suggest workouts for me',
+                  detail: 'Get today’s workout and exercise suggestions.',
+                },
+              ].map((option) => (
+                <label
+                  key={String(option.value)}
+                  className="flex min-h-tap cursor-pointer items-center gap-4 rounded-control border border-subtle bg-surface p-4 hover:border-strong has-checked:border-accent has-checked:bg-accent-subtle has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+                >
+                  <input
+                    type="radio"
+                    ref={option.value ? undefined : firstGuidanceOption}
+                    name="workout-recommendations"
+                    className="size-5 shrink-0 accent-accent"
+                    checked={(recommendations ?? answers.workoutRecommendations) === option.value}
+                    onChange={() => setRecommendations(option.value)}
+                  />
+                  <span>
+                    <span className="block text-base font-medium text-primary">{option.label}</span>
+                    <span className="mt-1 block text-sm text-secondary">{option.detail}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          )}
+
+          {step === 'goal' && (
+            <TrainingGoalChoices selected={selectedGoals} disabled={busy} onChange={setChoices} />
+          )}
+        </fieldset>
+
+        {error !== null && (
+          <p role="alert" className="mb-4 text-sm text-destructive">
+            {error}
+          </p>
         )}
 
-        {step === 'country' && (
-          <CountryPicker
-            value={country ?? answers.country}
-            disabled={busy}
-            label="Where you are from"
-            hint="Only changes the language of the greeting on the home screen."
-            onChange={setCountry}
-          />
-        )}
+        <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-subtle py-5 sm:py-6">
+          {back !== null && (
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => {
+                setProblem(null);
+                void navigate(`/welcome/${back}`);
+              }}
+            >
+              Back
+            </Button>
+          )}
+          <Button className="flex-1" type="submit" disabled={busy || loading}>
+            {busy ? 'Saving…' : nextStep(step) === null ? 'Finish' : 'Continue'}
+          </Button>
 
-        {step === 'guidance' && (
-          <fieldset className="flex flex-col gap-3" disabled={busy}>
-            <legend className="sr-only">Workout recommendations</legend>
-            {[
-              {
-                value: false,
-                label: 'I’ll choose my own training',
-                detail: 'Plan your sessions without suggestions.',
-              },
-              {
-                value: true,
-                label: 'Suggest workouts for me',
-                detail: 'Get today’s workout and exercise suggestions.',
-              },
-            ].map((option) => (
-              <label
-                key={String(option.value)}
-                className="flex min-h-tap cursor-pointer items-center gap-3 rounded-control border border-subtle p-4 hover:border-strong has-checked:border-accent has-checked:bg-accent-subtle has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
-              >
-                <input
-                  type="radio"
-                  ref={option.value ? undefined : firstGuidanceOption}
-                  name="workout-recommendations"
-                  className="size-5 shrink-0 accent-accent"
-                  checked={(recommendations ?? answers.workoutRecommendations) === option.value}
-                  onChange={() => setRecommendations(option.value)}
-                />
-                <span>
-                  <span className="block text-base font-medium text-primary">{option.label}</span>
-                  <span className="mt-1 block text-sm text-secondary">{option.detail}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        )}
-
-        {step === 'goal' && (
-          <Choices
-            options={TRAINING_GOALS}
-            label={(option) => GOAL_LABELS[option]}
-            selected={choice ?? answers.goal}
-            disabled={busy}
-            onPick={setChoice}
-          />
-        )}
-      </section>
-
-      {(problem ?? writeError) !== null && (
-        <p role="alert" className="text-sm text-danger">
-          {problem ?? writeError}
-        </p>
-      )}
-
-      <div className="flex items-center gap-3">
-        <Button
-          disabled={busy}
-          onClick={() => {
-            void advance();
-          }}
-        >
-          {nextStep(step) === null ? 'Finish' : 'Continue'}
-        </Button>
-
-        {/* Skipping writes nothing and moves on, which is what makes the
+          {/* Skipping writes nothing and moves on, which is what makes the
             question genuinely optional rather than optional-looking. */}
-        {isOptional(step) && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setProblem(null);
-              void go();
-            }}
-            className="min-h-tap text-sm text-muted underline-offset-4 hover:underline"
-          >
-            Skip
-          </button>
-        )}
-
-        {back !== null && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setProblem(null);
-              void navigate(`/welcome/${back}`);
-            }}
-            className="ml-auto min-h-tap text-sm text-muted underline-offset-4 hover:underline"
-          >
-            Back
-          </button>
-        )}
-      </div>
+          {isOptional(step) && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setProblem(null);
+                void go();
+              }}
+              className="min-h-tap w-full text-sm text-secondary underline-offset-4 hover:underline"
+            >
+              Skip
+            </button>
+          )}
+        </div>
+      </form>
     </main>
   );
 }
@@ -513,30 +565,44 @@ const BLURBS: Record<OnboardingStep, string> = {
 
 function Choices<T extends string>({
   options,
+  name,
   label,
+  detail,
   selected,
   disabled,
   onPick,
 }: {
   readonly options: readonly T[];
+  readonly name: string;
   readonly label: (option: T) => string;
+  readonly detail?: (option: T) => string;
   readonly selected: T | null;
   readonly disabled: boolean;
   readonly onPick: (option: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-3">
       {options.map((option) => (
-        <Chip
+        <label
           key={option}
-          selected={selected === option}
-          disabled={disabled}
-          onClick={() => {
-            onPick(option);
-          }}
+          className="flex min-h-tap cursor-pointer items-center gap-4 rounded-control border border-subtle bg-surface p-4 hover:border-strong has-checked:border-accent has-checked:bg-accent-subtle has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
         >
-          {label(option)}
-        </Chip>
+          <input
+            type="radio"
+            name={name}
+            value={option}
+            checked={selected === option}
+            disabled={disabled}
+            onChange={() => onPick(option)}
+            className="size-5 shrink-0 accent-accent"
+          />
+          <span className="min-w-0">
+            <span className="block text-base font-semibold text-primary">{label(option)}</span>
+            {detail !== undefined && (
+              <span className="mt-1 block text-sm text-secondary">{detail(option)}</span>
+            )}
+          </span>
+        </label>
       ))}
     </div>
   );

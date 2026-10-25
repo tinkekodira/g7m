@@ -7,6 +7,7 @@
  * owned by the right user, proves the upload, row level security and sync all
  * did their part.
  */
+import { randomUUID } from 'node:crypto';
 import { BACKEND_URL } from './urls.js';
 
 export interface TestUser {
@@ -15,12 +16,9 @@ export interface TestUser {
   readonly password: string;
 }
 
-let sequence = 0;
-
 /** An address no two tests share, so every test starts with an account of its own. */
 export function uniqueEmail(tag: string): string {
-  sequence += 1;
-  return `${tag}-${Date.now().toString(36)}-${String(sequence)}@example.test`;
+  return `${tag}-${randomUUID()}@example.test`;
 }
 
 export const PASSWORD = 'correct horse battery';
@@ -74,17 +72,4 @@ export async function eventually<T>(
     last = await read();
   }
   return last;
-}
-
-/**
- * Take the backend away, or give it back. While it is away every request the
- * app makes fails the way it does with no signal: the connection drops.
- */
-export async function outage(on: boolean): Promise<void> {
-  const response = await fetch(`${BACKEND_URL}/__e2e/outage`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ on }),
-  });
-  if (!response.ok) throw new Error(`Could not ${on ? 'start' : 'end'} the outage`);
 }

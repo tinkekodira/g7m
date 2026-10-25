@@ -19,8 +19,8 @@ permissions:
   contents: read
 
 jobs:
-  browser-shard:
-    name: Browser shard ${{ matrix.shard }}/2
+  e2e:
+    name: Browser tests (Playwright)
     runs-on: ubuntu-latest
     # Includes browsers and OS libraries: no apt mirror downloads on every PR.
     # Keep this version in sync with @playwright/test in e2e/package.json.
@@ -28,11 +28,6 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --ipc=host --init
     timeout-minutes: 15
-    strategy:
-      # Let both shards finish and retain diagnostics if either fails.
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
 
     steps:
       - uses: actions/checkout@v7
@@ -56,30 +51,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Builds the app against the fake backend (playwright.config.ts,
-      # `webServer`). Each shard has its own backend and one serial worker;
-      # backend-wide outage tests cannot interfere with the other shard.
+      # `webServer`). Two workers share one backend, with separate accounts
+      # and browser-scoped offline tests. One job owns the result and report.
       - name: Run the browser tests
-        run: pnpm --filter @g7m/e2e test --shard=${{ matrix.shard }}/2
+        run: pnpm --filter @g7m/e2e test
 
       - name: Upload the report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report
           path: |
             e2e/playwright-report/
             e2e/test-results/
           retention-days: 7
-
-  e2e:
-    # Preserve the existing required check, and fail it unless BOTH shards pass.
-    name: Browser tests (Playwright)
-    needs: browser-shard
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 1
-    steps:
-      - name: Require every browser shard to pass
-        env:
-          SHARD_RESULT: ${{ needs.browser-shard.result }}
-        run: test "$SHARD_RESULT" = success

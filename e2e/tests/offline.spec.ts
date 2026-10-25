@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createUser, eventually, outage, sql } from './support/backend.js';
+import { createUser, eventually, sql } from './support/backend.js';
 import {
   finishWorkout,
   logSet,
@@ -14,17 +14,20 @@ import {
  *
  * The app is offline-first: a set is written to the phone the moment it is
  * ticked, and the server is caught up with whenever there is one to reach.
- * Here the server goes away mid-workout — every request drops, as with no
- * signal — the workout is finished anyway, and nothing reaches Postgres until
- * it comes back. Then all of it does.
+ * Here the phone loses its connection mid-workout. The workout is finished
+ * anyway, and nothing reaches Postgres until the connection comes back. Then
+ * all of it does. Other test browsers keep their own connections.
  */
-test('a workout logged with no connection is uploaded once there is one', async ({ page }) => {
+test('a workout logged with no connection is uploaded once there is one', async ({
+  page,
+  context,
+}) => {
   const user = await createUser('offline', { onboarded: true });
   await signIn(page, user);
   // Online long enough to have the exercises, as any phone that has been used.
   await waitForCatalogue(page);
 
-  await outage(true);
+  await context.setOffline(true);
   try {
     await startWith(page, 'Barbell Bench Press');
     await logSet(page, 1, '100', '3');
@@ -40,7 +43,7 @@ test('a workout logged with no connection is uploaded once there is one', async 
     );
     expect(during?.n).toBe(0);
   } finally {
-    await outage(false);
+    await context.setOffline(false);
   }
 
   // Back online, without anyone touching anything: the queue drains.

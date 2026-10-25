@@ -67,12 +67,15 @@ test('a finished workout shows as XP on Profile, and as a level to friends', asy
   );
   const hero = blake.getByRole('region', { name: 'You' });
   await expect(hero.getByText(`${expected.step.toLocaleString('en-GB')} XP`)).toBeVisible();
-  // Under the name, above the goal.
-  const barBox = await bar.boundingBox();
-  const nameBox = await hero.getByText('Blake', { exact: true }).boundingBox();
-  const goalBox = await hero.getByText('Your goal').boundingBox();
-  expect(barBox?.y ?? 0).toBeGreaterThan(nameBox?.y ?? Infinity);
-  expect(barBox?.y ?? Infinity).toBeLessThan(goalBox?.y ?? 0);
+  // Under the name, above the goal. These queries refresh independently, so
+  // retry the layout assertion while the goal briefly unmounts during a read.
+  await expect(async () => {
+    const barBox = await bar.boundingBox();
+    const nameBox = await hero.getByText('Blake', { exact: true }).boundingBox();
+    const goalBox = await hero.getByText('Your goal').boundingBox();
+    expect(barBox?.y ?? 0).toBeGreaterThan(nameBox?.y ?? Infinity);
+    expect(barBox?.y ?? Infinity).toBeLessThan(goalBox?.y ?? 0);
+  }).toPass({ timeout: 15_000 });
   await context.close();
 
   // 3. Alex sees Blake's level beside the name.

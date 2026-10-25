@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createUser, outage, sql, type TestUser } from './support/backend.js';
+import { createUser, sql, type TestUser } from './support/backend.js';
+import { BACKEND_URL } from './support/urls.js';
 import {
   finishWorkout,
   logSet,
@@ -83,6 +84,7 @@ test('deleting an account removes it from the server and from the phone', async 
 
 test('without a connection nothing is deleted, and it works once there is one', async ({
   page,
+  context,
 }) => {
   const user = await createUser('delete-offline', { onboarded: true });
   await signIn(page, user);
@@ -92,12 +94,15 @@ test('without a connection nothing is deleted, and it works once there is one', 
   await openDeletion(page);
   await page.getByLabel('Type DELETE to confirm').fill('DELETE');
 
-  await outage(true);
+  // Keep navigator.onLine true: this covers a server failure after submission,
+  // rather than the separate offline guard that disables the delete button.
+  const endpoint = `${BACKEND_URL}/rest/v1/rpc/delete_my_account`;
+  await context.route(endpoint, (route) => route.abort('connectionfailed'));
   try {
     await page.getByRole('button', DELETE_FOR_GOOD).click();
     await expect(page.getByText(/nothing was deleted/i)).toBeVisible();
   } finally {
-    await outage(false);
+    await context.unroute(endpoint);
   }
   // Still signed in, still all there.
   expect(await rowsOnServer(user)).toBe(rows);

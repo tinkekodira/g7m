@@ -8922,3 +8922,75 @@ before the runner kills the job. Both shards upload separate reports even on
 success, so timings remain inspectable. An aggregate retains the protected
 `Browser tests (Playwright)` check name and succeeds only if both shards pass;
 failure, cancellation or skipping cannot produce a green required check.
+
+## ADR-0154 — Signup uses independent goals and bodyweight load is explicit
+
+**Status:** accepted · **Date:** 2026-10-25
+
+All nine signup questions share a narrow, left-aligned layout, an accessible
+progress bar, full-width native choice rows and a bottom action area. Existing
+tokens, typography, unit controls and the country picker remain in use. Saved
+answers populate real fields when revisiting or resuming a question. Enter
+submits the form, navigation focuses its heading, and validation focuses a
+control. Failed local writes keep the user on the question.
+
+Training goals are independent checkboxes: lose fat, build muscle and get
+stronger. Selecting fat loss and muscle gain replaces the redundant “Both at
+once” option; existing recomp decisions expand into those two selections.
+`training_goals.selected_goals` stores a validated JSON array as text, keeping
+SQLite, uploads, exports and PowerSync in the same representation. Legacy null
+rows retain their original goal. The repository validates, deduplicates and
+orders selections before writing, and changing days preserves them.
+
+The existing `goal` column remains the planner/review focus: combined fat loss
+and muscle gain use recomp, otherwise the body composition goal takes priority
+over strength. Strength alone keeps its strength prescription. The picker states
+the resulting focus when multiple goals are selected; every selection remains
+visible and editable on the goal screen and profile. This keeps existing
+programming, dated goal history and older clients compatible.
+
+Every editable bodyweight set shows the shared Bodyweight / Added weight
+segmented control above its numbers. The existing `bodyweight_plus` type stores
+only the additional load; effective-load arithmetic still includes bodyweight.
+Returning to Bodyweight clears the additional load. Save, completion, prefill,
+kg/lb conversion and offline writes use the existing repository paths.
+
+Rollout requires applying `20261025120000_multiple_training_goals.sql`, then
+deploying the regenerated `powersync/sync-rules.yaml`, before releasing the app.
+This PR does not change production configuration.
+
+Validation covers combined/legacy goals, invalid selections, schema constraints,
+signup, goal editing and reloads, offline weighted crunches, unit conversion and
+prefill. Screenshots cover every signup step at phone and desktop widths in
+both themes, plus weighted-set controls.
+
+## ADR-0155 — One browser CI check with two workers
+
+**Status:** accepted · **Date:** 2026-10-25 · **Amends:** ADR-0153
+
+Run the full browser suite in one job named `Browser tests (Playwright)`,
+preserving the required check name. Remove the shard matrix and aggregate:
+one failing scenario should produce one failing browser check and one report.
+Keep the version-matched official Playwright image to avoid the OS-package
+download delay that motivated ADR-0153.
+
+Two workers run files concurrently against one build and fake backend, locally
+and in CI. Tests inside each file remain sequential. Each test already owns its
+accounts and browser contexts; account addresses now use UUIDs across workers.
+The backend serializes database requests with their own role and claims.
+Offline workouts use browser-context network emulation. Account deletion and
+feedback failures abort only their own context's API request, preserving the
+server-error path while the browser reports online. The backend-wide outage
+endpoint is removed so one scenario cannot disconnect another worker.
+No scenarios are skipped or removed. CI records a trace on the existing first
+retry rather than recording and discarding traces for every successful test.
+First-failure screenshots and error context remain in the report; the retry's
+trace is retained whether it passes or fails. Local runs keep failure traces
+without retries. This follows Playwright's CI recommendation and removes
+recording overhead from passing runs. The ten-minute Playwright deadline and
+fifteen-minute job ceiling retain time for diagnostics if a run stalls.
+
+PR #192 also exposed a test navigation race: clicking Save did not mean the
+asynchronous write had finished before reload. Wait for the expected saved
+bodyweight load, weight and reps before reloading. Keep the assertions for
+reload, offline prefill, clearing added load and uploading in both units.

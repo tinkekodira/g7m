@@ -37,9 +37,9 @@ What it does:
   Browse also charts your best working weight over each exercise's last six
   finished workouts, with empty charts for exercises you have not logged.
 - **Coach.** Answer a few questions — height, weight, age, how active your week
-  is, what you are training for — then choose whether to get workout
-  recommendations. Prefer to program your own? Home leaves out today's workout
-  and exercise suggestions stay off. Change this anytime in Settings → Workout
+  is, what you are training for (select every goal that applies) — then choose
+  whether to get workout recommendations. Prefer to program your own? Home
+  leaves out today's workout and exercise suggestions stay off. Change this anytime in Settings → Workout
   recommendations. Progress feedback still follows your logged training. See
   [ADR-0032](./DECISIONS.md#adr-0032--body-metrics-goals-and-the-coaching-loop-are-v1-scope).
 - **Progress.** This week, this month or all time: a chart of weight lifted,

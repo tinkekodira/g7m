@@ -208,7 +208,7 @@ test('a crunch is bodyweight, with a plate when there is one', async ({ page }) 
       .filter({ has: page.getByRole('heading', { name, exact: true }) });
     await card.getByRole('button', { name: 'Add set' }).click();
     await expect(card.getByRole('textbox', { name: 'Weight' })).toHaveCount(0);
-    await card.getByRole('button', { name: '+ Add weight' }).click();
+    await card.getByRole('radio', { name: 'Added weight' }).click();
     await expect(card.getByRole('textbox', { name: 'Added' })).toBeVisible();
   }
 });

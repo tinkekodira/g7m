@@ -10,7 +10,9 @@ pnpm --filter @g7m/e2e exec playwright show-report                  # after a CI
 
 Locally the tests use the Chrome you already have installed; CI uses the browsers and system libraries bundled in Playwright's official image. Keep its version in `.github/workflows/e2e.yml` aligned with `@playwright/test` in `e2e/package.json`. Every run builds the app first, even when something is already listening on the port, so a run always tests the code in front of it.
 
-CI runs all test files across two isolated shards (`--shard=1/2` and `--shard=2/2`). Each has its own production build, fake backend and single worker: tests that take the backend offline still run serially. The existing **Browser tests (Playwright)** check passes only when both shards pass. Each shard uploads its own HTML report, screenshots and failure traces, including on success for timing inspection. Playwright stops a CI run after ten minutes, including setup, so it can finish the report before the fifteen-minute job limit. Local runs have no suite-wide deadline.
+One **Browser tests (Playwright)** job runs the complete suite with two workers, sharing one production build and fake backend. Local runs use the same worker count. Each test has its own accounts and browser contexts; offline tests disconnect only their own context. Files run concurrently, while tests within a file remain sequential. The job uploads one HTML report, screenshots and failure traces, including on success for timing inspection. Playwright stops a CI run after ten minutes, including setup, so it can finish the report before the fifteen-minute job limit. Local runs have no suite-wide deadline. See ADR-0155.
+
+CI records detailed traces on the first retry, avoiding trace capture for passing tests. A first-attempt failure still keeps its screenshot and error context, and the retry keeps its trace whether it passes or fails. Local runs retain traces on failure because they have no automatic retries. Use `--trace on` when investigating a specific test.
 
 ## What runs
 
@@ -61,12 +63,14 @@ It does not attempt:
 
 A query the fake does not understand is an error, not a guess. PostgREST filters other than `eq` and sync rules of another shape both fail loudly.
 
-`/__e2e/…` routes exist for the tests: creating a user, running SQL to check what arrived, and cutting the connection. The app never calls them.
+`/__e2e/…` routes exist for the tests: creating a user and running SQL to check what arrived. The app never calls them.
 
 `pnpm dev:fake` (`dev-fake.ts`) starts the same fake on its own, seeds it with four accounts that are friends and have trained, and points `vite` at it. It is for clicking through the app by hand. Stop it before `pnpm e2e`, which needs the same port.
 
 ## Writing a test
 
 - **Give each test its own account.** Use `createUser` in `tests/support/backend.ts`. Tests share one backend for the run, and separate accounts keep them apart.
+- **Keep connection failures local.** Use `context.setOffline(true)` and restore it with `context.setOffline(false)`. To test an unreachable server while the browser still reports online, abort the affected endpoint with `context.route()` and restore it with `context.unroute()`. Never take down the shared backend: another worker may be using it.
+- **Wait for persistence before reload.** Clicking Save starts an asynchronous write. Observe the saved state (or poll its server row with `eventually`) before navigating away; a fixed sleep does not prove the write finished.
 - **Check the server, not just the screen.** A row on screen proves only the local database has it. `sql()` and `eventually()` show whether it reached Postgres.
 - **Find things the way a person does.** Use roles and visible text (`getByRole`, `getByLabel`), not CSS classes. If a control cannot be found that way, a screen reader cannot find it either.

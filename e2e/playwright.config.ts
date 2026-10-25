@@ -8,13 +8,13 @@ import { APP_URL, BACKEND_URL } from './tests/support/urls.js';
  * ordinary environment variables pointed at the fake, then serves the output
  * with `vite preview`. `globalSetup` starts the fake. See e2e/README.md.
  *
- * One worker per backend, in order: some tests take the entire fake offline.
- * CI splits files across isolated jobs, each with its own fake and browser.
+ * Two workers share the backend, using separate accounts and browser contexts.
+ * Offline tests disconnect only their own context, never the shared backend.
  */
 export default defineConfig({
   testDir: './tests',
   fullyParallel: false,
-  workers: 1,
+  workers: 2,
   retries: process.env['CI'] === undefined ? 0 : 1,
   // Stop through Playwright so reporters flush before CI's 15-minute job limit.
   // Includes the production build and backend setup, as well as the tests.
@@ -35,7 +35,9 @@ export default defineConfig({
 
   use: {
     baseURL: APP_URL,
-    trace: 'retain-on-failure',
+    // Recording every passing run is expensive, especially alongside WebGL.
+    // CI has one retry to capture diagnostics; local runs have no retries.
+    trace: process.env['CI'] === undefined ? 'retain-on-failure' : 'on-first-retry',
     screenshot: 'only-on-failure',
   },
 

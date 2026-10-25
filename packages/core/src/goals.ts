@@ -25,6 +25,14 @@ import type { Sex, WeightTrend } from './body.js';
 export const TRAINING_GOALS = ['lose_fat', 'build_muscle', 'recomp', 'get_stronger'] as const;
 export type TrainingGoal = (typeof TRAINING_GOALS)[number];
 
+/** A combined goal uses recomp's balanced prescription; strength can accompany any goal. */
+export function trainingFocus(goals: readonly TrainingGoal[]): TrainingGoal {
+  if (goals.length === 0) throw new Error('Choose at least one training goal.');
+  if (goals.includes('recomp') || (goals.includes('lose_fat') && goals.includes('build_muscle')))
+    return 'recomp';
+  return goals.find((goal) => goal !== 'get_stronger') ?? 'get_stronger';
+}
+
 /**
  * How long somebody has been training.
  *
