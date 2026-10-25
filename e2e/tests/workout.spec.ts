@@ -9,6 +9,52 @@ import {
   startWith,
 } from './support/app.js';
 
+for (const viewport of [
+  { width: 393, height: 851 },
+  { width: 1440, height: 900 },
+]) {
+  test(`quick access starts a workout offline in one tap at ${String(viewport.width)}px`, async ({
+    page,
+    context,
+  }, testInfo) => {
+    await page.setViewportSize(viewport);
+    const user = await createUser('quick-start', { onboarded: true });
+    await signIn(page, user);
+    const start = page.getByRole('button', { name: /^Start a workout/ });
+    await expect(start).toBeVisible();
+    await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+    await expect
+      .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+      .toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('home.png'), fullPage: true });
+    await context.setOffline(true);
+    await start.dblclick();
+    await expect(page.getByRole('heading', { name: 'Workout', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Train', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: '+ Add an exercise' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Finish workout' })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('workout.png'), fullPage: true });
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Workout', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Home', exact: true }).click();
+    await page.getByRole('link', { name: /In progress/ }).click();
+    await expect(page.getByRole('heading', { name: 'Workout', exact: true })).toBeVisible();
+    await context.setOffline(false);
+    await eventually(
+      () =>
+        sql<{ source: string }>('select source from public.workout_sessions where user_id = $1', [
+          user.id,
+        ]),
+      (rows) => rows.length === 1 && rows[0]?.source === 'manual',
+    );
+    const sessions = await sql<{ source: string }>(
+      'select source from public.workout_sessions where user_id = $1',
+      [user.id],
+    );
+    expect(sessions).toEqual([{ source: 'manual' }]);
+  });
+}
+
 /**
  * The hot path: a workout, logged set by set, arriving on the server.
  *
