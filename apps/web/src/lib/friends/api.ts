@@ -15,6 +15,9 @@ import {
   decodeChallengeAnswer,
   decodeChallengeSend,
   decodeChallenges,
+  decodeChallengeHistory,
+  type ChallengeFilter,
+  type ChallengeHistory,
   decodeDetail,
   decodeFriendProfile,
   decodeLeaderboard,
@@ -118,9 +121,29 @@ export async function touchLastActive(): Promise<void> {
   await rpc('touch_last_active');
 }
 
-/** Every challenge you are in that is waiting, running, or finished in the last week. */
+/** Pending, running, finalizing and unacknowledged finished challenges. */
 export async function fetchChallenges(): Promise<readonly Challenge[]> {
   return decodeChallenges(await rpc('my_challenges'));
+}
+
+export async function acknowledgeChallenge(id: string): Promise<void> {
+  await rpc('acknowledge_challenge', { challenge_id: id });
+  globalThis.dispatchEvent(new Event('challenge-results-changed'));
+}
+
+export async function claimChallengeResults(): Promise<readonly Challenge[]> {
+  const results = decodeChallenges(await rpc('claim_challenge_results'));
+  if (results.length > 0) globalThis.dispatchEvent(new Event('challenge-results-changed'));
+  return results;
+}
+
+export async function fetchChallengeHistory(
+  filter: ChallengeFilter = 'all',
+  offset = 0,
+): Promise<ChallengeHistory> {
+  return decodeChallengeHistory(
+    await rpc('challenge_history', { result_filter: filter, page_offset: offset }),
+  );
 }
 
 export async function sendChallenge(

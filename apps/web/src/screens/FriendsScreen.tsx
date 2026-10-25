@@ -86,6 +86,24 @@ export function FriendsScreen() {
   const cards = useChallengeCards(challenges.data, mine.data?.unitSystem ?? 'metric');
   const requests = (overview.data?.requests.length ?? 0) + (cards?.incoming.length ?? 0);
   const code = overview.data?.me?.code ?? null;
+  const target = params.get('challenge');
+  const reloadChallenges = challenges.reload;
+  const arrived = useRef<string | null>(null);
+  useEffect(() => {
+    if (target === null || cards === null || tab !== 'leaderboard' || arrived.current === target)
+      return;
+    const node = document.getElementById(`challenge-${target}`);
+    if (node) {
+      node.scrollIntoView({ block: 'center' });
+      node.focus({ preventScroll: true });
+      arrived.current = target;
+    }
+  }, [target, cards, tab]);
+  useEffect(() => {
+    const reload = () => reloadChallenges();
+    globalThis.addEventListener('challenge-results-changed', reload);
+    return () => globalThis.removeEventListener('challenge-results-changed', reload);
+  }, [reloadChallenges]);
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
@@ -132,9 +150,23 @@ export function FriendsScreen() {
             <FriendList overview={overview.data} mine={mine.data} />
           ) : tab === 'leaderboard' ? (
             <>
-              {overview.data.friends.length > 0 && cards !== null && cards.others.length > 0 && (
+              {cards !== null && cards.others.length > 0 && (
                 <ChallengesSection cards={cards.others} onChanged={challenges.reload} />
               )}
+              {target !== null &&
+                cards !== null &&
+                !cards.others.some((card) => card.id === target) && (
+                  <p role="status" className="text-sm text-secondary">
+                    This result is in your{' '}
+                    <Link
+                      to="/profile/challenges"
+                      className="inline-flex min-h-tap items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent"
+                    >
+                      Challenge history
+                    </Link>
+                    .
+                  </p>
+                )}
               <FriendsLeaderboard mine={mine.data} code={code}>
                 {/* With no challenges yet, where one starts — under the board
                     rather than above it, so the board comes first. */}

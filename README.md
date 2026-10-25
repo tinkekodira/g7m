@@ -51,6 +51,12 @@ What it does:
   your own workout, with your own weights. Friends are read live from the
   server, never synced, and sharing can be switched off
   ([ADR-0105](./DECISIONS.md#adr-0105--friends-read-live-from-postgres-never-through-sync)).
+  Challenge a friend for seven days. After a 24-hour window for offline
+  workouts to sync, an animated result popup opens on your next visit. Jump
+  straight to the result card; it stays until you tap **Got it**. Your private
+  **Profile → Challenge record** keeps wins, losses, draws and final scores,
+  including results against friends you later remove. See
+  [ADR-0156](./DECISIONS.md#adr-0156--challenge-results-are-fixed-acknowledged-and-kept-on-your-profile).
 - **Achievements.** 52 badges, from your first workout to a three-plate squat,
   a week of five workouts or a rowed 2K — and one secret. Past training counts,
   and a new one is celebrated with a banner the moment it is earned

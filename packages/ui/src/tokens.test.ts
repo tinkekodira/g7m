@@ -30,6 +30,16 @@ function parseRootTokens(source: string): Map<string, string> {
 
 const cssTokens = parseRootTokens(css);
 
+it('victory text clears AA body contrast in both themes', () => {
+  for (const tokens of [colorTokens, lightColorTokens]) {
+    for (const surface of ['bg-base', 'bg-surface', 'bg-elevated'] as const) {
+      expect(contrastRatio(tokens['text-victory'], tokens[surface])).toBeGreaterThanOrEqual(
+        WCAG.AA_BODY,
+      );
+    }
+  }
+});
+
 describe('tokens.css / tokens.ts parity', () => {
   it('defines every TypeScript colour token in CSS with the same value', () => {
     for (const [name, value] of Object.entries(colorTokens)) {

@@ -30,6 +30,7 @@ import {
   profileStats,
 } from './profile-view.js';
 import type { Goal } from '@g7m/db';
+import { ChallengeRecordLink } from './ChallengeHistoryScreen.js';
 
 /**
  * How a tile's second line is coloured.
@@ -254,6 +255,7 @@ export function ProfileScreen() {
       )}
 
       <AchievementsLink />
+      <ChallengeRecordLink />
 
       <RoutinesLink />
 

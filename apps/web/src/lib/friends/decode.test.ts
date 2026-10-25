@@ -3,6 +3,7 @@ import {
   decodeChallengeAnswer,
   decodeChallengeSend,
   decodeChallenges,
+  decodeChallengeHistory,
   decodeDetail,
   decodeFriendProfile,
   decodeOverview,
@@ -193,6 +194,46 @@ describe('decodeChallenges', () => {
       sharing: true,
     });
     expect(challenge?.workouts?.[0]).toMatchObject({ sets: 12, liftedKg: 4200.5 });
+  });
+
+  it('decodes frozen results and rejects malformed scores', () => {
+    const result = {
+      outcome: 'win',
+      mine: { amount: '400.5', score: 401, usual: 0 },
+      theirs: { amount: 300, score: 300, usual: 0 },
+    };
+    const data = {
+      challenges: [
+        { ...RUNNING, workouts: undefined, result, recovered: true, acknowledged: true },
+      ],
+      wins: '1',
+      losses: 0,
+      draws: 0,
+      has_more: false,
+    };
+    expect(decodeChallengeHistory(data)).toMatchObject({
+      wins: 1,
+      hasMore: false,
+      challenges: [
+        {
+          acknowledged: true,
+          recovered: true,
+          result: { outcome: 'win', mine: { amount: 400.5 } },
+        },
+      ],
+    });
+    for (const invalid of [-1, 'NaN', null]) {
+      expect(() =>
+        decodeChallenges({
+          challenges: [
+            { ...RUNNING, result: { ...result, mine: { ...result.mine, amount: invalid } } },
+          ],
+        }),
+      ).toThrow(FriendsError);
+    }
+    expect(() =>
+      decodeChallenges({ challenges: [{ ...RUNNING, result: { ...result, outcome: 'unknown' } }] }),
+    ).toThrow(FriendsError);
   });
 
   it('has no workouts for one still waiting, or a friend who stopped sharing', () => {

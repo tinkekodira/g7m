@@ -142,6 +142,7 @@ function AchievementBanner({
   return (
     <div
       role="status"
+      data-achievement-banner
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center px-3 pt-[calc(env(safe-area-inset-top)+0.5rem)]"
     >

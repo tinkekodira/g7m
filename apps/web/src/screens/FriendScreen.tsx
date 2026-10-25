@@ -167,7 +167,7 @@ function FriendPage({
             <ChallengeList cards={challenges} onChanged={onChallengesChanged} />
           )}
           {/* One at a time: a new one once the last is over. */}
-          {challenges.every((card) => card.phase === 'finished') && (
+          {challenges.every((card) => card.phase === 'finished' || card.phase === 'finalizing') && (
             <SendChallenge friendId={detail.userId} name={name} onSent={onChallengesChanged} />
           )}
         </>

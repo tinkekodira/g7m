@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
+import { Link } from 'react-router';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from './Avatar.js';
-import { ChevronRightIcon, DuelIcon } from './icons.js';
+import { ChevronRightIcon, DuelIcon, TrophyIcon } from './icons.js';
 import {
   answerChallenge,
   sendChallenge,
   withdrawChallenge,
   FriendsError,
+  acknowledgeChallenge,
 } from '../lib/friends/api.js';
 import {
   CHALLENGE_STAT_OPTIONS,
@@ -19,9 +21,8 @@ import { RANKING_OPTIONS } from '../screens/leaderboard-view.js';
 /**
  * One-to-one challenges (ADR-0110): the cards, and the form that sends one.
  *
- * Your side of every challenge is counted from this phone, as your row on the
- * leaderboard is, so a workout you have just finished counts before it has
- * uploaded.
+ * Your running score is counted on this phone, before uploads finish.
+ * Final results use the shared server snapshot (ADR-0156).
  */
 
 /**
@@ -31,9 +32,11 @@ import { RANKING_OPTIONS } from '../screens/leaderboard-view.js';
 export function ChallengeCard({
   card,
   onChanged,
+  history = false,
 }: {
   readonly card: ChallengeCardView;
   readonly onChanged: () => void;
+  readonly history?: boolean;
 }) {
   const titleId = useId();
   const [busy, setBusy] = useState(false);
@@ -63,25 +66,57 @@ export function ChallengeCard({
 
   return (
     <article
+      id={`challenge-${card.id}`}
+      tabIndex={-1}
       aria-labelledby={titleId}
-      className="rounded-sheet border border-subtle bg-surface p-4"
+      data-outcome={card.outcome ?? undefined}
+      className="challenge-card scroll-mt-6 rounded-sheet border border-subtle bg-surface p-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
     >
+      {card.phase === 'finished' && (
+        <div className="mb-4 flex items-center gap-3">
+          <TrophyIcon
+            aria-hidden
+            className={cx(
+              'size-9 shrink-0',
+              card.outcome === 'win' ? 'challenge-gold' : 'text-muted',
+            )}
+          />
+          <p
+            className={cx(
+              'min-w-0 text-2xl leading-tight font-bold break-words text-balance',
+              card.outcome === 'win' ? 'challenge-gold' : 'text-primary',
+            )}
+          >
+            {card.verdict}
+          </p>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
           <h3 id={titleId} className="truncate text-base font-semibold text-primary">
             {card.title}
           </h3>
-          <p className="truncate text-sm text-secondary">
+          <p className="text-sm text-secondary break-words">
             Against {card.name} · <span className="numeric">{card.when}</span>
           </p>
         </div>
       </div>
 
       {card.sides !== null && (
-        <dl className="mt-3 flex flex-col gap-1 border-t border-subtle/70 pt-3">
-          {card.sides.map((side) => (
-            <div key={side.name} className="flex items-baseline justify-between gap-3">
+        <dl
+          className={cx(
+            'mt-4 border-t border-subtle/70 pt-4',
+            card.phase === 'finished' ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-1',
+          )}
+        >
+          {card.sides.map((side, index) => (
+            <div
+              key={index}
+              className={
+                card.phase === 'finished' ? 'min-w-0' : 'flex items-baseline justify-between gap-3'
+              }
+            >
               <dt
                 className={cx(
                   'truncate text-sm',
@@ -92,8 +127,13 @@ export function ChallengeCard({
               </dt>
               <dd
                 className={cx(
-                  'numeric text-base font-semibold',
-                  side.leading ? 'text-accent' : 'text-primary',
+                  'numeric break-words font-bold',
+                  card.phase === 'finished' ? 'mt-1 text-3xl leading-tight' : 'text-base',
+                  side.leading
+                    ? card.outcome === 'win'
+                      ? 'challenge-gold'
+                      : 'challenge-leading'
+                    : 'text-primary',
                 )}
               >
                 {side.score}
@@ -103,7 +143,59 @@ export function ChallengeCard({
         </dl>
       )}
 
-      <p className="mt-3 text-base font-medium text-primary">{card.verdict}</p>
+      {card.phase !== 'finished' && (
+        <p className="mt-3 text-base font-medium text-primary">{card.verdict}</p>
+      )}
+      {card.phase === 'finalizing' && (
+        <p className="mt-1 text-sm text-secondary">
+          Allowing 24 hours for offline workouts to sync. Then the scores are final.
+        </p>
+      )}
+      {card.phase === 'finished' && (
+        <>
+          <p className="mt-3 text-sm text-muted">
+            {card.metric} ·{' '}
+            {card.endedAt?.toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            })}
+          </p>
+          {card.recovered && (
+            <p className="mt-1 text-xs text-muted">
+              Recovered result · based on available training
+            </p>
+          )}
+          {card.outcome === 'unavailable' && (
+            <p className="mt-1 text-sm text-secondary">
+              Training was unavailable when the scores locked. This result is excluded from your
+              record.
+            </p>
+          )}
+          {!history && (
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-subtle/70 pt-3">
+              <Link
+                to="/profile/challenges"
+                className="inline-flex min-h-tap items-center text-sm text-secondary underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                Challenge history
+              </Link>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  act(async () => {
+                    await acknowledgeChallenge(card.id);
+                    return null;
+                  });
+                }}
+              >
+                Got it
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       {card.phase === 'incoming' && (
         <div className="mt-3 grid grid-cols-2 gap-3">

@@ -67,6 +67,7 @@
      own: the rank number says the same. Darker in the light theme, where
      silver on white would vanish. */
   --medal-gold: #cfab35;
+  --text-victory: #edcb72; /* readable gold ink for final challenge results */
   --medal-silver: #b4b5b9;
   --medal-bronze: #c27a38;
 
@@ -148,6 +149,7 @@
   --badge-secret: #6b4aa5;
 
   --medal-gold: #9c7a14;
+  --text-victory: #765809;
   --medal-silver: #86878c;
   --medal-bronze: #a0612a;
 

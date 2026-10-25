@@ -45,6 +45,226 @@ async function openFriendsTab(page: Page, tab: 'Leaderboard' | RegExp): Promise<
   await page.getByRole('tab', { name: tab }).click();
 }
 
+async function completedChallenge(a: string, b: string, aCount = 6, bCount = 5) {
+  const date = new Date(Date.now() - 3 * 86_400_000);
+  for (let i = 0; i < aCount; i++) await trained(a, date);
+  for (let i = 0; i < bCount; i++) await trained(b, date);
+  const [row] = await sql<{ id: string }>(
+    `insert into public.friend_challenges
+    (challenger_id, opponent_id, stat, ranking, status, starts_at)
+    values ($1, $2, 'workouts', 'most', 'active', now() - interval '9 days') returning id`,
+    [a, b],
+  );
+  return row!.id;
+}
+
+test('a final result: popup, direct card, permanent profile history and explicit acknowledgment', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const me = await createUser('result-winner', { onboarded: true, displayName: 'Morgan' });
+  const friend = await createUser('result-runner-up', { onboarded: true, displayName: 'Riley' });
+  await befriend(me.id, friend.id);
+  const id = await completedChallenge(me.id, friend.id);
+  // The native dialog correctly makes the tab navigation inert, so sign in
+  // directly rather than waiting for the shared helper's navigation locator.
+  await page.goto('/');
+  await page.getByLabel('Email').fill(me.email);
+  await page.getByLabel('Password').fill(me.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const popup = page.getByRole('dialog', { name: 'You won', exact: true });
+  await expect(popup).toBeVisible();
+  await expect(popup.getByText('6', { exact: true })).toBeVisible();
+  await expect(popup.getByText('5', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('result-popup-phone-dark.png'),
+    animations: 'disabled',
+  });
+  await popup.getByRole('link', { name: 'View challenge' }).click();
+  await expect(page).toHaveURL(new RegExp(`tab=leaderboard&challenge=${id}`));
+  const card = page.getByRole('article', { name: 'Most workouts', exact: true });
+  await expect(card).toBeFocused();
+  await expect(card.getByText('You won', { exact: true })).toBeVisible();
+  await expect(card.getByText('6', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('result-card-phone-dark.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  await page.screenshot({
+    path: testInfo.outputPath('result-card-phone-light.png'),
+    fullPage: true,
+  });
+  await expect(card.getByText('6', { exact: true })).toHaveCSS('color', 'rgb(118, 88, 9)');
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: testInfo.outputPath('result-card-desktop-light.png'),
+    fullPage: true,
+  });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+  await page.screenshot({
+    path: testInfo.outputPath('result-card-desktop-dark.png'),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 412, height: 915 });
+  await page.reload();
+  await expect(card.getByRole('button', { name: 'Got it' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // A failed acknowledgment keeps the result in place and supports retry.
+  await page.route('**/rest/v1/rpc/acknowledge_challenge', (route) => route.abort());
+  await card.getByRole('button', { name: 'Got it' }).click();
+  await expect(card.getByRole('alert')).toBeVisible();
+  await page.unroute('**/rest/v1/rpc/acknowledge_challenge');
+  await card.getByRole('button', { name: 'Got it' }).click();
+  await expect(card).toHaveCount(0);
+  await expect(async () => {
+    const [row] = await sql<{ ack: string | null; other_ack: string | null }>(
+      'select challenger_ack_at as ack, opponent_ack_at as other_ack from public.friend_challenges where id = $1',
+      [id],
+    );
+    expect(row?.ack).not.toBeNull();
+    expect(row?.other_ack).toBeNull();
+  }).toPass();
+  await openTab(page, 'Profile');
+  await page.getByRole('link', { name: /Challenge record/ }).click();
+  await expect(page.getByRole('heading', { name: 'Challenge history' })).toBeVisible();
+  await expect(
+    page.getByRole('article', { name: 'Most workouts' }).getByText('You won', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('radio', { name: 'Losses', exact: true }).click();
+  await expect(page.getByText('No results here yet')).toBeVisible();
+  await page.getByRole('radio', { name: 'Wins', exact: true }).click();
+  await expect(page.getByRole('article', { name: 'Most workouts' })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('challenge-history-phone.png'),
+    fullPage: true,
+  });
+  await page.context().setOffline(true);
+  await expect(page.getByText('Connect to see your challenge history.')).toBeVisible();
+  await page.context().setOffline(false);
+});
+
+test('multiple results can be stepped through; Later and Escape preserve the cards', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const me = await createUser('result-multiple', { onboarded: true, displayName: 'Morgan' });
+  const friend = await createUser('result-multiple-friend', {
+    onboarded: true,
+    displayName: 'Riley',
+  });
+  await befriend(me.id, friend.id);
+  await signIn(page, me);
+  await completedChallenge(me.id, friend.id, 0, 0);
+  await completedChallenge(me.id, friend.id, 0, 0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.reload();
+  const popup = page.getByRole('dialog', { name: 'A draw', exact: true });
+  await expect(popup).toBeVisible();
+  await expect(popup.getByText('Result 1 of 2')).toBeVisible();
+  await expect(popup.locator('.challenge-result-reveal')).toHaveCSS('animation-name', 'none');
+  await popup.getByRole('button', { name: 'Next result' }).click();
+  await expect(popup.getByText('Result 2 of 2')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(popup).toHaveCount(0);
+  await openFriendsTab(page, 'Leaderboard');
+  await expect(page.getByRole('button', { name: 'Got it', exact: true })).toHaveCount(2);
+  // Another device has its own session but the server remembers popup delivery.
+  const secondContext = await browser.newContext();
+  const second = await secondContext.newPage();
+  await signIn(second, me);
+  await openFriendsTab(second, 'Leaderboard');
+  await expect(second.getByRole('dialog')).toHaveCount(0);
+  await expect(second.getByRole('button', { name: 'Got it', exact: true })).toHaveCount(2);
+  await secondContext.close();
+});
+
+test('a result finalizes before announcing a loss, and stays visible after removing the last friend', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  const me = await createUser('result-finalizing', { onboarded: true, displayName: 'Morgan' });
+  const friend = await createUser('result-finalizing-friend', {
+    onboarded: true,
+    displayName: 'RileyWithAnUnusuallyLongNameWithoutSpaces',
+  });
+  await befriend(me.id, friend.id);
+  await signIn(page, me);
+  await trained(friend.id, new Date(Date.now() - 3 * 86_400_000));
+  const [challenge] = await sql<{ id: string }>(
+    `insert into public.friend_challenges
+    (challenger_id, opponent_id, stat, ranking, status, starts_at)
+    values ($1, $2, 'workouts', 'most', 'active', now() - interval '180 hours') returning id`,
+    [me.id, friend.id],
+  );
+  await openFriendsTab(page, 'Leaderboard');
+  await expect(page.getByText('Finalizing result', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Got it' })).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await sql(
+    `update public.friend_challenges set starts_at = now() - interval '193 hours' where id = $1`,
+    [challenge!.id],
+  );
+  await sql('delete from public.friendships where requester_id = $1 and addressee_id = $2', [
+    me.id,
+    friend.id,
+  ]);
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.reload();
+  const popup = page.getByRole('dialog', {
+    name: 'RileyWithAnUnusuallyLongNameWithoutSpaces won',
+    exact: true,
+  });
+  await expect(popup).toBeVisible();
+  await expect
+    .poll(() => popup.evaluate((node) => node.scrollWidth <= node.clientWidth))
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('result-loss-phone-dark.png'),
+    animations: 'disabled',
+  });
+  await popup.getByRole('button', { name: 'Later' }).click();
+  const card = page.getByRole('article', { name: 'Most workouts', exact: true });
+  await expect(card.getByRole('button', { name: 'Got it' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('result-loss-card-phone.png'),
+    fullPage: true,
+  });
+});
+
+test('history pages retain their URL and start at the top', async ({ page }) => {
+  const me = await createUser('result-pages', { onboarded: true, displayName: 'Morgan' });
+  const friend = await createUser('result-pages-friend', { onboarded: true, displayName: 'Riley' });
+  await befriend(me.id, friend.id);
+  await signIn(page, me);
+  await sql(
+    `insert into public.friend_challenges
+    (challenger_id, opponent_id, stat, ranking, status, starts_at, challenger_popup_at)
+    select $1, $2, 'workouts', 'most', 'active', now() - n * interval '24 hours', now()
+    from generate_series(9, 29) n`,
+    [me.id, friend.id],
+  );
+  await openTab(page, 'Profile');
+  await page.getByRole('link', { name: /Challenge record/ }).click();
+  await expect(page.getByRole('article')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await page.reload();
+  await expect(page.getByRole('article')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Previous', exact: true }).click();
+  await expect(page.getByRole('article')).toHaveCount(20);
+});
+
 test('a challenge sent to you: accept it, fall behind, then go ahead', async ({ page }) => {
   test.setTimeout(120_000);
   const morgan = await createUser('challenge-morgan', { onboarded: true, displayName: 'Morgan' });
