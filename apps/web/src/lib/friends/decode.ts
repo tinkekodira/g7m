@@ -207,13 +207,10 @@ export interface ChallengeResult {
   readonly mine: SavedChallengeScore;
   readonly theirs: SavedChallengeScore;
 }
-export type ChallengeFilter = 'all' | 'win' | 'loss' | 'draw';
-export interface ChallengeHistory {
-  readonly challenges: readonly Challenge[];
+export interface ChallengeRecord {
   readonly wins: number;
   readonly losses: number;
   readonly draws: number;
-  readonly hasMore: boolean;
 }
 
 export const CHALLENGE_SEND_OUTCOMES = [
@@ -574,14 +571,19 @@ function decodeChallengeResult(value: unknown): ChallengeResult | null {
   };
 }
 
-export function decodeChallengeHistory(value: unknown): ChallengeHistory {
+export function decodeChallengeRecord(value: unknown): ChallengeRecord {
   const data = record(value);
+  const count = (value: unknown): number => {
+    const parsed = optionalNumber(value);
+    if (parsed === null || !Number.isSafeInteger(parsed) || parsed < 0) {
+      throw new Malformed('invalid challenge record total');
+    }
+    return parsed;
+  };
   return {
-    challenges: decodeChallenges(value),
-    wins: number(data['wins'], 0),
-    losses: number(data['losses'], 0),
-    draws: number(data['draws'], 0),
-    hasMore: data['has_more'] === true,
+    wins: count(data['wins']),
+    losses: count(data['losses']),
+    draws: count(data['draws']),
   };
 }
 

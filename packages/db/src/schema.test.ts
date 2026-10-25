@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { startHarness, type Harness } from './testing/pglite-harness.js';
+import { migrationFiles, startHarness, type Harness } from './testing/pglite-harness.js';
 
 /**
  * The schema, verified against a real Postgres.
@@ -51,6 +51,10 @@ const USER_TABLES = [
 const FRIEND_TABLES = ['friend_challenges', 'friend_profiles', 'friendships'];
 
 describe('migrations', () => {
+  it('uses a unique version for every migration so the linked database can deploy them', () => {
+    const versions = migrationFiles().map((file) => file.split('_')[0]);
+    expect(new Set(versions).size).toBe(versions.length);
+  });
   it('apply cleanly from empty', async () => {
     const { rows } = await h.db.query<{ table_name: string }>(
       `select table_name from information_schema.tables

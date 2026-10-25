@@ -1,3 +1,18 @@
+# Challenge record — missing migration and colliding versions
+
+The “Could not find the function public.challenge_history ... in the schema
+cache” screenshot came from a deployed app with an older database. On
+2026-10-25, `pnpm db:status` confirmed that workout recommendations, multiple
+training goals and challenge results were all still pending on the linked
+database. The challenge file also reused the multiple-goals version number.
+
+Rename the unapplied challenge migration to
+`20261025130000_challenge_results.sql`; the schema suite now guards against
+duplicate versions. Review `supabase db push --dry-run` before applying the
+pending migrations. This code change does not deploy the database. The compact
+profile record shows unavailable counts as dashes and retries automatically,
+without displaying backend details or inviting the user to open another screen.
+
 # Resolved — added-weight reload raced Save, and browser CI showed duplicate failures
 
 PR #192's added-weight scenario clicked Save and immediately reloaded. Under

@@ -3,7 +3,7 @@ import {
   decodeChallengeAnswer,
   decodeChallengeSend,
   decodeChallenges,
-  decodeChallengeHistory,
+  decodeChallengeRecord,
   decodeDetail,
   decodeFriendProfile,
   decodeOverview,
@@ -211,17 +211,14 @@ describe('decodeChallenges', () => {
       draws: 0,
       has_more: false,
     };
-    expect(decodeChallengeHistory(data)).toMatchObject({
-      wins: 1,
-      hasMore: false,
-      challenges: [
-        {
-          acknowledged: true,
-          recovered: true,
-          result: { outcome: 'win', mine: { amount: 400.5 } },
-        },
-      ],
-    });
+    expect(decodeChallengeRecord(data)).toEqual({ wins: 1, losses: 0, draws: 0 });
+    expect(decodeChallenges(data)).toMatchObject([
+      {
+        acknowledged: true,
+        recovered: true,
+        result: { outcome: 'win', mine: { amount: 400.5 } },
+      },
+    ]);
     for (const invalid of [-1, 'NaN', null]) {
       expect(() =>
         decodeChallenges({
@@ -245,6 +242,12 @@ describe('decodeChallenges', () => {
     });
     expect(waiting).toMatchObject({ status: 'pending', startsAt: null, workouts: null });
     expect(hidden).toMatchObject({ sharing: false, workouts: null });
+  });
+
+  it('does not turn missing or malformed record totals into a zero record', () => {
+    for (const wins of [undefined, null, -1, 1.5, 'NaN']) {
+      expect(() => decodeChallengeRecord({ wins, losses: 0, draws: 0 })).toThrow(FriendsError);
+    }
   });
 
   it('refuses a stat, ranking or outcome it does not know', () => {

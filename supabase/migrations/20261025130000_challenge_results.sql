@@ -1,4 +1,5 @@
 -- Durable challenge results, acknowledgment and private history. ADR-0156.
+-- Unique version: multiple_training_goals already uses 20261025120000.
 -- Snapshots advance with uploaded training only until starts_at + 8 elapsed
 -- days. No scheduler or app visit is needed at the cutoff. Reads thereafter
 -- finalize the already frozen snapshot, never today's mutable workout data.

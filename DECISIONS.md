@@ -9061,7 +9061,7 @@ flood. More recent results wait to be acknowledged. Rows already deleted by
 friend or account removal cannot be recovered. Sharing unavailable at cutoff
 makes a result unavailable; re-enabling it later cannot rewrite the record.
 
-**Deployment:** apply `20261025120000_challenge_results.sql` before releasing
+**Deployment:** apply `20261025130000_challenge_results.sql` before releasing
 the web app. There is no PowerSync schema, publication or sync-rule change.
 The existing challenge RPC remains callable; new clients decode missing result
 fields conservatively and surface history errors with Retry. No production
@@ -9075,3 +9075,42 @@ conversion and malformed replies. Browser tests cover the popup-to-card link,
 reduced motion, multiple results, repeat visits and devices, acknowledgment
 failure/retry, profile history, filters and offline history. Result layouts are
 inspected on phones and desktop in both themes.
+
+## ADR-0157 — Challenge record is a compact, static profile summary
+
+**Date:** 2026-10-25
+
+Milan asked to replace ADR-0156's clickable trophy panel and separate history
+screen with just the lifetime record. Below Achievements, a smaller panel has
+a quiet heading and one row: green “x Wins”, red “x Loses” (the requested copy),
+and grey “x Draws”. It uses the existing success, readable destructive-text and
+muted tokens, supports both themes and wraps if larger text requires it. There
+is no icon, chevron, button or link in the panel. The old history URL redirects
+to Profile; result cards no longer link to a history screen.
+
+The existing authenticated `challenge_history` RPC still supplies overall
+totals from the durable snapshots. The client decodes only its three counts;
+it no longer renders a result list, filters or pagination. This keeps recorded
+outcomes intact without another server API or schema change. The celebration
+popup and explicit Got it dismissal remain as in ADR-0156.
+
+Loading, a failed read or an offline first visit shows dashes rather than a
+false zero record. Read counts remain visible during a failed refresh. Errors
+are announced accessibly without exposing SQL or schema-cache messages in the
+panel; the client retries on focus, reconnect, visibility and result changes,
+plus every 30 seconds after a failure. No retry control makes the panel
+interactive.
+
+The screenshot also exposed a deployment gap: the linked database had not
+received the challenge migration. Its original version collided with
+`20261025120000_multiple_training_goals.sql`, something the PGlite harness had
+not detected because it applies filenames rather than Supabase versions. The
+unapplied challenge file is renamed to `20261025130000_challenge_results.sql`,
+and schema tests now require unique migration versions. All pending migrations
+must be reviewed and applied before the production record can return counts;
+a UI fallback cannot reconstruct permanent results from the old API.
+
+Validation covers non-interactive profile totals, a missing-function response
+followed by automatic recovery, lifetime counts beyond the old 20-row page,
+legacy URL redirection, phone/desktop rendering, both themes and unique
+migration versions. Existing result-card and popup browser checks remain.

@@ -157,14 +157,7 @@ export function FriendsScreen() {
                 cards !== null &&
                 !cards.others.some((card) => card.id === target) && (
                   <p role="status" className="text-sm text-secondary">
-                    This result is in your{' '}
-                    <Link
-                      to="/profile/challenges"
-                      className="inline-flex min-h-tap items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-accent"
-                    >
-                      Challenge history
-                    </Link>
-                    .
+                    This result has already been dismissed.
                   </p>
                 )}
               <FriendsLeaderboard mine={mine.data} code={code}>

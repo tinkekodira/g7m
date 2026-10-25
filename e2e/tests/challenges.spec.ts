@@ -58,7 +58,7 @@ async function completedChallenge(a: string, b: string, aCount = 6, bCount = 5) 
   return row!.id;
 }
 
-test('a final result: popup, direct card, permanent profile history and explicit acknowledgment', async ({
+test('a final result: popup, direct card, profile record and explicit acknowledgment', async ({
   page,
 }, testInfo) => {
   test.setTimeout(120_000);
@@ -130,21 +130,18 @@ test('a final result: popup, direct card, permanent profile history and explicit
     expect(row?.other_ack).toBeNull();
   }).toPass();
   await openTab(page, 'Profile');
-  await page.getByRole('link', { name: /Challenge record/ }).click();
-  await expect(page.getByRole('heading', { name: 'Challenge history' })).toBeVisible();
-  await expect(
-    page.getByRole('article', { name: 'Most workouts' }).getByText('You won', { exact: true }),
-  ).toBeVisible();
-  await page.getByRole('radio', { name: 'Losses', exact: true }).click();
-  await expect(page.getByText('No results here yet')).toBeVisible();
-  await page.getByRole('radio', { name: 'Wins', exact: true }).click();
-  await expect(page.getByRole('article', { name: 'Most workouts' })).toBeVisible();
+  const record = page.getByRole('region', { name: 'Challenge record', exact: true });
+  await expect(record.getByText('1 Wins', { exact: true })).toBeVisible();
+  await expect(record.getByText('0 Loses', { exact: true })).toBeVisible();
+  await expect(record.getByText('0 Draws', { exact: true })).toBeVisible();
+  await expect(record.getByRole('link')).toHaveCount(0);
+  await expect(record.getByRole('button')).toHaveCount(0);
   await page.screenshot({
-    path: testInfo.outputPath('challenge-history-phone.png'),
+    path: testInfo.outputPath('challenge-record-profile.png'),
     fullPage: true,
   });
   await page.context().setOffline(true);
-  await expect(page.getByText('Connect to see your challenge history.')).toBeVisible();
+  await expect(record.getByText('1 Wins', { exact: true })).toBeVisible();
   await page.context().setOffline(false);
 });
 
@@ -240,7 +237,9 @@ test('a result finalizes before announcing a loss, and stays visible after remov
   });
 });
 
-test('history pages retain their URL and start at the top', async ({ page }) => {
+test('the profile record is compact, non-interactive and recovers from a missing function', async ({
+  page,
+}, testInfo) => {
   const me = await createUser('result-pages', { onboarded: true, displayName: 'Morgan' });
   const friend = await createUser('result-pages-friend', { onboarded: true, displayName: 'Riley' });
   await befriend(me.id, friend.id);
@@ -252,17 +251,53 @@ test('history pages retain their URL and start at the top', async ({ page }) => 
     from generate_series(9, 29) n`,
     [me.id, friend.id],
   );
+  await page.route('**/rest/v1/rpc/challenge_history', (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        code: 'PGRST202',
+        message: 'Could not find the function public.challenge_history in the schema cache',
+      }),
+    }),
+  );
   await openTab(page, 'Profile');
-  await page.getByRole('link', { name: /Challenge record/ }).click();
-  await expect(page.getByRole('article')).toHaveCount(20);
-  await page.getByRole('button', { name: 'Next', exact: true }).click();
-  await expect(page).toHaveURL(/page=2/);
-  await expect(page.getByRole('article')).toHaveCount(1);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
-  await page.reload();
-  await expect(page.getByRole('article')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Previous', exact: true }).click();
-  await expect(page.getByRole('article')).toHaveCount(20);
+  const record = page.getByRole('region', { name: 'Challenge record', exact: true });
+  await expect(record.getByText('— Wins', { exact: true })).toBeVisible();
+  await expect(record.getByText('— Loses', { exact: true })).toBeVisible();
+  await expect(record.getByText('— Draws', { exact: true })).toBeVisible();
+  await expect(record.getByText(/unavailable/i)).toBeAttached();
+  await expect(page.getByText(/schema cache/)).toHaveCount(0);
+  await expect(record.getByRole('link')).toHaveCount(0);
+  await expect(record.getByRole('button')).toHaveCount(0);
+  await page.unroute('**/rest/v1/rpc/challenge_history');
+  await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
+  await expect(record.getByText('21 Draws', { exact: true })).toBeVisible();
+  await expect(record.getByText('0 Wins', { exact: true })).toHaveCSS(
+    'color',
+    'rgb(111, 168, 111)',
+  );
+  await expect(record.getByText('0 Loses', { exact: true })).toHaveCSS(
+    'color',
+    'rgb(248, 113, 113)',
+  );
+  await expect(record.getByText('21 Draws', { exact: true })).toHaveCSS(
+    'color',
+    'rgb(153, 151, 143)',
+  );
+  await page.setViewportSize({ width: 360, height: 800 });
+  await expect.poll(async () => (await record.boundingBox())!.height).toBeLessThan(90);
+  await record.screenshot({ path: testInfo.outputPath('record-phone-dark.png') });
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
+  await record.screenshot({ path: testInfo.outputPath('record-phone-light.png') });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await record.screenshot({ path: testInfo.outputPath('record-desktop-light.png') });
+  await record.click();
+  await expect(page).toHaveURL(/#\/profile$/);
+  await expect(record.locator('svg')).toHaveCount(0);
+  await page.goto('/#/profile/challenges?result=draw&page=2');
+  await expect(page).toHaveURL(/#\/profile$/);
+  await expect(page.getByRole('heading', { name: 'Challenge history' })).toHaveCount(0);
 });
 
 test('a challenge sent to you: accept it, fall behind, then go ahead', async ({ page }) => {
