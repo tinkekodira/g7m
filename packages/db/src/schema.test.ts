@@ -329,6 +329,26 @@ describe('constraints that protect the domain', () => {
   });
 });
 
+describe('multiple training goals', () => {
+  it('accepts multiple choices and legacy rows, and rejects invalid selections', async () => {
+    const user = await h.createUser('multi-goal@example.test');
+    for (const selected of [null, '["lose_fat","build_muscle","get_stronger"]']) {
+      await h.db.query(
+        `insert into public.training_goals (user_id, goal, selected_goals, days_per_week) values ($1, 'recomp', $2, 3)`,
+        [user, selected],
+      );
+    }
+    for (const selected of ['[]', '["unknown"]', '{}', '[null]', 'not json']) {
+      await expect(
+        h.db.query(
+          `insert into public.training_goals (user_id, goal, selected_goals, days_per_week) values ($1, 'recomp', $2, 3)`,
+          [user, selected],
+        ),
+      ).rejects.toThrow();
+    }
+  });
+});
+
 describe('session sets', () => {
   it('requires a completion timestamp exactly when the set is completed', async () => {
     const user = await h.createUser('helen@example.test');

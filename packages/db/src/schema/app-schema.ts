@@ -369,6 +369,7 @@ const trainingGoals = new Table(
   {
     user_id: column.text,
     goal: column.text,
+    selected_goals: column.text,
     days_per_week: column.integer,
     /** When the goal was chosen, which may be backdated to when it began. */
     started_at: column.text,

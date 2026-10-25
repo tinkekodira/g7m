@@ -7,7 +7,23 @@ import {
   TRAINING_GOALS,
   suggestGoal,
   goalChangedAt,
+  trainingFocus,
 } from './goals.js';
+
+describe('combined training goals', () => {
+  it('uses a balanced focus when fat loss and muscle gain are both selected', () => {
+    expect(trainingFocus(['lose_fat', 'build_muscle'])).toBe('recomp');
+    expect(trainingFocus(['get_stronger', 'build_muscle', 'lose_fat'])).toBe('recomp');
+  });
+
+  it('preserves every single goal and lets strength accompany a body composition goal', () => {
+    for (const goal of TRAINING_GOALS) expect(trainingFocus([goal])).toBe(goal);
+    expect(trainingFocus(['get_stronger', 'build_muscle'])).toBe('build_muscle');
+    expect(trainingFocus(['get_stronger', 'lose_fat'])).toBe('lose_fat');
+    expect(trainingFocus(['recomp', 'get_stronger'])).toBe('recomp');
+    expect(() => trainingFocus([])).toThrow(/at least one/);
+  });
+});
 
 function trend(over: Partial<WeightTrend> = {}): WeightTrend {
   return {

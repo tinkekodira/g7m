@@ -26,6 +26,27 @@ afterEach(() => {
 });
 
 describe('set', () => {
+  it('round-trips every selection and keeps a compatible focus for the planner', async () => {
+    const saved = await goals.set({
+      goal: 'get_stronger',
+      selectedGoals: ['get_stronger', 'build_muscle', 'lose_fat', 'build_muscle'],
+    });
+    expect(saved.goal).toBe('recomp');
+    expect(saved.selectedGoals).toEqual(['lose_fat', 'build_muscle', 'get_stronger']);
+    expect(await goals.current()).toEqual(saved);
+    await goals.correct(saved.id, { daysPerWeek: 4 });
+    expect((await goals.current())?.selectedGoals).toEqual(saved.selectedGoals);
+  });
+
+  it('refuses empty and unknown selections before writing anything', async () => {
+    await expect(goals.set({ goal: 'lose_fat', selectedGoals: [] })).rejects.toThrow(
+      /at least one/,
+    );
+    await expect(
+      goals.set({ goal: 'lose_fat', selectedGoals: ['unknown' as 'lose_fat'] }),
+    ).rejects.toThrow(/not a training goal/i);
+    expect(await goals.history()).toEqual([]);
+  });
   it('records the goal and how often they can train', async () => {
     const goal = await goals.set({ goal: 'lose_fat', daysPerWeek: 4 });
     expect(goal.goal).toBe('lose_fat');
@@ -91,6 +112,25 @@ describe('set', () => {
 });
 
 describe('current', () => {
+  it('reads legacy decisions as a single selection', async () => {
+    await db.seed('training_goals', {
+      id: 'legacy',
+      user_id: USER,
+      goal: 'get_stronger',
+      started_at: clock.toISOString(),
+    });
+    expect((await goals.current())?.selectedGoals).toEqual(['get_stronger']);
+  });
+
+  it('shows an existing recomp decision as both independent choices', async () => {
+    await db.seed('training_goals', {
+      id: 'legacy-recomp',
+      user_id: USER,
+      goal: 'recomp',
+      started_at: clock.toISOString(),
+    });
+    expect((await goals.current())?.selectedGoals).toEqual(['lose_fat', 'build_muscle']);
+  });
   it('is null before a goal has ever been chosen', async () => {
     expect(await goals.current()).toBeNull();
   });
@@ -124,6 +164,19 @@ describe('history', () => {
 });
 
 describe('correct', () => {
+  it('updates selections and focus together, and clears old selections for a single-goal correction', async () => {
+    const goal = await goals.set({ goal: 'lose_fat' });
+    await goals.correct(goal.id, { selectedGoals: ['lose_fat', 'build_muscle'] });
+    expect(await goals.current()).toMatchObject({
+      goal: 'recomp',
+      selectedGoals: ['lose_fat', 'build_muscle'],
+    });
+    await goals.correct(goal.id, { goal: 'get_stronger' });
+    expect(await goals.current()).toMatchObject({
+      goal: 'get_stronger',
+      selectedGoals: ['get_stronger'],
+    });
+  });
   it('fixes a decision in place without appending', async () => {
     const goal = await goals.set({ goal: 'lose_fat', daysPerWeek: 2 });
     await goals.correct(goal.id, { daysPerWeek: 4 });

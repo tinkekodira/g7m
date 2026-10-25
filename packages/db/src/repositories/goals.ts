@@ -15,6 +15,7 @@ import {
   MAX_DAYS_PER_WEEK,
   MIN_DAYS_PER_WEEK,
   TRAINING_GOALS,
+  trainingFocus,
   type TrainingGoal,
 } from '@g7m/core';
 import {
@@ -40,6 +41,7 @@ export type { TrainingGoal };
 export interface Goal {
   readonly id: string;
   readonly goal: TrainingGoal;
+  readonly selectedGoals: readonly TrainingGoal[];
   readonly daysPerWeek: number;
   /** When this goal began, which may be earlier than when the row was written. */
   readonly startedAt: Date;
@@ -48,6 +50,7 @@ export interface Goal {
 
 export interface GoalInput {
   readonly goal: TrainingGoal;
+  readonly selectedGoals?: readonly TrainingGoal[];
   readonly daysPerWeek?: number;
   readonly note?: string | null;
   /** Defaults to now. Given when backdating a goal to when it actually began. */
@@ -55,11 +58,21 @@ export interface GoalInput {
 }
 
 function toGoal(row: RawRow): Goal {
+  const goal = readEnum(row, 'goal', TRAINING_GOALS, 'lose_fat');
+  let selectedGoals: readonly TrainingGoal[] = normaliseGoals([goal]);
+  try {
+    const parsed: unknown = JSON.parse(readOptionalString(row, 'selected_goals') ?? 'null');
+    if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(isTrainingGoal))
+      selectedGoals = normaliseGoals(parsed);
+  } catch {
+    // Legacy or malformed data still has its original training focus.
+  }
   return {
     id: readString(row, 'id', ''),
     // `lose_fat` is the fallback only in the sense that `readEnum` needs one;
     // the column has a CHECK, so a row that hits it came from a newer schema.
-    goal: readEnum(row, 'goal', TRAINING_GOALS, 'lose_fat'),
+    goal,
+    selectedGoals,
     daysPerWeek: readNumber(row, 'days_per_week', DEFAULT_DAYS_PER_WEEK),
     startedAt: readRequiredDate(row, 'started_at', new Date(0)),
     note: readOptionalString(row, 'note'),
@@ -86,6 +99,9 @@ export class GoalRepository {
       throw new Error(`Not a training goal: ${String(input.goal)}`);
     }
 
+    const selectedGoals = normaliseGoals(input.selectedGoals ?? [input.goal]);
+    const goal = trainingFocus(selectedGoals);
+
     const id = newId();
     const at = toTimestamp(now());
     const startedAt = input.startedAt ?? now();
@@ -94,12 +110,13 @@ export class GoalRepository {
 
     await this.db.execute(
       `INSERT INTO training_goals
-         (id, user_id, goal, days_per_week, started_at, note, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, user_id, goal, selected_goals, days_per_week, started_at, note, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         userId,
-        input.goal,
+        goal,
+        JSON.stringify(selectedGoals),
         daysPerWeek,
         toTimestamp(startedAt),
         note === '' ? null : note,
@@ -108,7 +125,7 @@ export class GoalRepository {
       ],
     );
 
-    return { id, goal: input.goal, daysPerWeek, startedAt, note: note === '' ? null : note };
+    return { id, goal, selectedGoals, daysPerWeek, startedAt, note: note === '' ? null : note };
   }
 
   /** The goal in force, or null before one has ever been chosen. */
@@ -151,11 +168,15 @@ export class GoalRepository {
       parameters.push(value);
     };
 
-    if (input.goal !== undefined) {
-      if (!TRAINING_GOALS.includes(input.goal)) {
+    if (input.goal !== undefined || input.selectedGoals !== undefined) {
+      if (input.goal !== undefined && !TRAINING_GOALS.includes(input.goal)) {
         throw new Error(`Not a training goal: ${String(input.goal)}`);
       }
-      set('goal', input.goal);
+      const selected = normaliseGoals(
+        input.selectedGoals ?? (input.goal === undefined ? [] : [input.goal]),
+      );
+      set('goal', trainingFocus(selected));
+      set('selected_goals', JSON.stringify(selected));
     }
     if (input.daysPerWeek !== undefined) set('days_per_week', clampDays(input.daysPerWeek));
     if (input.startedAt !== undefined) set('started_at', toTimestamp(input.startedAt));
@@ -179,6 +200,18 @@ export class GoalRepository {
     const { userId } = resolveContext(this.context);
     await this.db.execute('DELETE FROM training_goals WHERE id = ? AND user_id = ?', [id, userId]);
   }
+}
+
+function isTrainingGoal(value: unknown): value is TrainingGoal {
+  return typeof value === 'string' && TRAINING_GOALS.includes(value as TrainingGoal);
+}
+
+function normaliseGoals(values: readonly TrainingGoal[]): TrainingGoal[] {
+  if (values.length === 0) throw new Error('Choose at least one training goal.');
+  if (!values.every(isTrainingGoal)) throw new Error('Not a training goal.');
+  // “Both at once” becomes the two independent checkboxes, including for old accounts.
+  const expanded = values.includes('recomp') ? [...values, 'lose_fat', 'build_muscle'] : values;
+  return TRAINING_GOALS.filter((goal) => goal !== 'recomp' && expanded.includes(goal));
 }
 
 /**

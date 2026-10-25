@@ -3,21 +3,20 @@ import { useLocation } from 'react-router';
 import {
   DEFAULT_DAYS_PER_WEEK,
   GOAL_DESCRIPTIONS,
-  GOAL_SUMMARIES,
   goalExpectation,
   GOAL_LABELS,
   MAX_DAYS_PER_WEEK,
   MIN_DAYS_PER_WEEK,
-  TRAINING_GOALS,
+  trainingFocus,
   daysBetween,
   startOfDay,
   suggestGoal,
   weightTrend,
-  type Sex,
   type TrainingGoal,
 } from '@g7m/core';
 import type { BodyMetric, Goal } from '@g7m/db';
 import { Button, Stepper } from '@g7m/ui';
+import { TrainingGoalChoices } from '../components/TrainingGoalChoices.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -26,7 +25,7 @@ import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
  *
  * The second half of what ADR-0032 said the generator needs. The screen's one
  * job is to capture a decision, and it goes out of its way not to make that
- * decision on the user's behalf: the four goals are presented with what each
+ * decision on the user's behalf: the goals are presented with what each
  * one does to the training and what is realistic to expect, and the suggestion
  * — when there is one at all — is drawn from what their weight has already
  * been doing rather than from any opinion about their body. ADR-0035.
@@ -53,9 +52,13 @@ export function GoalScreen() {
     r.bodyMetrics.between({ from }),
   );
 
-  const { write, busy } = useWrite();
+  const { write, busy, error } = useWrite();
 
   const current = goal.data ?? null;
+  const [choices, setChoices] = useState<TrainingGoal[] | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const selected = choices ?? current?.selectedGoals ?? [];
+  const focus = selected.length === 0 ? null : trainingFocus(selected);
   const [days, setDays] = useState(DEFAULT_DAYS_PER_WEEK);
 
   // Seeded from the stored goal once it arrives, not on every render — the
@@ -81,9 +84,22 @@ export function GoalScreen() {
         })
       : null;
 
-  async function choose(next: TrainingGoal): Promise<void> {
-    if (current?.goal === next) return;
-    await write((r) => r.goals.set({ goal: next, daysPerWeek: days }));
+  async function choose(): Promise<void> {
+    setProblem(null);
+    if (selected.length === 0) {
+      setProblem('Choose at least one training goal.');
+      return;
+    }
+    if (
+      current !== null &&
+      selected.length === current.selectedGoals.length &&
+      selected.every((value) => current.selectedGoals.includes(value))
+    )
+      return;
+    const saved = await write((r) =>
+      r.goals.set({ goal: trainingFocus(selected), selectedGoals: selected, daysPerWeek: days }),
+    );
+    if (saved !== null) setChoices(null);
   }
 
   /**
@@ -158,22 +174,27 @@ export function GoalScreen() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-primary">
-          {current === null ? 'Pick one' : 'Change it'}
+          {current === null ? 'Choose your goals' : 'Change your goals'}
         </h2>
-        {TRAINING_GOALS.map((option, index) => (
-          <GoalCard
-            key={option}
-            goal={option}
-            index={index}
-            selected={current?.goal === option}
-            suggested={suggestion?.goal === option}
-            busy={busy}
-            sex={profile.data?.sex ?? null}
-            onChoose={() => {
-              void choose(option);
-            }}
-          />
-        ))}
+        <TrainingGoalChoices selected={selected} disabled={busy} onChange={setChoices} />
+        {focus !== null && (
+          <p className="text-sm text-secondary">
+            {GOAL_DESCRIPTIONS[focus]} {goalExpectation(focus, profile.data?.sex ?? null)}
+          </p>
+        )}
+        {(problem ?? error) !== null && (
+          <p role="alert" className="text-sm text-destructive">
+            {problem ?? error}
+          </p>
+        )}
+        <Button
+          disabled={busy}
+          onClick={() => {
+            void choose();
+          }}
+        >
+          {busy ? 'Saving…' : 'Save goals'}
+        </Button>
       </section>
 
       {past.data !== null && past.data.length > 1 && <PastGoals goals={past.data} />}
@@ -189,82 +210,14 @@ function CurrentGoal({ goal, now }: { readonly goal: Goal; readonly now: Date })
   return (
     <section className="rise rounded-card bg-accent px-4 py-3 text-on-accent">
       <p className="text-xs uppercase opacity-80">Training for</p>
-      <p className="text-xl font-semibold">{GOAL_LABELS[goal.goal]}</p>
+      <p className="text-xl font-semibold">
+        {goal.selectedGoals.map((value) => GOAL_LABELS[value]).join(', ')}
+      </p>
       <p className="mt-1 text-sm opacity-90">
         {goal.daysPerWeek} {goal.daysPerWeek === 1 ? 'day' : 'days'} a week ·{' '}
         {describeRun(goal.startedAt, now)}
       </p>
     </section>
-  );
-}
-
-/**
- * One goal, as a headline until it is the one being considered.
- *
- * Four cards each carrying a paragraph and a pace range was a wall of text —
- * everything on it true, none of it read. So the card is a line, and the
- * detail arrives on the card that is chosen or suggested, which is the only
- * one anybody wants it from.
- */
-function GoalCard({
-  goal,
-  index,
-  selected,
-  suggested,
-  busy,
-  sex,
-  onChoose,
-}: {
-  readonly goal: TrainingGoal;
-  /** Position in the list, for the stagger. */
-  readonly index: number;
-  readonly selected: boolean;
-  readonly suggested: boolean;
-  readonly busy: boolean;
-  /** Changes the pace quoted for building muscle, and nothing else. */
-  readonly sex: Sex | null;
-  readonly onChoose: () => void;
-}) {
-  // Detail on the two cards it is worth reading on: the one already chosen,
-  // and the one being put forward.
-  const expanded = selected || suggested;
-
-  return (
-    <article
-      className={`rise rounded-card p-4 ${
-        selected ? 'border border-accent bg-elevated' : 'border border-subtle bg-surface'
-      }`}
-      // Dealt out rather than dumped. Flattened to nothing by the
-      // reduced-motion block in tokens.css.
-      style={{ animationDelay: `${String(60 + index * 45)}ms` }}
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-base font-semibold text-primary">{GOAL_LABELS[goal]}</h3>
-        {suggested && !selected && <span className="shrink-0 text-xs text-accent">Suggested</span>}
-      </div>
-
-      <p className="mt-1 text-sm text-secondary">{GOAL_SUMMARIES[goal]}</p>
-
-      {expanded && (
-        <>
-          <p className="mt-2 text-sm text-secondary">{GOAL_DESCRIPTIONS[goal]}</p>
-          {/* The honest pace, before they start, so a slow week is not a
-              failure. Shown here rather than on all four, where it was four
-              paces nobody had asked for yet. */}
-          <p className="mt-2 text-sm text-muted">{goalExpectation(goal, sex)}</p>
-        </>
-      )}
-
-      <div className="mt-3">
-        <Button
-          variant={selected ? 'secondary' : 'primary'}
-          disabled={busy || selected}
-          onClick={onChoose}
-        >
-          {selected ? 'Current goal' : `Train for this`}
-        </Button>
-      </div>
-    </article>
   );
 }
 
@@ -278,7 +231,9 @@ function PastGoals({ goals }: { readonly goals: readonly Goal[] }) {
             key={goal.id}
             className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
           >
-            <span className="text-sm text-primary">{GOAL_LABELS[goal.goal]}</span>
+            <span className="text-sm text-primary">
+              {goal.selectedGoals.map((value) => GOAL_LABELS[value]).join(', ')}
+            </span>
             {/* How long it ran, not when it started. The list is newest first,
                 so what replaced this one is the entry above it — and "eleven
                 weeks" is the part worth knowing about a goal you abandoned. */}

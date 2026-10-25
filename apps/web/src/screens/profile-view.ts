@@ -220,6 +220,7 @@ export interface GoalCardLine {
 export function goalCardLine(
   goal: {
     readonly goal: TrainingGoal;
+    readonly selectedGoals?: readonly TrainingGoal[];
     readonly daysPerWeek: number;
     readonly startedAt: Date;
   },
@@ -231,5 +232,8 @@ export function goalCardLine(
     goal.startedAt.getFullYear() === now.getFullYear()
       ? ''
       : ` ${String(goal.startedAt.getFullYear())}`;
-  return { title: GOAL_LABELS[goal.goal], detail: `${days} · since ${date}${year}` };
+  return {
+    title: (goal.selectedGoals ?? [goal.goal]).map((value) => GOAL_LABELS[value]).join(', '),
+    detail: `${days} · since ${date}${year}`,
+  };
 }

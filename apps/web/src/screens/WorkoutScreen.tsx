@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Button, Stepper, TextField } from '@g7m/ui';
+import { Button, SegmentedControl, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
   afterTick,
@@ -1708,6 +1708,24 @@ function SetRow({
             )}
           </div>
 
+          {canAddWeight(loadType) && (
+            <SegmentedControl
+              label={`${title} load`}
+              variant="quiet"
+              className="mb-3"
+              options={[
+                { value: 'bodyweight', label: 'Bodyweight' },
+                { value: 'bodyweight_plus', label: 'Added weight' },
+              ]}
+              value={loadType}
+              disabled={busy}
+              onChange={(next) => {
+                setLoadType(next);
+                if (next === 'bodyweight') setWeight(0);
+              }}
+            />
+          )}
+
           {/*
         Two steppers and a tick, and on a phone they do not fit in a row.
 
@@ -1770,25 +1788,6 @@ function SetRow({
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-x-4">
-            {/* On its own side of the row: it changes what is being logged,
-              where the two on the right save it or throw it away. */}
-            {canAddWeight(loadType) && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  if (loadType === 'bodyweight') {
-                    setLoadType('bodyweight_plus');
-                    return;
-                  }
-                  setLoadType('bodyweight');
-                  setWeight(0);
-                }}
-                className="text-xs font-medium text-secondary underline-offset-4 hover:underline"
-              >
-                {loadType === 'bodyweight' ? '+ Add weight' : 'Bodyweight only'}
-              </button>
-            )}
             <span className="flex-1" />
             {/* Both clear the tap target now. They were the smallest things on
               the screen and one of them destroys a set. */}

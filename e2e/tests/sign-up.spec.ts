@@ -30,7 +30,7 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'Your sex' })).toBeVisible();
-  await page.getByRole('button', { name: 'Female' }).click();
+  await page.getByRole('radio', { name: 'Female' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'How tall are you?' })).toBeVisible();
@@ -42,14 +42,14 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'How active is your week?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Moderately active' }).click();
+  await page.getByRole('radio', { name: /Moderately active/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'Where are you from?' })).toBeVisible();
   await page.getByRole('button', { name: 'Skip' }).click();
 
   await expect(page.getByRole('heading', { name: 'What are you training for?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Get stronger' }).click();
+  await page.getByRole('checkbox', { name: /Get stronger/ }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'Who plans your workouts?' })).toBeVisible();

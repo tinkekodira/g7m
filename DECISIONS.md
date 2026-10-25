@@ -8922,3 +8922,44 @@ before the runner kills the job. Both shards upload separate reports even on
 success, so timings remain inspectable. An aggregate retains the protected
 `Browser tests (Playwright)` check name and succeeds only if both shards pass;
 failure, cancellation or skipping cannot produce a green required check.
+
+## ADR-0154 — Signup uses independent goals and bodyweight load is explicit
+
+**Status:** accepted · **Date:** 2026-10-25
+
+All nine signup questions share a narrow, left-aligned layout, an accessible
+progress bar, full-width native choice rows and a bottom action area. Existing
+tokens, typography, unit controls and the country picker remain in use. Saved
+answers populate real fields when revisiting or resuming a question. Enter
+submits the form, navigation focuses its heading, and validation focuses a
+control. Failed local writes keep the user on the question.
+
+Training goals are independent checkboxes: lose fat, build muscle and get
+stronger. Selecting fat loss and muscle gain replaces the redundant “Both at
+once” option; existing recomp decisions expand into those two selections.
+`training_goals.selected_goals` stores a validated JSON array as text, keeping
+SQLite, uploads, exports and PowerSync in the same representation. Legacy null
+rows retain their original goal. The repository validates, deduplicates and
+orders selections before writing, and changing days preserves them.
+
+The existing `goal` column remains the planner/review focus: combined fat loss
+and muscle gain use recomp, otherwise the body composition goal takes priority
+over strength. Strength alone keeps its strength prescription. The picker states
+the resulting focus when multiple goals are selected; every selection remains
+visible and editable on the goal screen and profile. This keeps existing
+programming, dated goal history and older clients compatible.
+
+Every editable bodyweight set shows the shared Bodyweight / Added weight
+segmented control above its numbers. The existing `bodyweight_plus` type stores
+only the additional load; effective-load arithmetic still includes bodyweight.
+Returning to Bodyweight clears the additional load. Save, completion, prefill,
+kg/lb conversion and offline writes use the existing repository paths.
+
+Rollout requires applying `20261025120000_multiple_training_goals.sql`, then
+deploying the regenerated `powersync/sync-rules.yaml`, before releasing the app.
+This PR does not change production configuration.
+
+Validation covers combined/legacy goals, invalid selections, schema constraints,
+signup, goal editing and reloads, offline weighted crunches, unit conversion and
+prefill. Screenshots cover every signup step at phone and desktop widths in
+both themes, plus weighted-set controls.
