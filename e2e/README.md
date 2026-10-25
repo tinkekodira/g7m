@@ -12,6 +12,8 @@ Locally the tests use the Chrome you already have installed; CI uses the browser
 
 One **Browser tests (Playwright)** job runs the complete suite with two workers, sharing one production build and fake backend. Local runs use the same worker count. Each test has its own accounts and browser contexts; offline tests disconnect only their own context. Files run concurrently, while tests within a file remain sequential. The job uploads one HTML report, screenshots and failure traces, including on success for timing inspection. Playwright stops a CI run after ten minutes, including setup, so it can finish the report before the fifteen-minute job limit. Local runs have no suite-wide deadline. See ADR-0155.
 
+CI records detailed traces on the first retry, avoiding trace capture for passing tests. A first-attempt failure still keeps its screenshot and error context, and the retry keeps its trace whether it passes or fails. Local runs retain traces on failure because they have no automatic retries. Use `--trace on` when investigating a specific test.
+
 ## What runs
 
 | Piece           | What it is                                                                                                                                                                                  |

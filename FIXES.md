@@ -19,6 +19,12 @@ reading the goal's bounding box while its query refreshed and temporarily
 unmounted the card. Retry the whole name/level/goal ordering assertion until
 the elements are rendered; retain both positional comparisons.
 
+All 132 scenarios then passed on GitHub, but the job took 10 min 36 s.
+`retain-on-failure` was recording traces for every successful run before
+discarding them. CI now uses `on-first-retry`, retaining first-failure screenshots
+and error context plus a full trace from the existing retry. Local runs retain
+failure traces because they do not retry automatically. Coverage is unchanged.
+
 # Resolved — browser CI spent half its deadline installing OS packages
 
 PR #188's timed-out run spent 10 min 10 s fetching 25.9 MB from Ubuntu's

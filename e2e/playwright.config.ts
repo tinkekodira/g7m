@@ -35,7 +35,9 @@ export default defineConfig({
 
   use: {
     baseURL: APP_URL,
-    trace: 'retain-on-failure',
+    // Recording every passing run is expensive, especially alongside WebGL.
+    // CI has one retry to capture diagnostics; local runs have no retries.
+    trace: process.env['CI'] === undefined ? 'retain-on-failure' : 'on-first-retry',
     screenshot: 'only-on-failure',
   },
 

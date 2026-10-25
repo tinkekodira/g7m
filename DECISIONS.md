@@ -8982,9 +8982,13 @@ Offline workouts use browser-context network emulation. Account deletion and
 feedback failures abort only their own context's API request, preserving the
 server-error path while the browser reports online. The backend-wide outage
 endpoint is removed so one scenario cannot disconnect another worker.
-No scenarios are skipped or removed, and the existing retry and reporting
-behavior remains. The ten-minute Playwright deadline and fifteen-minute job
-ceiling retain time for diagnostics if a run stalls.
+No scenarios are skipped or removed. CI records a trace on the existing first
+retry rather than recording and discarding traces for every successful test.
+First-failure screenshots and error context remain in the report; the retry's
+trace is retained whether it passes or fails. Local runs keep failure traces
+without retries. This follows Playwright's CI recommendation and removes
+recording overhead from passing runs. The ten-minute Playwright deadline and
+fifteen-minute job ceiling retain time for diagnostics if a run stalls.
 
 PR #192 also exposed a test navigation race: clicking Save did not mean the
 asynchronous write had finished before reload. Wait for the expected saved
