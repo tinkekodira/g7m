@@ -10,6 +10,7 @@ import {
 } from '@g7m/core';
 import { loadWorkoutRecommendations } from '../lib/db/workout-recommendations.js';
 import { ExerciseWeightChart } from '../components/ExerciseWeightChart.js';
+import { ExerciseRowsSkeleton } from '../components/ContentSkeletons.js';
 import { MuscleFilterRail } from '../components/MuscleFilterRail.js';
 import { muscleColorStyle } from '../components/muscle-colors.js';
 import { ExerciseIcon } from '../components/ExerciseIcon.js';
@@ -226,9 +227,13 @@ export function ExerciseLibraryScreen() {
     ...recommended.flatMap((r) => ordinary.filter((e) => e.id === r.exerciseId)),
     ...ordinary.filter((e) => !recommendationIds.has(e.id)),
   ];
-  const error = taxonomy.error ?? results.error ?? progress.error;
+  const error = taxonomy.error ?? results.error ?? progress.error ?? recommendationData.error;
   const loading =
-    taxonomy.loading || results.loading || progress.loading || recommendationData.loading || !ready;
+    results.data === null ||
+    taxonomy.loading ||
+    (!picking && progress.loading) ||
+    (adding && recommendationData.loading) ||
+    !ready;
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
@@ -342,7 +347,7 @@ export function ExerciseLibraryScreen() {
           {error}
         </p>
       ) : loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <ExerciseRowsSkeleton charts={!picking} />
       ) : (
         <>
           <p className="text-sm text-secondary" aria-live="polite">

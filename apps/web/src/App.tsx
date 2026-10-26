@@ -7,6 +7,8 @@ import { ResetPasswordScreen } from './auth/ResetPasswordScreen.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { TabLayout } from './components/TabLayout.js';
 import { ScreenFallback } from './components/ScreenFallback.js';
+import { LoadingScope } from './components/LoadingScope.js';
+import { StartupSkeleton, WorkoutSkeleton } from './components/RouteSkeleton.js';
 import { useCatalogue } from './lib/db/use-catalogue.js';
 import { useSyncStore } from './lib/powersync/sync-store.js';
 import { UpdateBanner } from './components/UpdateBanner.js';
@@ -130,6 +132,14 @@ const AbandonedWorkoutWatcher = lazy(async () => ({
  * exactly where an auth callback can arrive carrying one.
  */
 export function App() {
+  return (
+    <LoadingScope>
+      <AppContent />
+    </LoadingScope>
+  );
+}
+
+function AppContent() {
   const status = useAuthStore((s) => s.status);
   const userId = useAuthStore((s) => s.session?.user.id);
   const initialize = useAuthStore((s) => s.initialize);
@@ -186,13 +196,7 @@ export function App() {
   }, [status, startSync, stopSync]);
 
   if (status === 'loading') {
-    return (
-      <main className="flex min-h-full items-center justify-center px-4">
-        {/* No spinner. Restoring a session from storage is near-instant, and a
-            spinner that flashes for 40ms reads as jank rather than progress. */}
-        <p className="text-sm text-muted">Loading…</p>
-      </main>
-    );
+    return <StartupSkeleton />;
   }
 
   return (
@@ -265,10 +269,10 @@ function Gate() {
     return profile.data.onboardedAt === null ? <WelcomeRoutes /> : <AppRoutes />;
   }
   if (justRegistered) return <WelcomeRoutes startAtName />;
-  if (profile.loading) return <ScreenFallback />;
+  if (profile.loading) return <StartupSkeleton />;
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 px-5 pt-safe-top pb-safe-bottom">
+    <main className="account-screen">
       <h1 className="text-2xl font-semibold text-primary">Getting your account ready</h1>
       <p role="status" className="text-sm text-secondary">
         {profile.error ??
@@ -376,9 +380,11 @@ function AppScreens() {
         path="/workout"
         element={
           <RouteBoundary>
-            <Suspense fallback={<ScreenFallback />}>
-              <WorkoutScreen />
-            </Suspense>
+            <LoadingScope>
+              <Suspense fallback={<WorkoutSkeleton />}>
+                <WorkoutScreen />
+              </Suspense>
+            </LoadingScope>
           </RouteBoundary>
         }
       />

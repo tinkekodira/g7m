@@ -12,6 +12,8 @@ import type { TrainingHeat } from '../lib/db/use-trained-body.js';
 import { useStageColor } from '../lib/use-theme.js';
 import { BEST_LIFTS_ANCHOR, type BestLift } from '../screens/profile-view.js';
 import { Panel } from './Panel.js';
+import { BodySkeleton, SkeletonLines, TextSkeleton } from './ContentSkeletons.js';
+import { LoadingRegion } from './LoadingRegion.js';
 
 /**
  * The cards a profile is made of — the achievements button, the body coloured
@@ -199,7 +201,7 @@ export function TrainingBodyCard({
         </div>
 
         {heatLoading && heat === null ? (
-          <p className="text-sm text-muted">{loadingText}</p>
+          <TextSkeleton label={loadingText} />
         ) : heat?.trained !== true ? (
           <p className="text-sm text-secondary">{emptyText}</p>
         ) : (
@@ -227,11 +229,7 @@ export function TrainingBodyCard({
 }
 
 function ModelPlaceholder() {
-  return (
-    <div className="flex h-80 items-center justify-center">
-      <p className="text-sm text-muted">Loading…</p>
-    </div>
-  );
+  return <BodySkeleton />;
 }
 
 /**
@@ -282,7 +280,15 @@ export function BestLiftsCard({
       <p className="mt-1 mb-2 text-xs text-muted">{description}</p>
 
       {loading && lifts === null ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <LoadingRegion label="Loading best lifts…">
+          <div className="divide-y divide-subtle">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="py-3">
+                <SkeletonLines />
+              </div>
+            ))}
+          </div>
+        </LoadingRegion>
       ) : shown.length === 0 ? (
         <p className="text-sm text-muted">Nothing measurable yet.</p>
       ) : (

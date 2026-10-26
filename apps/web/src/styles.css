@@ -1,6 +1,39 @@
 @import 'tailwindcss';
 @import '@g7m/ui/tokens.css';
 
+@utility account-screen {
+  @apply mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 px-5 pt-safe-top pb-safe-bottom;
+}
+
+/* Match the destination's header and card frames while its code loads. */
+.skeleton-screen:not(.skeleton-friends) h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+}
+.skeleton-learn > header {
+  min-height: 8.5rem;
+}
+.skeleton-learn > [aria-busy] {
+  border-radius: var(--radius-sheet);
+  background: var(--bg-stage);
+}
+.skeleton-exercises > header {
+  min-height: 15rem;
+}
+.skeleton-friends > header {
+  min-height: 7.5rem;
+}
+.skeleton-profile > [aria-label='Loading your profile…'] {
+  min-height: 14rem;
+}
+.skeleton-profile > [aria-label='Loading your numbers…'] {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sheet);
+  background: var(--bg-surface);
+  padding: 1rem;
+}
+
 /* Gold text has its own accessible ink; the medal token remains the edge. */
 .challenge-gold {
   color: var(--text-victory);

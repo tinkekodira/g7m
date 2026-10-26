@@ -37,6 +37,7 @@ import {
 } from '@g7m/core';
 import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import { WorkoutSkeleton } from '../components/RouteSkeleton.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
 import { useRestSettingsStore } from '../lib/use-rest-settings.js';
 import { chosenRestSeconds, formatAdjust } from '../lib/rest-settings.js';
@@ -426,11 +427,7 @@ export function WorkoutScreen() {
   }
 
   if (state.loading) {
-    return (
-      <Shell>
-        <p className="text-sm text-muted">Loading…</p>
-      </Shell>
-    );
+    return <WorkoutSkeleton />;
   }
 
   if (workout === null) {

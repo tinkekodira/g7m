@@ -15,6 +15,9 @@ export function useOnline(): boolean {
     };
     globalThis.addEventListener('online', update);
     globalThis.addEventListener('offline', update);
+    // A lazy screen can render just before an offline event and subscribe
+    // just after it. Read again once subscribed so that event cannot be lost.
+    update();
     return () => {
       globalThis.removeEventListener('online', update);
       globalThis.removeEventListener('offline', update);

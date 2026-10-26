@@ -125,7 +125,7 @@ export function StatsHero({ month }: { readonly month: QueryState<HomeStats> }) 
     // numbers are on Progress, which says so properly.
     if (month.error !== null) return null;
     return (
-      <section aria-label="This month" aria-busy>
+      <section aria-label="This month">
         <StatSkeleton />
       </section>
     );
