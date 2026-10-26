@@ -44,9 +44,7 @@ export function ExerciseRowsSkeleton({ charts = false }: { readonly charts?: boo
 export function BodySkeleton({ className = 'h-80' }: { readonly className?: string }) {
   return (
     <LoadingRegion label="Loading body view…">
-      <div className={`flex items-center justify-center ${className}`}>
-        <Skeleton className="skeleton-body" />
-      </div>
+      <div className={className} />
     </LoadingRegion>
   );
 }

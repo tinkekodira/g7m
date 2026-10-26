@@ -516,48 +516,6 @@ body {
   @apply mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top;
 }
 
-/* A quiet body-shaped stand-in, drawn without loading the 3D viewer. */
-.skeleton-body {
-  position: relative;
-  width: 35%;
-  max-width: 8rem;
-  height: 75%;
-  background: transparent;
-}
-.skeleton-body::before,
-.skeleton-body::after {
-  position: absolute;
-  content: '';
-  background: var(--bg-elevated);
-}
-.skeleton-body::before {
-  top: 0;
-  left: 37.5%;
-  width: 25%;
-  height: 12%;
-  border-radius: 50%;
-}
-.skeleton-body::after {
-  inset: 15% 0 0;
-  clip-path: polygon(
-    30% 0,
-    70% 0,
-    100% 42%,
-    86% 46%,
-    70% 20%,
-    66% 48%,
-    76% 100%,
-    56% 100%,
-    50% 60%,
-    44% 100%,
-    24% 100%,
-    34% 48%,
-    30% 20%,
-    14% 46%,
-    0 42%
-  );
-}
-
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
