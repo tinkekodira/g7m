@@ -9177,6 +9177,10 @@ status outside its busy subtree. Navigation and available controls stay usable.
 No screen implementation, chart library or 3D viewer is imported by a fallback.
 Repeated skeleton layout utilities keep the existing entry budget unchanged.
 
+Body viewers reserve an empty stage while loading, without a placeholder
+figure. This applies to Learn, profile body views, and their route fallbacks;
+the delayed accessible loading announcement remains.
+
 Local and remote reads retain content while refreshing. A successful null
 local result is remembered by query key: an empty goal or body-metrics result
 must not become unresolved again every time sync delivers rows. A different key
