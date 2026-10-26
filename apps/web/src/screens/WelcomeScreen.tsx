@@ -107,7 +107,9 @@ export function WelcomeScreen() {
     heading.current?.focus();
   }, [raw]);
 
-  const loading = profile.loading || metrics.loading || goal.loading;
+  // A profile UPDATE before sync has delivered the row changes nothing. Let
+  // new users type their name immediately, but never advance on a lost write.
+  const loading = profile.loading || profile.data === null || metrics.loading || goal.loading;
 
   /**
    * No step in the URL: pick up where they left off.
@@ -258,6 +260,7 @@ export function WelcomeScreen() {
   }
 
   async function advance(): Promise<void> {
+    if (busy || loading) return;
     setProblem(null);
     if (!(await save())) {
       form.current?.querySelector<HTMLElement>('input, select')?.focus();
@@ -329,10 +332,10 @@ export function WelcomeScreen() {
         className="flex flex-1 flex-col"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!busy) void advance();
+          void advance();
         }}
       >
-        <fieldset disabled={busy || loading} className="mt-7 mb-6 min-w-0">
+        <fieldset disabled={busy || (loading && step !== 'name')} className="mt-7 mb-6 min-w-0">
           <legend className="sr-only">{TITLES[step]}</legend>
           {step === 'name' && (
             <TextField
@@ -489,6 +492,12 @@ export function WelcomeScreen() {
         {error !== null && (
           <p role="alert" className="mb-4 text-sm text-destructive">
             {error}
+          </p>
+        )}
+
+        {loading && (
+          <p role="status" className="mb-4 text-sm text-secondary">
+            Setting up your account…
           </p>
         )}
 

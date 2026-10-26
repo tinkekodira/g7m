@@ -1,4 +1,5 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+import { Button } from '@g7m/ui';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { useAuthStore } from './auth/auth-store.js';
 import { SignInScreen } from './auth/SignInScreen.js';
@@ -130,6 +131,7 @@ const AbandonedWorkoutWatcher = lazy(async () => ({
  */
 export function App() {
   const status = useAuthStore((s) => s.status);
+  const userId = useAuthStore((s) => s.session?.user.id);
   const initialize = useAuthStore((s) => s.initialize);
   const startSync = useSyncStore((s) => s.start);
   const stopSync = useSyncStore((s) => s.stop);
@@ -199,7 +201,7 @@ export function App() {
           session that must not reach the app, and not a signed-out state that
           could show the form the user has just proved they cannot get past. */}
       {status === 'signed-in' ? (
-        <SignedIn />
+        <SignedIn key={userId} />
       ) : status === 'recovering' ? (
         <ResetPasswordScreen />
       ) : (
@@ -245,32 +247,58 @@ function SignedIn() {
  * app's routes are simply what is mounted, and the welcome URL falls through
  * to the catch-all that already sends unknown paths home.
  *
- * **Fails open.** Onboarding shows only when there is a profile row that says
- * the questions are unanswered. A row that has not synced yet reads as null,
- * and treating that as "not onboarded" would offer a returning user a flow
- * whose writes have nothing to write to — and on a device that never gets a
- * connection, lock them out of an app that is supposed to work offline. Being
- * asked a moment late is the cheaper mistake.
+ * A missing profile is unresolved, never permission to show Home. A known
+ * registration can show question one immediately; other sessions wait for
+ * their local profile so returning users are not asked again. Cached profiles
+ * are sufficient: this gate never requires a network round trip.
  */
 function Gate() {
-  const profile = useCatalogue('profile', (r) => r.profile.current());
-  const asking = profile.data !== null && profile.data.onboardedAt === null;
+  const [attempt, setAttempt] = useState(0);
+  const profile = useCatalogue(`profile:${String(attempt)}`, (r) => r.profile.current());
+  const justRegistered = useAuthStore(
+    (s) => s.registeredUserId !== null && s.registeredUserId === s.session?.user.id,
+  );
+  const signOut = useAuthStore((s) => s.signOut);
+  const busy = useAuthStore((s) => s.busy);
 
-  return asking ? <WelcomeRoutes /> : <AppRoutes />;
+  if (profile.data !== null) {
+    return profile.data.onboardedAt === null ? <WelcomeRoutes /> : <AppRoutes />;
+  }
+  if (justRegistered) return <WelcomeRoutes startAtName />;
+  if (profile.loading) return <ScreenFallback />;
+
+  return (
+    <main className="mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 px-5 pt-safe-top pb-safe-bottom">
+      <h1 className="text-2xl font-semibold text-primary">Getting your account ready</h1>
+      <p role="status" className="text-sm text-secondary">
+        {profile.error ??
+          'Your profile has not arrived on this device yet. Check your connection and try again.'}
+      </p>
+      <Button disabled={busy} onClick={() => setAttempt((value) => value + 1)}>
+        Try again
+      </Button>
+      <Button variant="secondary" disabled={busy} onClick={() => void signOut()}>
+        Sign out
+      </Button>
+    </main>
+  );
 }
 
 /**
  * While the questions are unanswered, they are the only thing there is.
  *
- * Anything that is not a step lands on `WelcomeScreen` without one, which is
- * how it knows to resume at the first question still needing an answer.
+ * A known registration starts at name before sync. Otherwise a URL without a
+ * step lets `WelcomeScreen` resume at the first question needing an answer.
  */
-function WelcomeRoutes() {
+function WelcomeRoutes({ startAtName = false }: { readonly startAtName?: boolean }) {
   return (
     <Suspense fallback={<ScreenFallback />}>
       <Routes>
         <Route path="/welcome/:step" element={<WelcomeScreen />} />
-        <Route path="*" element={<WelcomeScreen />} />
+        <Route
+          path="*"
+          element={startAtName ? <Navigate to="/welcome/name" replace /> : <WelcomeScreen />}
+        />
       </Routes>
     </Suspense>
   );

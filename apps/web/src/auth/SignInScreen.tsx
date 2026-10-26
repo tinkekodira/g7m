@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { Button, TextField, cx } from '@g7m/ui';
-import { CountryPicker } from '../components/CountryPicker.js';
 import { useAuthStore } from './auth-store.js';
 
 type Mode = 'sign-in' | 'sign-up' | 'reset';
@@ -23,7 +22,6 @@ export function SignInScreen() {
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [country, setCountry] = useState<string | null>(null);
 
   const busy = useAuthStore((s) => s.busy);
   const error = useAuthStore((s) => s.error);
@@ -40,6 +38,8 @@ export function SignInScreen() {
   function switchTo(next: Mode): void {
     setMode(next);
     clearError();
+    // Have question one ready while the user enters their registration details.
+    if (next === 'sign-up') void import('../screens/WelcomeScreen.js').catch(() => undefined);
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>): void {
@@ -51,7 +51,7 @@ export function SignInScreen() {
       return;
     }
     if (mode === 'sign-in') void signIn(email.trim(), password);
-    else void signUp(email.trim(), password, country);
+    else void signUp(email.trim(), password);
   }
 
   return (
@@ -122,17 +122,6 @@ export function SignInScreen() {
             }}
             disabled={busy}
             {...(mode === 'sign-up' ? { hint: 'At least 8 characters.' } : {})}
-          />
-        )}
-
-        {/* Only on the way in. It is one optional question and it buys one
-            word, so it has no business on the sign-in form. */}
-        {mode === 'sign-up' && (
-          <CountryPicker
-            value={country}
-            onChange={setCountry}
-            disabled={busy}
-            hint="Only so the app can say hello properly. Nothing else uses it."
           />
         )}
 

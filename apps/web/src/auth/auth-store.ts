@@ -44,10 +44,12 @@ interface AuthStore {
   readonly notice: string | null;
   /** True while a request is in flight. */
   readonly busy: boolean;
+  /** Lets a successful registration open question one before the profile syncs. */
+  readonly registeredUserId: string | null;
 
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, country?: string | null) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   /**
@@ -69,6 +71,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   error: null,
   notice: null,
   busy: false,
+  registeredUserId: null,
 
   /**
    * Subscribe to Supabase's auth state. Returns an unsubscribe function, so the
@@ -80,9 +83,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
    */
   initialize: () => {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      set((state) =>
-        nextAuthState({ status: state.status, session: state.session }, event, session),
-      );
+      set((state) => ({
+        ...nextAuthState({ status: state.status, session: state.session }, event, session),
+        registeredUserId: event === 'SIGNED_OUT' ? null : state.registeredUserId,
+      }));
     });
 
     /**
@@ -116,18 +120,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ busy: false, error: error === null ? null : friendlyAuthError(error.message) });
   },
 
-  signUp: async (email, password, country) => {
-    set({ busy: true, error: null, notice: null });
-    // The country travels as metadata rather than being written afterwards:
-    // the profile row is created by a trigger on the server, and a client
-    // UPDATE issued before it syncs down updates nothing and reports success.
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      ...(country === null || country === undefined || country === ''
-        ? {}
-        : { options: { data: { country } } }),
-    });
+  signUp: async (email, password) => {
+    set({ busy: true, error: null, notice: null, registeredUserId: null });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error !== null) {
       set({ busy: false, error: friendlyAuthError(error.message) });
       return;
@@ -141,6 +136,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({
       busy: false,
       error: null,
+      registeredUserId: data.session?.user.id ?? null,
       notice: needsConfirmation
         ? 'Account created. Check your email for a confirmation link, then sign in.'
         : null,
