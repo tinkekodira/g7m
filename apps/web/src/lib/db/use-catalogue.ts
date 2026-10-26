@@ -67,6 +67,9 @@ export function useCatalogue<T>(
   // it as a reason to run again.
   const runRef = useRef(run);
   runRef.current = run;
+  // A successful null is an empty result, not an unresolved read. Remember
+  // its key so sync does not replace an empty goal/metrics card with a loader.
+  const lastReadKey = useRef<string | null>(null);
 
   const syncedAt = lastSyncedAt?.getTime() ?? 0;
 
@@ -75,13 +78,19 @@ export function useCatalogue<T>(
     // Only "loading" when there is nothing to show. A re-read triggered by a
     // local write already has the data on screen, and flashing a spinner over
     // it every time a set is ticked would be worse than useless.
-    setState((previous) => ({ ...previous, loading: previous.data === null }));
+    setState((previous) => ({
+      ...previous,
+      loading: previous.data === null && lastReadKey.current !== key,
+    }));
 
     getRepositories(userId)
       .then((repositories) => runRef.current(repositories))
       .then(
         (data) => {
-          if (!cancelled) setState({ data, error: null, loading: false });
+          if (!cancelled) {
+            lastReadKey.current = key;
+            setState({ data, error: null, loading: false });
+          }
         },
         (error: unknown) => {
           if (cancelled) return;

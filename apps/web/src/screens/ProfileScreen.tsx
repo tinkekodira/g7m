@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { countryName, firstName, levelFor, personalRecords, type UnitSystem } from '@g7m/core';
-import { cx } from '@g7m/ui';
+import { cx, Skeleton } from '@g7m/ui';
+import { LoadingRegion } from '../components/LoadingRegion.js';
+import { NumbersSkeleton, TextSkeleton } from '../components/ContentSkeletons.js';
 import { Avatar } from '../components/Avatar.js';
 import { Panel } from '../components/Panel.js';
 import { StatValue } from '../components/StatValue.js';
@@ -110,6 +112,8 @@ export function ProfileScreen() {
   const note = bmiNote(indexFor(facts, now));
 
   const error = profile.error ?? metrics.error ?? goal.error;
+  const identityLoading = profile.loading && profile.data === null;
+  const numbersLoading = identityLoading || metrics.loading || goal.loading;
 
   // Today's weight from here, without going through Edit: the one number on
   // the page that changes week to week.
@@ -141,23 +145,32 @@ export function ProfileScreen() {
           is Home's (ADR-0126). The goal is a block inside it rather than a
           card of its own, so the two read as one person. */}
       <Panel tone="hero" label="You">
-        <div className="flex items-center gap-4">
-          <Avatar name={name} size="lg" />
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate text-2xl leading-8 font-bold text-primary">
-              {fullName ?? 'Add your name'}
-            </p>
-            {profile.data?.country != null && (
-              <>
-                <Flag code={profile.data.country} className="shrink-0 text-xl" />
-                {/* The flag is decorative and hidden, and it is now the only place
+        {identityLoading ? (
+          <LoadingRegion label="Loading your profile…">
+            <div className="flex items-center gap-4">
+              <Skeleton className="size-16 shrink-0 rounded-full" />
+              <Skeleton className="h-8 w-1/2" />
+            </div>
+          </LoadingRegion>
+        ) : (
+          <div className="flex items-center gap-4">
+            <Avatar name={name} size="lg" />
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="truncate text-2xl leading-8 font-bold text-primary">
+                {fullName ?? 'Add your name'}
+              </p>
+              {profile.data?.country != null && (
+                <>
+                  <Flag code={profile.data.country} className="shrink-0 text-xl" />
+                  {/* The flag is decorative and hidden, and it is now the only place
                     the country appears — so the name of it has to be said
                     somewhere a screen reader will reach. */}
-                <span className="sr-only">{countryName(profile.data.country)}</span>
-              </>
-            )}
+                  <span className="sr-only">{countryName(profile.data.country)}</span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <LevelLine />
 
@@ -167,79 +180,83 @@ export function ProfileScreen() {
       {/* One card of figures on a hairline grid, as Home's activity card, rather
           than six boxes of their own. */}
       <Panel title="Your numbers">
-        <dl className="mt-2 grid grid-cols-2">
-          {tiles.map((tile, index) => {
-            const left = index % 2 === 0;
-            // An odd tile out at the end takes the whole row rather than
-            // leaving a hole beside it.
-            const alone = left && index === tiles.length - 1;
-            // Weight opens the weigh-in in place. The button lies under the
-            // tile's text and fills it, so the whole tile is the target.
-            const weighable = tile.key === 'weight';
-            const text = weighable ? 'pointer-events-none relative z-10' : undefined;
-            return (
-              <div
-                key={tile.key}
-                className={cx(
-                  'relative min-w-0 py-3',
-                  alone && 'col-span-2',
-                  left && !alone && 'border-r border-subtle/70 pr-3',
-                  !left && 'pl-4',
-                  index >= 2 && 'border-t border-subtle/70',
-                )}
-              >
-                <dt className={cx('flex items-center gap-1.5 text-xs text-muted', text)}>
-                  {tile.label}
-                  {weighable && <PencilIcon aria-hidden className="size-3" />}
-                </dt>
-                <dd className="mt-0.5">
-                  {weighable && (
-                    <button
-                      type="button"
-                      aria-haspopup="dialog"
-                      aria-label={
-                        tile.value === null
-                          ? 'Add your weight'
-                          : `Weight ${tile.value}. Log today’s weight`
-                      }
-                      onClick={() => {
-                        setWeighing(true);
-                      }}
-                      className="absolute inset-0 z-0 rounded-control transition-colors duration-150 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                    />
+        {numbersLoading ? (
+          <NumbersSkeleton />
+        ) : (
+          <dl className="mt-2 grid grid-cols-2">
+            {tiles.map((tile, index) => {
+              const left = index % 2 === 0;
+              // An odd tile out at the end takes the whole row rather than
+              // leaving a hole beside it.
+              const alone = left && index === tiles.length - 1;
+              // Weight opens the weigh-in in place. The button lies under the
+              // tile's text and fills it, so the whole tile is the target.
+              const weighable = tile.key === 'weight';
+              const text = weighable ? 'pointer-events-none relative z-10' : undefined;
+              return (
+                <div
+                  key={tile.key}
+                  className={cx(
+                    'relative min-w-0 py-3',
+                    alone && 'col-span-2',
+                    left && !alone && 'border-r border-subtle/70 pr-3',
+                    !left && 'pl-4',
+                    index >= 2 && 'border-t border-subtle/70',
                   )}
-                  <span className={cx('block', text)}>
-                    {tile.value === null && weighable ? (
-                      <span className="text-sm text-secondary">Not set — add it</span>
-                    ) : tile.value === null ? (
-                      <Link
-                        to="/you"
-                        className="text-sm text-secondary underline-offset-4 hover:underline"
-                      >
-                        Not set — add it
-                      </Link>
-                    ) : /\d/.test(tile.value) ? (
-                      <StatValue text={tile.value} size="text-xl leading-7" />
-                    ) : (
-                      <span className="block truncate text-lg leading-7 font-bold text-primary">
-                        {tile.value}
-                      </span>
+                >
+                  <dt className={cx('flex items-center gap-1.5 text-xs text-muted', text)}>
+                    {tile.label}
+                    {weighable && <PencilIcon aria-hidden className="size-3" />}
+                  </dt>
+                  <dd className="mt-0.5">
+                    {weighable && (
+                      <button
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-label={
+                          tile.value === null
+                            ? 'Add your weight'
+                            : `Weight ${tile.value}. Log today’s weight`
+                        }
+                        onClick={() => {
+                          setWeighing(true);
+                        }}
+                        className="absolute inset-0 z-0 rounded-control transition-colors duration-150 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      />
                     )}
-                    {tile.detail !== undefined && (
-                      <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
-                        {tile.detail}
-                      </span>
-                    )}
-                  </span>
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
+                    <span className={cx('block', text)}>
+                      {tile.value === null && weighable ? (
+                        <span className="text-sm text-secondary">Not set — add it</span>
+                      ) : tile.value === null ? (
+                        <Link
+                          to="/you"
+                          className="text-sm text-secondary underline-offset-4 hover:underline"
+                        >
+                          Not set — add it
+                        </Link>
+                      ) : /\d/.test(tile.value) ? (
+                        <StatValue text={tile.value} size="text-xl leading-7" />
+                      ) : (
+                        <span className="block truncate text-lg leading-7 font-bold text-primary">
+                          {tile.value}
+                        </span>
+                      )}
+                      {tile.detail !== undefined && (
+                        <span className={cx('block text-xs', TONES[tile.tone ?? 'plain'])}>
+                          {tile.detail}
+                        </span>
+                      )}
+                    </span>
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        )}
 
         {/* Why the band under BMI is not the 18.5–25 everybody has seen. Left
             unsaid, a widened range reads as loose arithmetic. */}
-        {note !== null && (
+        {!numbersLoading && note !== null && (
           <p className="mt-2 border-t border-subtle/70 pt-3 text-xs text-muted">{note}</p>
         )}
       </Panel>
@@ -312,7 +329,8 @@ function AchievementsLink() {
  */
 function LevelLine() {
   const state = useAchievements();
-  if (state.data?.ready !== true) return null;
+  if (state.data?.ready !== true)
+    return state.loading ? <TextSkeleton label="Loading your level…" className="mt-5" /> : null;
   const { level, xpIntoLevel, xpForLevel, progress } = levelFor(state.data.xp);
   const xp = (value: number) => value.toLocaleString('en-GB');
 
@@ -409,7 +427,8 @@ function GoalCard({
 }) {
   // Nothing rather than "choose a goal" while the row is still being read:
   // flashing the invitation at somebody who has a goal reads as a lost goal.
-  if (loading && goal === null) return null;
+  if (loading && goal === null)
+    return <TextSkeleton label="Loading your goal…" className="mt-4 rounded-card bg-base/70 p-3" />;
   const line = goal === null ? null : goalCardLine(goal, now);
 
   return (
@@ -467,11 +486,11 @@ function TrainingBody({ now }: { readonly now: Date }) {
         <h3 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
           Worth adding
         </h3>
-        {neglected.data === null ? (
+        {neglected.loading && neglected.data === null ? (
+          <TextSkeleton label="Looking at your week…" />
+        ) : neglected.data === null ? (
           <p className="text-sm text-secondary">
-            {neglected.loading
-              ? 'Looking at your week…'
-              : `After ${String(SESSIONS_BEFORE_ADVICE)} workouts this names what is falling behind, and one exercise for each.`}
+            {`After ${String(SESSIONS_BEFORE_ADVICE)} workouts this names what is falling behind, and one exercise for each.`}
           </p>
         ) : neglected.data.length === 0 ? (
           <p className="text-sm text-secondary">Nothing is behind its weekly target right now.</p>

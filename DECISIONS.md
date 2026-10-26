@@ -9148,3 +9148,48 @@ checks that Home never appears before Finish, exercises early Enter submission,
 failed registration, reload/resumption, account switching and offline startup,
 and captures the initial question and waiting screen at phone/desktop widths
 in both themes. This change needs no database or sync-rule deployment.
+
+---
+
+## ADR-0159 — Skeletons reserve space and share a loading deadline
+
+**Status:** accepted · **Date:** 2026-10-26 · **Amends:** ADR-0078, ADR-0120
+
+Startup and the main app flows use lightweight skeletons: Home's month and
+plan, Learn's body and muscle exercises, exercise browsing, Friends and its
+sub-tabs, Profile's independent sections, and the workout's initial read.
+Secondary screens keep their text fallback; Progress keeps its existing
+skeleton. The native splash screen's timing is unchanged.
+
+Every loading region reserves its shape immediately, but its shapes and
+accessible loading announcement appear only after 250 ms. There is no minimum
+visible time: ready content always wins. A scope above each route's Suspense
+boundary supplies one start time to both its code fallback and data loaders,
+so code arriving does not restart the delay. Scopes reset on pathname changes,
+not search parameters, preserving search focus and selections. A newly selected
+muscle has its own scope. Account startup uses neutral bars until the existing
+auth/onboarding gate permits an actual destination.
+
+The shared Skeleton primitive uses existing surface and radius tokens, with a
+soft opacity pulse and no animation under reduced motion. Shapes are decorative
+and noninteractive; each loading region is busy and has one screen-reader
+status outside its busy subtree. Navigation and available controls stay usable.
+No screen implementation, chart library or 3D viewer is imported by a fallback.
+Repeated skeleton layout utilities keep the existing entry budget unchanged.
+
+Local and remote reads retain content while refreshing. A successful null
+local result is remembered by query key: an empty goal or body-metrics result
+must not become unresolved again every time sync delivers rows. A different key
+still loads when there is no previous content. Failed, empty and offline results
+use their existing states rather than continuing to show skeletons. Query and
+write APIs, the database, sync rules, and caching behavior are unchanged.
+
+The browser's online hint is read again after its event listeners subscribe.
+An offline event between a lazy screen's render and effect must not leave a
+network-only section showing its loading placeholder indefinitely.
+
+Browser coverage holds screen chunks and Friends requests independently to
+exercise the shared deadline, checks fast reads and reduced motion, exercises
+search and set saves, and captures loading layouts at phone/desktop widths in
+both themes. Existing signup, account-switching, code-splitting and offline
+scenarios remain part of the full regression run.

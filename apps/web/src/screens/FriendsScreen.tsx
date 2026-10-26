@@ -32,6 +32,7 @@ import {
 } from '../lib/friends/use-friends-data.js';
 import type { ChallengeCardView } from './challenges-view.js';
 import { FriendsLeaderboard } from './FriendsLeaderboard.js';
+import { FriendsSkeleton } from '../components/ContentSkeletons.js';
 import { useKeyboardInset } from '../lib/use-keyboard-inset.js';
 import {
   describeCodeProblem,
@@ -124,8 +125,16 @@ export function FriendsScreen() {
 
       {!online ? (
         <FriendsOffline />
+      ) : mine.error !== null ? (
+        <p role="alert" className="text-sm text-danger">
+          {mine.error}
+        </p>
+      ) : mine.loading && mine.data === null ? (
+        <FriendsSkeleton tab={tab} />
       ) : mine.data?.hasProfile !== true ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p role="status" className="text-sm text-secondary">
+          Your profile is unavailable. Open your profile and try again.
+        </p>
       ) : !named ? (
         <NamePrompt />
       ) : (
@@ -145,7 +154,7 @@ export function FriendsScreen() {
           )}
 
           {overview.data === null ? (
-            overview.error === null && <p className="text-sm text-muted">Loading…</p>
+            overview.error === null && <FriendsSkeleton tab={tab} />
           ) : tab === 'friends' ? (
             <FriendList overview={overview.data} mine={mine.data} />
           ) : tab === 'leaderboard' ? (

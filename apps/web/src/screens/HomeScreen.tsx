@@ -18,7 +18,8 @@ import {
   regionOf,
   type PlannedSession,
 } from '@g7m/core';
-import { cx } from '@g7m/ui';
+import { cx, Skeleton } from '@g7m/ui';
+import { LoadingRegion } from '../components/LoadingRegion.js';
 import { Avatar } from '../components/Avatar.js';
 import {
   AlertIcon,
@@ -161,7 +162,7 @@ export function HomeScreen() {
 
       <Suspense
         fallback={
-          <section aria-label="This month" aria-busy>
+          <section aria-label="This month">
             <StatSkeleton />
           </section>
         }
@@ -321,9 +322,11 @@ function TodayCard({
   if (!today.ready || plan === null) {
     return (
       <PlanCard label="Today’s workout">
-        <div aria-hidden className="mt-2 h-7 w-40 animate-pulse rounded-control bg-elevated" />
-        <p className="mt-2 text-sm text-muted">Working out today’s session…</p>
-        <div aria-hidden className="mt-4 h-12 w-40 animate-pulse rounded-full bg-elevated" />
+        <LoadingRegion label="Working out today’s session…" className="mt-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="mt-2 h-4 w-2/3" />
+          <Skeleton className="mt-4 h-12 w-40 rounded-full" />
+        </LoadingRegion>
       </PlanCard>
     );
   }

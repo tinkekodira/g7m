@@ -6,6 +6,7 @@
  */
 
 export { Button } from './Button.js';
+export { Skeleton } from './Skeleton.js';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button.js';
 export { Chip } from './Chip.js';
 export { KitSlider, type KitPosition, type KitSliderProps } from './KitSlider.js';

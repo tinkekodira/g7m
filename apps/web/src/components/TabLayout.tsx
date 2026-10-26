@@ -3,6 +3,8 @@ import { NavigationType, Outlet, useLocation, useMatch, useNavigationType } from
 import { TabBar } from './TabBar.js';
 import { RouteBoundary } from './ErrorBoundary.js';
 import { ScreenFallback } from './ScreenFallback.js';
+import { LoadingScope } from './LoadingScope.js';
+import { RouteSkeleton } from './RouteSkeleton.js';
 import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 
 /**
@@ -13,6 +15,8 @@ import { isAlarming, useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
  * screen's own bottom padding.
  */
 export function TabLayout() {
+  const { pathname, search } = useLocation();
+  const skeleton = ['/learn', '/exercises', '/friends', '/profile'].includes(pathname);
   useScrollToTop();
   const alarm = useSyncAlarm();
   const recap = useMatch('/progress/session/:sessionId') !== null;
@@ -23,11 +27,21 @@ export function TabLayout() {
         {/* Tabbed routes keep their navigation while loading or recovering
             from an error (ADR-0078). Recaps use the full height and their own
             Done action instead. */}
-        <RouteBoundary>
-          <Suspense fallback={<ScreenFallback />}>
-            <Outlet />
-          </Suspense>
-        </RouteBoundary>
+        <LoadingScope key={pathname}>
+          <RouteBoundary>
+            <Suspense
+              fallback={
+                skeleton ? (
+                  <RouteSkeleton pathname={pathname} tab={new URLSearchParams(search).get('tab')} />
+                ) : (
+                  <ScreenFallback />
+                )
+              }
+            >
+              <Outlet />
+            </Suspense>
+          </RouteBoundary>
+        </LoadingScope>
       </div>
       {!recap && <TabBar alert={isAlarming(alarm)} />}
     </>

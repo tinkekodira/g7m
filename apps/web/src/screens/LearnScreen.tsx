@@ -1,4 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react';
+import { BodySkeleton, ExerciseRowsSkeleton } from '../components/ContentSkeletons.js';
+import { LoadingScope } from '../components/LoadingScope.js';
 import { Link, useSearchParams } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
@@ -260,13 +262,21 @@ export function LearnScreen() {
           used to render last, below both footnotes, so selecting a muscle put
           the reply off the bottom of the screen. */}
       {selected !== null && (
-        <MusclePanel
-          detail={detail.data}
-          loading={detail.loading}
-          onClear={() => {
-            setSelected(null);
-          }}
-        />
+        <LoadingScope key={selected}>
+          {detail.error !== null ? (
+            <p role="alert" className="text-sm text-danger">
+              {detail.error}
+            </p>
+          ) : (
+            <MusclePanel
+              detail={detail.data}
+              loading={detail.loading}
+              onClear={() => {
+                setSelected(null);
+              }}
+            />
+          )}
+        </LoadingScope>
       )}
 
       {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
@@ -306,11 +316,7 @@ export function LearnScreen() {
 
 /** The same waiting state whether the chunk or the model is still coming. */
 function ModelPlaceholder() {
-  return (
-    <div className="flex h-[52vh] items-center justify-center">
-      <p className="text-sm text-muted">Loading the model…</p>
-    </div>
-  );
+  return <BodySkeleton className="h-[52vh]" />;
 }
 
 function MusclePanel({
@@ -323,7 +329,7 @@ function MusclePanel({
   readonly onClear: () => void;
 }) {
   if (loading && detail === null) {
-    return <p className="text-sm text-muted">Loading…</p>;
+    return <ExerciseRowsSkeleton />;
   }
   if (detail === null) {
     return (

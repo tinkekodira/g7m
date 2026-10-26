@@ -11,6 +11,7 @@ import {
 } from '@g7m/core';
 import { SegmentedControl, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
+import { FriendsSkeleton } from '../components/ContentSkeletons.js';
 import { CrownIcon } from '../components/icons.js';
 import { PlaceLaurel } from '../components/PlaceLaurel.js';
 import { YourCode } from '../components/FriendParts.js';
@@ -132,7 +133,7 @@ export function FriendsLeaderboard({
       )}
 
       {view === null ? (
-        error === null && <p className="text-sm text-muted">Loading…</p>
+        error === null && <FriendsSkeleton tab="leaderboard" />
       ) : view.alone ? (
         <div className="rounded-sheet border border-subtle bg-surface p-4">
           <h2 className="text-lg font-semibold text-primary">Nobody to race yet</h2>
