@@ -69,6 +69,8 @@ import preacherCurlMachineIcon from '../assets/equipment/preacher-curl-machine.p
 import preacherCurlMachineHero from '../assets/equipment/preacher-curl-machine-hero.webp';
 import rearDeltFlyMachineIcon from '../assets/equipment/rear-delt-fly-machine.png';
 import rearDeltFlyMachineHero from '../assets/equipment/rear-delt-fly-machine-hero.webp';
+import inclineChestPressMachineIcon from '../assets/equipment/incline-chest-press-machine.png';
+import inclineChestPressMachineHero from '../assets/equipment/incline-chest-press-machine-hero.webp';
 import shoulderPressMachineIcon from '../assets/equipment/shoulder-press-machine.png';
 import shoulderPressMachineHero from '../assets/equipment/shoulder-press-machine-hero.webp';
 
@@ -160,6 +162,11 @@ const REAR_DELT_FLY_MACHINE: EquipmentArt = {
 const SHOULDER_PRESS_MACHINE: EquipmentArt = {
   icon: shoulderPressMachineIcon,
   hero: shoulderPressMachineHero,
+};
+
+const INCLINE_CHEST_PRESS_MACHINE: EquipmentArt = {
+  icon: inclineChestPressMachineIcon,
+  hero: inclineChestPressMachineHero,
 };
 
 const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
@@ -275,6 +282,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   't-bar-row': T_BAR,
 
   'machine-chest-press': CHEST_PRESS_MACHINE,
+  'incline-machine-chest-press': INCLINE_CHEST_PRESS_MACHINE,
   'shoulder-press-machine': SHOULDER_PRESS_MACHINE,
   'pec-deck': PEC_DECK,
 

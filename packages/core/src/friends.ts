@@ -344,6 +344,7 @@ const CARD_LIFT_NAMES: Readonly<Record<string, string>> = {
   'incline-dumbbell-press': 'Incline DB Press',
   'dumbbell-shoulder-press': 'Shoulder Press',
   'machine-chest-press': 'Chest Press',
+  'incline-machine-chest-press': 'Incline Machine Press',
   'bulgarian-split-squat': 'Split Squat',
   'single-arm-dumbbell-row': 'DB Row',
   'chest-supported-dumbbell-row': 'Supported DB Row',

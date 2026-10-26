@@ -9197,3 +9197,27 @@ exercise the shared deadline, checks fast reads and reduced motion, exercises
 search and set saves, and captures loading layouts at phone/desktop widths in
 both themes. Existing signup, account-switching, code-splitting and offline
 scenarios remain part of the full regression run.
+
+## ADR-0160 — Incline machine chest press joins the catalogue
+
+**Status:** accepted · **Date:** 2026-10-26
+
+`incline-machine-chest-press` is a separate beginner compound push with its own
+`incline-chest-press-machine` station, keeping equipment availability and logged
+loads distinct from the flat machine and free-weight incline presses. The upper
+chest is primary; the sternal chest, front delts and triceps assist. Recommendations
+use the existing incline profile. Six instruction steps, four cues, four common
+mistakes and an 8–12 rep / 120-second starting point use the existing detail page.
+
+The supplied editable model and renders live in
+`C:/Users/milan/3d-models/incline-machine`. The shadowless icon is downscaled to
+168px PNG. The hero drops partially transparent shadow pixels, trims with 50px
+padding and becomes a 1200px-wide WebP at quality 82, following ADR-0083. Source
+files remain unchanged outside the repository. The single equipment-art map
+provides both surfaces through the existing offline precache. No demonstration
+loop is supplied, so the page uses the written coaching fallback.
+
+Catalogue checks cover the station, upper-chest mapping, aliases and recommendation
+profile. Browser coverage checks both themes at 320, 393 and 1280px, offline detail
+navigation, both artwork surfaces and a completed set synced with external weight.
+Apply `20261026160000_incline_machine_chest_press.sql` before releasing the app.
