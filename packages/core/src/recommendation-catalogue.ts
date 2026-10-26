@@ -42,6 +42,7 @@ export const RECOMMENDATION_PROFILES: Readonly<Record<string, TrainingProfile>> 
   'push-up': flat,
   'incline-barbell-press': incline,
   'incline-dumbbell-press': incline,
+  'incline-machine-chest-press': incline,
   'chest-dip': profile(['chest'], ['triceps', 'shoulders'], 'chest', 'dip-press'),
   'cable-fly': fly,
   'pec-deck': fly,
