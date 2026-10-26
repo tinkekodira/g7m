@@ -1,3 +1,17 @@
+# Resolved — Home appeared before a new account's onboarding
+
+The gate treated a missing local profile as permission to show Home. The
+server-created row could take around ten seconds to sync; only then did its
+null `onboarded_at` replace Home with welcome questions. Registration also
+asked for country despite the same optional question existing in onboarding.
+
+Registration now asks only for email and password and opens question one as
+soon as its successful auth response arrives. Users can type their name while
+the profile syncs, but Continue and Enter cannot advance before the row can
+save it. Unknown profiles wait with retry/sign-out controls; cached onboarded
+profiles still work offline. Only a profile with `onboarded_at` can mount the
+main app. See ADR-0158 and the delayed-sync signup regression tests.
+
 # Challenge record — missing migration and colliding versions
 
 The “Could not find the function public.challenge_history ... in the schema

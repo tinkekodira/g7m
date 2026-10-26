@@ -81,11 +81,9 @@ test('multiple goals validate, survive offline navigation and reload, and remain
     await expect(page.getByRole('checkbox', { name: new RegExp(goal) })).toBeChecked();
   await context.setOffline(false);
   await page.reload();
-  // Earlier questions were deliberately left blank; resume returns to the first one.
-  await expect(page.getByRole('heading', { name: 'What should we call you?' })).toBeVisible();
-  await page.evaluate(() => {
-    location.hash = '/welcome/goal';
-  });
+  // The gate preserves the current question across reload instead of briefly
+  // mounting Home and replacing the welcome URL before the profile is read.
+  await expect(page.getByRole('heading', { name: 'What are you training for?' })).toBeVisible();
   for (const goal of ['Lose fat', 'Build muscle', 'Get stronger'])
     await expect(page.getByRole('checkbox', { name: new RegExp(goal) })).toBeChecked();
   await page.getByRole('button', { name: 'Continue' }).click();

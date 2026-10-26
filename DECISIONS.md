@@ -9114,3 +9114,37 @@ Validation covers non-interactive profile totals, a missing-function response
 followed by automatic recovery, lifetime counts beyond the old 20-row page,
 legacy URL redirection, phone/desktop rendering, both themes and unique
 migration versions. Existing result-card and popup browser checks remain.
+
+## ADR-0158 — Registration opens onboarding before Home
+
+**Status:** accepted · **Date:** 2026-10-26 · **Amends:** ADR-0051
+
+Registration asks for email and password only. Country remains an optional
+welcome question, alongside the other personal details, rather than appearing
+on both forms. Google sign-in and email-confirmation notices stay available.
+
+The previous onboarding gate failed open while the profile was loading or had
+not synced. That showed Home to a new account for several seconds before the
+welcome questions replaced it. A missing profile now means the account is
+unresolved: app routes mount only after a local profile has a non-null
+`onboarded_at`. A known successful registration opens question one immediately,
+using a user-scoped, in-memory marker from the auth response. The question's
+module is prefetched when the registration form opens.
+
+The name can be typed while sync delivers the server-created profile. Continue
+and Enter wait for that row and the initial reads, because an UPDATE before
+the row arrives silently changes nothing. No synthetic profile is inserted.
+Other sessions with no local profile see a waiting screen with retry and sign
+out; they are never treated as new accounts based on missing data. The router
+is keyed by user so another identity cannot inherit its previous profile.
+
+Cached profiles still open the app offline. Unfinished accounts keep their
+current question across reload, or resume from saved answers when no question
+is in the URL. Finishing still writes `onboarded_at` and lets the gate swap
+routes without an additional redirect racing the profile re-read.
+
+Validation holds sync back during registration and returning-user sign-in,
+checks that Home never appears before Finish, exercises early Enter submission,
+failed registration, reload/resumption, account switching and offline startup,
+and captures the initial question and waiting screen at phone/desktop widths
+in both themes. This change needs no database or sync-rule deployment.
