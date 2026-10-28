@@ -1,6 +1,49 @@
 @import 'tailwindcss';
 @import '@g7m/ui/tokens.css';
 
+/* The native modal keeps real screens visible while making their controls inert. */
+.app-tour-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.app-tour-dialog::backdrop {
+  background: transparent;
+}
+/* Keep spotlight geometry stable when replay mounts Home's animated tiles. */
+html:has(.app-tour-dialog[open]) .rise {
+  animation: none;
+}
+.app-tour-highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 3px solid var(--accent);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 55%);
+}
+.app-tour-card {
+  position: fixed;
+  z-index: 1;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: auto;
+  max-width: 384px;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  margin-inline: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 @utility account-screen {
   @apply mx-auto flex min-h-svh max-w-sm flex-col justify-center gap-4 px-5 pt-safe-top pb-safe-bottom;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { formatRest, type UnitSystem } from '@g7m/core';
 import { Button, SegmentedControl, Switch, TextareaField, TextField } from '@g7m/ui';
 import { supabase } from '../lib/supabase.js';
@@ -70,6 +70,10 @@ const UNIT_OPTIONS = [
   { value: 'imperial', label: 'Pounds' },
 ] as const satisfies readonly { value: UnitSystem; label: string }[];
 
+const TourReplay = lazy(() =>
+  import('../components/TourInvitation.js').then((m) => ({ default: m.TourReplay })),
+);
+
 interface AccountSnapshot {
   readonly exerciseCount: number;
   readonly muscleCount: number;
@@ -95,6 +99,12 @@ export function SettingsScreen() {
       </Group>
       <Group id="settings-app" title="App">
         <Appearance />
+        <Panel title="Find your way around">
+          <p className="mb-3 text-sm text-secondary">Revisit the five-stop introduction anytime.</p>
+          <Suspense fallback={null}>
+            <TourReplay />
+          </Suspense>
+        </Panel>
         <FriendsSharing />
         <SendFeedback />
       </Group>

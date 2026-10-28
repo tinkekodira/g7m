@@ -108,7 +108,7 @@ export function FriendsScreen() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
-      <header className="flex items-center justify-between gap-4 pt-6">
+      <header data-tour="friends" className="flex items-center justify-between gap-4 pt-6">
         <h1 className="text-3xl font-bold text-primary">Friends</h1>
         <button
           type="button"
