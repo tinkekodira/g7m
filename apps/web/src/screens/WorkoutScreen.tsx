@@ -1635,7 +1635,9 @@ function SetRow({
         <div className="rounded-control bg-elevated/60 px-3 py-2">
           <div className="flex items-center gap-3">
             <span className="w-16 shrink-0 text-xs font-medium text-muted">{title}</span>
-            <span className="numeric min-w-0 flex-1 truncate text-base font-medium text-primary">
+            <span
+              className={`numeric min-w-0 flex-1 truncate text-base font-medium ${set.isCompleted ? 'text-muted' : 'text-primary'}`}
+            >
               {describePreviousSet(set, (kg) => showWeight(kg, unitSystem))}
             </span>
             {set.setType === 'warmup' && !set.isCompleted && (
@@ -1696,7 +1698,7 @@ function SetRow({
             all on a set with no history: "First time" sat over the tick
             looking like a label for it. */}
             {previous !== null && (
-              <span className="numeric text-xs text-muted">
+              <span className="numeric rounded-control border border-subtle bg-elevated px-2 py-1 text-sm font-semibold text-primary">
                 {`Last: ${describePreviousSet(previous, (kg) => {
                   const shown = toDisplayWeight(kg, unitSystem);
                   return `${String(shown.value)}${shown.unit}`;
