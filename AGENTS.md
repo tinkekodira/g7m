@@ -11,6 +11,20 @@ response. Only skip or change this workflow when the user's current message
 explicitly instructs otherwise. Do not treat implementation or local validation
 alone as completion.
 
+Every final delivery response must explicitly state both deployment requirements,
+even when neither is needed:
+
+- **PowerSync:** whether updated sync rules must be deployed in the PowerSync
+  dashboard. If required, name the file and say whether deployment is completed
+  or still pending. Committing the rules does not deploy them.
+- **Database:** whether `npx supabase db push` must be run. If required, identify
+  the migrations and say whether they are applied or still pending. Committing
+  migrations does not apply them to the live database.
+
+When both are required, state the rollout order: database migrations, PowerSync
+sync rules, then the app release. Never imply that local validation or a merged
+PR completes these external deployment steps.
+
 ## Frontend
 
 Use frontend-design for visual redesigns and substantial new UI.
