@@ -9256,3 +9256,20 @@ Validation covers all five stops at 320, 393 and 1280px in both themes, Back,
 Skip, Escape, focus containment and return, account isolation, persistence,
 interruption, offline replay and zero workout creation. Rendered screenshots
 are inspected at phone and desktop sizes.
+
+## ADR-0162 — The complete browser suite has a twelve-minute CI deadline
+
+**Status:** accepted · **Date:** 2026-10-29 · **Amends:** ADR-0155
+
+PR #201's 156-scenario run passed 147 scenarios before Playwright's global
+ten-minute deadline interrupted the remaining nine. All six tour tests passed;
+no scenario failed an assertion before cancellation. Setup completed normally.
+
+Raise only the CI suite deadline to twelve minutes. Keep the fifteen-minute
+workflow limit so setup and report upload retain time outside Playwright.
+The two workers, per-test deadlines, retry policy and required check name stay
+unchanged. Local runs continue without a global deadline. No tests are skipped
+and a hung individual test still reaches its existing timeout.
+
+Validate the full browser suite locally and confirm the updated PR check
+completes on GitHub. This changes test orchestration, not application behavior.

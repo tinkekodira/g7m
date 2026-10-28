@@ -1,3 +1,15 @@
+# Resolved — browser suite outgrew its ten-minute deadline
+
+PR #201's first browser run reached the global 600-second deadline with
+147 scenarios passing, including all six new tour tests, and nine unfinished.
+No assertion failed before cancellation. Build and dependency setup completed
+normally; the suite itself exhausted its allowance.
+
+Allow twelve minutes for Playwright while retaining the fifteen-minute job
+ceiling, two workers, existing per-test timeouts, retries and report uploads.
+This leaves room for the full 156-scenario suite without skipping coverage or
+mistaking interrupted tests for application failures. See ADR-0162.
+
 # Resolved — Home appeared before a new account's onboarding
 
 The gate treated a missing local profile as permission to show Home. The
