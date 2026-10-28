@@ -35,7 +35,8 @@
  * which means owning the auth storage key and the token refresh — a bad trade
  * for 25 KB gzipped, given that getting it wrong signs everybody out.
  */
-export const ENTRY_BUDGET_BYTES = 780_000;
+// ADR-0161: the tour's small route hooks add to the entry; its UI stays lazy.
+export const ENTRY_BUDGET_BYTES = 782_000;
 
 /**
  * The module entry from a built `index.html`.

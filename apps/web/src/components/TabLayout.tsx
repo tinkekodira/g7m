@@ -1,6 +1,7 @@
 import { Suspense, useLayoutEffect } from 'react';
 import { NavigationType, Outlet, useLocation, useMatch, useNavigationType } from 'react-router';
 import { TabBar } from './TabBar.js';
+import { AppTourProvider } from './AppTour.js';
 import { RouteBoundary } from './ErrorBoundary.js';
 import { ScreenFallback } from './ScreenFallback.js';
 import { LoadingScope } from './LoadingScope.js';
@@ -22,7 +23,7 @@ export function TabLayout() {
   const recap = useMatch('/progress/session/:sessionId') !== null;
 
   return (
-    <>
+    <AppTourProvider>
       <div className={recap ? undefined : 'pb-16'}>
         {/* Tabbed routes keep their navigation while loading or recovering
             from an error (ADR-0078). Recaps use the full height and their own
@@ -44,7 +45,7 @@ export function TabLayout() {
         </LoadingScope>
       </div>
       {!recap && <TabBar alert={isAlarming(alarm)} />}
-    </>
+    </AppTourProvider>
   );
 }
 

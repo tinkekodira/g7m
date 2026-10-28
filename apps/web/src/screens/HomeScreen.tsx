@@ -21,6 +21,7 @@ import {
 import { cx, Skeleton } from '@g7m/ui';
 import { LoadingRegion } from '../components/LoadingRegion.js';
 import { Avatar } from '../components/Avatar.js';
+import { TourInvitation } from '../components/AppTour.js';
 import {
   AlertIcon,
   CalendarIcon,
@@ -116,7 +117,11 @@ export function HomeScreen() {
   const name = firstName(profile.data?.displayName ?? null);
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-4 pt-safe-top pb-safe-bottom">
+    <main
+      data-tour-home
+      tabIndex={-1}
+      className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-4 pt-safe-top pb-safe-bottom"
+    >
       <header className="flex items-center justify-between gap-4 pt-6">
         {/*
           Hello in their own language, from the country they gave at signup,
@@ -159,6 +164,8 @@ export function HomeScreen() {
       {(alarm.lost !== null || alarm.error !== null) && <SyncWarning lost={alarm.lost !== null} />}
 
       {open !== null && <InProgress open={open} />}
+
+      <TourInvitation />
 
       <Suspense
         fallback={
@@ -221,6 +228,7 @@ export function HomeScreen() {
 function InProgress({ open }: { readonly open: OpenSessionSummary }) {
   return (
     <Link
+      data-tour="workout"
       to="/workout"
       className={cx(
         'flex min-h-tap items-center gap-3 rounded-card border border-accent/40 bg-accent-subtle px-4 py-3',
@@ -616,11 +624,21 @@ function QuickTile({
     </>
   );
   return onStart !== undefined ? (
-    <button type="button" onClick={onStart} disabled={busy} className={className}>
+    <button
+      data-tour="workout"
+      type="button"
+      onClick={onStart}
+      disabled={busy}
+      className={className}
+    >
       {content}
     </button>
   ) : (
-    <Link to={to} className={className}>
+    <Link
+      data-tour={to === '/progress' ? 'progress' : to === '/exercises' ? 'exercises' : undefined}
+      to={to}
+      className={className}
+    >
       {content}
     </Link>
   );

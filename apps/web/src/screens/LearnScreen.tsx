@@ -209,7 +209,7 @@ export function LearnScreen() {
       <SegmentedControl label="Body view" options={MODES} value={mode} onChange={setMode} />
 
       {/* The stage in the large corner of every other card. */}
-      <div className="overflow-hidden rounded-sheet border border-subtle bg-stage">
+      <div data-tour="body" className="overflow-hidden rounded-sheet border border-subtle bg-stage">
         {/*
           Nothing is drawn until it is known *which* body to draw.
 

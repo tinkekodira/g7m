@@ -6,6 +6,11 @@ connection, because gyms are concrete basements.
 
 What it does:
 
+- **Find your way around.** An optional five-stop tour highlights workout
+  starting, Progress and history, the exercise library, the 3D body and Friends.
+  Take it from Home or replay it anytime in Settings. Dismissal is remembered
+  separately for each account on this device.
+
 - **Train.** Log a workout set by set — fast, one-handed, offline. Numbers are
   prefilled from last time, a rest timer runs between sets, a barbell set says
   which plates to load, and a new personal record is celebrated the moment it

@@ -100,6 +100,8 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
   // Home, greeting by name, with the tab bar.
   await expect(page.getByRole('navigation')).toBeVisible();
   await expect(page.getByText('Alex')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Take a quick tour' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 
   // And on the server, under this user.
   const [profile] = await eventually(

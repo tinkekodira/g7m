@@ -9221,3 +9221,55 @@ Catalogue checks cover the station, upper-chest mapping, aliases and recommendat
 profile. Browser coverage checks both themes at 320, 393 and 1280px, offline detail
 navigation, both artwork surfaces and a completed set synced with external weight.
 Apply `20261026160000_incline_machine_chest_press.sql` before releasing the app.
+
+## ADR-0161 — A short, optional tour shows where features live
+
+**Status:** accepted · **Date:** 2026-10-28
+
+Friends can complete workouts but ask where features are. Offer everyone a
+dismissible Home card, after the existing welcome questions. Five stops point
+at Start a workout, Progress/history and Browse exercises on Home, then open
+Learn for the interactive body and Friends for connecting and challenges.
+Routines are deliberately excluded pending a separate workout-start redesign.
+
+Next and Back move between real screens without activating their controls.
+A native modal makes the underlying screen inert, traps keyboard focus and
+supports Escape. Skip and the fifth stop's Finish return to Home and focus its
+main region. Each stop shows its count and one short explanation. The spotlight
+scrolls into view, tracks layout changes and leaves the explanation usable on
+short screens. No tour animation is required, including with reduced motion.
+
+Starting or dismissing the invitation is remembered per account on this device,
+using local storage and an in-memory fallback. This follows other local UI
+preferences: a new device may offer the tour again. Interrupted tours never
+automatically resume. Settings → App → Take app tour always permits replay.
+No database migration, sync-rule change or workout write is needed. Previously
+cached screens and tour chunks work offline; Friends still requires connectivity
+for its ordinary actions.
+
+Tour UI and its watcher load separately from the first screen. Small shared
+route hooks still grow the entry, so its budget rises deliberately from 780,000
+to 782,000 bytes (0.26%); the measured test build is about 780,300 bytes. This
+retains the guard while avoiding a larger allowance for lazy tour code.
+
+Validation covers all five stops at 320, 393 and 1280px in both themes, Back,
+Skip, Escape, focus containment and return, account isolation, persistence,
+interruption, offline replay and zero workout creation. Rendered screenshots
+are inspected at phone and desktop sizes.
+
+## ADR-0162 — The complete browser suite has a twelve-minute CI deadline
+
+**Status:** accepted · **Date:** 2026-10-29 · **Amends:** ADR-0155
+
+PR #201's 156-scenario run passed 147 scenarios before Playwright's global
+ten-minute deadline interrupted the remaining nine. All six tour tests passed;
+no scenario failed an assertion before cancellation. Setup completed normally.
+
+Raise only the CI suite deadline to twelve minutes. Keep the fifteen-minute
+workflow limit so setup and report upload retain time outside Playwright.
+The two workers, per-test deadlines, retry policy and required check name stay
+unchanged. Local runs continue without a global deadline. No tests are skipped
+and a hung individual test still reaches its existing timeout.
+
+Validate the full browser suite locally and confirm the updated PR check
+completes on GitHub. This changes test orchestration, not application behavior.
