@@ -1,6 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Repositories } from './repositories.js';
 import { startWorkout } from './start-workout.js';
+
+const { startRoutine } = vi.hoisted(() => ({ startRoutine: vi.fn() }));
+// This suite tests start orchestration. The routine module also exports React
+// hooks that initialize auth/configuration; keep that boundary out of unit tests.
+vi.mock('./use-routines.js', () => ({ startRoutineWorkout: startRoutine }));
+
+beforeEach(() => {
+  startRoutine.mockReset();
+});
 
 function setup() {
   const session = { id: 'new-session' };
@@ -45,6 +54,25 @@ describe('generic workout start', () => {
     await expect(startWorkout(r, 'removed')).rejects.toThrow('no longer available');
     routines.byId.mockResolvedValue({ exercises: [] });
     await expect(startWorkout(r, 'empty')).rejects.toThrow('no exercises');
+    expect(sessions.start).not.toHaveBeenCalled();
+    expect(startRoutine).not.toHaveBeenCalled();
+  });
+
+  it('delegates a valid routine with the current bodyweight', async () => {
+    const { r, routines, sessions, session } = setup();
+    const routine = { routine: { id: 'push' }, exercises: [{ exerciseId: 'bench' }] };
+    routines.byId.mockResolvedValue(routine);
+    startRoutine.mockResolvedValue(session);
+    expect(await startWorkout(r, 'push')).toEqual({ session, blank: false });
+    expect(startRoutine).toHaveBeenCalledWith(r, { routine, bodyweightKg: 80 });
+    expect(sessions.start).not.toHaveBeenCalled();
+  });
+
+  it('propagates a failed routine start without falling back to a blank workout', async () => {
+    const { r, routines, sessions } = setup();
+    routines.byId.mockResolvedValue({ exercises: [{ exerciseId: 'bench' }] });
+    startRoutine.mockRejectedValue(new Error('device full'));
+    await expect(startWorkout(r, 'push')).rejects.toThrow('device full');
     expect(sessions.start).not.toHaveBeenCalled();
   });
 

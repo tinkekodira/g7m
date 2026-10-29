@@ -1,3 +1,16 @@
+# Resolved — workout-start unit tests required local Supabase configuration
+
+PR #203's new start-orchestration suite imported the routine module, which also
+exports React hooks. That transitively initialized authentication and validated
+Supabase settings before tests could run. A configured local environment masked
+the failure; CI correctly runs unit tests without app credentials.
+
+Mock the routine-start boundary in this orchestration suite and verify both
+successful delegation and failure propagation. Existing browser tests exercise
+the real routine implementation. Validate with deliberately invalid Supabase
+settings and the full coverage-gated unit suite; app configuration and CI
+credentials remain unchanged.
+
 # Resolved — browser suite outgrew its ten-minute deadline
 
 PR #201's first browser run reached the global 600-second deadline with
