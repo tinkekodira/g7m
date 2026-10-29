@@ -99,6 +99,7 @@ test('recommendations toggle offline, sync between devices and preserve manual t
     await expect(page.getByRole('navigation')).toBeVisible();
     await expect(page.getByText('Today’s workout', { exact: true })).toHaveCount(0);
     await page.getByRole('button', { name: /^Start a workout/ }).click();
+    await page.getByRole('button', { name: 'Start a blank workout', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Workout', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Home', exact: true }).click();
     await expect(page.getByRole('link', { name: /^Continue your workout/ })).toBeVisible();

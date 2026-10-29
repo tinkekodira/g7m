@@ -167,6 +167,7 @@ test('tour tolerates blocked preference storage and preserves a workout already 
   });
   await signIn(page, user);
   await page.getByRole('button', { name: /^Start a workout/ }).click();
+  await page.getByRole('button', { name: 'Start a blank workout', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Finish workout', exact: true })).toBeVisible();
   await page.goto('/#/');
   await page.getByRole('button', { name: 'Take a quick tour' }).click();

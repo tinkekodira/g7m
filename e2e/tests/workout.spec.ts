@@ -13,7 +13,7 @@ for (const viewport of [
   { width: 393, height: 851 },
   { width: 1440, height: 900 },
 ]) {
-  test(`quick access starts a workout offline in one tap at ${String(viewport.width)}px`, async ({
+  test(`quick access starts a blank workout offline at ${String(viewport.width)}px`, async ({
     page,
     context,
   }, testInfo) => {
@@ -28,7 +28,8 @@ for (const viewport of [
       .toBe(true);
     await page.screenshot({ path: testInfo.outputPath('home.png'), fullPage: true });
     await context.setOffline(true);
-    await start.dblclick();
+    await start.click();
+    await page.getByRole('button', { name: 'Start a blank workout', exact: true }).dblclick();
     await expect(page.getByRole('heading', { name: 'Workout', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Train', exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: '+ Add an exercise' })).toBeVisible();
