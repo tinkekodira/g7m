@@ -34,6 +34,10 @@ What it does:
   one from its page, and start the same session again in a tap. A routine holds
   the movements and the rep ranges and never the weights — those always come
   from what you last lifted, so a routine cannot go stale.
+  Start a workout offers your saved routines alongside a blank workout. If you
+  always start blank, check **Do not show this again** when starting a blank
+  workout. Restore the chooser in Settings → In the gym → Training →
+  **Show workout start options**. This preference applies per account on this device.
 - **Learn.** An interactive 3D body. Tap a muscle to see every exercise that
   trains it. The exercise library has search, filters by muscle, equipment and
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.

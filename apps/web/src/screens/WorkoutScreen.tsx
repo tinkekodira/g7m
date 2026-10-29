@@ -38,6 +38,7 @@ import {
 import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { WorkoutSkeleton } from '../components/RouteSkeleton.js';
+import { useWorkoutStart } from '../lib/use-workout-start.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
 import { useRestSettingsStore } from '../lib/use-rest-settings.js';
 import { chosenRestSeconds, formatAdjust } from '../lib/rest-settings.js';
@@ -182,6 +183,7 @@ export function WorkoutScreen() {
   const [removing, setRemoving] = useState<ExerciseBlock | null>(null);
   const restSettings = useRestSettingsStore();
 
+  const workoutStart = useWorkoutStart();
   const owner = useAuthStore((s) => s.session?.user.id ?? '');
   const state = useCatalogue<Workout | null>('workout', async (repositories) => {
     const session = await repositories.sessions.active();
@@ -433,18 +435,13 @@ export function WorkoutScreen() {
   if (workout === null) {
     return (
       <Shell>
-        <StartWorkout
-          busy={busy}
-          onStart={() => {
-            void (async () => {
-              // The bodyweight is snapshotted at the start when it is known.
-              // When it is not, the prompt below fills it in later and
-              // backfills this session — see `setBodyweight`.
-              const profile = await write((r) => r.profile.current());
-              await write((r) => r.sessions.start({ bodyweightKg: profile?.bodyweightKg ?? null }));
-            })();
-          }}
-        />
+        {workoutStart.chooser}
+        <StartWorkout busy={workoutStart.busy} onStart={workoutStart.start} />
+        {workoutStart.error !== null && (
+          <p role="alert" className="text-sm text-danger">
+            {workoutStart.error}
+          </p>
+        )}
       </Shell>
     );
   }

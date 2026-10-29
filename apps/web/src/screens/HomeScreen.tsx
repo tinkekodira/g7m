@@ -4,7 +4,6 @@ import {
   useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type ComponentType,
   type ReactNode,
@@ -41,6 +40,7 @@ import { useMonthStats, type TrainedToday } from '../lib/db/use-month-stats.js';
 import { useTrainingReview } from '../lib/db/use-review.js';
 import { startPlannedWorkout, useTodaysPlan, type TodaysPlan } from '../lib/db/use-todays-plan.js';
 import { buzz } from '../lib/haptics.js';
+import { useWorkoutStart } from '../lib/use-workout-start.js';
 import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { openSessionSummary, type OpenSession, type OpenSessionSummary } from './workout-timer.js';
 
@@ -75,26 +75,7 @@ const StatsHero = lazy(async () => ({
  * that is losing data or not working, still shows here.
  */
 export function HomeScreen() {
-  const navigate = useNavigate();
-  const { write, busy, error } = useWrite();
-  const starting = useRef(false);
-
-  async function startWorkout(): Promise<void> {
-    if (starting.current) return;
-    starting.current = true;
-    buzz('tick');
-    try {
-      const session = await write(async (r) => {
-        const active = await r.sessions.active();
-        if (active !== null) return active;
-        const profile = await r.profile.current();
-        return r.sessions.start({ bodyweightKg: profile?.bodyweightKg ?? null });
-      });
-      if (session !== null) void navigate('/workout');
-    } finally {
-      starting.current = false;
-    }
-  }
+  const { start: startWorkout, busy, error, chooser } = useWorkoutStart();
 
   const now = useMemo(() => new Date(), []);
   const profile = useCatalogue('profile', (r) => r.profile.current());
@@ -122,6 +103,7 @@ export function HomeScreen() {
       tabIndex={-1}
       className="mx-auto flex min-h-full max-w-2xl flex-col gap-5 px-4 pt-safe-top pb-safe-bottom"
     >
+      {chooser}
       <header className="flex items-center justify-between gap-4 pt-6">
         {/*
           Hello in their own language, from the country they gave at signup,
@@ -570,7 +552,7 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
       : {
           to: '/workout',
           title: workoutOpen ? 'Continue your workout' : 'Start a workout',
-          detail: workoutOpen ? 'Back to your session' : 'Build it as you go',
+          detail: workoutOpen ? 'Back to your session' : 'Choose a routine or start blank',
           icon: DumbbellIcon,
           tone: 'success',
         },

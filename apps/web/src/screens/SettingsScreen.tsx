@@ -16,6 +16,11 @@ import { describeSyncPhase, useSyncStore } from '../lib/powersync/sync-store.js'
 import { useSyncAlarm } from '../lib/powersync/use-sync-alarm.js';
 import { readLocalCounts, type LocalCounts } from '../lib/powersync/local-counts.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import {
+  readWorkoutStartOptions,
+  saveWorkoutStartOptions,
+  useWorkoutStartPreference,
+} from '../lib/workout-start-preference.js';
 import { useThemeStore } from '../lib/use-theme.js';
 import { useRestSettingsStore } from '../lib/use-rest-settings.js';
 import {
@@ -158,6 +163,9 @@ function Appearance() {
 
 /** Account preference shared with onboarding, persisted locally before syncing. */
 function WorkoutRecommendations() {
+  const user = useAuthStore((s) => s.session?.user.id ?? '');
+  useWorkoutStartPreference((s) => s.revision);
+  const showStartOptions = readWorkoutStartOptions(user);
   const profile = useCatalogue('profile', (r) => r.profile.current());
   const { write, busy, error } = useWrite();
   const [pending, setPending] = useState<boolean | null>(null);
@@ -186,6 +194,18 @@ function WorkoutRecommendations() {
           });
         }}
       />
+      <div className="mt-4 border-t border-subtle pt-4">
+        <Switch
+          label="Show workout start options"
+          checked={showStartOptions}
+          description={
+            showStartOptions
+              ? 'Choose a routine or start blank on this device.'
+              : 'Off: always start blank workouts on this device.'
+          }
+          onChange={(show) => saveWorkoutStartOptions(user, show)}
+        />
+      </div>
       {(error ?? profile.error) !== null && (
         <p role="alert" className="mt-2 text-sm text-danger">
           {error ?? profile.error}

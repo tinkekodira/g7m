@@ -18,6 +18,7 @@ async function pick(page: Page, exercise: string): Promise<void> {
 
 async function startSuperset(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Start a workout/ }).click();
+  await page.getByRole('button', { name: 'Start a blank workout', exact: true }).click();
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
   await page.getByRole('switch', { name: /^Superset/ }).click();
   await pick(page, 'Barbell Curl');
@@ -117,6 +118,7 @@ test('the Superset card keeps one line and even padding on a narrow phone', asyn
   await page.setViewportSize({ width: 320, height: 640 });
   await signIn(page, user);
   await page.getByRole('button', { name: /^Start a workout/ }).click();
+  await page.getByRole('button', { name: 'Start a blank workout', exact: true }).click();
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
 
   const toggle = page.getByRole('switch', { name: /^Superset/ });

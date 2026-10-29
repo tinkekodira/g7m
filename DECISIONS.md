@@ -9273,3 +9273,35 @@ and a hung individual test still reaches its existing timeout.
 
 Validate the full browser suite locally and confirm the updated PR check
 completes on GitHub. This changes test orchestration, not application behavior.
+
+## ADR-0163 — Starting a workout offers routines or a blank session
+
+**Status:** accepted · **Date:** 2026-10-29 · **Amends:** ADR-0079, ADR-0129
+
+Home's generic Start a workout and the empty logger open a native modal listing
+saved routines, most recently performed first, with exercise counts and Start
+buttons. Empty routines cannot start. A scrollable list leaves the blank action
+and its checkbox visible below it. With no routines, the dialog explains that a
+finished workout can be saved for next time. Explicit routine starts, recommended
+plans and continuing an active workout keep their existing paths.
+
+“Do not show this again” belongs to Start a blank workout. Only a successful new
+blank start saves it; choosing a routine, resuming an existing session, a failed
+start or cancelling does not. Later generic starts go straight to blank workouts.
+Settings → In the gym → Training → Show workout start options reverses the choice
+and can also disable the chooser directly. It defaults on and is remembered per
+account on this device with a local-storage key and an in-memory fallback. Another
+device or reinstall offers the chooser again; this is a local UI preference.
+
+A shared start controller guards repeated taps and checks for an active session
+again immediately before creation. Routine starts reuse the existing prefill and
+last-performed behavior. All reads and writes remain local and work offline.
+The dialog and creation helper load on demand, within the existing entry budget.
+Native modal focus containment, Escape/Cancel, restored focus, labelled controls,
+light/dark tokens and reduced motion preserve keyboard and phone usability.
+
+Validation covers preference defaults, account isolation, storage failures,
+active-session races, failed starts, routine/blank starts, reload persistence,
+settings, cancellation, offline operation and phone/desktop layouts in both
+themes. Existing browser workout starts explicitly choose blank when appropriate.
+No database migration, db push or PowerSync sync-rule deployment is required.

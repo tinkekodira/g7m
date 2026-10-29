@@ -156,11 +156,12 @@ test('multiple results can be stepped through; Later and Escape preserve the car
     displayName: 'Riley',
   });
   await befriend(me.id, friend.id);
-  await signIn(page, me);
+  // Seed before app entry: its first claim must not race a reload that loses
+  // an already-delivered popup (interrupted delivery deliberately never replays).
   await completedChallenge(me.id, friend.id, 0, 0);
   await completedChallenge(me.id, friend.id, 0, 0);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.reload();
+  await signIn(page, me);
   const popup = page.getByRole('dialog', { name: 'A draw', exact: true });
   await expect(popup).toBeVisible();
   await expect(popup.getByText('Result 1 of 2')).toBeVisible();
