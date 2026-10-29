@@ -34,7 +34,8 @@ What it does:
   one from its page, and start the same session again in a tap. A routine holds
   the movements and the rep ranges and never the weights — those always come
   from what you last lifted, so a routine cannot go stale.
-  Start a workout offers your saved routines alongside a blank workout. If you
+  Start a workout offers your saved routines alongside a blank workout. Routines
+  appear three per page; swipe left or tap the page dots to see more. If you
   always start blank, check **Do not show this again** when starting a blank
   workout. Restore the chooser in Settings → In the gym → Training →
   **Show workout start options**. This preference applies per account on this device.
