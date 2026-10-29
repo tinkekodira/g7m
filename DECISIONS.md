@@ -9280,9 +9280,14 @@ completes on GitHub. This changes test orchestration, not application behavior.
 
 Home's generic Start a workout and the empty logger open a native modal listing
 saved routines, most recently performed first, with exercise counts and Start
-buttons. Empty routines cannot start. A scrollable list leaves the blank action
-and its checkbox visible below it. With no routines, the dialog explains that a
-finished workout can be saved for next time. Explicit routine starts, recommended
+buttons. Empty routines cannot start. Routines appear in full-width, horizontally
+swipeable pages of at most three. More than three routines adds tappable page dots
+with arrow, Home and End key navigation. Inactive pages are inert and hidden from
+assistive technology; width changes preserve the current page, and reduced motion
+disables animated page jumps. The routine area can still scroll vertically on short
+screens, leaving the blank action and its checkbox visible below it. With no
+routines, the dialog explains that a finished workout can be saved for next time.
+Explicit routine starts, recommended
 plans and continuing an active workout keep their existing paths.
 
 “Do not show this again” belongs to Start a blank workout. Only a successful new
