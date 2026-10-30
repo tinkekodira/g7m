@@ -1251,7 +1251,8 @@ function ExerciseCard({
   // your hands — and it is the last set that decides whether to add weight.
   // The last *top* set: a drop is taken to failure, so its answer is always
   // none, and it is the heavy set's effort the next weight is chosen from.
-  const awaiting = skipped ? null : finalTopSet(block.sets);
+  const isTimeBased = block.exercise?.isTimeBased === true;
+  const awaiting = skipped || isTimeBased ? null : finalTopSet(block.sets);
 
   /**
    * "That was too easy": the top of the rep range, on the last set, once the
@@ -1259,15 +1260,17 @@ function ExerciseCard({
    * is about this exercise, and it is read on the way to the next one.
    */
   const lastWorking = [...block.sets].reverse().find(isTopSet);
-  const advice = weightAdvice({
-    sets: block.sets,
-    repHigh: block.exercise?.defaultRepHigh ?? null,
-    stepKg: weightStepKg({
-      dumbbell: block.dumbbell,
-      currentKg: lastWorking?.weightKg ?? 0,
-      unitSystem,
-    }),
-  });
+  const advice = isTimeBased
+    ? null
+    : weightAdvice({
+        sets: block.sets,
+        repHigh: block.exercise?.defaultRepHigh ?? null,
+        stepKg: weightStepKg({
+          dumbbell: block.dumbbell,
+          currentKg: lastWorking?.weightKg ?? 0,
+          unitSystem,
+        }),
+      });
 
   return (
     // Found by id to be scrolled to once it has just been added; the margin
@@ -1328,6 +1331,7 @@ function ExerciseCard({
                   set={set}
                   record={records.get(set.id) ?? null}
                   exerciseName={name}
+                  isTimeBased={isTimeBased}
                   // Counted among working sets, so a ramp in front does not slide
                   // every "Last:" hint down by the number of warm-ups. A warm-up
                   // has no last time worth quoting, and nor does a drop: last
@@ -1511,6 +1515,7 @@ function SetRow({
   set,
   record,
   exerciseName,
+  isTimeBased,
   previous,
   barbell,
   dumbbell,
@@ -1538,6 +1543,7 @@ function SetRow({
   readonly set: SessionSet;
   readonly record: SetRecord | null;
   readonly exerciseName: string;
+  readonly isTimeBased: boolean;
   readonly previous: SetTemplate | null;
   readonly barbell: boolean;
   readonly dumbbell: boolean;
@@ -1550,6 +1556,7 @@ function SetRow({
 }) {
   const [weight, setWeight] = useState(() => toDisplayWeight(set.weightKg, unitSystem).value);
   const [reps, setReps] = useState(set.reps);
+  const [durationUnit, setDurationUnit] = useState<'seconds' | 'minutes'>('seconds');
 
   /**
    * Plain bodyweight or weighted, held here and written on the tick like the
@@ -1635,7 +1642,7 @@ function SetRow({
             <span
               className={`numeric min-w-0 flex-1 truncate text-base font-medium ${set.isCompleted ? 'text-muted' : 'text-primary'}`}
             >
-              {describePreviousSet(set, (kg) => showWeight(kg, unitSystem))}
+              {describePreviousSet(set, (kg) => showWeight(kg, unitSystem), isTimeBased)}
             </span>
             {set.setType === 'warmup' && !set.isCompleted && (
               <button
@@ -1696,10 +1703,14 @@ function SetRow({
             looking like a label for it. */}
             {previous !== null && (
               <span className="numeric rounded-control border border-subtle bg-elevated px-2 py-1 text-sm font-semibold text-primary">
-                {`Last: ${describePreviousSet(previous, (kg) => {
-                  const shown = toDisplayWeight(kg, unitSystem);
-                  return `${String(shown.value)}${shown.unit}`;
-                })}`}
+                {`Last: ${describePreviousSet(
+                  previous,
+                  (kg) => {
+                    const shown = toDisplayWeight(kg, unitSystem);
+                    return `${String(shown.value)}${shown.unit}`;
+                  },
+                  isTimeBased,
+                )}`}
               </span>
             )}
           </div>
@@ -1719,6 +1730,21 @@ function SetRow({
                 setLoadType(next);
                 if (next === 'bodyweight') setWeight(0);
               }}
+            />
+          )}
+
+          {isTimeBased && (
+            <SegmentedControl
+              label={`${title} duration format`}
+              variant="quiet"
+              className="mb-3"
+              options={[
+                { value: 'seconds', label: 'Seconds' },
+                { value: 'minutes', label: 'Min + sec' },
+              ]}
+              value={durationUnit}
+              disabled={busy}
+              onChange={setDurationUnit}
             />
           )}
 
@@ -1752,14 +1778,41 @@ function SetRow({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <Stepper
-                  label="Reps"
-                  value={reps}
-                  step={1}
-                  min={0}
-                  disabled={busy}
-                  onChange={setReps}
-                />
+                {isTimeBased && durationUnit === 'minutes' ? (
+                  <div className="flex flex-col gap-2">
+                    <Stepper
+                      label="Minutes"
+                      value={Math.floor(reps / 60)}
+                      step={1}
+                      min={0}
+                      disabled={busy}
+                      onChange={(minutes) => {
+                        setReps(minutes * 60 + (reps % 60));
+                      }}
+                    />
+                    <Stepper
+                      label="Seconds"
+                      value={reps % 60}
+                      step={1}
+                      min={0}
+                      max={59}
+                      disabled={busy}
+                      onChange={(seconds) => {
+                        setReps(Math.floor(reps / 60) * 60 + seconds);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <Stepper
+                    key={durationUnit}
+                    label={isTimeBased ? 'Seconds' : 'Reps'}
+                    value={reps}
+                    step={1}
+                    min={0}
+                    disabled={busy}
+                    onChange={setReps}
+                  />
+                )}
               </div>
             </div>
 
