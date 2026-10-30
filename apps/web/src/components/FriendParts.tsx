@@ -210,7 +210,7 @@ export function NamePrompt() {
           {busy ? 'Saving…' : 'Continue'}
         </Button>
         {(error ?? (missing ? MISSING_PROFILE : null)) !== null && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-destructive">
             {error ?? MISSING_PROFILE}
           </p>
         )}

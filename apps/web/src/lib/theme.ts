@@ -27,8 +27,8 @@ export const DEFAULT_THEME: Theme = 'dark';
  * in the stylesheet. Each theme's page background.
  */
 export const BROWSER_CHROME: Record<Theme, string> = {
-  dark: '#1f1e1d',
-  light: '#f5f3ee',
+  dark: '#101214',
+  light: '#f3f5f0',
 };
 
 /** The subset of `Storage` this needs, so the tests can hand it a map. */

@@ -260,17 +260,15 @@ function StatCard({
       to={to}
       aria-label={label}
       className={cx(
-        'relative isolate flex min-h-[18.5rem] w-full flex-col overflow-hidden rounded-sheet border border-accent/20 bg-surface p-4',
+        'relative isolate flex min-h-[18.5rem] w-full flex-col overflow-hidden rounded-sheet border border-subtle bg-surface p-4',
         'transition-transform duration-150 ease-out select-none active:scale-[0.985]',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
       )}
     >
-      <div aria-hidden className="stat-glow pointer-events-none absolute inset-0 -z-10" />
-
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent"
+          className="flex size-10 shrink-0 items-center justify-center rounded-card bg-elevated text-secondary"
         >
           <Icon className="size-5" />
         </span>
@@ -514,7 +512,7 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
                   key={lift.exerciseId}
                   className={cx(
                     'min-w-0 rounded-card border px-3 py-2',
-                    lift.isRecord ? 'border-accent/30 bg-accent/10' : 'border-subtle/70 bg-base/50',
+                    lift.isRecord ? 'border-subtle bg-accent/10' : 'border-subtle/70 bg-base/50',
                   )}
                 >
                   <span className="block truncate text-xs leading-4 text-muted">
@@ -647,12 +645,11 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
     `${String(((day - 0.5) / Math.max(1, stats.daysInMonth)) * 100)}%`;
 
   return (
-    <div className="relative isolate overflow-hidden rounded-sheet border border-accent/20 bg-surface p-4">
-      <div aria-hidden className="stat-glow pointer-events-none absolute inset-0 -z-10" />
+    <div className="relative isolate overflow-hidden rounded-sheet border border-subtle bg-surface p-4">
       <div className="flex items-start gap-3">
         <span
           aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent"
+          className="flex size-10 shrink-0 items-center justify-center rounded-card bg-elevated text-secondary"
         >
           <TrendIcon className="size-5" />
         </span>
@@ -709,8 +706,8 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
           buzz('tick');
         }}
         className={cx(
-          'mt-4 inline-flex min-h-12 items-center gap-2 rounded-full bg-accent pr-6 pl-5 text-base font-medium text-on-accent select-none',
-          'transition-[background-color,transform] duration-150 hover:bg-accent-hover active:scale-[0.97] active:bg-accent-pressed',
+          'mt-4 inline-flex min-h-12 items-center gap-2 rounded-full border border-subtle bg-elevated pr-6 pl-5 text-base font-medium text-primary select-none',
+          'transition-[background-color,transform] duration-150 hover:border-strong active:scale-[0.97] active:bg-surface',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         )}
       >

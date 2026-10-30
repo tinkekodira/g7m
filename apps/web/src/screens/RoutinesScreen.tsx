@@ -55,7 +55,7 @@ export function RoutinesScreen() {
       </header>
 
       {(state.error ?? error) !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {state.error ?? error}
         </p>
       )}

@@ -343,7 +343,7 @@ export function ExerciseLibraryScreen() {
       </section>
 
       {error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : loading ? (

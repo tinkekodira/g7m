@@ -213,29 +213,29 @@ function InProgress({ open }: { readonly open: OpenSessionSummary }) {
       data-tour="workout"
       to="/workout"
       className={cx(
-        'flex min-h-tap items-center gap-3 rounded-card border border-accent/40 bg-accent-subtle px-4 py-3',
+        'flex min-h-tap items-center gap-3 rounded-card border border-accent bg-accent px-4 py-3 text-on-accent hover:bg-accent-hover active:bg-accent-pressed',
         'transition-transform duration-150 ease-out select-none active:scale-[0.99]',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
       )}
     >
       <span
         aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-on-accent/10 text-on-accent"
       >
         <PlayIcon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-accent uppercase">
+        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-on-accent uppercase">
           {open.stale ? 'Still open' : 'In progress'}
         </span>
-        <span className="block truncate text-base leading-6 font-semibold text-primary">
+        <span className="block truncate text-base leading-6 font-semibold text-on-accent">
           {open.headline}
         </span>
-        <span className="numeric block truncate text-xs leading-4 text-secondary">
+        <span className="numeric block truncate text-xs leading-4 text-on-accent">
           {open.detail}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-primary">
+      <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-on-accent">
         {open.stale ? 'Open it' : 'Continue'}
         <ChevronRightIcon aria-hidden className="size-4" />
       </span>
@@ -301,7 +301,7 @@ function TodayCard({
   if (today.error !== null) {
     return (
       <PlanCard label="Today’s workout">
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {today.error}
         </p>
       </PlanCard>
@@ -408,7 +408,7 @@ function TodayCard({
           onClick={() => {
             void start(plan);
           }}
-          className={cx(ACTION, PRIMARY, 'disabled:cursor-not-allowed')}
+          className={cx(ACTION, QUIET, 'disabled:cursor-not-allowed')}
         >
           <PlayIcon className="size-4" />
           {busy ? 'Setting it up…' : 'Start workout'}
@@ -421,9 +421,7 @@ function TodayCard({
 }
 
 /**
- * The plan card's frame: the month cards' warm corner light, without their
- * accent edge — this one sits lower and speaks a little more quietly — and a
- * hairline above the actions, so the buttons read as the card's floor.
+ * A neutral plan card with a quiet divider above its actions.
  */
 function PlanCard({
   label,
@@ -440,10 +438,9 @@ function PlanCard({
       aria-labelledby={heading}
       className="relative isolate overflow-hidden rounded-sheet border border-subtle bg-surface p-4"
     >
-      <div aria-hidden className="stat-glow pointer-events-none absolute inset-0 -z-10" />
       <p
         id={title === undefined ? heading : undefined}
-        className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-accent uppercase"
+        className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-secondary uppercase"
       >
         {label}
       </p>
@@ -476,14 +473,11 @@ const ACTION = cx(
   'transition-[background-color,transform] duration-150 active:scale-[0.97]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 );
-const PRIMARY =
-  'bg-accent text-on-accent shadow-floating hover:bg-accent-hover active:bg-accent-pressed ' +
-  'disabled:bg-strong disabled:text-muted disabled:shadow-none';
-const QUIET = 'border border-subtle bg-elevated text-primary active:bg-surface';
+const QUIET = 'border border-subtle bg-elevated text-primary hover:border-strong active:bg-surface';
 
 function PrimaryLink({ to, children }: { readonly to: string; readonly children: ReactNode }) {
   return (
-    <Link to={to} className={cx(ACTION, PRIMARY, 'pr-4')}>
+    <Link to={to} className={cx(ACTION, QUIET, 'pr-4')}>
       {children}
       <ChevronRightIcon className="size-5" />
     </Link>
@@ -505,7 +499,7 @@ function SeePlan() {
 function WriteError({ error }: { readonly error: string | null }) {
   if (error === null) return null;
   return (
-    <p role="alert" className="mt-3 text-sm text-danger">
+    <p role="alert" className="mt-3 text-sm text-destructive">
       {error}
     </p>
   );
@@ -520,10 +514,8 @@ interface Tile {
 }
 
 const TILE_TONES = {
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
   neutral: 'bg-elevated text-secondary',
-  accent: 'bg-accent/15 text-accent',
+  accent: 'bg-on-accent/10 text-on-accent',
 } as const;
 
 /**
@@ -547,21 +539,21 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
           title: 'Today’s plan',
           detail: 'What the app suggests',
           icon: ClipboardIcon,
-          tone: 'success',
+          tone: 'neutral',
         }
       : {
           to: '/workout',
           title: workoutOpen ? 'Continue your workout' : 'Start a workout',
           detail: workoutOpen ? 'Back to your session' : 'Choose a routine or start blank',
           icon: DumbbellIcon,
-          tone: 'success',
+          tone: workoutOpen ? 'neutral' : 'accent',
         },
     {
       to: '/calendar',
       title: 'Calendar',
       detail: 'The days you trained',
       icon: CalendarIcon,
-      tone: 'warning',
+      tone: 'neutral',
     },
     {
       to: '/exercises',
@@ -575,7 +567,7 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
       title: 'Progress',
       detail: 'How your training is going',
       icon: ProgressIcon,
-      tone: 'accent',
+      tone: 'neutral',
     },
   ];
 }
@@ -589,8 +581,13 @@ function QuickTile({
   onStart,
   busy = false,
 }: Tile & { readonly onStart?: () => void; readonly busy?: boolean }) {
-  const className =
-    'flex h-full min-h-32 w-full flex-col justify-between gap-4 rounded-card border border-subtle bg-surface p-4 text-left transition-colors active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50';
+  const accented = tone === 'accent';
+  const className = cx(
+    'flex h-full min-h-32 w-full flex-col justify-between gap-4 rounded-card border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50',
+    accented
+      ? 'border-accent bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-pressed'
+      : 'border-subtle bg-surface text-primary hover:border-strong active:bg-elevated',
+  );
   const content = (
     <>
       <span
@@ -600,8 +597,17 @@ function QuickTile({
         <Icon className="size-6" />
       </span>
       <span>
-        <span className="block text-base leading-snug font-semibold text-primary">{title}</span>
-        <span className="mt-0.5 block text-xs text-muted">{detail}</span>
+        <span
+          className={cx(
+            'block text-base leading-snug font-semibold',
+            accented ? 'text-on-accent' : 'text-primary',
+          )}
+        >
+          {title}
+        </span>
+        <span className={cx('mt-0.5 block text-xs', accented ? 'text-on-accent' : 'text-muted')}>
+          {detail}
+        </span>
       </span>
     </>
   );

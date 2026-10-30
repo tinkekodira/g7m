@@ -24,7 +24,7 @@ export function Avatar({
   /**
    * In a colour of the person's own rather than the accent, so a list of
    * friends can be told apart at a glance. The same name always gets the same
-   * colour. Off by default: the accent is how your own avatar looks.
+   * colour. Off by default: your own avatar uses a neutral surface.
    */
   readonly tint?: boolean;
 }) {
@@ -38,7 +38,7 @@ export function Avatar({
       aria-hidden
       className={cx(
         'inline-flex shrink-0 items-center justify-center rounded-full font-semibold',
-        tinted ? 'avatar-tint' : 'bg-accent-subtle text-accent ring-1 ring-accent/30',
+        tinted ? 'avatar-tint' : 'bg-elevated text-secondary ring-1 ring-subtle',
         size === 'lg'
           ? 'size-16 text-2xl'
           : size === 'lead'

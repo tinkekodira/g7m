@@ -315,7 +315,7 @@ html:has(.app-tour-dialog[open]) .rise {
   }
 }
 .recap-comparison {
-  background: color-mix(in oklab, var(--accent) 3%, var(--bg-surface));
+  background: var(--bg-surface);
 }
 .recap-comparison-heading {
   display: grid;
@@ -456,7 +456,7 @@ html:has(.app-tour-dialog[open]) .rise {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   background: var(--bg-surface);
   white-space: nowrap;
@@ -486,7 +486,7 @@ html:has(.app-tour-dialog[open]) .rise {
   min-height: 44px;
   max-width: 100%;
   padding: 6px 16px;
-  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   background: var(--bg-surface);
   box-shadow: var(--shadow-floating-value);
@@ -529,7 +529,7 @@ html:has(.app-tour-dialog[open]) .rise {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  border: 1px solid var(--border-subtle);
   border-radius: 50%;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -987,19 +987,16 @@ textarea,
   bottom: -1px;
 }
 
-/* First's weight: a little light across the top of the gold and a soft
-   glow behind it. Still, not animated: it is a record, not a slot machine. */
+/* First's weight keeps its meaningful gold, without a decorative glow. */
 .podium-gleam {
   background-image: linear-gradient(180deg, #ffe7a3 15%, var(--podium-ink) 85%);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 6px rgb(245 197 66 / 0.35));
 }
 
 :root[data-theme='light'] .podium-gleam {
   background-image: linear-gradient(180deg, #8f6f10 15%, var(--podium-ink) 85%);
-  filter: drop-shadow(0 0 5px rgb(212 160 23 / 0.25));
 }
 
 @media (forced-colors: active) {
@@ -1010,25 +1007,6 @@ textarea,
 }
 
 /* Home's month cards (ADR-0120). ---------------------------------------- */
-
-/* A warm light from the top-left corner of each card, so the three read as
-   one family and as the top of the screen, without a gradient border or a
-   glow blob. Quieter on the light theme, where a tint shows more. */
-.stat-glow {
-  background: radial-gradient(
-    120% 90% at 0% 0%,
-    color-mix(in oklab, var(--accent) 13%, transparent),
-    transparent 62%
-  );
-}
-
-:root[data-theme='light'] .stat-glow {
-  background: radial-gradient(
-    120% 90% at 0% 0%,
-    color-mix(in oklab, var(--accent) 7%, transparent),
-    transparent 62%
-  );
-}
 
 /* The carousel scrolls by swipe; a scrollbar under it is a desktop artefact. */
 .no-scrollbar {
@@ -1117,118 +1095,14 @@ textarea,
   transform-origin: bottom;
 }
 
-/* The challenge button's ember (ADR-0133): a hot band running round its edge,
-   and a glow behind it that flickers like coals, so the one button on a
-   friend's page that starts something looks like it does. Accent, gold and
-   the deep accent, from the tokens, so it is fire in either theme. The
-   reduced-motion rule in tokens.css stops both on their first frame: a still,
-   warm ring. */
-@property --ember-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes g7m-ember-turn {
-  to {
-    --ember-angle: 360deg;
-  }
-}
-
-@keyframes g7m-ember-flicker {
-  0%,
-  100% {
-    opacity: 0.5;
-  }
-  17% {
-    opacity: 0.8;
-  }
-  29% {
-    opacity: 0.55;
-  }
-  46% {
-    opacity: 0.9;
-  }
-  63% {
-    opacity: 0.6;
-  }
-  81% {
-    opacity: 0.85;
-  }
-}
-
-.ember {
-  position: relative;
-  isolation: isolate;
-}
-
-.ember::before,
-.ember::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: conic-gradient(
-    from var(--ember-angle),
-    color-mix(in oklab, var(--accent) 35%, transparent) 0deg,
-    var(--accent) 190deg,
-    var(--warning) 245deg,
-    color-mix(in oklab, var(--warning) 55%, white) 262deg,
-    var(--warning) 278deg,
-    var(--accent-pressed) 315deg,
-    color-mix(in oklab, var(--accent) 35%, transparent) 360deg
-  );
-  animation: g7m-ember-turn 3.6s linear infinite;
-}
-
-/* The band: the gradient cut down to a ring over the button's edge. */
-.ember::before {
-  z-index: 1;
-  padding: 2px;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-}
-
-/* The glow: the same gradient, blurred, behind the button and spilling past it. */
-.ember::after {
-  z-index: -1;
-  inset: -3px;
-  filter: blur(14px);
-  animation:
-    g7m-ember-turn 3.6s linear infinite,
-    g7m-ember-flicker 2.3s ease-in-out infinite;
-}
-
-/* The crossed swords' badge (DuelIcon): the disc behind the blades follows
-   the theme, near-black at night and a soft peach by day, where the white
-   blades also take a thin warm edge so they do not fade into it. Its glow flickers with the ember round the button. */
+/* The challenge artwork shares neutral app surfaces, without decorative glow. */
 .duel-disc {
-  fill: #1b1311;
+  fill: var(--bg-elevated);
 }
-
-:root[data-theme='light'] .duel-disc {
-  fill: #ffe1cf;
-}
-
 .duel-edge {
-  stroke: none;
-}
-
-:root[data-theme='light'] .duel-edge {
-  stroke: #b4532f;
-  stroke-opacity: 0.6;
+  stroke: var(--border-strong);
   stroke-width: 0.8;
   stroke-linejoin: round;
-}
-
-.duel-glow {
-  animation: g7m-ember-flicker 2.3s ease-in-out infinite;
 }
 
 /* A date field the width of its box on iOS. Safari gives a native date input

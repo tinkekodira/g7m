@@ -50,7 +50,7 @@ export function CrashScreen({ error, inWorkout = false, onRetry, onHome }: Crash
         <span
           aria-hidden
           className={`flex size-12 items-center justify-center rounded-full ${
-            kind === 'stale-build' ? 'bg-accent/15 text-accent' : 'bg-danger/15 text-danger'
+            kind === 'stale-build' ? 'bg-accent/15 text-accent' : 'bg-danger/15 text-destructive'
           }`}
         >
           {kind === 'stale-build' ? (

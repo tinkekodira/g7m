@@ -207,7 +207,7 @@ function WorkoutRecommendations() {
         />
       </div>
       {(error ?? profile.error) !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error ?? profile.error}
         </p>
       )}
@@ -261,7 +261,7 @@ function Units() {
         never changes a number you logged.
       </p>
       {error !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -559,7 +559,7 @@ function FriendsSharing() {
         <p className="mt-2 text-sm text-warning">You need a connection to change this.</p>
       )}
       {failure !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {failure}
         </p>
       )}
@@ -657,7 +657,7 @@ function SendFeedback() {
         <p className="mt-2 text-sm text-warning">You need a connection to send feedback.</p>
       )}
       {state.step === 'failed' && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {state.message}
         </p>
       )}
@@ -738,7 +738,7 @@ function Account() {
           this panel's whole job. */}
       <Row label="Signed in" value={email} />
       {loadError !== null ? (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {loadError}
         </p>
       ) : snapshot === null ? (
@@ -787,7 +787,7 @@ function SyncPanel() {
       {/* The one message that is genuinely bad news: rows that exist here and
           never will on the server. Shown above the counts, not below. */}
       {alarm.lost !== null && (
-        <p role="alert" className="mb-3 text-sm text-danger">
+        <p role="alert" className="mb-3 text-sm text-destructive">
           {alarm.lost}
         </p>
       )}
@@ -795,7 +795,7 @@ function SyncPanel() {
           Without this the screen cannot tell a basement from a rejected
           token, and neither can anyone reading it over your shoulder. */}
       {alarm.error !== null && (
-        <p role="alert" className="mb-3 text-sm text-danger">
+        <p role="alert" className="mb-3 text-sm text-destructive">
           {alarm.error}
         </p>
       )}
@@ -947,7 +947,7 @@ function YourData() {
         </div>
       )}
       {state.step === 'failed' && (
-        <p role="alert" className="mt-3 text-sm text-danger">
+        <p role="alert" className="mt-3 text-sm text-destructive">
           {state.message}
         </p>
       )}
@@ -1002,7 +1002,7 @@ function DeleteAccount() {
       <h3 className="mb-3 flex items-center gap-3 text-lg font-semibold text-primary">
         <span
           aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-card bg-danger/10 text-danger"
+          className="flex size-8 shrink-0 items-center justify-center rounded-card bg-danger/10 text-destructive"
         >
           <TrashIcon className="size-4" />
         </span>
@@ -1059,7 +1059,7 @@ function DeleteAccount() {
             </p>
           )}
           {failure !== null && (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-destructive">
               {failure}
             </p>
           )}
@@ -1147,7 +1147,7 @@ function Group({
 }
 
 const CHIP_TONES = {
-  accent: 'bg-accent/15 text-accent',
+  accent: 'bg-elevated text-secondary',
   warning: 'bg-warning/15 text-warning',
 } as const;
 

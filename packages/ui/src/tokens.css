@@ -15,40 +15,36 @@
   color-scheme: dark;
 
   /* --- Surfaces --- */
-  --bg-base: #1f1e1d; /* app background */
-  --bg-surface: #262624; /* cards, panels */
-  --bg-elevated: #30302e; /* modals, sheets, popovers */
-  --bg-input: #1a1917; /* recessed inputs */
+  --bg-base: #101214; /* app background */
+  --bg-surface: #1a1d20; /* cards, panels */
+  --bg-elevated: #24282d; /* modals, sheets, popovers */
+  --bg-input: #121518; /* recessed inputs */
 
   /* --- Borders --- */
-  --border-subtle: #3a3a36;
-  --border-strong: #4a4a44;
+  --border-subtle: #363c43;
+  --border-strong: #525c66;
 
   /* --- Text --- */
-  --text-primary: #faf9f5;
-  --text-secondary: #c2c0b6; /* 8.31:1 on --bg-surface — clears WCAG AAA */
-  --text-muted: #99978f; /* 4.52:1 worst case (on --bg-elevated) — AA body everywhere */
-  /* Foreground for text sitting ON a filled accent surface. --text-primary on
-     --accent is only 2.96:1 and fails even AA large; this dark ink reaches
-     5.33:1. Same hex as --bg-base, named for its job so the Button never has to
-     reach for a background token. Filled --danger goes the other way and uses
-     --text-primary. See ADR-0008. */
-  --text-on-accent: #1f1e1d;
+  --text-primary: #f4f6f8;
+  --text-secondary: #a2abb5; /* AA on every graphite surface */
+  --text-muted: #969fa8; /* 5.52:1 worst case (on --bg-elevated) — AA body everywhere */
+  /* Filled Volt uses dark ink; the light theme uses white on deep green. */
+  --text-on-accent: #18200a;
   /* Foreground on a filled danger button. The same light ink as primary text
      in this theme; its own token because the light theme needs white here
      while its primary text is dark. */
-  --text-on-danger: #faf9f5;
+  --text-on-danger: #f4f6f8;
   /* A destructive action written as text — Remove, Delete, Discard — rather
-     than filled. --danger is a fill: as text it is 2.8:1 on the page. This is
-     a plain red, kept well clear of the orange accent so it never reads as
+     than filled. --danger is a fill: as text it fails AA on the page. This is
+     a plain red, kept distinct from the brand accent so it never reads as
      "the thing to press". AA on every surface. */
   --text-danger: #f87171;
 
   /* --- Accent --- */
-  --accent: #d97757; /* primary actions, active states */
-  --accent-hover: #e08a6e;
-  --accent-pressed: #c56642;
-  --accent-subtle: #3a2a24; /* accent-tinted backgrounds */
+  --accent: #d4f56a; /* primary actions, active states */
+  --accent-hover: #dff889;
+  --accent-pressed: #bedc59;
+  --accent-subtle: #252f19; /* accent-tinted backgrounds */
 
   /* --- Status --- */
   --success: #6fa86f; /* set completed, PR hit */
@@ -78,7 +74,7 @@
      and the set was run through the data-viz palette validator, in that
      order, against the card: lightness band, chroma floor, colour-blind
      separation of neighbours, 3:1 on the surface. Re-run it before changing
-     one. Legs is a hair under the accent, which sits just outside the band. Decorative marks only, never text. */
+     one. These are data colours, independent of the brand accent. Decorative marks only, never text. */
   --region-legs: #d77755;
   --region-arms: #9b69b1;
   --region-shoulders: #b48e34;
@@ -87,9 +83,9 @@
   --region-core: #249cb4;
 
   /* --- Anatomy model --- */
-  --muscle-idle: #4a4844;
-  --muscle-hover: #d97757;
-  --muscle-selected: #e8a184;
+  --muscle-idle: #525860;
+  --muscle-hover: #d4f56a;
+  --muscle-selected: #dff889;
   --muscle-heat-0: #35342f; /* untrained this week */
   --muscle-heat-1: #4e4335;
   --muscle-heat-2: #6e5138;
@@ -98,7 +94,7 @@
 
   /* The backdrop the 3D body stands on. A literal colour because the canvas
      needs one; tokens.ts carries it for the viewer. */
-  --bg-stage: #17161a;
+  --bg-stage: #14181c;
 
   /* The panel an exercise's demonstration loop plays in. Exactly the colour
      the loops are rendered on (3d-models render_common's UI_BG), so the
@@ -114,32 +110,32 @@
    The light theme. Every value here is checked by tokens.test.ts against the
    same contrast rules as the dark one: AAA for primary text, AA for the rest,
    AA for the accent used as text, and AA for the ink on every filled button.
-   The accent is a deeper orange than the dark theme's, because the dark
+   The accent is a deeper green than the dark theme's, because the dark
    theme's is too light to read as text on white.
    -------------------------------------------------------------------------- */
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg-base: #f5f3ee;
+  --bg-base: #f3f5f0;
   --bg-surface: #ffffff;
-  --bg-elevated: #ece9e2;
-  --bg-input: #f1efe9;
+  --bg-elevated: #e8ede3;
+  --bg-input: #edf1e8;
 
-  --border-subtle: #e0dcd2;
-  --border-strong: #c7c1b4;
+  --border-subtle: #d1d8cc;
+  --border-strong: #a3af99;
 
-  --text-primary: #1f1e1d;
-  --text-secondary: #4a4843;
-  --text-muted: #6a675f;
+  --text-primary: #192016;
+  --text-secondary: #53604c;
+  --text-muted: #626d5a;
   --text-on-accent: #ffffff;
   --text-on-danger: #ffffff;
-  /* Redder than --danger, which sits too close to this theme's accent. */
+  /* Accessible red ink for errors and destructive text. */
   --text-danger: #b3261e;
 
-  --accent: #a84a28;
-  --accent-hover: #973f1f;
-  --accent-pressed: #85361a;
-  --accent-subtle: #f8e9e1;
+  --accent: #3f6417;
+  --accent-hover: #345414;
+  --accent-pressed: #2a4510;
+  --accent-subtle: #e8f1d9;
 
   --success: #3b7a43;
   --warning: #8a5d0a;
@@ -160,13 +156,13 @@
   --region-chest: #b7445d;
   --region-core: #1488a2;
 
-  --bg-stage: #e6e2d9;
+  --bg-stage: #e2e7df;
 
-  /* The page colour, a step down from the white card. The transparent WebP
-     plays here, and its contact shadow ends at the panel's edge. */
+  /* Preserve the media surface: transparent WebP shadows were authored for
+     this colour. It intentionally differs from the new light page colour. */
   --bg-demo: #f5f3ee;
 
-  --shadow-floating-value: 0 8px 24px -6px rgb(60 40 20 / 0.18);
+  --shadow-floating-value: 0 8px 24px -6px rgb(16 18 20 / 0.18);
 }
 
 @theme inline {

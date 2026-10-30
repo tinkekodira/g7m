@@ -41,7 +41,7 @@ export function FriendRoutineScreen() {
       {!online ? (
         <FriendsOffline />
       ) : profile.error !== null && profile.data === null ? (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {profile.error}
         </p>
       ) : profile.loading || mine.data === null ? (
@@ -114,7 +114,7 @@ function Routine({
       </section>
 
       {count > 0 && (
-        <section className="rounded-card border border-accent/30 bg-surface p-4">
+        <section className="rounded-card border border-subtle bg-surface p-4">
           <button
             type="button"
             disabled={busy || hasOpenWorkout || open.loading}
@@ -142,7 +142,7 @@ function Routine({
             </p>
           )}
           {error !== null && (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
             </p>
           )}
@@ -168,7 +168,7 @@ function Routine({
               <li key={unit.supersetId}>
                 <section
                   aria-label="Superset"
-                  className="flex flex-col gap-2 rounded-card border-l-4 border-accent pl-2"
+                  className="flex flex-col gap-2 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <p className="pl-2 text-xs font-semibold tracking-wide text-accent uppercase">
                     {label} · Superset

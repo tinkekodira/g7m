@@ -106,7 +106,7 @@ export function AchievementsPage({
         <HeaderLink to={back.to}>{back.label}</HeaderLink>
       </header>
 
-      {error !== null && <p className="text-sm text-danger">{error}</p>}
+      {error !== null && <p className="text-sm text-destructive">{error}</p>}
       {list === null ? (
         loading ? (
           <p className="text-sm text-muted">Loading…</p>

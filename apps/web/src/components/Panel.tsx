@@ -5,16 +5,14 @@ import { cx } from '@g7m/ui';
  * A section of a screen in Home's card shell (ADR-0124): the large corner,
  * a small label over a title, and room on the right for a figure.
  *
- * Two weights, as on Home. `hero` is the month cards' coral edge and warm
- * corner light, for the one or two sections a screen is about; `quiet` is
- * the plain card, for everything that follows them.
+ * All cards share neutral surfaces and borders. Primary actions and selected
+ * controls carry the accent; the existing tone prop remains source-compatible.
  */
 export function Panel({
   eyebrow,
   title,
   header,
   aside,
-  tone = 'quiet',
   id,
   className,
   label,
@@ -46,18 +44,12 @@ export function Panel({
       aria-label={title === undefined ? label : undefined}
       className={cx(
         // Not overflow-hidden: the chart's view picker opens a menu below the
-        // card, and clipping would cut it off. The glow takes the corners itself.
+        // card, and clipping would cut it off. The card must not clip its menu.
         'relative isolate rounded-sheet border bg-surface p-4',
-        tone === 'hero' ? 'border-accent/20' : 'border-subtle',
+        'border-subtle',
         className,
       )}
     >
-      {tone === 'hero' && (
-        <div
-          aria-hidden
-          className="stat-glow pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
-        />
-      )}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {header}

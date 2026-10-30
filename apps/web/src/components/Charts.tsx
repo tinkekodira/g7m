@@ -440,7 +440,7 @@ export function MonthLine({
                 {currentName}
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-0.5 w-3 rounded-full bg-muted/50" />
+                <span className="h-0.5 w-3 rounded-full bg-muted" />
                 {previousName}
               </span>
             </div>
@@ -464,7 +464,7 @@ export function MonthLine({
                 d={ghost}
                 fill="none"
                 stroke="var(--text-muted)"
-                strokeOpacity="0.45"
+                strokeDasharray="4 4"
                 strokeWidth={1.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"

@@ -9310,3 +9310,44 @@ active-session races, failed starts, routine/blank starts, reload persistence,
 settings, cancellation, offline operation and phone/desktop layouts in both
 themes. Existing browser workout starts explicitly choose blank when appropriate.
 No database migration, db push or PowerSync sync-rule deployment is required.
+
+
+## ADR-0164 ? Graphite + Volt replaces the warm interface palette
+
+**Status:** accepted ? **Date:** 2026-10-30 ? **Amends:** ADR-0008, ADR-0062, ADR-0120, ADR-0124, ADR-0133
+
+Use the supplied Graphite + Volt values in the existing CSS-first theme system,
+with matching TypeScript literals for non-DOM consumers. Dark graphite is the
+primary reference; light mode uses deep green actions with white ink. Keep
+Inter, spacing, radii, routes, carousel behavior and workout logic unchanged.
+
+Reserve the accent for primary actions, selected controls, keyboard focus and
+single-measure chart series. Home's Start tile leads; when a workout is open,
+the Continue strip leads and the other tiles stay neutral. The plan card and
+tour invitation use quieter actions. Ordinary cards, avatar, equipment icon
+containers and dividers use neutral surfaces and borders. Remove card glows,
+challenge embers and decorative artwork glows while retaining feedback motion,
+achievement/category mappings, heatmap ordering, gold records and status colours.
+The previous-period chart line is neutral and dashed, at full token opacity.
+
+All supplied core values meet AAA primary text and AA supporting text on their
+intended surfaces, including accent tints and action hover/pressed states; no
+core colour adjustment is needed. The former palette's extra two-point gap
+between secondary and muted contrast is a visual hierarchy assertion rather
+than a WCAG threshold. Set its floor to 0.9 for this tighter hierarchy, preserving
+all AA/AAA checks and strict ordering. Additional tests verify action foregrounds,
+links, selected tints and focus colours in both themes. Use the existing danger
+text ink for errors rather than the danger fill. The selected switch knob uses
+the action foreground, giving it clear contrast with bright Volt in dark mode.
+
+Anatomy has an independent Three.js selection material as well as CSS tokens;
+both now use Volt. Keep its anatomical tissue colours and heat ramps unchanged,
+and give the canvas a neutral stage. Preserve both `bg-demo` values exactly:
+opaque demonstration videos and their transparent alternatives depend on them.
+
+Browser chrome, manifest, native shell backgrounds and regenerated icon/splash
+artwork follow the new palette. Fix asset-command quoting so the existing generator
+also receives valid colour arguments on Windows. Test at 320, 393 and 1280px in
+both themes with the fake backend, including logging, offline finish, recap,
+selection/focus states and persisted theme switching. No database migration,
+PowerSync deployment or production data access is needed.

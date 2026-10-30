@@ -71,8 +71,9 @@ export function Switch({
       >
         <span
           className={cx(
-            // White in both themes, as a switch knob is everywhere else.
-            'inline-block size-6 rounded-full bg-white shadow-sm',
+            // Contrast with the selected track in each theme.
+            'inline-block size-6 rounded-full shadow-sm',
+            checked ? 'bg-on-accent' : 'bg-white',
             'transition-transform duration-200 ease-out',
             checked ? 'translate-x-6' : 'translate-x-1',
           )}

@@ -80,7 +80,7 @@ export default function WorkoutStartDialog({
               Loading routines…
             </p>
           ) : routines.error !== null ? (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-destructive">
               {routines.error}
             </p>
           ) : routines.data?.length === 0 ? (
@@ -93,7 +93,7 @@ export default function WorkoutStartDialog({
         </section>
         <div className="shrink-0 border-t border-subtle px-5 pt-4 pb-5">
           {error !== null && (
-            <p role="alert" className="mb-3 text-sm text-danger">
+            <p role="alert" className="mb-3 text-sm text-destructive">
               {error}
             </p>
           )}

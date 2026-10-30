@@ -49,7 +49,7 @@ export const PALETTE = {
   muscle: '#a3453a',
   /** Muscles the taxonomy does not let you select. Present, not interactive. */
   inert: '#5c4a45',
-  selected: '#f0663f',
+  selected: '#d4f56a',
   /** Tendon and aponeurosis, blended in on the tendon weight. */
   tendon: '#e6ddc9',
   /** Skull, hands, feet. Bone, and the reason a figure reads front from back. */

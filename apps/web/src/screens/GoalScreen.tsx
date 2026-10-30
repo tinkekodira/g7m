@@ -135,7 +135,7 @@ export function GoalScreen() {
       </header>
 
       {(profile.error ?? goal.error ?? readings.error) !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {profile.error ?? goal.error ?? readings.error}
         </p>
       )}
@@ -144,7 +144,7 @@ export function GoalScreen() {
 
       {suggestion !== null && (
         <section
-          className="rise rounded-card border border-accent/40 bg-surface p-4"
+          className="rise rounded-card border border-subtle bg-surface p-4"
           style={{ animationDelay: '30ms' }}
         >
           <h2 className="text-sm font-semibold text-accent">Based on what you have been doing</h2>

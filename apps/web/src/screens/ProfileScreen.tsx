@@ -136,7 +136,7 @@ export function ProfileScreen() {
       </header>
 
       {error !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {error}
         </p>
       )}

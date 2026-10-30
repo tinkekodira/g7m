@@ -230,7 +230,7 @@ export function ChallengeCard({
       )}
 
       {problem !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {problem}
         </p>
       )}
@@ -257,8 +257,7 @@ export function ChallengeList({
 }
 
 /**
- * Challenge a friend (ADR-0133): one button, with an ember running round its
- * edge, that opens the choices in a sheet. Most visits to a friend are not to
+ * Challenge a friend (ADR-0133): one button that opens the choices in a sheet. Most visits to a friend are not to
  * challenge them, so the form stays shut until asked for, and the button is
  * the one thing on the page that looks like it wants pressing.
  */
@@ -283,7 +282,7 @@ export function SendChallenge({
 
   return (
     <>
-      <div className="ember rounded-sheet">
+      <div className="rounded-sheet border border-subtle">
         <button
           ref={opener}
           type="button"
@@ -438,7 +437,7 @@ function ChallengeSheet({
           </Button>
           <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
           {problem !== null && (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-destructive">
               {problem}
             </p>
           )}
