@@ -25,9 +25,9 @@ export const colorTokens = {
   'text-on-danger': '#f4f6f8',
   'text-danger': '#f87171',
 
-  accent: '#d4f56a',
-  'accent-hover': '#dff889',
-  'accent-pressed': '#bedc59',
+  accent: '#bbd477',
+  'accent-hover': '#c8df8b',
+  'accent-pressed': '#a7bf64',
   'accent-subtle': '#252f19',
 
   success: '#6fa86f',

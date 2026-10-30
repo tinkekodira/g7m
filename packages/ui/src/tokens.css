@@ -41,9 +41,9 @@
   --text-danger: #f87171;
 
   /* --- Accent --- */
-  --accent: #d4f56a; /* primary actions, active states */
-  --accent-hover: #dff889;
-  --accent-pressed: #bedc59;
+  --accent: #bbd477; /* primary actions, active states */
+  --accent-hover: #c8df8b;
+  --accent-pressed: #a7bf64;
   --accent-subtle: #252f19; /* accent-tinted backgrounds */
 
   /* --- Status --- */

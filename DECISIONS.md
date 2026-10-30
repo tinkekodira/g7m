@@ -9351,3 +9351,14 @@ also receives valid colour arguments on Windows. Test at 320, 393 and 1280px in
 both themes with the fake backend, including logging, offline finish, recap,
 selection/focus states and persisted theme switching. No database migration,
 PowerSync deployment or production data access is needed.
+
+
+### Dark accent refinement (2026-10-30)
+
+The first Volt treatment felt too intense on dark surfaces. Soften only the dark
+UI action states: accent `#d4f56a` to `#bbd477`, hover `#dff889` to `#c8df8b`,
+and pressed `#bedc59` to `#a7bf64`. This lowers brightness and saturation while
+retaining clear contrast for action ink, links, selected controls and focus.
+Light-mode colours, specialised anatomy colours, launch artwork, semantic data
+colours and exercise-demo media surfaces stay unchanged. Keep CSS/TypeScript
+parity and the existing AA/AAA contrast guarantees.
