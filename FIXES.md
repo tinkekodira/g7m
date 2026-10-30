@@ -1,3 +1,18 @@
+# Challenge browser checks follow the active semantic theme tokens
+
+PR #208's browser run 321 failed because the challenge record test still pinned
+the previous dark red and muted grey as literal RGB values. The approved Soft
+graphite palette intentionally changes both. The repeated colour assertion
+failure also consumed time before the suite reached its global deadline.
+
+Share the palette suite's rendered-token comparison with the challenge tests.
+Check wins against success, losses against destructive text and draws against
+muted text in both themes; check victory ink against its token as well. Retain
+the compact-height, non-interactive, fallback/recovery and navigation assertions.
+Keep application colours, contrast thresholds and CI deadlines unchanged.
+Validate the full browser suite and the updated GitHub check. No database
+migration, db push or PowerSync sync-rule deployment is required.
+
 # Plank duration entry uses the catalogue's time-based flag
 
 Plank already has `is_time_based = true`, but workout set editors ignored it

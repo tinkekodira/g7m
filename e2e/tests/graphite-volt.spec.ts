@@ -1,25 +1,8 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { logSet, signIn, startWith, waitForCatalogue } from './support/app.js';
 import { APP_URL } from './support/urls.js';
-
-async function expectToken(element: Locator, property: string, token: string) {
-  await expect
-    .poll(() =>
-      element.evaluate(
-        (node, { property, token }) => {
-          const probe = document.createElement('span');
-          probe.style.color = `var(--${token})`;
-          node.append(probe);
-          const expected = getComputedStyle(probe).color;
-          probe.remove();
-          return getComputedStyle(node).getPropertyValue(property) === expected;
-        },
-        { property, token },
-      ),
-    )
-    .toBe(true);
-}
+import { expectToken } from './support/theme.js';
 
 async function expectFits(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
