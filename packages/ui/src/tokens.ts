@@ -10,25 +10,25 @@
  */
 
 export const colorTokens = {
-  'bg-base': '#101214',
-  'bg-surface': '#1a1d20',
-  'bg-elevated': '#24282d',
-  'bg-input': '#121518',
+  'bg-base': '#202429',
+  'bg-surface': '#2b3036',
+  'bg-elevated': '#363d44',
+  'bg-input': '#24292e',
 
-  'border-subtle': '#363c43',
-  'border-strong': '#525c66',
+  'border-subtle': '#454d56',
+  'border-strong': '#687582',
 
   'text-primary': '#f4f6f8',
-  'text-secondary': '#a2abb5',
-  'text-muted': '#969fa8',
+  'text-secondary': '#bac3cc',
+  'text-muted': '#aab4be',
   'text-on-accent': '#18200a',
   'text-on-danger': '#f4f6f8',
-  'text-danger': '#f87171',
+  'text-danger': '#ff8585',
 
   accent: '#bbd477',
   'accent-hover': '#c8df8b',
   'accent-pressed': '#a7bf64',
-  'accent-subtle': '#252f19',
+  'accent-subtle': '#303b27',
 
   success: '#6fa86f',
   warning: '#d9a441',
@@ -58,7 +58,7 @@ export const colorTokens = {
   'muscle-heat-3': '#9a6144',
   'muscle-heat-4': '#d97757',
 
-  'bg-stage': '#14181c',
+  'bg-stage': '#24292e',
   'bg-demo': '#1c1c1c',
 } as const;
 

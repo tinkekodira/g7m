@@ -15,19 +15,19 @@
   color-scheme: dark;
 
   /* --- Surfaces --- */
-  --bg-base: #101214; /* app background */
-  --bg-surface: #1a1d20; /* cards, panels */
-  --bg-elevated: #24282d; /* modals, sheets, popovers */
-  --bg-input: #121518; /* recessed inputs */
+  --bg-base: #202429; /* app background */
+  --bg-surface: #2b3036; /* cards, panels */
+  --bg-elevated: #363d44; /* modals, sheets, popovers */
+  --bg-input: #24292e; /* recessed inputs */
 
   /* --- Borders --- */
-  --border-subtle: #363c43;
-  --border-strong: #525c66;
+  --border-subtle: #454d56;
+  --border-strong: #687582;
 
   /* --- Text --- */
   --text-primary: #f4f6f8;
-  --text-secondary: #a2abb5; /* AA on every graphite surface */
-  --text-muted: #969fa8; /* 5.52:1 worst case (on --bg-elevated) — AA body everywhere */
+  --text-secondary: #bac3cc; /* AA on every graphite surface */
+  --text-muted: #aab4be; /* 5.23:1 worst case (on --bg-elevated) — AA body everywhere */
   /* Filled Volt uses dark ink; the light theme uses white on deep green. */
   --text-on-accent: #18200a;
   /* Foreground on a filled danger button. The same light ink as primary text
@@ -38,13 +38,13 @@
      than filled. --danger is a fill: as text it fails AA on the page. This is
      a plain red, kept distinct from the brand accent so it never reads as
      "the thing to press". AA on every surface. */
-  --text-danger: #f87171;
+  --text-danger: #ff8585;
 
   /* --- Accent --- */
   --accent: #bbd477; /* primary actions, active states */
   --accent-hover: #c8df8b;
   --accent-pressed: #a7bf64;
-  --accent-subtle: #252f19; /* accent-tinted backgrounds */
+  --accent-subtle: #303b27; /* accent-tinted backgrounds */
 
   /* --- Status --- */
   --success: #6fa86f; /* set completed, PR hit */
@@ -94,7 +94,7 @@
 
   /* The backdrop the 3D body stands on. A literal colour because the canvas
      needs one; tokens.ts carries it for the viewer. */
-  --bg-stage: #14181c;
+  --bg-stage: #24292e;
 
   /* The panel an exercise's demonstration loop plays in. Exactly the colour
      the loops are rendered on (3d-models render_common's UI_BG), so the

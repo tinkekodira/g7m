@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { finishWorkout, logSet, openTab, signIn, startWith } from './support/app.js';
+import { expectToken } from './support/theme.js';
 
 /**
  * One-to-one challenges (ADR-0110), from both ends.
@@ -96,7 +97,7 @@ test('a final result: popup, direct card, profile record and explicit acknowledg
     path: testInfo.outputPath('result-card-phone-light.png'),
     fullPage: true,
   });
-  await expect(card.getByText('6', { exact: true })).toHaveCSS('color', 'rgb(118, 88, 9)');
+  await expectToken(card.getByText('6', { exact: true }), 'color', 'text-victory');
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
@@ -274,23 +275,18 @@ test('the profile record is compact, non-interactive and recovers from a missing
   await page.unroute('**/rest/v1/rpc/challenge_history');
   await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
   await expect(record.getByText('21 Draws', { exact: true })).toBeVisible();
-  await expect(record.getByText('0 Wins', { exact: true })).toHaveCSS(
-    'color',
-    'rgb(111, 168, 111)',
-  );
-  await expect(record.getByText('0 Loses', { exact: true })).toHaveCSS(
-    'color',
-    'rgb(248, 113, 113)',
-  );
-  await expect(record.getByText('21 Draws', { exact: true })).toHaveCSS(
-    'color',
-    'rgb(150, 159, 168)',
-  );
   await page.setViewportSize({ width: 360, height: 800 });
-  await expect.poll(async () => (await record.boundingBox())!.height).toBeLessThan(90);
-  await record.screenshot({ path: testInfo.outputPath('record-phone-dark.png') });
-  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'));
-  await record.screenshot({ path: testInfo.outputPath('record-phone-light.png') });
+  for (const theme of ['dark', 'light'] as const) {
+    await page.evaluate(
+      (value) => document.documentElement.setAttribute('data-theme', value),
+      theme,
+    );
+    await expectToken(record.getByText('0 Wins', { exact: true }), 'color', 'success');
+    await expectToken(record.getByText('0 Loses', { exact: true }), 'color', 'text-danger');
+    await expectToken(record.getByText('21 Draws', { exact: true }), 'color', 'text-muted');
+    await expect.poll(async () => (await record.boundingBox())!.height).toBeLessThan(90);
+    await record.screenshot({ path: testInfo.outputPath(`record-phone-${theme}.png`) });
+  }
   await page.setViewportSize({ width: 1280, height: 900 });
   await record.screenshot({ path: testInfo.outputPath('record-desktop-light.png') });
   await record.click();

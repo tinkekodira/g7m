@@ -27,7 +27,7 @@ export const DEFAULT_THEME: Theme = 'dark';
  * in the stylesheet. Each theme's page background.
  */
 export const BROWSER_CHROME: Record<Theme, string> = {
-  dark: '#101214',
+  dark: '#202429',
   light: '#f3f5f0',
 };
 

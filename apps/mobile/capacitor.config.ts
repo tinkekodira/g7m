@@ -18,7 +18,7 @@ const config: CapacitorConfig = {
 
   ios: {
     // Match --bg-base so there is no white flash between splash and first paint.
-    backgroundColor: '#101214',
+    backgroundColor: '#202429',
     // The app owns its own scrolling; the WebView bouncing over it feels wrong.
     scrollEnabled: true,
     contentInset: 'never',
@@ -32,7 +32,7 @@ const config: CapacitorConfig = {
      */
     SplashScreen: {
       launchAutoHide: false,
-      backgroundColor: '#101214',
+      backgroundColor: '#202429',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,
     },
@@ -49,7 +49,7 @@ const config: CapacitorConfig = {
   },
 
   android: {
-    backgroundColor: '#101214',
+    backgroundColor: '#202429',
     // Brief §3: Android 12+ only, so no legacy WebView workarounds needed.
     allowMixedContent: false,
     captureInput: true,

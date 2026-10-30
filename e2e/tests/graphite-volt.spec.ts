@@ -1,25 +1,13 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { logSet, signIn, startWith, waitForCatalogue } from './support/app.js';
 import { APP_URL } from './support/urls.js';
+import { expectToken } from './support/theme.js';
 
-async function expectToken(element: Locator, property: string, token: string) {
-  await expect
-    .poll(() =>
-      element.evaluate(
-        (node, { property, token }) => {
-          const probe = document.createElement('span');
-          probe.style.color = `var(--${token})`;
-          node.append(probe);
-          const expected = getComputedStyle(probe).color;
-          probe.remove();
-          return getComputedStyle(node).getPropertyValue(property) === expected;
-        },
-        { property, token },
-      ),
-    )
-    .toBe(true);
-}
+// These checks cover CSS layout and theme states, not high-DPI rendering.
+// Pixel 7's 2.625x density otherwise makes a 1280px capture 3360px wide and
+// multiplies screenshot/WebGL work on CI's software renderer.
+test.use({ deviceScaleFactor: 1 });
 
 async function expectFits(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -122,6 +110,13 @@ for (const theme of ['dark', 'light'] as const) {
         path: info.outputPath(`home-${theme}-${String(width)}.png`),
         fullPage: true,
       });
+      await start.click();
+      const chooser = page.getByRole('dialog', { name: 'Start a workout', exact: true });
+      await expect(chooser).toBeVisible();
+      await expectToken(chooser, 'background-color', 'bg-surface');
+      await expectFits(page);
+      await page.screenshot({ path: info.outputPath('start-dialog.png'), fullPage: true });
+      await chooser.getByRole('button', { name: 'Cancel', exact: true }).click();
       // The workout path still works, including completed-set feedback offline.
       await startWith(page, 'Barbell Bench Press');
       await logSet(page, 1, '55', '8');
@@ -158,6 +153,25 @@ for (const theme of ['dark', 'light'] as const) {
       await page.screenshot({ path: info.outputPath('recap-comparison.png'), fullPage: true });
       await context.setOffline(false);
       await page.getByRole('link', { name: 'Done', exact: true }).click();
+      await page.goto('/#/progress');
+      await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
+      await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+      await expectFits(page);
+      await page.screenshot({ path: info.outputPath('progress.png'), fullPage: true });
+      await page.goto('/#/learn');
+      const stage = page.locator('[data-tour="body"]');
+      await expect(stage.locator('canvas')).toBeVisible();
+      await expectToken(stage, 'background-color', 'bg-stage');
+      // Canvas visibility precedes Three.js's first frame and GPU compositing.
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
+      await page.waitForTimeout(500);
+      await expectFits(page);
+      await page.screenshot({ path: info.outputPath('anatomy.png'), fullPage: true });
       await page.goto('/#/settings');
       const switcher = page.getByRole('switch', { name: /Dark mode/ });
       await switcher.click();

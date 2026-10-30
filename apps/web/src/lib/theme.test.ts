@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { colorTokens, lightColorTokens } from '@g7m/ui';
 import {
   BROWSER_CHROME,
   DEFAULT_THEME,
@@ -61,6 +62,11 @@ function fakeDocument() {
   };
   return { doc, dataset, style, classes, meta };
 }
+
+it('matches browser chrome to each theme’s page background', () => {
+  expect(BROWSER_CHROME.dark).toBe(colorTokens['bg-base']);
+  expect(BROWSER_CHROME.light).toBe(lightColorTokens['bg-base']);
+});
 
 describe('readTheme', () => {
   it('is dark until somebody chooses', () => {
