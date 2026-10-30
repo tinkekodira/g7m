@@ -1,3 +1,28 @@
+# Browser CI — finish touch scrolling and avoid repeated banner timers
+
+PR #206's browser run 315 reached the existing twelve-minute suite deadline
+with 161 scenarios passed, one recap scenario passed on retry and six unfinished.
+All seven palette scenarios passed. The recap's first attempt left its focused
+muscle list at scrollTop 105 after Home, on the phone viewport following a touch
+swipe. A synthetic swipe's momentum can continue after touchEnd and interfere
+with the next keyboard or resize step.
+
+Wait for the list's native scrollend event after finger release, then verify End
+reaches the bottom before continuing. Keep native keyboard and touch input,
+focus checks, stationary body assertions, both themes and every viewport.
+
+The full local run exposed the same input sequencing in the routine chooser:
+its swipe could still be settling when End started a smooth scroll, and a
+selected dot does not mean the destination has completely arrived. Wait for
+touch scrollend and the keyboard destination's actual scroll offset before
+resizing, retaining page-preservation and offline-start assertions.
+
+Palette screenshots now use the supported swipe-to-dismiss gesture instead of
+waiting through two achievement banner timers per viewport. Capture the exercise
+browser's viewport rather than its entire catalogue. Achievement auto-dismiss
+coverage remains in its dedicated suite. Keep the twelve-minute deadline, two
+workers, retries and all scenarios unchanged.
+
 # Resolved — workout-start unit tests required local Supabase configuration
 
 PR #203's new start-orchestration suite imported the routine module, which also
