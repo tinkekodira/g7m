@@ -235,8 +235,19 @@ test('three routines need no dots; additional routines make swipeable pages and 
     });
     await page.waitForTimeout(16);
   }
+  const routineTrack = chooser(page)
+    .getByRole('group', { name: 'Saved routines', exact: true })
+    .locator(':scope > div')
+    .first();
+  await routineTrack.evaluate((el) => {
+    el.setAttribute('data-touch-scrolling', 'true');
+    el.addEventListener('scrollend', () => el.removeAttribute('data-touch-scrolling'), {
+      once: true,
+    });
+  });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
+  await expect(routineTrack).not.toHaveAttribute('data-touch-scrolling', 'true');
   await expect(dot(2)).toHaveAttribute('aria-pressed', 'true');
   await expect(chooser(page).getByRole('listitem')).toHaveText([
     /Routine 4/,
@@ -249,6 +260,11 @@ test('three routines need no dots; additional routines make swipeable pages and 
   await expect(dot(3)).toBeFocused();
   await expect(dot(3)).toHaveAttribute('aria-pressed', 'true');
   await expect(chooser(page).getByRole('listitem')).toHaveCount(1);
+  // The selected dot changes halfway through smooth scrolling. Resize only
+  // once the keyboard's destination has actually arrived at the scrollport.
+  await expect
+    .poll(() => routineTrack.evaluate((el) => Math.abs(el.scrollLeft - el.clientWidth * 2)))
+    .toBeLessThan(1);
   await page.setViewportSize({ width: 1280, height: 851 });
   await expect(chooser(page).getByRole('button', { name: 'Start Routine 7' })).toBeInViewport();
   await page.keyboard.press('Home');

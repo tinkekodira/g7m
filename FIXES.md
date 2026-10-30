@@ -11,6 +11,12 @@ Wait for the list's native scrollend event after finger release, then verify End
 reaches the bottom before continuing. Keep native keyboard and touch input,
 focus checks, stationary body assertions, both themes and every viewport.
 
+The full local run exposed the same input sequencing in the routine chooser:
+its swipe could still be settling when End started a smooth scroll, and a
+selected dot does not mean the destination has completely arrived. Wait for
+touch scrollend and the keyboard destination's actual scroll offset before
+resizing, retaining page-preservation and offline-start assertions.
+
 Palette screenshots now use the supported swipe-to-dismiss gesture instead of
 waiting through two achievement banner timers per viewport. Capture the exercise
 browser's viewport rather than its entire catalogue. Achievement auto-dismiss
