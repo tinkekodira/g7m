@@ -71,19 +71,21 @@ export function canAddWeight(loadType: LoadType): boolean {
 export function describePreviousSet(
   set: Pick<LoggedSet, 'loadType' | 'weightKg' | 'reps'>,
   show: (kg: number) => string,
+  isTimeBased = false,
 ): string {
-  const reps = `${String(set.reps)} ${set.reps === 1 ? 'rep' : 'reps'}`;
+  const amount = isTimeBased ? `${String(set.reps)} s` : String(set.reps);
+  const reps = isTimeBased ? amount : `${amount} ${set.reps === 1 ? 'rep' : 'reps'}`;
   const bare = !Number.isFinite(set.weightKg) || set.weightKg <= 0;
 
   switch (set.loadType) {
     case 'external':
-      return `${show(Math.max(0, set.weightKg))} × ${String(set.reps)}`;
+      return `${show(Math.max(0, set.weightKg))} × ${amount}`;
     case 'bodyweight':
       return reps;
     case 'bodyweight_plus':
-      return bare ? reps : `+${show(set.weightKg)} × ${String(set.reps)}`;
+      return bare ? reps : `+${show(set.weightKg)} × ${amount}`;
     case 'assisted':
-      return bare ? reps : `−${show(set.weightKg)} × ${String(set.reps)}`;
+      return bare ? reps : `−${show(set.weightKg)} × ${amount}`;
   }
 }
 

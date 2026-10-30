@@ -306,6 +306,16 @@ describe('canAddWeight', () => {
 describe('describePreviousSet', () => {
   const show = (kg: number): string => String(kg);
 
+  it.each([
+    ['bodyweight', 0, '90 s'],
+    ['bodyweight_plus', 10, '+10 × 90 s'],
+    ['bodyweight_plus', 0, '90 s'],
+    ['external', 20, '20 × 90 s'],
+    ['assisted', 10, '−10 × 90 s'],
+  ] as const)('labels timed %s sets in seconds', (loadType, weightKg, expected) => {
+    expect(describePreviousSet({ loadType, weightKg, reps: 90 }, show, true)).toBe(expected);
+  });
+
   it('reads a barbell set the way it always has', () => {
     expect(describePreviousSet({ loadType: 'external', weightKg: 100, reps: 5 }, show)).toBe(
       '100 × 5',

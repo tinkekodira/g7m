@@ -1,3 +1,19 @@
+# Plank duration entry uses the catalogue's time-based flag
+
+Plank already has `is_time_based = true`, but workout set editors ignored it
+and always labelled their input Reps. Pass the flag to each row, offer Seconds
+or Minutes + seconds, and keep one total in seconds in the existing `reps`
+storage contract. Switching format preserves the duration. Bodyweight and
+added-weight choices keep their existing save and prefill behavior.
+
+Completed rows and previous-set hints label timed values in seconds. Timed
+exercises do not show rep-based effort prompts or weight progression advice.
+The same fix covers other catalogue holds and carries. Existing logged numbers
+are preserved; there is no database migration or PowerSync rule change.
+
+Validation covers format conversion, optional load, offline save/reload and sync,
+plus rendered phone/desktop layouts in both themes.
+
 # Browser CI — finish touch scrolling and avoid repeated banner timers
 
 PR #206's browser run 315 reached the existing twelve-minute suite deadline
