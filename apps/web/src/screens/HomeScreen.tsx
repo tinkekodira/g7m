@@ -212,6 +212,7 @@ function InProgress({ open }: { readonly open: OpenSessionSummary }) {
     <Link
       data-tour="workout"
       to="/workout"
+      state={{ resumeWorkout: true }}
       className={cx(
         'flex min-h-tap items-center gap-3 rounded-card border border-accent bg-accent px-4 py-3 text-on-accent hover:bg-accent-hover active:bg-accent-pressed',
         'transition-transform duration-150 ease-out select-none active:scale-[0.99]',
