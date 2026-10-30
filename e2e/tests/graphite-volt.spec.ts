@@ -4,6 +4,11 @@ import { logSet, signIn, startWith, waitForCatalogue } from './support/app.js';
 import { APP_URL } from './support/urls.js';
 import { expectToken } from './support/theme.js';
 
+// These checks cover CSS layout and theme states, not high-DPI rendering.
+// Pixel 7's 2.625x density otherwise makes a 1280px capture 3360px wide and
+// multiplies screenshot/WebGL work on CI's software renderer.
+test.use({ deviceScaleFactor: 1 });
+
 async function expectFits(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('.stat-glow')).toHaveCount(0);

@@ -9,7 +9,14 @@ Share the palette suite's rendered-token comparison with the challenge tests.
 Check wins against success, losses against destructive text and draws against
 muted text in both themes; check victory ink against its token as well. Retain
 the compact-height, non-interactive, fallback/recovery and navigation assertions.
-Keep application colours, contrast thresholds and CI deadlines unchanged.
+The follow-up run 322 passed 159 scenarios without an assertion failure, but
+still reached the twelve-minute suite deadline with ten scenarios unfinished.
+Palette checks inherited Pixel 7's 2.625x density even at desktop widths,
+making a 1280px screenshot 3360px wide and multiplying software WebGL and
+screenshot work. Run this suite at 1x pixel density, retaining every CSS
+viewport, phone interaction, theme, screenshot and assertion. High-DPI device
+emulation remains unchanged in the other suites. Keep application colours,
+contrast thresholds, worker count, retries and CI deadlines unchanged.
 Validate the full browser suite and the updated GitHub check. No database
 migration, db push or PowerSync sync-rule deployment is required.
 
