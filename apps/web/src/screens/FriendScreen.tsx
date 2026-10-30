@@ -80,7 +80,7 @@ export function FriendScreen() {
       {!online ? (
         <FriendsOffline />
       ) : detail.error !== null && detail.data === null ? (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {detail.error}
         </p>
       ) : detail.loading || mine.data === null ? (
@@ -174,7 +174,7 @@ function FriendPage({
       )}
 
       {profile.error !== null && profile.data === null ? (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {profile.error}
         </p>
       ) : (
@@ -518,7 +518,7 @@ function FriendMenu({
         </div>
       )}
       {failure !== null && (
-        <p role="alert" className="absolute top-full right-0 mt-1 w-56 text-sm text-danger">
+        <p role="alert" className="absolute top-full right-0 mt-1 w-56 text-sm text-destructive">
           {failure}
         </p>
       )}

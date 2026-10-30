@@ -97,7 +97,7 @@ export function ExerciseDetailScreen() {
       )}
 
       {detail.error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {detail.error}
         </p>
       ) : detail.loading ? (
@@ -385,7 +385,7 @@ function OneRepMax({
   if (shown === null) return null;
 
   return (
-    <section className="rounded-card border border-accent/30 bg-surface p-4">
+    <section className="rounded-card border border-subtle bg-surface p-4">
       <h2 className="text-sm font-medium text-secondary">Your estimated one-rep max</h2>
       <p className="numeric mt-1 text-3xl font-bold text-primary">
         {estimate(shown.estimate.valueKg)}

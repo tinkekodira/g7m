@@ -119,7 +119,7 @@ export function PlanScreen() {
       </header>
 
       {error !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -181,7 +181,7 @@ export function PlanScreen() {
                 <li
                   key={unit.supersetId}
                   aria-label="Superset"
-                  className="flex flex-col gap-3 rounded-card border-l-4 border-accent pl-2"
+                  className="flex flex-col gap-3 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <p className="px-2 text-xs font-semibold tracking-wide text-accent uppercase">
                     Superset · rest after each round

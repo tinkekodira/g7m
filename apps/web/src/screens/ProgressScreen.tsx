@@ -242,7 +242,7 @@ export function ProgressScreen() {
       {state.error !== null ? (
         <p
           role="alert"
-          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-danger"
+          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-destructive"
         >
           {state.error}
         </p>

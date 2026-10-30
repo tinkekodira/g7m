@@ -413,13 +413,8 @@ export function AddFriendIcon(props: IconProps) {
 }
 
 /**
- * Two swords crossed in a ring of fire: the challenge button's badge, from
- * Milan's drawing. Not one of the set above: it is filled and shaded, with
- * the blades bevelled (a lit half and a shaded half) and the front sword
- * casting a shadow on the back one. The disc behind them follows the theme
- * (`.duel-disc` in styles.css), so the white blades sit on near-black at
- * night and on a soft peach, outlined, by day. The glow round the ring flickers with the
- * button's ember (`.duel-glow`).
+ * Milan's crossed-swords challenge badge. Geometry and shading are preserved;
+ * neutral theme tokens keep it consistent with the app's graphite surfaces.
  */
 export function DuelIcon(props: IconProps) {
   // Gradients and filters are found by id, and two badges on one page must
@@ -430,11 +425,11 @@ export function DuelIcon(props: IconProps) {
       transform={`translate(50 50) rotate(${String(turn)}) scale(1.15) translate(-50 -46)`}
       filter={`url(#${id}-lift)`}
     >
-      <path d="M50 14 44.8 21V60h10.4V21Z" fill="#f6f5f2" />
-      <path d="M50 14 55.2 21V60H50Z" fill="#c8c6c1" />
+      <path d="M50 14 44.8 21V60h10.4V21Z" fill="var(--text-primary)" />
+      <path d="M50 14 55.2 21V60H50Z" fill="var(--text-secondary)" />
       <path className="duel-edge" d="M50 14 44.8 21V60h10.4V21Z" fill="none" />
-      <rect x="47" y="63" width="6" height="11.5" rx="1.2" fill="#c9341c" />
-      <path d="M47 66.6h6M47 70.2h6" stroke="#ff8a4d" strokeWidth={1.2} />
+      <rect x="47" y="63" width="6" height="11.5" rx="1.2" fill="var(--border-strong)" />
+      <path d="M47 66.6h6M47 70.2h6" stroke="var(--text-muted)" strokeWidth={1.2} />
       <rect x="38.5" y="59" width="23" height="5" rx="2.2" fill={`url(#${id}-hilt)`} />
       <circle cx="50" cy="77.6" r="3.9" fill={`url(#${id}-hilt)`} />
     </g>
@@ -442,39 +437,16 @@ export function DuelIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 100 100" overflow="visible" aria-hidden focusable="false" {...props}>
       <defs>
-        <linearGradient id={`${id}-ring`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff8a3d" />
-          <stop offset="1" stopColor="#e5321d" />
-        </linearGradient>
         <linearGradient id={`${id}-hilt`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff8040" />
-          <stop offset="1" stopColor="#e2381f" />
+          <stop offset="0" stopColor="var(--text-secondary)" />
+          <stop offset="1" stopColor="var(--text-muted)" />
         </linearGradient>
-        <radialGradient id={`${id}-heat`}>
-          <stop offset="0" stopColor="#ff7a3c" stopOpacity={0.38} />
-          <stop offset="0.7" stopColor="#ff5a2a" stopOpacity={0.08} />
-          <stop offset="1" stopColor="#ff5a2a" stopOpacity={0} />
-        </radialGradient>
-        <filter id={`${id}-blur`} x="-30%" y="-30%" width="160%" height="160%">
-          <feGaussianBlur stdDeviation="3.2" />
-        </filter>
         <filter id={`${id}-lift`} x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="1.2" stdDeviation="1.1" floodColor="#000" floodOpacity={0.45} />
         </filter>
       </defs>
-      <circle
-        className="duel-glow"
-        cx="50"
-        cy="50"
-        r="41"
-        fill="none"
-        stroke="#ff3b1f"
-        strokeWidth={7}
-        filter={`url(#${id}-blur)`}
-      />
       <circle className="duel-disc" cx="50" cy="50" r="40" />
-      <circle cx="50" cy="50" r="38" fill={`url(#${id}-heat)`} />
-      <circle cx="50" cy="50" r="40" fill="none" stroke={`url(#${id}-ring)`} strokeWidth={4.5} />
+      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border-strong)" strokeWidth={4.5} />
       {sword(-45)}
       {sword(45)}
     </svg>

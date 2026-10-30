@@ -4,8 +4,8 @@
     ground, in the light theme's deeper accent, which is the one that holds up
     against white.
   -->
-  <rect width="2732" height="2732" fill="#F5F3EE" />
-  <g fill="#A84A28" transform="translate(1366 1366) scale(1.15) translate(-512 -512)">
+  <rect width="2732" height="2732" fill="#F3F5F0" />
+  <g fill="#3F6417" transform="translate(1366 1366) scale(1.15) translate(-512 -512)">
     <rect x="168" y="482" width="688" height="60" rx="30" />
     <rect x="330" y="312" width="92" height="400" rx="36" />
     <rect x="602" y="312" width="92" height="400" rx="36" />

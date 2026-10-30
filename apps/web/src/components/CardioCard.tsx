@@ -387,7 +387,7 @@ function BoutRow({
       </div>
 
       {problem !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {problem}
         </p>
       )}

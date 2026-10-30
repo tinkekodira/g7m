@@ -303,7 +303,7 @@ function SummaryFact({
     <div className="flex min-w-0 flex-col items-center gap-1 border-r border-subtle px-1 last:border-0">
       <dt className="order-2 text-[11px] text-secondary">{label}</dt>
       <dd className="flex flex-col items-center gap-1 text-lg font-semibold text-primary">
-        <span className="text-accent [&>svg]:size-5">{icon}</span>
+        <span className="text-secondary [&>svg]:size-5">{icon}</span>
         {value}
       </dd>
     </div>

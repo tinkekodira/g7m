@@ -10,25 +10,25 @@
  */
 
 export const colorTokens = {
-  'bg-base': '#1f1e1d',
-  'bg-surface': '#262624',
-  'bg-elevated': '#30302e',
-  'bg-input': '#1a1917',
+  'bg-base': '#101214',
+  'bg-surface': '#1a1d20',
+  'bg-elevated': '#24282d',
+  'bg-input': '#121518',
 
-  'border-subtle': '#3a3a36',
-  'border-strong': '#4a4a44',
+  'border-subtle': '#363c43',
+  'border-strong': '#525c66',
 
-  'text-primary': '#faf9f5',
-  'text-secondary': '#c2c0b6',
-  'text-muted': '#99978f',
-  'text-on-accent': '#1f1e1d',
-  'text-on-danger': '#faf9f5',
+  'text-primary': '#f4f6f8',
+  'text-secondary': '#a2abb5',
+  'text-muted': '#969fa8',
+  'text-on-accent': '#18200a',
+  'text-on-danger': '#f4f6f8',
   'text-danger': '#f87171',
 
-  accent: '#d97757',
-  'accent-hover': '#e08a6e',
-  'accent-pressed': '#c56642',
-  'accent-subtle': '#3a2a24',
+  accent: '#d4f56a',
+  'accent-hover': '#dff889',
+  'accent-pressed': '#bedc59',
+  'accent-subtle': '#252f19',
 
   success: '#6fa86f',
   warning: '#d9a441',
@@ -49,16 +49,16 @@ export const colorTokens = {
   'region-chest': '#c05b6e',
   'region-core': '#249cb4',
 
-  'muscle-idle': '#4a4844',
-  'muscle-hover': '#d97757',
-  'muscle-selected': '#e8a184',
+  'muscle-idle': '#525860',
+  'muscle-hover': '#d4f56a',
+  'muscle-selected': '#dff889',
   'muscle-heat-0': '#35342f',
   'muscle-heat-1': '#4e4335',
   'muscle-heat-2': '#6e5138',
   'muscle-heat-3': '#9a6144',
   'muscle-heat-4': '#d97757',
 
-  'bg-stage': '#17161a',
+  'bg-stage': '#14181c',
   'bg-demo': '#1c1c1c',
 } as const;
 
@@ -70,25 +70,25 @@ export type ColorTokenName = keyof typeof colorTokens;
  * the viewer's own palette, and its backdrop is `bg-stage`, which is.
  */
 export const lightColorTokens = {
-  'bg-base': '#f5f3ee',
+  'bg-base': '#f3f5f0',
   'bg-surface': '#ffffff',
-  'bg-elevated': '#ece9e2',
-  'bg-input': '#f1efe9',
+  'bg-elevated': '#e8ede3',
+  'bg-input': '#edf1e8',
 
-  'border-subtle': '#e0dcd2',
-  'border-strong': '#c7c1b4',
+  'border-subtle': '#d1d8cc',
+  'border-strong': '#a3af99',
 
-  'text-primary': '#1f1e1d',
-  'text-secondary': '#4a4843',
-  'text-muted': '#6a675f',
+  'text-primary': '#192016',
+  'text-secondary': '#53604c',
+  'text-muted': '#626d5a',
   'text-on-accent': '#ffffff',
   'text-on-danger': '#ffffff',
   'text-danger': '#b3261e',
 
-  accent: '#a84a28',
-  'accent-hover': '#973f1f',
-  'accent-pressed': '#85361a',
-  'accent-subtle': '#f8e9e1',
+  accent: '#3f6417',
+  'accent-hover': '#345414',
+  'accent-pressed': '#2a4510',
+  'accent-subtle': '#e8f1d9',
 
   success: '#3b7a43',
   warning: '#8a5d0a',
@@ -109,7 +109,7 @@ export const lightColorTokens = {
   'region-chest': '#b7445d',
   'region-core': '#1488a2',
 
-  'bg-stage': '#e6e2d9',
+  'bg-stage': '#e2e7df',
   'bg-demo': '#f5f3ee',
 } as const satisfies Partial<Record<ColorTokenName, string>>;
 

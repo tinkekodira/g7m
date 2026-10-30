@@ -284,7 +284,7 @@ test('the profile record is compact, non-interactive and recovers from a missing
   );
   await expect(record.getByText('21 Draws', { exact: true })).toHaveCSS(
     'color',
-    'rgb(153, 151, 143)',
+    'rgb(150, 159, 168)',
   );
   await page.setViewportSize({ width: 360, height: 800 });
   await expect.poll(async () => (await record.boundingBox())!.height).toBeLessThan(90);

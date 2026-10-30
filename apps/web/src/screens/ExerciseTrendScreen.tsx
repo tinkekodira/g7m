@@ -51,7 +51,7 @@ export function ExerciseTrendScreen() {
       </header>
 
       {state.error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       ) : state.loading ? (

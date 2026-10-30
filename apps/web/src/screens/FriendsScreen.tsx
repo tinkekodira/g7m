@@ -126,7 +126,7 @@ export function FriendsScreen() {
       {!online ? (
         <FriendsOffline />
       ) : mine.error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {mine.error}
         </p>
       ) : mine.loading && mine.data === null ? (
@@ -148,7 +148,7 @@ export function FriendsScreen() {
           />
 
           {overview.error !== null && (
-            <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+            <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
               {overview.error}
             </p>
           )}
@@ -425,7 +425,7 @@ function BestLifts({ lifts }: { readonly lifts: readonly CardLift[] }) {
                       lift.delta.standing === 'ahead'
                         ? 'text-success'
                         : lift.delta.standing === 'behind'
-                          ? 'text-danger/80'
+                          ? 'text-destructive'
                           : 'text-muted',
                     )}
                   >
@@ -560,7 +560,7 @@ function RequestCard({
         </Button>
       </div>
       {failure !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {failure}
         </p>
       )}
@@ -696,7 +696,7 @@ function AddFriendSheet({
               message?.tone === 'success'
                 ? 'text-success'
                 : message?.tone === 'error'
-                  ? 'text-danger'
+                  ? 'text-destructive'
                   : 'text-secondary',
             )}
           >

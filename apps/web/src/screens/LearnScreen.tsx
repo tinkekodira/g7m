@@ -159,7 +159,7 @@ export function LearnScreen() {
       {taxonomy.error !== null && (
         <p
           role="alert"
-          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-danger"
+          className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-destructive"
         >
           {taxonomy.error}
         </p>
@@ -264,7 +264,7 @@ export function LearnScreen() {
       {selected !== null && (
         <LoadingScope key={selected}>
           {detail.error !== null ? (
-            <p role="alert" className="text-sm text-danger">
+            <p role="alert" className="text-sm text-destructive">
               {detail.error}
             </p>
           ) : (

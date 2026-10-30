@@ -127,7 +127,7 @@ export function FriendSessionScreen() {
           This workout isn’t shared with you any more.
         </p>
       ) : loaded.step === 'failed' ? (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {loaded.message}
         </p>
       ) : (
@@ -244,7 +244,7 @@ function FriendWorkout({
         )}
       </section>
 
-      <section className="rounded-card border border-accent/30 bg-surface p-4">
+      <section className="rounded-card border border-subtle bg-surface p-4">
         <button
           type="button"
           disabled={busy || hasOpenWorkout || open.loading}
@@ -273,7 +273,7 @@ function FriendWorkout({
           </p>
         )}
         {error !== null && (
-          <p role="alert" className="mt-2 text-sm text-danger">
+          <p role="alert" className="mt-2 text-sm text-destructive">
             {error}
           </p>
         )}

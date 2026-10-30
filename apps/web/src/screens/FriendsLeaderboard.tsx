@@ -127,7 +127,7 @@ export function FriendsLeaderboard({
       </BoardFilters>
 
       {error !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -148,13 +148,9 @@ export function FriendsLeaderboard({
         </div>
       ) : (
         <>
-          {/* The board is the screen's hero, in Home's warm card; the podium
+          {/* The board is the screen's hero, in Home's neutral card; the podium
               rows keep their metals inside it (ADR-0127). */}
-          <div className="relative isolate rounded-sheet border border-accent/20 bg-surface p-2">
-            <div
-              aria-hidden
-              className="stat-glow pointer-events-none absolute inset-0 -z-10 rounded-[inherit]"
-            />
+          <div className="relative isolate rounded-sheet border border-subtle bg-surface p-2">
             <ol className="flex flex-col">
               {view.rows.map((row) => (
                 <BoardRow key={row.key} row={row} />
@@ -267,7 +263,7 @@ function BoardRow({ row }: { readonly row: BoardRowView }) {
           <span
             className={cx(
               'numeric mt-1 text-[11px] font-semibold',
-              row.move > 0 ? 'text-success' : 'text-danger/80',
+              row.move > 0 ? 'text-success' : 'text-destructive',
             )}
           >
             {row.moveText}
@@ -339,7 +335,7 @@ function Standing({ place, gap }: { readonly place: string; readonly gap: string
         className="pointer-events-none fixed inset-x-0 bottom-(--tab-bar-offset) z-20"
       >
         <div className="mx-auto max-w-2xl px-4 pb-2">
-          <p className="flex flex-wrap items-baseline gap-x-2 rounded-sheet border border-accent/30 bg-elevated px-4 py-3 text-sm shadow-floating">
+          <p className="flex flex-wrap items-baseline gap-x-2 rounded-sheet border border-subtle bg-elevated px-4 py-3 text-sm shadow-floating">
             <span className="font-semibold text-primary">{place}</span>
             {gap !== null && <span className="text-secondary">{gap}</span>}
           </p>

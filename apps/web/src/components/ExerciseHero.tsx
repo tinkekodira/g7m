@@ -26,7 +26,7 @@ import { equipmentArt } from './equipment-art.js';
  *
  * ## Why the image is dimmed rather than darkened
  *
- * The bench is black and grey and the page is #1f1e1d, so the render has very
+ * The bench is black and grey and the page is graphite, so the render has very
  * little room between "invisible" and "competing with the title". Three things
  * share the work, and only the first touches the image:
  *

@@ -72,7 +72,7 @@ function AccountInvitation({ user }: { readonly user: string }) {
   return (
     <section
       aria-labelledby="tour-invitation"
-      className="rounded-sheet border border-accent/30 bg-surface p-4"
+      className="rounded-sheet border border-subtle bg-surface p-4"
     >
       <h2 id="tour-invitation" className="text-lg font-semibold text-primary">
         Find your way around
@@ -81,7 +81,9 @@ function AccountInvitation({ user }: { readonly user: string }) {
         Five quick stops to discover your training tools.
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button onClick={onStart}>Take a quick tour</Button>
+        <Button variant="secondary" onClick={onStart}>
+          Take a quick tour
+        </Button>
         <Button
           variant="ghost"
           onClick={() => {

@@ -95,7 +95,7 @@ export function MetricsScreen() {
       </header>
 
       {error !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {error}
         </p>
       )}
@@ -197,7 +197,7 @@ function WeightPanel({
             aria-hidden
             className={cx(
               'mt-0.5 size-5 shrink-0',
-              prompt.tone === 'urgent' ? 'text-danger' : 'text-accent',
+              prompt.tone === 'urgent' ? 'text-destructive' : 'text-accent',
             )}
           />
           <div className="min-w-0">
@@ -251,7 +251,7 @@ function WeightPanel({
         {/* Under the row rather than inside the field, so the button stays
             level with the box it saves. */}
         {problem !== null && (
-          <p role="alert" className="mt-1.5 text-sm text-danger">
+          <p role="alert" className="mt-1.5 text-sm text-destructive">
             {problem}
           </p>
         )}

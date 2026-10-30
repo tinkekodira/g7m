@@ -36,7 +36,7 @@ export function SessionDetailScreen() {
       </header>
 
       {state.error !== null ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       ) : state.loading ? (
@@ -134,7 +134,7 @@ function KeepAsRoutine({
             </Button>
           </div>
           {error !== null && (
-            <p role="alert" className="mt-2 text-sm text-danger">
+            <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
             </p>
           )}
@@ -194,7 +194,7 @@ function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
         Delete workout
       </Button>
       {error !== null && (
-        <p role="alert" className="mt-2 text-sm text-danger">
+        <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
         </p>
       )}

@@ -6,7 +6,7 @@
   "description": "Capacitor shell for iOS and Android. Thin: native config, icons, splash, plugins.",
   "scripts": {
     "build:web": "pnpm --filter @g7m/web build",
-    "assets": "capacitor-assets generate --ios --android --iosProject ios/App --androidProject android --assetPath assets --iconBackgroundColor '#1F1E1D' --iconBackgroundColorDark '#1F1E1D' --splashBackgroundColor '#F5F3EE' --splashBackgroundColorDark '#1F1E1D' && node scripts/web-icons.mjs",
+    "assets": "capacitor-assets generate --ios --android --iosProject ios/App --androidProject android --assetPath assets --iconBackgroundColor \"#101214\" --iconBackgroundColorDark \"#101214\" --splashBackgroundColor \"#F3F5F0\" --splashBackgroundColorDark \"#101214\" && node scripts/web-icons.mjs",
     "sync": "pnpm build:web && cap sync",
     "copy": "pnpm build:web && cap copy",
     "open:ios": "cap open ios",

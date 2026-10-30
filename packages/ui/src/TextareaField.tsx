@@ -52,7 +52,7 @@ export function TextareaField({
       />
 
       {error !== undefined && (
-        <p id={`${id}-error`} role="alert" className="text-sm text-danger">
+        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

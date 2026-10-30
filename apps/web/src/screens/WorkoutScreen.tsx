@@ -421,7 +421,7 @@ export function WorkoutScreen() {
   if (state.error !== null) {
     return (
       <Shell>
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {state.error}
         </p>
       </Shell>
@@ -438,7 +438,7 @@ export function WorkoutScreen() {
         {workoutStart.chooser}
         <StartWorkout busy={workoutStart.busy} onStart={workoutStart.start} />
         {workoutStart.error !== null && (
-          <p role="alert" className="text-sm text-danger">
+          <p role="alert" className="text-sm text-destructive">
             {workoutStart.error}
           </p>
         )}
@@ -745,7 +745,7 @@ export function WorkoutScreen() {
       )}
 
       {writeError !== null && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-destructive">
           {writeError}
         </p>
       )}
@@ -993,7 +993,7 @@ function SupersetFrame({
   return (
     <section
       aria-label="Superset"
-      className="flex flex-col gap-3 rounded-card border-l-4 border-accent pl-2"
+      className="flex flex-col gap-3 rounded-card border-l-4 border-subtle pl-2"
     >
       <div className="flex items-center justify-between gap-3 px-2">
         <p className="text-xs font-semibold tracking-wide text-accent uppercase">

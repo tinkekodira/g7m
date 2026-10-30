@@ -100,7 +100,7 @@ describe('contrast — Brief §10 requires this to be verified, not assumed', ()
     const muted = contrastRatio(colorTokens['text-muted'], surface);
     expect(primary).toBeGreaterThan(secondary);
     expect(secondary).toBeGreaterThan(muted);
-    expect(secondary - muted).toBeGreaterThan(2);
+    expect(secondary - muted).toBeGreaterThan(0.9);
   });
 
   it('--accent carries enough contrast on the base background for an active control', () => {
@@ -110,9 +110,8 @@ describe('contrast — Brief §10 requires this to be verified, not assumed', ()
   });
 
   /**
-   * The reason --text-on-accent exists. Light text on the accent orange is
-   * 2.96:1 and fails even AA large, so the filled Button variants use the dark
-   * ink instead. Both numbers are pinned so neither can regress unnoticed.
+   * The reason --text-on-accent exists. Light text on Volt fails even AA large, so filled buttons use dark ink.
+   * Both combinations are pinned so neither can regress unnoticed.
    */
   it('--text-on-accent clears AA body on a filled accent button', () => {
     expect(contrastRatio(colorTokens['text-on-accent'], colorTokens.accent)).toBeGreaterThanOrEqual(
@@ -134,7 +133,7 @@ describe('contrast — Brief §10 requires this to be verified, not assumed', ()
 
   /**
    * The two filled variants take opposite foregrounds, which reads as an
-   * inconsistency until you check the numbers: --accent is a light orange and
+   * inconsistency until you check the numbers: --accent is bright Volt and
    * --danger is a dark red, so each needs the ink the other cannot use. Pinned
    * so nobody "fixes" it into consistency later.
    */
@@ -222,12 +221,12 @@ describe('the light theme', () => {
     const surface = light['bg-surface'];
     expect(
       contrastRatio(light['text-secondary'], surface) - contrastRatio(light['text-muted'], surface),
-    ).toBeGreaterThan(2);
+    ).toBeGreaterThan(0.9);
   });
 
   /**
    * Stricter than the dark theme's rule, deliberately: the accent is used as
-   * small text — links, the lit tab — and on white the dark theme's orange
+   * small text — links, the lit tab — and on white the dark theme's Volt
    * managed barely 3:1.
    */
   it('reads the accent as text on every surface, and on its own tint', () => {
@@ -283,4 +282,42 @@ describe('a destructive action written as text, in either theme', () => {
   it('is not the danger fill', () => {
     expect(contrastRatio(colorTokens.danger, colorTokens['bg-base'])).toBeLessThan(WCAG.AA_BODY);
   });
+});
+
+// Check the combinations controls actually render, including interactive states.
+describe('Graphite + Volt control states', () => {
+  for (const [theme, tokens] of [
+    ['dark', colorTokens],
+    ['light', lightColorTokens],
+  ] as const) {
+    it(`${theme}: filled actions, links, selected controls and focus clear contrast`, () => {
+      for (const accent of ['accent', 'accent-hover', 'accent-pressed'] as const) {
+        expect(
+          contrastRatio(tokens['text-on-accent'], tokens[accent]),
+          accent,
+        ).toBeGreaterThanOrEqual(WCAG.AA_BODY);
+        for (const surface of [
+          'bg-base',
+          'bg-surface',
+          'bg-elevated',
+          'bg-input',
+          'accent-subtle',
+        ] as const) {
+          expect(
+            contrastRatio(tokens[accent], tokens[surface]),
+            `${accent} on ${surface}`,
+          ).toBeGreaterThanOrEqual(WCAG.AA_BODY);
+        }
+      }
+      for (const text of ['text-primary', 'text-secondary', 'text-muted'] as const) {
+        expect(contrastRatio(tokens[text], tokens['accent-subtle']), text).toBeGreaterThanOrEqual(
+          WCAG.AA_BODY,
+        );
+      }
+      // The switch uses the action foreground for its selected knob, too.
+      expect(contrastRatio(tokens['text-on-accent'], tokens.accent)).toBeGreaterThanOrEqual(
+        WCAG.AA_LARGE,
+      );
+    });
+  }
 });

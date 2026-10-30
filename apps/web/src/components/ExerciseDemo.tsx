@@ -18,10 +18,9 @@ import {
  *
  * The loop plays in a square of its own, `bg-demo`, rather than straight on the
  * card. No surface in the app is the `#1C1C1C` the loops are rendered on: the
- * dark card is `#262624` and the page `#1f1e1d`, both close enough to look like
- * a match and far enough to show the MP4 as a faint square. So the panel is
+ * graphite card and page differ from that rendered colour. So the panel is
  * that colour in the dark theme, and the MP4 fills it with no edge. In the
- * light theme the panel is the page colour and the transparent WebP plays on
+ * light theme the panel keeps its original media colour and the transparent WebP plays on
  * it. The panel also gives the WebP somewhere to end: its contact shadow is
  * cut off at the frame's bottom and left edges, and on a bare card that cut
  * would be a hard line.

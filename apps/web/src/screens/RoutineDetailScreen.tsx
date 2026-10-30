@@ -94,7 +94,7 @@ export function RoutineDetailScreen() {
       </header>
 
       {(state.error ?? error) !== null && (
-        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-danger">
+        <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
           {state.error ?? error}
         </p>
       )}
@@ -180,7 +180,7 @@ export function RoutineDetailScreen() {
               <li key={unit.supersetId}>
                 <section
                   aria-label="Superset"
-                  className="flex flex-col gap-2 rounded-card border-l-4 border-accent pl-2"
+                  className="flex flex-col gap-2 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <div className="flex items-center gap-1 pl-2">
                     <p className="flex-1 text-xs font-semibold tracking-wide text-accent uppercase">
