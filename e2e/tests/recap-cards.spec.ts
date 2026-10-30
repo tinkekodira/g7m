@@ -356,6 +356,7 @@ test('long muscle percentages scroll independently by keyboard and touch', async
       const body = page.getByRole('img', { name: /^Muscles worked this session:/ });
       const bodyBefore = await body.boundingBox();
       await shares.focus();
+      await expect(shares).toBeFocused();
       await shares.press('Home');
       await expect.poll(() => shares.evaluate((el) => el.scrollTop)).toBe(0);
       await page.screenshot({ path: info.outputPath(`muscle-list-${width}-${theme}-top.png`) });
@@ -383,10 +384,22 @@ test('long muscle percentages scroll independently by keyboard and touch', async
           });
           await page.waitForTimeout(16);
         }
+        // Finger release starts momentum; wait for the browser's scrollend before
+        // switching to keyboard input or resizing to the next viewport.
+        await shares.evaluate((el) => {
+          el.setAttribute('data-touch-scrolling', 'true');
+          el.addEventListener('scrollend', () => el.removeAttribute('data-touch-scrolling'), {
+            once: true,
+          });
+        });
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
         await cdp.detach();
         await expect.poll(() => shares.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+        await expect(shares).not.toHaveAttribute('data-touch-scrolling', 'true');
         await shares.press('End');
+        await expect
+          .poll(() => shares.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
+          .toBeLessThanOrEqual(1);
       }
       await expect(shares.getByRole('listitem').last()).toBeInViewport({ ratio: 0.99 });
       expect(await body.boundingBox()).toEqual(bodyBefore);

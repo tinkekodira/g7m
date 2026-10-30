@@ -26,6 +26,21 @@ async function expectFits(page: Page) {
   await expect(page.locator('.stat-glow')).toHaveCount(0);
 }
 
+// Palette checks need an unobscured screen, not each banner's auto-dismiss timer.
+// Use the supported upward flick; achievement delivery has its own browser tests.
+async function dismissAchievementBanner(page: Page) {
+  const banner = page.locator('[data-achievement-banner]');
+  await expect(banner).toBeVisible();
+  const box = await banner.getByRole('button').boundingBox();
+  if (box === null) throw new Error('Achievement banner has no visible bounds');
+  const x = box.x + box.width / 2;
+  await page.mouse.move(x, box.y + box.height - 8);
+  await page.mouse.down();
+  await page.mouse.move(x, box.y + 8, { steps: 3 });
+  await page.mouse.up();
+  await expect(banner).toBeHidden();
+}
+
 for (const theme of ['dark', 'light'] as const) {
   for (const width of [320, 393, 1280]) {
     test(`Graphite + Volt: ${theme}, ${String(width)}px`, async ({ page, context }, info) => {
@@ -89,8 +104,7 @@ for (const theme of ['dark', 'light'] as const) {
         'text-on-accent',
       );
       await expectFits(page);
-      await expect(page.locator('[data-achievement-banner]')).toBeVisible();
-      await expect(page.locator('[data-achievement-banner]')).toBeHidden();
+      await dismissAchievementBanner(page);
       await page
         .locator('[aria-roledescription="carousel"][aria-label="This month"]')
         .evaluate((track) => {
@@ -111,8 +125,7 @@ for (const theme of ['dark', 'light'] as const) {
       // The workout path still works, including completed-set feedback offline.
       await startWith(page, 'Barbell Bench Press');
       await logSet(page, 1, '55', '8');
-      await expect(page.locator('[data-achievement-banner]')).toBeVisible();
-      await expect(page.locator('[data-achievement-banner]')).toBeHidden();
+      await dismissAchievementBanner(page);
       const finish = page.getByRole('button', { name: 'Finish workout', exact: true });
       await expectToken(finish, 'background-color', 'accent');
       await expectToken(finish, 'color', 'text-on-accent');
@@ -129,7 +142,7 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(page.getByLabel('Search')).toBeVisible();
       await expect(page.getByRole('button', { name: /^Barbell Bench Press/ })).toBeVisible();
       await expectFits(page);
-      await page.screenshot({ path: info.outputPath('browse.png'), fullPage: true });
+      await page.screenshot({ path: info.outputPath('browse.png') });
       await page.goto('/#/workout');
       await context.setOffline(true);
       await finish.click();
