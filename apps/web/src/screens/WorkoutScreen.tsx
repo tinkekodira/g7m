@@ -338,8 +338,8 @@ export function WorkoutScreen() {
   }, [reveal, navigate]);
 
   /**
-   * Back to the end of the workout, after opening the library and adding
-   * nothing.
+   * Resume at the end of the workout, or return there after leaving the
+   * exercise picker without adding anything.
    *
    * The same wait as above: the end only means anything once the exercises
    * above it are drawn, so this holds until the workout has loaded. `end`,
@@ -347,12 +347,20 @@ export function WorkoutScreen() {
    * rather than smooth: this is putting the page back where it was, not
    * showing somebody something new.
    */
-  const backFromAdding = cameBackFromAdding(location.state) && workout !== null;
+  const routeState: unknown = location.state;
+  const resuming =
+    typeof routeState === 'object' &&
+    routeState !== null &&
+    'resumeWorkout' in routeState &&
+    routeState.resumeWorkout === true;
+  const showWorkoutEnd = (resuming || cameBackFromAdding(routeState)) && workout !== null;
   useEffect(() => {
-    if (!backFromAdding) return;
-    document.getElementById(WORKOUT_END_ANCHOR)?.scrollIntoView({ block: 'end' });
+    if (!showWorkoutEnd) return;
+    document
+      .getElementById(WORKOUT_END_ANCHOR)
+      ?.scrollIntoView({ block: 'end', behavior: 'instant' });
     void navigate('.', { replace: true, state: null });
-  }, [backFromAdding, navigate]);
+  }, [showWorkoutEnd, navigate]);
 
   /** Only this workout's rest: one from a finished workout never shows. */
   const shownRest = restOfSession(rest, workout?.session.id ?? null);
