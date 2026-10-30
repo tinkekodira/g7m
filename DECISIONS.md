@@ -9362,3 +9362,26 @@ retaining clear contrast for action ink, links, selected controls and focus.
 Light-mode colours, specialised anatomy colours, launch artwork, semantic data
 colours and exercise-demo media surfaces stay unchanged. Keep CSS/TypeScript
 parity and the existing AA/AAA contrast guarantees.
+
+### Soft graphite surfaces (2026-10-30)
+
+The near-black dark theme felt too dark. Apply the approved Soft graphite
+preview through the existing shared tokens: base `#202429`, surface `#2b3036`,
+elevated `#363d44`, input and anatomy stage `#24292e`, subtle border `#454d56`,
+strong border `#687582`, secondary text `#bac3cc`, muted text `#aab4be` and
+accent tint `#303b27`. Keep the softened lime action states, typography,
+layouts, light theme, anatomy materials, semantic data colours and both
+exercise-demo backgrounds unchanged.
+
+The existing red text `#f87171` falls below AA on the lighter elevated surface.
+Use `#ff8585` for dark error and destructive text, preserving the danger fill
+and all contrast thresholds. Primary text still clears AAA; supporting text,
+links and interactive accent states still clear AA on their intended surfaces.
+
+Match browser chrome, the web manifest, native shell backgrounds and regenerated
+dark splash assets to the new base. Preserve every app icon and light splash.
+Keep CSS/TypeScript colour parity and verify browser chrome against the shared
+tokens. Extend the existing palette browser scenarios to capture the workout
+start dialog, Progress and anatomy alongside Home, logging, offline recap and
+persisted theme switching at 320, 393 and 1280px in both themes.
+No database migration, db push or PowerSync sync-rule deployment is required.
