@@ -2,6 +2,9 @@ import { expect, test, type Locator } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { openTab, signIn } from './support/app.js';
 
+// Slider geometry and input use CSS pixels; high-DPI captures add no coverage.
+test.use({ deviceScaleFactor: 1 });
+
 // Inspect the decorative highlight because selected-state assertions alone
 // cannot distinguish a sliding pill from the old background-color swap.
 const highlight = (control: Locator) => control.locator(':scope > span[aria-hidden="true"]');

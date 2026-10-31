@@ -1050,25 +1050,31 @@ function FloatingWorkoutSummary({
     if (anchor === null || floating === null) return;
 
     let observer: IntersectionObserver | undefined;
+    let top = 0;
+    const updateVisibility = (): void => {
+      setVisible(anchor.getBoundingClientRect().bottom <= top);
+    };
     const observe = (): void => {
       observer?.disconnect();
       // Reading the fixed wrapper includes the platform's current safe area.
-      const top = floating.getBoundingClientRect().top;
-      setVisible(anchor.getBoundingClientRect().bottom <= top);
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry !== undefined) setVisible(entry.boundingClientRect.bottom <= top);
-        },
-        { rootMargin: `-${String(top)}px 0px 0px 0px`, threshold: 0 },
-      );
+      top = floating.getBoundingClientRect().top;
+      updateVisibility();
+      observer = new IntersectionObserver(updateVisibility, {
+        rootMargin: `-${String(top)}px 0px 0px 0px`,
+        threshold: 0,
+      });
       observer.observe(anchor);
     };
 
     observe();
+    // A jump from below the viewport to above it may never intersect the
+    // observer's root. Scroll events also cover that navigation/restore path.
+    window.addEventListener('scroll', updateVisibility, { passive: true });
     window.addEventListener('resize', observe);
     window.addEventListener('pageshow', observe);
     return () => {
       observer?.disconnect();
+      window.removeEventListener('scroll', updateVisibility);
       window.removeEventListener('resize', observe);
       window.removeEventListener('pageshow', observe);
     };

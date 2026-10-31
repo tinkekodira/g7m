@@ -93,6 +93,45 @@ test('the compact summary follows scrolling, resizing and exercise navigation', 
   await dialog.getByRole('button', { name: 'Cancel' }).click();
 });
 
+test('floating controls recover when a scroll jump skips the whole viewport', async ({ page }) => {
+  const user = await createUser('floating-jump', { onboarded: true });
+  await signIn(page, user);
+  await waitForCatalogue(page);
+  await startWith(page, 'Barbell Bench Press');
+  for (let n = 1; n <= 4; n += 1) {
+    await page.getByRole('button', { name: 'Add set', exact: true }).click();
+    await expect(page.getByRole('button', { name: `Complete set ${String(n)}` })).toBeVisible();
+  }
+
+  // Place the anchors below the viewport, then jump past them without an
+  // intermediate intersecting frame, as route restoration/reflow can do.
+  await page.evaluate(async () => {
+    window.scrollTo(0, 0);
+    document.querySelector('header')!.style.paddingTop = `${String(innerHeight + 100)}px`;
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+  });
+  await expect
+    .poll(() =>
+      page
+        .locator('.workout-header-timer')
+        .evaluate((el) => el.getBoundingClientRect().top > innerHeight),
+    )
+    .toBe(true);
+  await expect(summary(page)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Go home', exact: true })).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect
+    .poll(async () => {
+      const bounds = await page.locator('.workout-header-timer').boundingBox();
+      return bounds === null ? Infinity : bounds.y + bounds.height;
+    })
+    .toBeLessThanOrEqual(8);
+  await expect(summary(page)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Go home', exact: true })).toBeVisible();
+});
+
 test('the tally follows working sets, warm-ups, drops, deletion and undo', async ({ page }) => {
   const user = await createUser('floating-counts', { onboarded: true });
   await page.setViewportSize({ width: 390, height: 640 });
