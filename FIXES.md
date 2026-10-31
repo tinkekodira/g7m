@@ -1,3 +1,17 @@
+# Floating workout controls handle scroll jumps past the viewport
+
+Full-suite validation of PR #211 exposed an intermittent hidden workout summary
+after adding an exercise. A standalone reproduction confirmed that jumping a
+header anchor from below the viewport to above it can leave IntersectionObserver
+non-intersecting at both ends, without delivering the needed crossing callback.
+
+The summary and floating Home button now also update from passive scroll events.
+Observer callbacks read current bounds rather than a potentially stale entry.
+Keep resize/pageshow handling, safe-area offsets and existing motion/accessibility
+behavior. A browser regression jumps both anchors across the viewport and checks
+that both controls recover. No database migration or PowerSync deployment is
+required.
+
 # Layout screenshots avoid high-DPI overhead in browser CI
 
 PR #211's browser run 330 reached the twelve-minute suite deadline with 163

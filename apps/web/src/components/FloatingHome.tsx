@@ -11,23 +11,28 @@ export function FloatingHome({ anchor }: { readonly anchor: RefObject<HTMLDivEle
     const fixed = position.current;
     if (target === null || fixed === null) return;
     let observer: IntersectionObserver | undefined;
+    let top = 0;
+    const updateVisibility = () => {
+      setVisible(target.getBoundingClientRect().bottom <= top);
+    };
     const observe = () => {
       observer?.disconnect();
-      const top = fixed.getBoundingClientRect().top;
-      setVisible(target.getBoundingClientRect().bottom <= top);
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry !== undefined) setVisible(entry.boundingClientRect.bottom <= top);
-        },
-        { rootMargin: `-${String(top)}px 0px 0px 0px`, threshold: 0 },
-      );
+      top = fixed.getBoundingClientRect().top;
+      updateVisibility();
+      observer = new IntersectionObserver(updateVisibility, {
+        rootMargin: `-${String(top)}px 0px 0px 0px`,
+        threshold: 0,
+      });
       observer.observe(target);
     };
     observe();
+    // Programmatic jumps can skip the observer's visible area altogether.
+    window.addEventListener('scroll', updateVisibility, { passive: true });
     window.addEventListener('resize', observe);
     window.addEventListener('pageshow', observe);
     return () => {
       observer?.disconnect();
+      window.removeEventListener('scroll', updateVisibility);
       window.removeEventListener('resize', observe);
       window.removeEventListener('pageshow', observe);
     };
