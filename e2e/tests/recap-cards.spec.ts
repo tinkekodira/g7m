@@ -2,6 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { signIn, waitForCatalogue } from './support/app.js';
 
+// Layout, scrolling and containment use CSS pixels. Keep the repeated desktop
+// captures at 1x instead of inheriting Pixel 7's 2.625x screenshot density.
+test.use({ deviceScaleFactor: 1 });
+
 const titles = ['Your session', 'Muscles trained', 'Compared with last time', 'Exercise log'];
 
 async function expectCardFits(page: Page, title: string) {

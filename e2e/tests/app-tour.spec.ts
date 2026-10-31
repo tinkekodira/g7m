@@ -2,6 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 import { createUser, sql } from './support/backend.js';
 import { openTab, signIn, signOut } from './support/app.js';
 
+// These checks measure CSS placement and interaction. Avoid multiplying every
+// screenshot's pixel count by Pixel 7's 2.625x density on CI's software renderer.
+test.use({ deviceScaleFactor: 1 });
+
 const titles = [
   'Start a workout',
   'Progress & history',

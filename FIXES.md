@@ -1,3 +1,20 @@
+# Layout screenshots avoid high-DPI overhead in browser CI
+
+PR #211's browser run 330 reached the twelve-minute suite deadline with 163
+scenarios passed, eight unfinished and no assertion failure. Both exercise-icon
+scenarios passed. The tour's three layout scenarios consumed 95.6 seconds, the
+four Friends-slider layout scenarios 72.7 seconds and the three recap scenarios
+99.1 seconds on the shared runner.
+
+Apply the palette suite's existing 1x-density approach to the tour, Friends-slider
+and recap suites. They assert CSS placement, interactions and content; Pixel 7's
+2.625x density was multiplying screenshot pixels by nearly seven, including when
+resized to desktop widths. Preserve all themes, viewports, screenshots, touch and
+keyboard input, assertions and offline behavior. Other suites retain high-DPI
+emulation. Keep the single required check, two workers, retries and deadlines.
+Validate the full browser suite and the updated GitHub run. No database
+migration, db push or PowerSync sync-rule deployment is required.
+
 # Incline chest press browser check follows the new exercise thumbnail
 
 PR #210's browser run 327 completed with 169 scenarios passing and two failing:

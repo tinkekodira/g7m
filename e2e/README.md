@@ -12,6 +12,8 @@ Locally the tests use the Chrome you already have installed; CI uses the browser
 
 One **Browser tests (Playwright)** job runs the complete suite with two workers, sharing one production build and fake backend. Local runs use the same worker count. Each test has its own accounts and browser contexts; offline tests disconnect only their own context. Files run concurrently, while tests within a file remain sequential. The job uploads one HTML report, screenshots and failure traces, including on success for timing inspection. Playwright stops a CI run after twelve minutes, including setup, so it can finish the report before the fifteen-minute job limit. Local runs have no suite-wide deadline. See ADR-0155 and ADR-0162.
 
+Layout-focused palette, tour, Friends-slider, recap and exercise-icon suites use 1x pixel density. This keeps their screenshots at the requested CSS viewport sizes, avoiding nearly seven times as many pixels from Pixel 7's 2.625x density. Phone touch/mobile emulation, every viewport, theme and assertion remain enabled. Other suites keep the device's high-DPI rendering.
+
 CI records detailed traces on the first retry, avoiding trace capture for passing tests. A first-attempt failure still keeps its screenshot and error context, and the retry keeps its trace whether it passes or fails. Local runs retain traces on failure because they have no automatic retries. Use `--trace on` when investigating a specific test.
 
 ## What runs
