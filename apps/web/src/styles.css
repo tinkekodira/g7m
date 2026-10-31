@@ -690,6 +690,8 @@ html:has(.app-tour-dialog[open]) .rise {
 }
 
 .browse-exercise-row .browse-exercise-icon {
+  /* Give the pose more room without narrowing names or weight charts. */
+  padding: 3px;
   background-color: color-mix(
     in oklab,
     var(--muscle-color, var(--text-muted)) 12%,

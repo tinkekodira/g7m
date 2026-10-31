@@ -79,7 +79,7 @@ test('exercise thumbnails retain their size and alignment in both themes on phon
   const user = await createUser('icons-layout', { onboarded: true });
   await signIn(page, user);
   await waitForCatalogue(page);
-  for (const width of [393, 1280]) {
+  for (const width of [320, 393, 1280]) {
     await page.setViewportSize({ width, height: 852 });
     for (const theme of ['light', 'dark']) {
       for (const mode of ['browse', 'add']) {
