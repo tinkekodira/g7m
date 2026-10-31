@@ -15,7 +15,10 @@ for (const theme of ['dark', 'light'] as const) {
     await page.getByLabel('Search').fill('machine incline press');
     const row = page.getByRole('link', { name: /^Incline machine chest press/ });
     await expect(row).toBeVisible();
-    await expect(row.locator('img')).toHaveAttribute('src', /incline-chest-press-machine/);
+    await expect(row.locator('img')).toHaveAttribute(
+      'src',
+      /\/assets\/incline-machine-chest-press-[\w-]+\.webp$/,
+    );
     await row.click();
 
     const hero = page.locator('img[src*="incline-chest-press-machine-hero"]');
