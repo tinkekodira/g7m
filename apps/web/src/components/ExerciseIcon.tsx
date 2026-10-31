@@ -1,21 +1,13 @@
 import { cx } from '@g7m/ui';
 import { DumbbellIcon } from './icons.js';
-import { equipmentArt } from './equipment-art.js';
+import { exerciseIconArt } from './exercise-icon-art.js';
 
 /**
  * The square in front of an exercise's name.
  *
- * The art comes from `equipment-art.ts`, which the exercise's own page reads
- * too — one table, so a bench cannot have a square here and no hero there.
- *
- * ## Everything gets a container
- *
- * Fifty-three exercises are in the catalogue and one of them has a render, so
- * for a long while most rows will be the fallback. That fallback is the same
- * square with the app's own dumbbell glyph in it rather than a gap, because a
- * list where some rows indent and others do not reads as broken rather than as
- * incomplete. Every row keeps the same left edge from the first icon to the
- * last.
+ * Each catalogue exercise has its own illustration. These thumbnails are
+ * independent of the equipment heroes on detail pages. Unknown exercises
+ * keep the same square with the app's dumbbell glyph so row text still aligns.
  *
  * Ordinary artwork sits on a neutral elevated surface. Browse supplies its
  * meaningful muscle-category tint through the existing row styles.
@@ -32,7 +24,7 @@ export function ExerciseIcon({
   readonly slug: string;
   readonly className?: string;
 }) {
-  const art = equipmentArt(slug);
+  const art = exerciseIconArt(slug);
 
   return (
     <span
@@ -48,9 +40,8 @@ export function ExerciseIcon({
       {art === null ? (
         <DumbbellIcon className="size-6 text-secondary" />
       ) : (
-        // Contained, never cropped: these are renders of real objects and a
-        // bench with its feet cut off is worse than a smaller bench.
-        <img src={art.icon} alt="" width={56} height={56} className="size-full object-contain" />
+        // Contain the full pose and equipment without clipping either.
+        <img src={art} alt="" width={56} height={56} className="size-full object-contain" />
       )}
     </span>
   );

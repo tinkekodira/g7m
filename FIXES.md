@@ -1,3 +1,16 @@
+# Incline chest press browser check follows the new exercise thumbnail
+
+PR #210's browser run 327 completed with 169 scenarios passing and two failing:
+the dark/light incline machine chest press checks still expected the old
+equipment-only thumbnail filename. The new thumbnail correctly uses the exercise
+slug `incline-machine-chest-press`; the equipment hero still uses
+`incline-chest-press-machine-hero`.
+
+Update only the list-image assertion to require the fingerprinted exercise WebP.
+Keep the separate equipment-hero assertion, coaching, layout, offline and logging
+coverage. Validate the full browser suite and the replacement GitHub check.
+No database migration, db push or PowerSync sync-rule deployment is required.
+
 # Challenge browser checks follow the active semantic theme tokens
 
 PR #208's browser run 321 failed because the challenge record test still pinned
