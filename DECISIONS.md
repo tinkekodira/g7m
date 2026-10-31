@@ -9385,3 +9385,26 @@ tokens. Extend the existing palette browser scenarios to capture the workout
 start dialog, Progress and anatomy alongside Home, logging, offline recap and
 persisted theme switching at 320, 393 and 1280px in both themes.
 No database migration, db push or PowerSync sync-rule deployment is required.
+
+## ADR-0165 — Exercise list thumbnails show each movement
+
+**Status:** accepted · **Date:** 2026-10-31 · **Amends:** ADR-0083
+
+Replace equipment-only list icons with Milan's individual exercise illustrations
+from `Desktop/exercise-images`. All 87 catalogue exercises receive a transparent
+320px WebP thumbnail, encoded from the selected source thumbnail at quality 90
+with full alpha quality. Source-folder aliases and provenance are recorded in
+`apps/web/src/assets/exercises/README.md`; the original collection is preserved.
+
+`ExerciseIcon` reads these assets by database slug through `exercise-icon-art.ts`.
+Browse and Add an exercise share that component, as do compact recap rows.
+Keep existing sizing, category surfaces, decorative accessibility semantics and
+contain fitting. Unknown slugs retain the dumbbell fallback. Equipment heroes
+and demonstration media keep their existing assets and mapping; list artwork
+can now evolve independently of the larger detail-page illustrations.
+
+Vite fingerprints the thumbnails and the existing service worker precaches them
+(about 1.2 MB total). Browser checks cover every active catalogue slug in both
+lists, image decoding, an offline reload, and phone/desktop alignment in both
+themes. Existing hero and offline workout checks still pass. No database
+migration, `npx supabase db push` or PowerSync sync-rule deployment is required.
