@@ -43,7 +43,7 @@ test('all catalogue thumbnails load in Browse and Add an exercise, including off
   const catalogue = await sql<{ name: string; slug: string }>(
     'select name, slug from public.exercises where is_active order by name',
   );
-  expect(catalogue.length).toBe(91);
+  expect(catalogue.length).toBe(92);
   await signIn(page, user);
   await waitForCatalogue(page);
   await page.goto('/#/exercises');

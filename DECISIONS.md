@@ -9431,3 +9431,41 @@ Apply `20261101120000_smith_machine_and_dumbbell_shrugs.sql` with
 sync-rule change or deployment is required; existing catalogue streams carry
 the new rows. Validate the migrated catalogue, equipment and primary muscles,
 search aliases, recommendation audit and offline thumbnails.
+
+## ADR-0167 — Incline Smith bench press is a separate exercise
+
+**Status:** accepted · **Date:** 2026-11-01
+
+Add `smith-machine-incline-bench-press` with independent history, coaching,
+search aliases, defaults and the existing incline recommendation profile.
+Use the Smith machine as the primary station and the incline bench as an
+accessory, with clavicular pectorals as the primary muscle. Keep the flat Smith
+press and other incline presses as their own entries. The catalogue has 92
+exercises and 40 equipment entries.
+
+Bundle Milan's matching finished 320px thumbnail from
+`Desktop/exercise-images/smith-machine-incline-bench-press` with the existing
+transparent WebP settings and offline precache. Equipment heroes and demo
+media retain their existing fallback behaviour.
+
+Apply `20261101130000_smith_machine_incline_bench_press.sql` with
+`npx supabase db push` before the app release. No local schema change or
+PowerSync sync-rule deployment is required. Validate catalogue integrity,
+equipment, upper-chest emphasis, aliases, recommendations and offline artwork.
+
+## ADR-0168 — Give the 172-scenario browser suite fifteen minutes
+
+**Status:** accepted · **Date:** 2026-11-01 · **Amends:** ADR-0162
+
+PR #213's browser run 336 passed 171 scenarios, including both exercise-icon
+checks, before the twelve-minute suite deadline interrupted its last data-export
+scenario. No assertion failed before cancellation. The full suite has grown
+from ADR-0162's 156 scenarios to 172, and the existing screenshot and trace
+optimizations already apply.
+
+Allow fifteen minutes for the CI suite and twenty minutes for the job, leaving
+room for container/dependency setup and report upload. Keep the two workers,
+single required browser check, per-test timeouts, retry policy and complete
+coverage. Local runs remain without a global deadline. Validate the full suite
+locally and confirm the updated PR check finishes on GitHub. This changes only
+test orchestration; no database or PowerSync deployment is needed.

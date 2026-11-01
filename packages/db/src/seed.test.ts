@@ -54,13 +54,13 @@ describe('volumes', () => {
    * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
    * curl machine and two crunches, the rear delt fly machine and the shoulder
    * press machine, then the incline machine chest press, three Smith lifts
-   * and the dumbbell shrug. Counted rather than
+   * and the dumbbell shrug, then the incline Smith bench press. Counted rather than
    * left open, because an exercise that fails to insert — a bad slug in a join,
    * a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(91);
+    expect(await count('select count(*) n from public.exercises')).toBe(92);
   });
 });
 
@@ -352,6 +352,8 @@ describe('search over the real catalogue', () => {
     ['squat', 'barbell-back-squat'],
     ['pullup', 'pull-up'],
     ['smith bench', 'smith-machine-bench-press'],
+    ['smith incline press', 'smith-machine-incline-bench-press'],
+    ['incline smith press', 'smith-machine-incline-bench-press'],
     ['smith squat', 'smith-machine-squat'],
     ['smith shrug', 'smith-machine-shrug'],
     ['db shrug', 'dumbbell-shrug'],
@@ -361,6 +363,41 @@ describe('search over the real catalogue', () => {
 });
 
 describe('the exercises asked for after the first fifty', () => {
+  it('gives the incline Smith press its own identity, incline bench and upper-chest emphasis', async () => {
+    const { rows } = await h.db.query(`
+      select e.name, e.mechanic, e.force, q.slug as station, ee.is_primary
+      from public.exercises e
+      join public.exercise_equipment ee on ee.exercise_id = e.id
+      join public.equipment q on q.id = ee.equipment_id
+      where e.slug = 'smith-machine-incline-bench-press'
+      order by ee.is_primary desc`);
+    expect(rows).toEqual([
+      {
+        name: 'Smith Machine Incline Bench Press',
+        mechanic: 'compound',
+        force: 'push',
+        station: 'smith-machine',
+        is_primary: true,
+      },
+      {
+        name: 'Smith Machine Incline Bench Press',
+        mechanic: 'compound',
+        force: 'push',
+        station: 'incline-bench',
+        is_primary: false,
+      },
+    ]);
+    expect(
+      await slugs(`select m.slug from public.exercise_muscles em
+      join public.exercises e on e.id = em.exercise_id
+      join public.muscles m on m.id = em.muscle_id
+      where e.slug = 'smith-machine-incline-bench-press' and em.role = 'primary'`),
+    ).toEqual(['pec-major-clavicular']);
+    expect(RECOMMENDATION_PROFILES['smith-machine-incline-bench-press']).toEqual(
+      RECOMMENDATION_PROFILES['incline-dumbbell-press'],
+    );
+  });
+
   it('keeps the new Smith lifts and dumbbell shrug separate, with the right equipment and movers', async () => {
     const { rows } = await h.db.query(
       `select e.slug, e.mechanic, e.force, q.slug as station, q.category,
