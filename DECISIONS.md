@@ -9452,3 +9452,20 @@ Apply `20261101130000_smith_machine_incline_bench_press.sql` with
 `npx supabase db push` before the app release. No local schema change or
 PowerSync sync-rule deployment is required. Validate catalogue integrity,
 equipment, upper-chest emphasis, aliases, recommendations and offline artwork.
+
+## ADR-0168 — Give the 172-scenario browser suite fifteen minutes
+
+**Status:** accepted · **Date:** 2026-11-01 · **Amends:** ADR-0162
+
+PR #213's browser run 336 passed 171 scenarios, including both exercise-icon
+checks, before the twelve-minute suite deadline interrupted its last data-export
+scenario. No assertion failed before cancellation. The full suite has grown
+from ADR-0162's 156 scenarios to 172, and the existing screenshot and trace
+optimizations already apply.
+
+Allow fifteen minutes for the CI suite and twenty minutes for the job, leaving
+room for container/dependency setup and report upload. Keep the two workers,
+single required browser check, per-test timeouts, retry policy and complete
+coverage. Local runs remain without a global deadline. Validate the full suite
+locally and confirm the updated PR check finishes on GitHub. This changes only
+test orchestration; no database or PowerSync deployment is needed.

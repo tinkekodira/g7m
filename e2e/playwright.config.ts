@@ -16,9 +16,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 2,
   retries: process.env['CI'] === undefined ? 0 : 1,
-  // Stop through Playwright so reporters flush before CI's 15-minute job limit.
+  // Stop through Playwright so reporters flush before CI's 20-minute job limit.
   // Includes the production build and backend setup, as well as the tests.
-  globalTimeout: process.env['CI'] === undefined ? 0 : 12 * 60_000,
+  globalTimeout: process.env['CI'] === undefined ? 0 : 15 * 60_000,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   forbidOnly: process.env['CI'] !== undefined,

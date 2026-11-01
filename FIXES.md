@@ -1,3 +1,17 @@
+# Browser CI — the full 172-scenario suite gets time to finish
+
+PR #213's browser run 336 passed 171 scenarios without an assertion failure
+before the twelve-minute global deadline interrupted the final desktop data
+export test. Both exercise-icon tests passed. This was the suite budget expiring,
+not a failure of the new incline Smith press or a per-test timeout.
+
+Allow fifteen minutes for Playwright and twenty minutes for the workflow so
+setup and diagnostic uploads retain headroom. Keep the two workers, all 172
+scenarios, existing per-test timeouts, retries and required check name. The
+earlier screenshot and tracing optimizations remain in place. Validate the full
+browser suite locally and the replacement GitHub check. No new database migration,
+db push or PowerSync sync-rule deployment is required for this CI fix.
+
 # Floating workout controls handle scroll jumps past the viewport
 
 Full-suite validation of PR #211 exposed an intermittent hidden workout summary
