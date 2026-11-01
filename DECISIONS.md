@@ -9408,3 +9408,26 @@ Vite fingerprints the thumbnails and the existing service worker precaches them
 lists, image decoding, an offline reload, and phone/desktop alignment in both
 themes. Existing hero and offline workout checks still pass. No database
 migration, `npx supabase db push` or PowerSync sync-rule deployment is required.
+
+## ADR-0166 — Smith machine lifts and dumbbell shrugs join the catalogue
+
+**Status:** accepted · **Date:** 2026-11-01
+
+Add Smith Machine Bench Press, Smith Machine Squat, Smith Machine Shrug and
+Dumbbell Shrug as four new exercises with independent load history. Reuse the
+existing Smith machine equipment for all three Smith lifts; bench press also
+requires a flat bench. Dumbbell shrug uses dumbbells. Curate coaching text,
+muscle mappings, defaults, search aliases and recommendation profiles alongside
+the migration. The catalogue now contains 91 exercises and 40 equipment entries.
+
+Use Milan's matching finished 320px thumbnails from the Desktop exercise-images
+collection, encoded with the same transparent WebP settings as ADR-0165.
+The existing asset glob and service worker bundle and precache them for offline
+Browse and workout pickers. No new demonstration loops or Smith equipment hero
+assets are supplied; those keep their existing fallback behaviour.
+
+Apply `20261101120000_smith_machine_and_dumbbell_shrugs.sql` with
+`npx supabase db push` before releasing the app. No local schema or PowerSync
+sync-rule change or deployment is required; existing catalogue streams carry
+the new rows. Validate the migrated catalogue, equipment and primary muscles,
+search aliases, recommendation audit and offline thumbnails.

@@ -53,13 +53,14 @@ describe('volumes', () => {
    * cable row, the T-bar row, the cable lat pullover and the wall sit, then
    * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
    * curl machine and two crunches, the rear delt fly machine and the shoulder
-   * press machine, then the incline machine chest press. Counted rather than
+   * press machine, then the incline machine chest press, three Smith lifts
+   * and the dumbbell shrug. Counted rather than
    * left open, because an exercise that fails to insert — a bad slug in a join,
    * a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(87);
+    expect(await count('select count(*) n from public.exercises')).toBe(91);
   });
 });
 
@@ -313,12 +314,7 @@ describe('equipment filtering, which the generator depends on', () => {
     // Equipment from the §5 list that no seed exercise needs yet. Kept because
     // the list is the user's "my gym has this" vocabulary, which is broader
     // than 50 exercises. Pinned so the set cannot grow unnoticed.
-    expect(unused).toEqual([
-      'hip-thrust-machine',
-      'power-rack',
-      'resistance-bands',
-      'smith-machine',
-    ]);
+    expect(unused).toEqual(['hip-thrust-machine', 'power-rack', 'resistance-bands']);
   });
 });
 
@@ -355,12 +351,79 @@ describe('search over the real catalogue', () => {
     ['ohp', 'overhead-press'],
     ['squat', 'barbell-back-squat'],
     ['pullup', 'pull-up'],
+    ['smith bench', 'smith-machine-bench-press'],
+    ['smith squat', 'smith-machine-squat'],
+    ['smith shrug', 'smith-machine-shrug'],
+    ['db shrug', 'dumbbell-shrug'],
   ])('finds %s', async (term, expected) => {
     expect(await search(term)).toBe(expected);
   });
 });
 
 describe('the exercises asked for after the first fifty', () => {
+  it('keeps the new Smith lifts and dumbbell shrug separate, with the right equipment and movers', async () => {
+    const { rows } = await h.db.query(
+      `select e.slug, e.mechanic, e.force, q.slug as station, q.category,
+              array_agg(m.slug order by m.slug) as primary_muscles
+         from public.exercises e
+         join public.exercise_equipment ee on ee.exercise_id = e.id and ee.is_primary
+         join public.equipment q on q.id = ee.equipment_id
+         join public.exercise_muscles em on em.exercise_id = e.id and em.role = 'primary'
+         join public.muscles m on m.id = em.muscle_id
+        where e.slug in ('smith-machine-bench-press', 'smith-machine-squat',
+                         'smith-machine-shrug', 'dumbbell-shrug')
+        group by e.id, q.slug, q.category order by e.slug`,
+    );
+    expect(rows).toEqual([
+      {
+        slug: 'dumbbell-shrug',
+        mechanic: 'isolation',
+        force: 'pull',
+        station: 'dumbbell',
+        category: 'dumbbell',
+        primary_muscles: ['upper-trapezius'],
+      },
+      {
+        slug: 'smith-machine-bench-press',
+        mechanic: 'compound',
+        force: 'push',
+        station: 'smith-machine',
+        category: 'machine',
+        primary_muscles: ['pec-major-sternal'],
+      },
+      {
+        slug: 'smith-machine-shrug',
+        mechanic: 'isolation',
+        force: 'pull',
+        station: 'smith-machine',
+        category: 'machine',
+        primary_muscles: ['upper-trapezius'],
+      },
+      {
+        slug: 'smith-machine-squat',
+        mechanic: 'compound',
+        force: 'push',
+        station: 'smith-machine',
+        category: 'machine',
+        primary_muscles: ['vastus-lateralis', 'vastus-medialis'],
+      },
+    ]);
+    expect(
+      await slugs(`select q.slug from public.exercise_equipment ee
+      join public.exercises e on e.id = ee.exercise_id
+      join public.equipment q on q.id = ee.equipment_id
+      where e.slug = 'smith-machine-bench-press' and not ee.is_primary`),
+    ).toEqual(['flat-bench']);
+    for (const [slug, reference] of [
+      ['smith-machine-bench-press', 'barbell-bench-press'],
+      ['smith-machine-squat', 'barbell-back-squat'],
+      ['smith-machine-shrug', 'barbell-shrug'],
+      ['dumbbell-shrug', 'barbell-shrug'],
+    ] as const) {
+      expect(RECOMMENDATION_PROFILES[slug]).toEqual(RECOMMENDATION_PROFILES[reference]);
+    }
+  });
+
   it('trains the adductors and the side glutes directly, which nothing else did', async () => {
     const adductors = await slugs(
       `select e.slug from public.exercises e

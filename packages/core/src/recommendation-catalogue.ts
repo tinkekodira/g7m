@@ -37,6 +37,7 @@ const crunch = profile(['core'], [], 'core', 'trunk-flexion');
 
 export const RECOMMENDATION_PROFILES: Readonly<Record<string, TrainingProfile>> = {
   'barbell-bench-press': flat,
+  'smith-machine-bench-press': flat,
   'dumbbell-bench-press': flat,
   'machine-chest-press': flat,
   'push-up': flat,
@@ -67,7 +68,10 @@ export const RECOMMENDATION_PROFILES: Readonly<Record<string, TrainingProfile>> 
   'seated-row-machine': row,
   't-bar-row': row,
   'barbell-shrug': profile(['traps'], [], 'traps', 'scapular-elevation'),
+  'smith-machine-shrug': profile(['traps'], [], 'traps', 'scapular-elevation'),
+  'dumbbell-shrug': profile(['traps'], [], 'traps', 'scapular-elevation'),
   'barbell-back-squat': squat,
+  'smith-machine-squat': squat,
   'barbell-front-squat': squat,
   'goblet-squat': squat,
   'leg-press': squat,

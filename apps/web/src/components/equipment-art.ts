@@ -202,6 +202,7 @@ const EQUIPMENT_ART: Readonly<Record<string, EquipmentArt>> = {
   'hack-squat': HACK_SQUAT,
 
   'dumbbell-bench-press': DUMBBELL,
+  'dumbbell-shrug': DUMBBELL,
   'dumbbell-shoulder-press': DUMBBELL,
   'lateral-raise': DUMBBELL,
   'rear-delt-fly': DUMBBELL,
