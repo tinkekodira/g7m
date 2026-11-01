@@ -1,11 +1,15 @@
 # Exercise thumbnails
 
-The 87 transparent 320 × 320 exercise illustrations come from Milan's
-`Desktop/exercise-images` collection (2026-10-31). Use each direct exercise
+The 91 transparent 320 × 320 exercise illustrations come from Milan's
+`Desktop/exercise-images` collection (2026-10-31 and 2026-11-01). Use each direct exercise
 folder's `<folder>_thumbnail_FINAL.png`; the four original exercises
 (`barbell-curl`, `lat-pulldown`, `push-up`, `romanian-deadlift`) use their selected
 `thumbnail.png`. Archived versions and full-resolution illustrations are not
 bundled. Originals remain unchanged in the source collection.
+
+The 2026-11-01 additions are `smith-machine-bench-press`, `smith-machine-squat`,
+`smith-machine-shrug` and `dumbbell-shrug`, using their matching
+`<slug>_thumbnail_FINAL.png` from `SMITH_SHRUG_BATCH_2026-11-01_manifest.json`.
 
 The app copies are WebP at quality 90, alpha quality 100, effort 6, with no
 additional resizing, cropping or palette edits. Each filename matches the database slug.
