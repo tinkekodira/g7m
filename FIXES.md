@@ -1,3 +1,17 @@
+# Calendar opens workout details, with corrections for two hours
+
+Open the workout previously led straight to the finish recap and provided no
+editing controls. History now opens the complete exercise log, with a separate
+recap link. Edit workout reuses the logger for the selected completed session
+until two hours after ended_at. Repository guards enforce the same deadline
+for set changes, additions, removal and undo, including a picker left open.
+
+Offline corrections preserve the saved workout end and existing completion
+timestamps. Forgotten sets are dated inside the workout, and another active
+workout keeps its own exercises. Validate phone and desktop in both themes,
+offline reload/upload and the exact cutoff. No database push or PowerSync rule
+deployment is required. See ADR-0169.
+
 # Browser CI — the full 172-scenario suite gets time to finish
 
 PR #213's browser run 336 passed 171 scenarios without an assertion failure

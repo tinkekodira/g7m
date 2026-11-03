@@ -660,7 +660,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
 
   return (
     <Link
-      to={`/progress/session/${summary.sessionId}`}
+      to={`/progress/session/${summary.sessionId}/details`}
       className="flex min-h-tap items-center gap-3 py-3 active:opacity-80"
     >
       <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-card bg-base/60 leading-none">

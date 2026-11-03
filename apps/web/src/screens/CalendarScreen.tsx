@@ -538,7 +538,7 @@ function DayWorkouts({
               )}
 
               <Link
-                to={`/progress/session/${workout.sessionId}`}
+                to={`/progress/session/${workout.sessionId}/details`}
                 className="mt-3 inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
               >
                 Open the workout

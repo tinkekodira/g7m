@@ -36,7 +36,9 @@
  * for 25 KB gzipped, given that getting it wrong signs everybody out.
  */
 // ADR-0161: the tour's small route hooks add to the entry; its UI stays lazy.
-export const ENTRY_BUDGET_BYTES = 782_000;
+// ADR-0169: per-mutation workout correction guards live in the shared repositories.
+// Allow 2 KB for those checks; detail/editor UI still loads with its route.
+export const ENTRY_BUDGET_BYTES = 784_000;
 
 /**
  * The module entry from a built `index.html`.

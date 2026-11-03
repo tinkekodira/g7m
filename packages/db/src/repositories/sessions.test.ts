@@ -50,6 +50,66 @@ afterEach(() => {
 });
 
 describe('starting and finishing a workout', () => {
+  it('corrects a completed workout without reopening it or moving its clocks', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const set = await sessions.addSet(entry.id, template());
+    clock = new Date('2026-09-06T10:15:00Z');
+    await sessions.completeSet(set.id);
+    clock = new Date('2026-09-06T10:30:00Z');
+    await sessions.finish(session.id);
+    const active = await sessions.start();
+    clock = new Date('2026-09-06T12:29:59.999Z');
+    await sessions.completeSet(set.id, { weightKg: 110, reps: 6 });
+    const added = await sessions.addExercise(session.id, 'row');
+    const forgotten = await sessions.addSet(added.id, template({ weightKg: 60 }));
+    await sessions.completeSet(forgotten.id);
+    expect((await sessions.setById(set.id))?.completedAt?.toISOString()).toBe(
+      '2026-09-06T10:15:00.000Z',
+    );
+    expect((await sessions.setById(forgotten.id))?.completedAt?.toISOString()).toBe(
+      '2026-09-06T10:30:00.000Z',
+    );
+    expect((await sessions.byId(session.id))?.endedAt?.toISOString()).toBe(
+      '2026-09-06T10:30:00.000Z',
+    );
+    expect((await sessions.active())?.id).toBe(active.id);
+    expect((await sessions.setById(set.id))?.weightKg).toBe(110);
+  });
+
+  it('rejects corrections, removals, picker additions and undo at the exact deadline', async () => {
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'bench');
+    const set = await sessions.addSet(entry.id, template());
+    const spare = await sessions.addSet(entry.id, template());
+    const removed = await sessions.removeSet(spare.id);
+    const other = await sessions.addExercise(session.id, 'row');
+    const removedExercise = await sessions.removeExercise(other.id);
+    await sessions.finish(session.id);
+    clock = new Date('2026-09-06T12:00:00Z');
+    const changes = [
+      () => sessions.updateSet(set.id, { reps: 10 }),
+      () => sessions.completeSet(set.id),
+      () => sessions.uncompleteSet(set.id),
+      () => sessions.addSet(entry.id, template()),
+      () => sessions.prependSets(entry.id, [template()]),
+      () => sessions.insertSetAfter(entry.id, set.id, template()),
+      () => sessions.removeSet(set.id),
+      () => sessions.removeSets([set.id]),
+      () => sessions.removeExercise(entry.id),
+      () => sessions.addExercise(session.id, 'curl'),
+      () => sessions.ungroup(session.id, 'superset'),
+      () => sessions.setBodyweight(session.id, 80),
+      () => sessions.restoreSet(removed!),
+      () => sessions.restoreSets([removed!]),
+      () => sessions.restoreExercise(removedExercise!),
+    ];
+    for (const change of changes) await expect(change()).rejects.toThrow('2 hours');
+    expect(await sessions.setsFor(entry.id)).toHaveLength(1);
+    expect((await sessions.setById(set.id))?.reps).toBe(5);
+    expect(await sessions.exercisesFor(session.id)).toHaveLength(1);
+  });
+
   it('keeps the workout active when the local finish write fails', async () => {
     const session = await sessions.start();
     const failure = vi.spyOn(db, 'execute').mockRejectedValueOnce(new Error('disk full'));

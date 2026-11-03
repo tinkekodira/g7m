@@ -141,7 +141,7 @@ function Trend({
               className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
             >
               <Link
-                to={`/progress/session/${point.sessionId}`}
+                to={`/progress/session/${point.sessionId}/details`}
                 className="text-sm text-secondary underline-offset-4 hover:underline"
               >
                 {describeWhen(point.performedAt, now)}
