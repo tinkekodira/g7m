@@ -21,7 +21,10 @@ What it does:
   A workout you forgot to log can be added to its day on the calendar.
   Finish opens a four-card swipeable recap: session totals and rewards, a 3D body
   highlighting trained muscles with percentages, exercise weight trends, and the
-  complete exercise log. Reopen it from history; Done, routine saving and deletion
+  complete exercise log. History opens the full exercise log with weights, sets
+  and reps. Edit a completed workout for two hours after its saved completion
+  time, including adding forgotten exercises; corrections also work offline.
+  The recap remains available from the workout details. Done, routine saving and deletion
   stay visible below every card in a full-screen recap without the tab bar.
   Session totals fit their card, and long muscle percentage lists scroll beneath
   the body views.

@@ -40,7 +40,7 @@ import {
 export function ExerciseLibraryScreen() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { write, busy } = useWrite();
+  const { write, busy, error: writeError } = useWrite();
   const filters = readFilters(params);
   const [equipmentOpen, setEquipmentOpen] = useState(filters.equipment.length > 0);
 
@@ -52,6 +52,8 @@ export function ExerciseLibraryScreen() {
    * fixing every bug twice.
    */
   const adding = params.get('add') === '1';
+  const sessionId = adding ? params.get('session') : null;
+  const workoutPath = sessionId === null ? '/workout' : `/workout/${sessionId}`;
 
   /**
    * The other thing a picked exercise can be added to: a saved routine.
@@ -88,19 +90,22 @@ export function ExerciseLibraryScreen() {
     // into the search box drops you out of add mode and back into browsing,
     // which is a maddening thing to have happen mid-workout.
     if (adding) written.set('add', '1');
+    if (sessionId !== null) written.set('session', sessionId);
     if (routineId !== null) written.set('routine', routineId);
     setParams(written, { replace: true });
   };
 
   const addToWorkout = (exercise: Exercise): void => {
     void (async () => {
-      const session = await write((r) => r.sessions.active());
+      const session = await write((r) =>
+        sessionId === null ? r.sessions.active() : r.sessions.byId(sessionId),
+      );
       if (session == null) return;
       const entry = await write((r) => r.sessions.addExercise(session.id, exercise.id));
       // The entry just created, handed back so the workout can scroll to it.
       // It used to be discarded here, and the workout reopened at the top — on
       // the first exercise, four away from the one just chosen.
-      await navigate('/workout', entry === null ? undefined : { state: addedState(entry.id) });
+      if (entry !== null) await navigate(workoutPath, { state: addedState(entry.id) });
     })();
   };
 
@@ -140,7 +145,9 @@ export function ExerciseLibraryScreen() {
         await navigate(`/routines/${routineId}`);
         return;
       }
-      const session = await write((r) => r.sessions.active());
+      const session = await write((r) =>
+        sessionId === null ? r.sessions.active() : r.sessions.byId(sessionId),
+      );
       if (session == null) return;
       const entries = await write((r) =>
         r.sessions.addExercises(
@@ -150,7 +157,7 @@ export function ExerciseLibraryScreen() {
         ),
       );
       const first = entries?.[0];
-      await navigate('/workout', first === undefined ? undefined : { state: addedState(first.id) });
+      if (first !== undefined) await navigate(workoutPath, { state: addedState(first.id) });
     })();
   };
 
@@ -207,8 +214,9 @@ export function ExerciseLibraryScreen() {
     return { points: exerciseWeightProgress(sets), unitSystem: profile?.unitSystem ?? 'metric' };
   });
 
-  const recommendationData = useCatalogue(`recommendations:${String(adding)}`, async (r) =>
-    adding ? loadWorkoutRecommendations(r) : null,
+  const recommendationData = useCatalogue(
+    `recommendations:${String(adding)}:${sessionId ?? ''}`,
+    async (r) => (adding && sessionId === null ? loadWorkoutRecommendations(r) : null),
   );
   const recommended = useMemo(
     () =>
@@ -227,7 +235,8 @@ export function ExerciseLibraryScreen() {
     ...recommended.flatMap((r) => ordinary.filter((e) => e.id === r.exerciseId)),
     ...ordinary.filter((e) => !recommendationIds.has(e.id)),
   ];
-  const error = taxonomy.error ?? results.error ?? progress.error ?? recommendationData.error;
+  const error =
+    writeError ?? taxonomy.error ?? results.error ?? progress.error ?? recommendationData.error;
   const loading =
     results.data === null ||
     taxonomy.loading ||
@@ -242,7 +251,7 @@ export function ExerciseLibraryScreen() {
           {picking ? 'Add an exercise' : 'Exercises'}
         </h1>
         <HeaderLink
-          to={adding ? '/workout' : routineId !== null ? `/routines/${routineId}` : '/'}
+          to={adding ? workoutPath : routineId !== null ? `/routines/${routineId}` : '/'}
           state={adding ? backFromAddingState() : undefined}
         >
           {picking ? 'Back' : 'Home'}

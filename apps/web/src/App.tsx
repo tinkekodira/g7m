@@ -371,13 +371,14 @@ function AppScreens() {
         <Route path="/friends/:friendId/achievements" element={<FriendAchievementsScreen />} />
         <Route path="/friends/:friendId/routines/:routineId" element={<FriendRoutineScreen />} />
         <Route path="/progress/session/:sessionId" element={<SessionDetailScreen />} />
+        <Route path="/progress/session/:sessionId/details" element={<SessionDetailScreen />} />
         <Route path="/progress/exercise/:exerciseId" element={<ExerciseTrendScreen />} />
       </Route>
       {/* Its own boundary and its own fallback: the workout is the one screen
           outside the tab layout, so there is no shell around it to put either
           in. */}
       <Route
-        path="/workout"
+        path="/workout/:sessionId?"
         element={
           <RouteBoundary>
             <LoadingScope>

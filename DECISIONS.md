@@ -9469,3 +9469,38 @@ single required browser check, per-test timeouts, retry policy and complete
 coverage. Local runs remain without a global deadline. Validate the full suite
 locally and confirm the updated PR check finishes on GitHub. This changes only
 test orchestration; no database or PowerSync deployment is needed.
+
+
+## ADR-0169 — History opens workout details with a two-hour correction window
+
+**Status:** accepted · **Date:** 2026-11-03 · **Amends:** ADR-0146, ADR-0148
+
+Calendar's Open the workout, recent workouts and exercise trends open a dedicated
+`/progress/session/:sessionId/details` log. It shows every exercise, set, weight,
+rep count and cardio bout immediately, using SessionBody and the existing theme
+tokens. Timed sets label seconds. The four-card finish recap keeps its own route
+and is linked from the details. Routine saving and deletion remain available.
+
+Edit workout opens the existing logger for that explicit session id. For two
+hours from ended_at, users can correct sets and add or remove exercises, including
+supersets, cardio and timed exercises. The exact two-hour boundary is closed.
+The UI refreshes its eligibility on time ticks and app resume. Every repository
+mutation also checks the deadline, including picker additions, deletes and undo.
+Historical/backdated workouts use their recorded ended_at and are read-only once
+that historical window has passed. Whole-workout deletion remains available.
+
+Corrections never reopen a workout, move ended_at, restart live/rest clocks,
+change an active workout's target, or overwrite today's profile/body metrics.
+Existing completed-set timestamps are retained; newly completed forgotten sets
+are stamped at the saved workout end. Derived records, totals and rewards read
+the corrected rows; editing does not trigger a live PR celebration. Picker URLs
+carry the edited session id across search/filter changes and back navigation.
+Writes stay in the local repositories and upload through the existing offline
+queue. No schema, migration or PowerSync rule change is required.
+
+The shared repository guards add about 2 KB to the entry bundle, crossing the
+782,000-byte ceiling by 68 bytes in the fake-backend build. Raise the ceiling to
+784,000 deliberately for these checks; no UI or dependency moves into startup.
+Validation covers repository mutation guards, exact cutoff, timestamps, active
+session isolation, offline correction/reload/upload and phone/desktop layouts
+in both themes, alongside the existing recap, cardio and routine flows.

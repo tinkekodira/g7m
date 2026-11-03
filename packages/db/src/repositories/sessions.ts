@@ -24,6 +24,7 @@
  */
 import {
   EMPTY_BOUT,
+  canEditWorkout,
   initialOrderKeys,
   orderKeyBetween,
   orderKeysBetween,
@@ -260,6 +261,32 @@ export class SessionRepository {
     return row === null ? null : toSession(row);
   }
 
+  /** Local correction policy: checked again on every mutation, including picker/undo. */
+  async assertEditable(sessionId: string): Promise<void> {
+    const session = await this.byId(sessionId);
+    if (session === null) throw new Error(`No session ${sessionId} on this device.`);
+    const { now } = resolveContext(this.context);
+    if (session.endedAt !== null && !canEditWorkout(session.endedAt, now())) {
+      throw new Error('This workout can only be edited for 2 hours after completion.');
+    }
+  }
+
+  private async assertExerciseEditable(sessionExerciseId: string): Promise<void> {
+    const { userId } = resolveContext(this.context);
+    const row = await this.db.getOptional<RawRow>(
+      'SELECT session_id FROM session_exercises WHERE id = ? AND user_id = ?',
+      [sessionExerciseId, userId],
+    );
+    if (row === null) throw new Error(`No exercise ${sessionExerciseId} on this device.`);
+    await this.assertEditable(readString(row, 'session_id', ''));
+  }
+
+  private async assertSetEditable(setId: string): Promise<void> {
+    const set = await this.setById(setId);
+    if (set === null) throw new Error(`No set ${setId} on this device.`);
+    await this.assertExerciseEditable(set.sessionExerciseId);
+  }
+
   /** Finished workouts, newest first. The history screen's list. */
   async recent(limit = 30): Promise<WorkoutSession[]> {
     const { userId } = resolveContext(this.context);
@@ -374,6 +401,7 @@ export class SessionRepository {
    * the ones already done.
    */
   async setBodyweight(sessionId: string, bodyweightKg: number | null): Promise<void> {
+    await this.assertEditable(sessionId);
     const { userId, now } = resolveContext(this.context);
     await this.db.execute(
       'UPDATE workout_sessions SET bodyweight_kg = ?, updated_at = ? WHERE id = ? AND user_id = ?',
@@ -440,6 +468,7 @@ export class SessionRepository {
     exerciseIds: readonly string[],
     options: { readonly superset?: boolean } = {},
   ): Promise<SessionExercise[]> {
+    await this.assertEditable(sessionId);
     if (exerciseIds.length === 0) return [];
     const { userId, newId, now } = resolveContext(this.context);
     const existing = await this.exercisesFor(sessionId);
@@ -476,6 +505,7 @@ export class SessionRepository {
    * only the grouping goes.
    */
   async ungroup(sessionId: string, supersetId: string): Promise<void> {
+    await this.assertEditable(sessionId);
     const { userId, now } = resolveContext(this.context);
     await this.db.execute(
       `UPDATE session_exercises SET superset_id = NULL, updated_at = ?
@@ -507,6 +537,7 @@ export class SessionRepository {
       ),
     ]);
     if (exerciseRow === null) return null;
+    await this.assertEditable(readString(exerciseRow, 'session_id', ''));
 
     await this.db.writeTransaction(async (tx) => {
       await tx.execute('DELETE FROM session_sets WHERE session_exercise_id = ? AND user_id = ?', [
@@ -535,6 +566,7 @@ export class SessionRepository {
    * its sets is a worse state than the deletion was.
    */
   async restoreExercise(removed: RemovedExercise): Promise<void> {
+    await this.assertEditable(removed.exercise.sessionId);
     const { userId, now } = resolveContext(this.context);
     const at = toTimestamp(now());
 
@@ -601,6 +633,7 @@ export class SessionRepository {
     sessionExerciseId: string,
     template: SetTemplate & { readonly bout?: Partial<Bout> },
   ): Promise<SessionSet> {
+    await this.assertExerciseEditable(sessionExerciseId);
     const { userId, newId, now } = resolveContext(this.context);
     const existing = await this.setsFor(sessionExerciseId);
     const last = existing.at(-1);
@@ -639,6 +672,7 @@ export class SessionRepository {
     afterSetId: string,
     template: SetTemplate,
   ): Promise<SessionSet | null> {
+    await this.assertExerciseEditable(sessionExerciseId);
     const { userId, newId, now } = resolveContext(this.context);
     const existing = await this.setsFor(sessionExerciseId);
     const index = existing.findIndex((entry) => entry.id === afterSetId);
@@ -685,6 +719,7 @@ export class SessionRepository {
     sessionExerciseId: string,
     templates: readonly SetTemplate[],
   ): Promise<SessionSet[]> {
+    await this.assertExerciseEditable(sessionExerciseId);
     if (templates.length === 0) return [];
     const { userId, newId, now } = resolveContext(this.context);
 
@@ -725,6 +760,7 @@ export class SessionRepository {
    * the session's bodyweight snapshot — and then be refused on upload anyway.
    */
   async updateSet(setId: string, changes: SetChanges): Promise<void> {
+    await this.assertSetEditable(setId);
     const { userId, now } = resolveContext(this.context);
     const current = await this.setById(setId);
     if (current === null) throw new Error(`No set ${setId} on this device.`);
@@ -762,6 +798,7 @@ export class SessionRepository {
    * means the set the lifter just did never reaches the server.
    */
   async completeSet(setId: string, changes: SetChanges = {}): Promise<void> {
+    await this.assertSetEditable(setId);
     const { userId, now } = resolveContext(this.context);
     if (Object.keys(changes).length > 0) await this.updateSet(setId, changes);
 
@@ -786,19 +823,25 @@ export class SessionRepository {
    */
   private async completionTime(setId: string, userId: string, now: string): Promise<string> {
     const row = await this.db.getOptional<RawRow>(
-      `SELECT ws.source, ws.started_at
+      `SELECT ws.source, ws.started_at, ws.ended_at, ss.completed_at
          FROM session_sets ss
          JOIN session_exercises se ON se.id = ss.session_exercise_id
          JOIN workout_sessions ws ON ws.id = se.session_id
         WHERE ss.id = ? AND ss.user_id = ?`,
       [setId, userId],
     );
-    if (row === null || readString(row, 'source', '') !== 'past') return now;
-    return readString(row, 'started_at', now);
+    if (row === null) return now;
+    // A correction preserves an existing tick; a forgotten set belongs inside
+    // the saved workout, never in the hours spent correcting it afterwards.
+    const completed = readDate(row, 'completed_at');
+    if (completed !== null) return toTimestamp(completed);
+    if (readString(row, 'source', '') === 'past') return readString(row, 'started_at', now);
+    return readDate(row, 'ended_at') === null ? now : readString(row, 'ended_at', now);
   }
 
   /** Undo a completion — a mis-tap, which happens with a bar in one hand. */
   async uncompleteSet(setId: string): Promise<void> {
+    await this.assertSetEditable(setId);
     const { userId, now } = resolveContext(this.context);
     await this.db.execute(
       `UPDATE session_sets
@@ -816,6 +859,7 @@ export class SessionRepository {
       [setId, userId],
     );
     if (row === null) return null;
+    await this.assertSetEditable(setId);
 
     await this.db.execute('DELETE FROM session_sets WHERE id = ? AND user_id = ?', [setId, userId]);
     return toRemovedSet(row);
@@ -826,6 +870,9 @@ export class SessionRepository {
    * hand back what it takes to put them all back with one undo.
    */
   async removeSets(setIds: readonly string[]): Promise<RemovedSet[]> {
+    for (const setId of setIds) {
+      if ((await this.setById(setId)) !== null) await this.assertSetEditable(setId);
+    }
     const { userId } = resolveContext(this.context);
     const removed: RemovedSet[] = [];
     await this.db.writeTransaction(async (tx) => {
@@ -844,6 +891,7 @@ export class SessionRepository {
 
   /** Put back sets taken by `removeSets`, together. */
   async restoreSets(removed: readonly RemovedSet[]): Promise<void> {
+    for (const entry of removed) await this.assertExerciseEditable(entry.set.sessionExerciseId);
     const { userId, now } = resolveContext(this.context);
     const at = toTimestamp(now());
     await this.db.writeTransaction(async (tx) => {
@@ -860,6 +908,7 @@ export class SessionRepository {
    * to be sure the paired CHECK still holds.
    */
   async restoreSet(removed: RemovedSet): Promise<void> {
+    await this.assertExerciseEditable(removed.set.sessionExerciseId);
     const { userId, now } = resolveContext(this.context);
     await this.db.execute(INSERT_SET, setValues(removed, userId, toTimestamp(now())));
   }

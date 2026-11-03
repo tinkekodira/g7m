@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Button, SegmentedControl, Stepper, TextField } from '@g7m/ui';
 import {
   WEIGHT_FIELD_MEANING,
@@ -7,6 +7,7 @@ import {
   bestsFrom,
   canAddWeight,
   canDrop,
+  canEditWorkout,
   countSets,
   dropTemplate,
   dropsOf,
@@ -137,6 +138,13 @@ interface SetEdit {
 }
 
 export function WorkoutScreen() {
+  const { sessionId } = useParams();
+  // Active and completed sessions must never share draft fields or undo state.
+  return <WorkoutEditor key={sessionId ?? 'active'} sessionId={sessionId} />;
+}
+
+function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }) {
+  const editing = sessionId !== undefined;
   const navigate = useNavigate();
   const location = useLocation();
   const { write, busy, error: writeError } = useWrite();
@@ -185,44 +193,50 @@ export function WorkoutScreen() {
 
   const workoutStart = useWorkoutStart();
   const owner = useAuthStore((s) => s.session?.user.id ?? '');
-  const state = useCatalogue<Workout | null>('workout', async (repositories) => {
-    const session = await repositories.sessions.active();
-    if (session === null) return null;
+  const state = useCatalogue<Workout | null>(
+    `workout:${sessionId ?? 'active'}`,
+    async (repositories) => {
+      const session =
+        sessionId === undefined
+          ? await repositories.sessions.active()
+          : await repositories.sessions.byId(sessionId);
+      if (session === null) return null;
 
-    const [profile, entries] = await Promise.all([
-      repositories.profile.current(),
-      repositories.sessions.exercisesFor(session.id),
-    ]);
+      const [profile, entries] = await Promise.all([
+        repositories.profile.current(),
+        repositories.sessions.exercisesFor(session.id),
+      ]);
 
-    const blocks = await Promise.all(
-      entries.map(async (entry): Promise<ExerciseBlock> => {
-        const [exercise, sets, previous, equipment, history] = await Promise.all([
-          repositories.exercises.byId(entry.exerciseId),
-          repositories.sessions.setsFor(entry.id),
-          repositories.sessions.lastPerformance(entry.exerciseId, session.id),
-          repositories.exercises.equipmentFor(entry.exerciseId),
-          // All time, not the twelve weeks the Progress screen charts. "Best in
-          // three months" and "best ever" are different claims, and only one of
-          // them is worth a badge.
-          repositories.history.completedSets({ exerciseId: entry.exerciseId }),
-        ]);
+      const blocks = await Promise.all(
+        entries.map(async (entry): Promise<ExerciseBlock> => {
+          const [exercise, sets, previous, equipment, history] = await Promise.all([
+            repositories.exercises.byId(entry.exerciseId),
+            repositories.sessions.setsFor(entry.id),
+            repositories.sessions.lastPerformance(entry.exerciseId, session.id),
+            repositories.exercises.equipmentFor(entry.exerciseId),
+            // All time, not the twelve weeks the Progress screen charts. "Best in
+            // three months" and "best ever" are different claims, and only one of
+            // them is worth a badge.
+            repositories.history.completedSets({ exerciseId: entry.exerciseId }),
+          ]);
 
-        return {
-          entry,
-          exercise,
-          sets,
-          previous,
-          bests: bestsFrom(history),
-          loadType: loadTypeForEquipment(equipment),
-          barbell: equipment.some((item) => item.slug === 'barbell'),
-          dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
-          mechanic: exercise?.mechanic ?? 'compound',
-        };
-      }),
-    );
+          return {
+            entry,
+            exercise,
+            sets,
+            previous,
+            bests: bestsFrom(history),
+            loadType: loadTypeForEquipment(equipment),
+            barbell: equipment.some((item) => item.slug === 'barbell'),
+            dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
+            mechanic: exercise?.mechanic ?? 'compound',
+          };
+        }),
+      );
 
-    return { session, profile, blocks };
-  });
+      return { session, profile, blocks };
+    },
+  );
 
   /**
    * One clock for the whole screen, ticking only while something needs it.
@@ -244,7 +258,7 @@ export function WorkoutScreen() {
    * hold the screen awake. Its sets are stamped on its own day by the
    * repository. See ADR-0061.
    */
-  const past = workout?.session.source === 'past';
+  const past = editing || workout?.session.source === 'past';
   useEffect(() => {
     if (!ticking) return;
     const refresh = (): void => {
@@ -363,7 +377,7 @@ export function WorkoutScreen() {
   }, [showWorkoutEnd, navigate]);
 
   /** Only this workout's rest: one from a finished workout never shows. */
-  const shownRest = restOfSession(rest, workout?.session.id ?? null);
+  const shownRest = editing ? null : restOfSession(rest, workout?.session.id ?? null);
   const remaining = restRemaining(shownRest?.startedAt ?? null, shownRest?.seconds ?? 0, now);
 
   /**
@@ -411,7 +425,7 @@ export function WorkoutScreen() {
    */
   const latest = marks.latest;
   const fresh =
-    latest !== null && now.getTime() - latest.at.getTime() < CELEBRATION_SECONDS * 1000
+    !editing && latest !== null && now.getTime() - latest.at.getTime() < CELEBRATION_SECONDS * 1000
       ? latest
       : null;
 
@@ -441,6 +455,13 @@ export function WorkoutScreen() {
   }
 
   if (workout === null) {
+    if (editing)
+      return (
+        <Shell>
+          <p className="text-secondary">That workout is not on this device.</p>
+          <HeaderLink to="/progress">Progress</HeaderLink>
+        </Shell>
+      );
     return (
       <Shell>
         {workoutStart.chooser}
@@ -455,6 +476,15 @@ export function WorkoutScreen() {
   }
 
   const { session, profile, blocks } = workout;
+  if (editing && !canEditWorkout(session.endedAt, now)) {
+    return (
+      <Shell>
+        <h1 className="text-2xl font-semibold text-primary">Editing closed</h1>
+        <p className="text-secondary">Workouts can be edited for 2 hours after completion.</p>
+        <HeaderLink to={`/progress/session/${session.id}/details`}>Workout details</HeaderLink>
+      </Shell>
+    );
+  }
   // Started from a friend's workout? Their numbers ride beside yours as a
   // guide, from a note kept on this phone (ADR-0105).
   const friendNote = readFriendWorkoutNote(owner, session.id);
@@ -468,6 +498,10 @@ export function WorkoutScreen() {
 
   // useWrite returns null on failure; never leave before the local finish succeeded.
   const finishWorkout = (): void => {
+    if (editing) {
+      void navigate(`/progress/session/${session.id}/details`);
+      return;
+    }
     if (finishing.current) return;
     finishing.current = true;
     void write(async (r) => {
@@ -533,6 +567,7 @@ export function WorkoutScreen() {
    * done the rest runs for as long as the longest of its exercises needs.
    */
   const afterComplete = (block: ExerciseBlock, setId: string): void => {
+    if (editing) return;
     // Answers the finger already on the glass, so the tick does not have to
     // be watched to be believed.
     buzz('tick');
@@ -632,6 +667,7 @@ export function WorkoutScreen() {
               );
         })()}
         records={marks.bySet}
+        editing={editing}
         unitSystem={unitSystem}
         busy={busy}
         onAddSet={() => {
@@ -663,7 +699,7 @@ export function WorkoutScreen() {
           if (template === null) return;
           // No rest between drops: the plates come off and the set goes
           // on. The rest starts when the last drop is ticked.
-          setRest(null);
+          if (!editing) setRest(null);
           void write((r) => r.sessions.insertSetAfter(block.entry.id, set.id, template));
         }}
         onUncomplete={(setId) => {
@@ -706,7 +742,7 @@ export function WorkoutScreen() {
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <div>
           <h1 className="text-2xl font-semibold text-primary">
-            {past ? 'Past workout' : 'Workout'}
+            {editing ? 'Edit workout' : past ? 'Past workout' : 'Workout'}
           </h1>
           <p
             className={
@@ -733,7 +769,9 @@ export function WorkoutScreen() {
             )}
           </p>
         </div>
-        {past ? (
+        {editing ? (
+          <HeaderLink to={`/progress/session/${session.id}/details`}>Done</HeaderLink>
+        ) : past ? (
           <HeaderLink to={afterwards}>Calendar</HeaderLink>
         ) : (
           <div ref={headerHome}>
@@ -758,6 +796,12 @@ export function WorkoutScreen() {
         </p>
       )}
 
+      {editing && (
+        <p className="text-sm text-secondary" role="status">
+          Save each changed set with Save or the tick. Editing closes 2 hours after completion.
+        </p>
+      )}
+
       {needsBodyweight && (
         <BodyweightPrompt
           unitSystem={unitSystem}
@@ -773,8 +817,10 @@ export function WorkoutScreen() {
                * of the next workout. The session is the snapshot that makes
                * the sets already logged in *this* one measurable.
                */
-              await write((r) => r.bodyMetrics.record({ weightKg: kg }));
-              await write((r) => r.profile.update({ bodyweightKg: kg }));
+              if (!editing) {
+                await write((r) => r.bodyMetrics.record({ weightKg: kg }));
+                await write((r) => r.profile.update({ bodyweightKg: kg }));
+              }
               await write((r) => r.sessions.setBodyweight(session.id, kg));
             })();
           }}
@@ -827,7 +873,7 @@ export function WorkoutScreen() {
           bottom never sits over Finish. */}
       <div id={WORKOUT_END_ANCHOR} className="flex scroll-mb-32 flex-col gap-4">
         <Link
-          to="/exercises?add=1"
+          to={editing ? `/exercises?add=1&session=${session.id}` : '/exercises?add=1'}
           className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
         >
           + Add an exercise
@@ -835,22 +881,25 @@ export function WorkoutScreen() {
 
         <div className="flex gap-3 py-4">
           <Button disabled={busy} onClick={finishWorkout}>
-            Finish workout
+            {editing ? 'Done editing' : 'Finish workout'}
           </Button>
-          <Button
-            variant="danger-outline"
-            disabled={busy}
-            onClick={() => {
-              // Confirmed, because it is the one destructive action on the
-              // screen and it sits next to the one people mean to press.
-              if (!globalThis.confirm('Discard this workout and everything logged in it?')) return;
-              void write((r) => r.sessions.discard(session.id)).then(() => {
-                void navigate(afterwards);
-              });
-            }}
-          >
-            Discard
-          </Button>
+          {!editing && (
+            <Button
+              variant="danger-outline"
+              disabled={busy}
+              onClick={() => {
+                // Confirmed, because it is the one destructive action on the
+                // screen and it sits next to the one people mean to press.
+                if (!globalThis.confirm('Discard this workout and everything logged in it?'))
+                  return;
+                void write((r) => r.sessions.discard(session.id)).then(() => {
+                  void navigate(afterwards);
+                });
+              }}
+            >
+              Discard
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1191,6 +1240,7 @@ function BodyweightPrompt({
 
 function ExerciseCard({
   block,
+  editing,
   friendNote,
   records,
   unitSystem,
@@ -1206,6 +1256,7 @@ function ExerciseCard({
   onDrop,
 }: {
   readonly block: ExerciseBlock;
+  readonly editing: boolean;
   /** "Alex: 5 × 100 kg", on a workout started from a friend's. */
   readonly friendNote: string | null;
   readonly records: ReadonlyMap<string, SetRecord>;
@@ -1266,7 +1317,7 @@ function ExerciseCard({
   // The last *top* set: a drop is taken to failure, so its answer is always
   // none, and it is the heavy set's effort the next weight is chosen from.
   const isTimeBased = block.exercise?.isTimeBased === true;
-  const awaiting = skipped || isTimeBased ? null : finalTopSet(block.sets);
+  const awaiting = editing || skipped || isTimeBased ? null : finalTopSet(block.sets);
 
   /**
    * "That was too easy": the top of the rep range, on the last set, once the
@@ -1274,17 +1325,18 @@ function ExerciseCard({
    * is about this exercise, and it is read on the way to the next one.
    */
   const lastWorking = [...block.sets].reverse().find(isTopSet);
-  const advice = isTimeBased
-    ? null
-    : weightAdvice({
-        sets: block.sets,
-        repHigh: block.exercise?.defaultRepHigh ?? null,
-        stepKg: weightStepKg({
-          dumbbell: block.dumbbell,
-          currentKg: lastWorking?.weightKg ?? 0,
-          unitSystem,
-        }),
-      });
+  const advice =
+    editing || isTimeBased
+      ? null
+      : weightAdvice({
+          sets: block.sets,
+          repHigh: block.exercise?.defaultRepHigh ?? null,
+          stepKg: weightStepKg({
+            dumbbell: block.dumbbell,
+            currentKg: lastWorking?.weightKg ?? 0,
+            unitSystem,
+          }),
+        });
 
   return (
     // Found by id to be scrolled to once it has just been added; the margin
@@ -1329,6 +1381,7 @@ function ExerciseCard({
                 }
               >
                 <SetRow
+                  editing={editing}
                   // Remounting on id keeps the draft state below honest: a new
                   // set must not inherit the half-typed numbers of the last one.
                   key={set.id}
@@ -1525,6 +1578,7 @@ const EFFORT_ANSWERS = [
  */
 function SetRow({
   title,
+  editing,
   tick,
   set,
   record,
@@ -1544,6 +1598,7 @@ function SetRow({
 }: {
   /** "Set 2", "Warm-up 1", "Drop": from `rowTitle`, warm-ups and drops counted apart. */
   readonly title: string;
+  readonly editing: boolean;
   /** What the tick says it does, from `tickLabel`. */
   readonly tick: string;
   /** Offered on a ticked set that can come down: a drop goes under it. */
@@ -1608,7 +1663,7 @@ function SetRow({
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
   /** A row that is a number to read rather than a number to type. */
-  const compact = set.isCompleted || set.setType === 'warmup';
+  const compact = !editing && (set.isCompleted || set.setType === 'warmup');
 
   return (
     <div>
@@ -1832,11 +1887,12 @@ function SetRow({
 
             <button
               type="button"
-              aria-label={tick}
-              aria-pressed={false}
+              aria-label={editing && set.isCompleted ? `Save ${title.toLowerCase()}` : tick}
+              aria-pressed={set.isCompleted}
               disabled={busy}
               onClick={() => {
-                onComplete(changes);
+                if (set.isCompleted) onSave(changes);
+                else onComplete(changes);
               }}
               className="flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated"
             >
@@ -1851,6 +1907,16 @@ function SetRow({
           )}
 
           <div className="mt-1 flex flex-wrap items-center gap-x-4">
+            {editing && set.isCompleted && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onUncomplete}
+                className="min-h-tap text-xs text-secondary underline-offset-4 hover:underline"
+              >
+                Mark as skipped
+              </button>
+            )}
             <span className="flex-1" />
             {/* Both clear the tap target now. They were the smallest things on
               the screen and one of them destroys a set. */}

@@ -27,6 +27,7 @@ export interface SessionExercise {
   readonly name: string;
   readonly slug: string;
   readonly cardioKind: CardioKind | null;
+  readonly isTimeBased?: boolean;
 }
 
 export interface SessionBlock {
@@ -243,6 +244,7 @@ function ExerciseSection({
                     : `${String(toDisplayWeight(set.weightKg, unitSystem).value)} ${unit}`}
                   {' × '}
                   {set.reps}
+                  {block.exercise?.isTimeBased === true ? ' sec' : ''}
                 </span>
               </li>
             );

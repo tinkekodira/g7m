@@ -104,6 +104,7 @@ test('a treadmill workout is logged as bouts, with calories', async ({ page }) =
   // On the workout's page: bouts in the display's words, cardio totals, and
   // no lifting numbers for a workout that had no lifting.
   await recentWorkoutLink(page).click();
+  await page.getByRole('link', { name: 'Workout recap', exact: true }).click();
   await expect(page.getByText('760 kcal')).toBeVisible();
   await page.getByRole('button', { name: 'Show Muscles trained' }).click();
   await expect(

@@ -107,6 +107,7 @@ test('shoulder machine logs offline into a reusable recap in both themes and siz
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
   await openTab(page, 'Progress');
   await recentWorkoutLink(page).click();
+  await page.getByRole('link', { name: 'Workout recap', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your session' })).toBeVisible();
   await expect(totals).toContainText('720 kg');
   await page.reload();

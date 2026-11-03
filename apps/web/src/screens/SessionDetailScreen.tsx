@@ -1,24 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { canEditWorkout } from '@g7m/core';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { loadWorkoutRecap } from '../lib/db/workout-recap.js';
 import { WorkoutRecap } from '../components/WorkoutRecap.js';
+import { SessionBody } from '../components/SessionBody.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
-/**
- * One workout, as it was logged.
- *
- * Read-only on purpose. Editing a finished session is a real feature and a
- * separate one — it needs to decide what happens to a personal record set by a
- * set that is later deleted, and that question deserves more than a pencil
- * icon added here because there was room for it.
- */
+/** History opens the full log; finishing a workout opens its separate recap. */
 export function SessionDetailScreen() {
   const { sessionId = '' } = useParams();
 
   const location = useLocation();
+  const details = location.pathname.endsWith('/details');
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => {
+      setNow(new Date());
+    };
+    const timer = setInterval(refresh, 1000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('pageshow', refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('pageshow', refresh);
+    };
+  }, []);
   const navigation = location.state as { workoutFinished?: boolean; afterwards?: string } | null;
   const fresh = navigation?.workoutFinished === true;
   const afterwards = navigation?.afterwards ?? '/';
@@ -27,7 +37,9 @@ export function SessionDetailScreen() {
   const data = state.data;
 
   return (
-    <main className="recap-screen mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 pt-safe-top">
+    <main
+      className={`${details ? 'min-h-full pb-safe-bottom' : 'recap-screen'} mx-auto flex w-full max-w-2xl flex-col gap-3 px-4 pt-safe-top`}
+    >
       <header className="flex shrink-0 items-baseline justify-between gap-4 pt-4 pb-1">
         <h1 className="min-w-0 text-2xl font-semibold break-words text-primary">
           {fresh ? 'Workout saved' : (data?.title ?? 'Workout')}
@@ -48,7 +60,32 @@ export function SessionDetailScreen() {
         </p>
       ) : (
         <>
-          <WorkoutRecap key={sessionId} data={data} />
+          {details ? (
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                {canEditWorkout(data.session.endedAt, now) ? (
+                  <>
+                    <HeaderLink to={`/workout/${sessionId}`}>Edit workout</HeaderLink>
+                    <p className="text-sm text-secondary">Editable for 2 hours after completion.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-secondary">Editing closed 2 hours after completion.</p>
+                )}
+                <HeaderLink to={`/progress/session/${sessionId}`}>Workout recap</HeaderLink>
+              </div>
+              <SessionBody
+                startedAt={data.session.startedAt}
+                bodyweightKg={data.session.bodyweightKg}
+                unitSystem={data.profile?.unitSystem ?? 'metric'}
+                blocks={data.blocks}
+              />
+              {data.blocks.length === 0 && (
+                <p className="text-sm text-muted">No exercises logged.</p>
+              )}
+            </>
+          ) : (
+            <WorkoutRecap key={sessionId} data={data} />
+          )}
           <div
             className="recap-actions grid shrink-0 grid-cols-2 gap-2 pb-3"
             aria-label="Workout actions"
