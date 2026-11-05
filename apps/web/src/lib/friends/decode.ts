@@ -68,6 +68,25 @@ export interface FriendsOverview {
   readonly friends: readonly Friend[];
 }
 
+export interface WorkoutPresence {
+  readonly sharing: boolean;
+  readonly activeUntil: ReadonlyMap<string, Date>;
+}
+
+export function decodeWorkoutPresence(value: unknown): WorkoutPresence {
+  const data = record(value);
+  return {
+    sharing: data['sharing'] === true,
+    activeUntil: new Map(
+      list(data['friends']).flatMap((entry) => {
+        const friend = record(entry);
+        const until = optionalDate(friend['active_until']);
+        return until === null ? [] : [[string(friend['user_id']), until] as const];
+      }),
+    ),
+  };
+}
+
 export interface FriendBest {
   readonly exerciseId: string;
   readonly bestKg: number;

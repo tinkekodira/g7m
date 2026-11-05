@@ -7,6 +7,7 @@ import {
   decodeDetail,
   decodeFriendProfile,
   decodeOverview,
+  decodeWorkoutPresence,
   decodeSendResult,
   decodeSession,
   FriendsError,
@@ -35,6 +36,22 @@ const TRAINING = {
   ],
   last_workout: SUMMARY,
 };
+
+describe('decodeWorkoutPresence', () => {
+  it('decodes leases and ignores missing or invalid expiry dates', () => {
+    const result = decodeWorkoutPresence({
+      sharing: true,
+      friends: [
+        { user_id: 'alex', active_until: '2026-11-05T18:05:00Z' },
+        { user_id: 'blake', active_until: 'bad date' },
+        { user_id: 'robin', active_until: null },
+      ],
+    });
+    expect(result.sharing).toBe(true);
+    expect([...result.activeUntil]).toEqual([['alex', new Date('2026-11-05T18:05:00Z')]]);
+    expect(decodeWorkoutPresence({}).sharing).toBe(false);
+  });
+});
 
 describe('decodeOverview', () => {
   it('reads your code, the requests and every friend', () => {

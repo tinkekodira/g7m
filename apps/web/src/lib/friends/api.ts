@@ -21,6 +21,8 @@ import {
   decodeFriendProfile,
   decodeLeaderboard,
   decodeOverview,
+  decodeWorkoutPresence,
+  type WorkoutPresence,
   decodeSendResult,
   type BoardFriend,
   type Challenge,
@@ -118,6 +120,19 @@ export async function setTrainingSharing(enabled: boolean): Promise<void> {
 
 export async function touchLastActive(): Promise<void> {
   await rpc('touch_last_active');
+}
+
+export async function fetchWorkoutPresence(): Promise<WorkoutPresence> {
+  return decodeWorkoutPresence(await rpc('friends_workout_presence'));
+}
+
+export async function setWorkoutStatusSharing(enabled: boolean): Promise<void> {
+  await rpc('set_workout_status_sharing', { enabled });
+  globalThis.dispatchEvent(new Event('workout-status-sharing-changed'));
+}
+
+export async function reportWorkoutPresence(sessionId: string, active: boolean): Promise<void> {
+  await rpc('report_workout_presence', { session_id: sessionId, is_active: active });
 }
 
 /** Pending, running, finalizing and unacknowledged finished challenges. */

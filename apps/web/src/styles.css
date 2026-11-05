@@ -1131,3 +1131,19 @@ textarea,
     text-align: left;
   }
 }
+/* A quiet breathing label; text remains legible throughout the pulse. */
+@keyframes workout-status-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .workout-status {
+    animation: workout-status-breathe 2.8s ease-in-out infinite;
+  }
+}
