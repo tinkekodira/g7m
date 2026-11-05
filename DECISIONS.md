@@ -9504,3 +9504,44 @@ The shared repository guards add about 2 KB to the entry bundle, crossing the
 Validation covers repository mutation guards, exact cutoff, timestamps, active
 session isolation, offline correction/reload/upload and phone/desktop layouts
 in both themes, alongside the existing recap, cardio and routine flows.
+
+## ADR-0170 — Friends can share an expiring live workout status
+
+**Status:** accepted · **Date:** 2026-11-05
+
+Friends shows a quiet, accent-coloured **Working out** label beside the name
+and level. It wraps beneath them when space is tight. Its slow opacity pulse
+stays legible and is disabled for reduced motion. **Share my workout status**
+in the Friends sub-tab controls whether friends can see yours, independently
+of the existing training-sharing setting; it defaults on and requires a
+connection to change. Turning either sharing setting off hides the status.
+
+An open session alone can be abandoned indefinitely. A recent completed set
+alone excludes long rests and cardio. Instead, the app reports its local open
+live session immediately on start/change/finish and renews a five-minute lease
+every four minutes while visible and online. Background or disconnected apps
+eventually disappear; someone training with their phone locked for over five
+minutes may therefore stop appearing until they return. Past-workout logging
+and editing a completed workout never count. No workout must upload before
+status works, and a status failure never blocks local workout logging.
+
+The lease and preference live on the unsynced `friend_profiles` row. Dedicated
+RPCs restrict writes to the authenticated caller and reads to accepted friends
+who share both training and workout status. Only a user id and lease expiry
+are returned: no live title, exercises or sets. Finish clears only a matching
+session id, so finishing an older workout cannot clear a newer session's
+status. A device without a live workout does not clear another device's lease.
+Reports are serialized, scoped to the signed-in account and retried on the next
+foreground/network event or heartbeat. Separate simultaneous workouts share
+the most recently reported lease, like the app's single active-workout model.
+
+The visible Friends list polls the small presence RPC every thirty seconds,
+refreshes on foreground and tab entry, and expires received leases locally
+even if later requests fail. Polling does not reload training history. Other
+Friends features remain available if this optional endpoint fails.
+
+Deploy `20261105120000_workout_presence.sql` with `npx supabase db push` before
+the app release. No PowerSync schema, publication or sync-rule change is needed.
+Validation covers lease expiry, privacy, accepted-friend access, anonymous
+access, cross-session clearing, two-phone start/finish/privacy transitions,
+failed preference saves, both themes, phone/desktop layouts and reduced motion.

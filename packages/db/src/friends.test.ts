@@ -894,6 +894,82 @@ describe('levels', () => {
 });
 
 describe('presence', () => {
+  it('shares only fresh workout leases with accepted friends who may see training', async () => {
+    const alex = await person('Alex');
+    const blake = await person('Blake');
+    const stranger = await person('Stranger');
+    const session = '10000000-0000-4000-8000-000000000001';
+    const read = (user: string) =>
+      call<{ sharing: boolean; friends: { user_id: string; active_until: string }[] }>(
+        user,
+        'public.friends_workout_presence()',
+      );
+    await call(blake, 'public.report_workout_presence($1, true)', [session]);
+    expect((await read(alex)).friends).toEqual([]);
+    await send(alex, await codeOf(blake));
+    expect((await read(alex)).friends).toEqual([]);
+    await respond(blake, await requestId(alex, blake), true);
+    const status = await read(alex);
+    expect(status.sharing).toBe(true);
+    expect(status.friends).toHaveLength(1);
+    expect(status.friends[0]?.user_id).toBe(blake);
+    const remaining = new Date(status.friends[0]?.active_until ?? '').getTime() - Date.now();
+    expect(remaining).toBeGreaterThan(290_000);
+    expect(remaining).toBeLessThanOrEqual(300_000);
+    expect((await read(stranger)).friends).toEqual([]);
+
+    await call(blake, 'public.set_workout_status_sharing(false)');
+    await call(blake, 'public.report_workout_presence($1, true)', [session]);
+    expect((await read(blake)).sharing).toBe(false);
+    expect((await read(alex)).friends).toEqual([]);
+    await call(blake, 'public.set_workout_status_sharing(true)');
+    expect((await read(alex)).friends).toEqual([]);
+    await call(blake, 'public.report_workout_presence($1, true)', [session]);
+    expect((await read(alex)).friends).toHaveLength(1);
+
+    await call(blake, 'public.set_training_sharing(false)');
+    expect((await read(alex)).friends).toEqual([]);
+    await call(blake, 'public.set_training_sharing(true)');
+    await h.db.query(
+      `update public.friend_profiles set workout_active_until = now() - interval '1 second' where user_id = $1`,
+      [blake],
+    );
+    expect((await read(alex)).friends).toEqual([]);
+    await call(blake, 'public.report_workout_presence($1, true)', [session]);
+    await call(alex, 'public.remove_friend($1)', [blake]);
+    expect((await read(alex)).friends).toEqual([]);
+  });
+
+  it('clears on finish without allowing another session or user to clear a newer one', async () => {
+    const alex = await person('Alex');
+    const blake = await person('Blake');
+    await friends(alex, blake);
+    const older = '10000000-0000-4000-8000-000000000002';
+    const newer = '10000000-0000-4000-8000-000000000003';
+    await call(blake, 'public.report_workout_presence($1, true)', [newer]);
+    await call(blake, 'public.report_workout_presence($1, false)', [older]);
+    await call(alex, 'public.report_workout_presence($1, false)', [newer]);
+    const read = () => call<{ friends: unknown[] }>(alex, 'public.friends_workout_presence()');
+    expect((await read()).friends).toHaveLength(1);
+    await call(blake, 'public.report_workout_presence($1, false)', [newer]);
+    expect((await read()).friends).toEqual([]);
+  });
+
+  it('does not expose workout presence functions to anonymous callers', async () => {
+    const { rows } = await h.db.query<{ allowed: boolean }>(`
+      select has_function_privilege('anon', name, 'execute') as allowed
+      from unnest(array[
+        'public.friends_workout_presence()',
+        'public.set_workout_status_sharing(boolean)',
+        'public.report_workout_presence(uuid,boolean)'
+      ]) name
+    `);
+    expect(rows.map((row) => row.allowed)).toEqual([false, false, false]);
+    await expect(
+      call(await person('Alex'), 'public.report_workout_presence(null, true)'),
+    ).rejects.toThrow(/session id required/);
+  });
+
   it('records the app being open, at most every two minutes', async () => {
     const me = await person('Me');
     const read = async () =>

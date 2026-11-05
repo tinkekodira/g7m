@@ -64,6 +64,10 @@ What it does:
   your own workout, with your own weights. Friends are read live from the
   server, never synced, and sharing can be switched off
   ([ADR-0105](./DECISIONS.md#adr-0105--friends-read-live-from-postgres-never-through-sync)).
+  A softly pulsing **Working out** label shows friends with an open live workout
+  and a recent app check-in. Switch **Share my workout status** off in Friends
+  to hide yours while keeping your training shared. Status expires after five
+  minutes without contact; past-workout logging never appears live.
   Challenge a friend for seven days. After a 24-hour window for offline
   workouts to sync, an animated result popup opens on your next visit. Jump
   straight to the result card; it stays until you tap **Got it**. Your private

@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { checkFriendCode } from '@g7m/core';
-import { Button, SegmentedControl, TextField, cx } from '@g7m/ui';
+import { Button, SegmentedControl, Switch, TextField, cx } from '@g7m/ui';
 import { Avatar } from '../components/Avatar.js';
 import { Panel } from '../components/Panel.js';
 import { StatValue } from '../components/StatValue.js';
@@ -20,15 +20,19 @@ import {
   answerFriendRequest,
   fetchChallenges,
   fetchOverview,
+  fetchWorkoutPresence,
+  setWorkoutStatusSharing,
   sendFriendRequest,
   FriendsError,
   type FriendsOverview,
+  type WorkoutPresence,
 } from '../lib/friends/api.js';
 import {
   useChallengeCards,
   useMySide,
   useRemote,
   type MySide,
+  type RemoteState,
 } from '../lib/friends/use-friends-data.js';
 import type { ChallengeCardView } from './challenges-view.js';
 import { FriendsLeaderboard } from './FriendsLeaderboard.js';
@@ -81,6 +85,29 @@ export function FriendsScreen() {
 
   const named = mine.data?.displayName != null;
   const overview = useRemote('friends-overview', online && named, fetchOverview);
+  const presence = useRemote(
+    `friends-workout-presence:${tab}`,
+    online && named && tab === 'friends',
+    fetchWorkoutPresence,
+  );
+  const reloadPresence = presence.reload;
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!online || !named || tab !== 'friends') return;
+    const refresh = () => {
+      setNow(Date.now());
+      if (document.visibilityState === 'visible') reloadPresence();
+    };
+    const clock = setInterval(() => setNow(Date.now()), 10_000);
+    const poll = setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', refresh);
+    setNow(Date.now());
+    return () => {
+      clearInterval(clock);
+      clearInterval(poll);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [online, named, tab, reloadPresence]);
   // Asked again on every tab change, as the board is when it opens, so a
   // friend's workout since the last look is counted.
   const challenges = useRemote(`friends-challenges:${tab}`, online && named, fetchChallenges);
@@ -156,7 +183,15 @@ export function FriendsScreen() {
           {overview.data === null ? (
             overview.error === null && <FriendsSkeleton tab={tab} />
           ) : tab === 'friends' ? (
-            <FriendList overview={overview.data} mine={mine.data} />
+            <>
+              <WorkoutStatusSharing presence={presence} />
+              <FriendList
+                overview={overview.data}
+                mine={mine.data}
+                activeUntil={presence.error === null ? presence.data?.activeUntil : undefined}
+                now={now}
+              />
+            </>
           ) : tab === 'leaderboard' ? (
             <>
               {cards !== null && cards.others.length > 0 && (
@@ -257,9 +292,13 @@ function SubTabs({
 function FriendList({
   overview,
   mine,
+  activeUntil,
+  now,
 }: {
   readonly overview: FriendsOverview;
   readonly mine: MySide;
+  readonly activeUntil: ReadonlyMap<string, Date> | undefined;
+  readonly now: number;
 }) {
   // Worked out once per answer from the server, not on every render.
   const cards = useMemo(() => {
@@ -297,7 +336,10 @@ function FriendList({
     <ul className="flex flex-col gap-3">
       {cards.map((card) => (
         <li key={card.userId}>
-          <FriendCard card={card} />
+          <FriendCard
+            card={card}
+            workingOut={card.sharing && (activeUntil?.get(card.userId)?.getTime() ?? 0) > now}
+          />
         </li>
       ))}
     </ul>
@@ -325,23 +367,37 @@ function LevelPill({ level }: { readonly level: number }) {
  * card — and the last workout is a link of its own on top of that, so the two
  * targets never nest.
  */
-function FriendCard({ card }: { readonly card: FriendCardView }) {
+function FriendCard({
+  card,
+  workingOut,
+}: {
+  readonly card: FriendCardView;
+  readonly workingOut: boolean;
+}) {
   return (
     <article className={cx('relative rounded-sheet border border-subtle bg-surface p-4', PRESS)}>
       <div className="flex items-center gap-3">
         <Avatar name={card.avatarName} tint />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <h2 className="min-w-0 truncate text-lg font-semibold text-primary">
-              <Link
-                to={`/friends/${card.userId}`}
-                state={{ name: card.name }}
-                className="after:absolute after:inset-0 after:rounded-sheet after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
-              >
-                {card.name}
-              </Link>
-            </h2>
-            {card.level !== null && <LevelPill level={card.level} />}
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex min-w-0 max-w-full items-center gap-2">
+              <h2 className="min-w-0 truncate text-lg font-semibold text-primary">
+                <Link
+                  to={`/friends/${card.userId}`}
+                  state={{ name: card.name }}
+                  className="after:absolute after:inset-0 after:rounded-sheet after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-accent"
+                >
+                  {card.name}
+                </Link>
+              </h2>
+              {card.level !== null && <LevelPill level={card.level} />}
+            </div>
+            {workingOut && (
+              <span className="workout-status inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/25 bg-accent-subtle px-2 py-0.5 text-[11px] leading-4 font-semibold text-accent">
+                <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                Working out
+              </span>
+            )}
           </div>
           {card.presence !== null && <PresenceLine presence={card.presence} />}
         </div>
@@ -385,6 +441,40 @@ function FriendCard({ card }: { readonly card: FriendCardView }) {
         </>
       )}
     </article>
+  );
+}
+
+function WorkoutStatusSharing({ presence }: { readonly presence: RemoteState<WorkoutPresence> }) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  return (
+    <div className="rounded-card border border-subtle bg-surface p-4">
+      <Switch
+        checked={presence.data?.sharing ?? false}
+        disabled={presence.data === null || presence.error !== null || busy}
+        label="Share my workout status"
+        description="Let friends see when you’re working out."
+        onChange={(enabled) => {
+          setBusy(true);
+          setFailure(null);
+          setWorkoutStatusSharing(enabled)
+            .then(() => {
+              presence.reload();
+            })
+            .catch((cause: unknown) => {
+              setFailure(
+                cause instanceof FriendsError ? cause.message : 'That did not save. Try again.',
+              );
+            })
+            .finally(() => setBusy(false));
+        }}
+      />
+      {(failure ?? presence.error) !== null && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {failure ?? presence.error}
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -16,6 +16,7 @@ import { RouteBoundary } from './components/ErrorBoundary.js';
 import { useNativeShell } from './lib/native/use-native-shell.js';
 import { lazyScreen, preloadWhenIdle } from './lib/lazy-screen.js';
 import { usePresence } from './lib/friends/use-presence.js';
+import { useWorkoutPresence } from './lib/friends/use-workout-presence.js';
 
 /**
  * Every screen but Home, in a file of its own. ADR-0078.
@@ -324,6 +325,7 @@ function AppRoutes() {
   // "Online now" for friends: the app saying it is open, every few minutes
   // at most. ADR-0105.
   usePresence();
+  useWorkoutPresence();
 
   return (
     <>
