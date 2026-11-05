@@ -9511,7 +9511,8 @@ in both themes, alongside the existing recap, cardio and routine flows.
 
 Friends shows a quiet, accent-coloured **Working out** label beside the name
 and level. It wraps beneath them when space is tight. Its slow opacity pulse
-stays legible and is disabled for reduced motion. **Share my workout status**
+stays legible, with a very dim border halo over a 5.6-second cycle. Both pulses
+are disabled for reduced motion. **Share my workout status**
 in the Friends sub-tab controls whether friends can see yours, independently
 of the existing training-sharing setting; it defaults on and requires a
 connection to change. Turning either sharing setting off hides the status.

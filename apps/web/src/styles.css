@@ -1142,8 +1142,32 @@ textarea,
   }
 }
 
+@keyframes workout-status-border-breathe {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .workout-status {
-    animation: workout-status-breathe 2.8s ease-in-out infinite;
+    position: relative;
+    pointer-events: none;
+    animation: workout-status-breathe 5.6s ease-in-out infinite;
+  }
+
+  /* Fade a faint, fixed halo instead of repainting a shadow every frame. */
+  .workout-status::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: inherit;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 14%, transparent);
+    pointer-events: none;
+    animation: workout-status-border-breathe 5.6s ease-in-out infinite;
   }
 }
