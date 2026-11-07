@@ -121,6 +121,12 @@ test('charts update offline after finishing, convert units, and stay private acr
   const other = await createUser('weight-empty', { onboarded: true });
   await signIn(page, user);
   await waitForCatalogue(page);
+  // Sync can finish before the first install has cached every lazy screen.
+  // Offline starting requires the completed asset cache, not just catalogue rows.
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+  await expect
+    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+    .toBe(true);
   await context.setOffline(true);
   await startWith(page, 'Barbell Bench Press');
   await logSet(page, 1, '80', '8');
