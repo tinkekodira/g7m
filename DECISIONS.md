@@ -9595,3 +9595,34 @@ change or dashboard deployment is required. Validate every new station and
 primary target, accessory/load behavior, ID preservation on migration replay,
 recommendation coverage, all catalogue thumbnails offline, every detail page,
 favourites, logging/upload and phone/desktop layouts in both themes.
+
+
+## ADR-0172 — Exercise details become a movement field guide
+
+**Status:** accepted · **Date:** 2026-11-07 · **Amends:** ADR-0083, ADR-0102
+
+Use the user-approved [Direction 02 concept](docs/design/exercise-details.md)
+for exercise details in both themes: bold italic title, individual movement
+illustration on an angled green stage, training defaults immediately below, a
+compact personal strength section, prominent coaching cues, region-colored
+muscles, instructions, mistakes and equipment. Existing catalogue text, strength
+estimates, favourite persistence, timed holds and cardio behavior remain.
+
+Export all 130 selected source illustrations as transparent 960px WebPs, with
+source hashes and export dimensions recorded alongside them. Preserve original
+art and the precached 320px thumbnails. Emit larger copies under
+`assets/exercise-heroes/`, exclude that folder from precaching, and runtime-cache
+visited artwork. A failed high-resolution load falls back to the precached
+thumbnail, including a first offline visit. An illustration failure must never
+hide coaching.
+
+Reuse the anatomy model in two non-interactive front/back views, rendering on
+demand and loading only as the section approaches. Add optional per-muscle color
+and resting-color overrides to the viewer; existing callers retain their colors.
+All individual muscle rows, qualitative roles and relative recruitment bars
+remain, with no invented percentages. Missing WebGL leaves the textual list.
+
+Demonstrations retain lazy loading, theme-aware formats, reduced-motion posters
+and silent failure. A pause/play control lets the user stop repeated movement.
+No global theme, database migration, catalogue update or PowerSync rule change.
+No `npx supabase db push` or PowerSync deployment is required.

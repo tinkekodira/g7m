@@ -66,6 +66,7 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
   // back up does not fetch them again.
   const [reached, setReached] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (near) setReached(true);
@@ -73,7 +74,7 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
 
   const surface = theme === 'light' ? lightColorTokens['bg-demo'] : colorTokens['bg-demo'];
   const format = demoFormat(surface);
-  const view = demoView(format, reducedMotion);
+  const view = demoView(format, reducedMotion || paused);
   const playing = view === 'mp4' && onScreen && tabVisible;
 
   useEffect(() => {
@@ -95,47 +96,61 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
   };
 
   return (
-    <div
-      ref={frame}
-      // The figure holds no text, so the name says what it is and the media
-      // inside is hidden from the accessibility tree.
-      role="img"
-      aria-label={`${name} demonstration`}
-      // The column's width, square, and no wider than 360px: the 720px source
-      // is then sharp on a 2x screen.
-      className="mx-auto mb-4 aspect-square w-full max-w-[360px] overflow-hidden rounded-control bg-demo"
-    >
-      {reached && view === 'poster' && (
-        <img
-          src={demoPoster(demo, format)}
-          alt=""
-          onError={fail}
-          className="size-full object-contain"
-        />
-      )}
-      {reached && view === 'mp4' && (
-        <video
-          ref={video}
-          src={demo.mp4}
-          poster={demo.poster}
-          muted
-          loop
-          playsInline
-          autoPlay
-          preload="metadata"
-          aria-hidden
-          onError={fail}
-          className="size-full object-contain"
-        />
-      )}
-      {view === 'webp' && near && tabVisible && (
-        <img
-          src={demo.webp}
-          alt=""
-          decoding="async"
-          onError={fail}
-          className="size-full object-contain"
-        />
+    <div ref={frame} className="exercise-demo mx-auto mb-4 w-full max-w-[360px]">
+      <div
+        // The figure holds no text, so the name says what it is and the media
+        // inside is hidden from the accessibility tree.
+        role="img"
+        aria-label={`${name} demonstration`}
+        // The column's width, square, and no wider than 360px: the 720px source
+        // is then sharp on a 2x screen.
+        className="aspect-square w-full overflow-hidden rounded-control bg-demo"
+      >
+        {reached && view === 'poster' && (
+          <img
+            src={demoPoster(demo, format)}
+            alt=""
+            width={720}
+            height={720}
+            onError={fail}
+            className="size-full object-contain"
+          />
+        )}
+        {reached && view === 'mp4' && (
+          <video
+            ref={video}
+            src={demo.mp4}
+            poster={demo.poster}
+            muted
+            loop
+            playsInline
+            autoPlay
+            preload="metadata"
+            aria-hidden
+            onError={fail}
+            className="size-full object-contain"
+          />
+        )}
+        {view === 'webp' && near && tabVisible && (
+          <img
+            src={demo.webp}
+            alt=""
+            width={720}
+            height={720}
+            decoding="async"
+            onError={fail}
+            className="size-full object-contain"
+          />
+        )}
+      </div>
+      {!reducedMotion && (
+        <button
+          type="button"
+          onClick={() => setPaused((value) => !value)}
+          className="mt-1 min-h-tap w-full rounded-control text-sm font-medium text-accent hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {paused ? 'Play demonstration' : 'Pause demonstration'}
+        </button>
       )}
     </div>
   );

@@ -149,8 +149,15 @@ export default defineConfig({
          * precache (`service-worker/precache.ts`). That needs them findable by
          * path once they are built, and this is what makes them findable.
          * Everything else keeps Vite's default name. See ADR-0102.
+         * Large exercise-detail illustrations follow the same folder rule
+         * below, with precached thumbnails supplying their offline fallback.
          */
         assetFileNames(asset) {
+          if (
+            asset.originalFileNames.some((file) => file.startsWith('src/assets/exercise-heroes/'))
+          ) {
+            return 'assets/exercise-heroes/[name]-[hash][extname]';
+          }
           return asset.originalFileNames.some((file) => file.startsWith('src/assets/demos/'))
             ? 'assets/demos/[name]-[hash][extname]'
             : 'assets/[name]-[hash][extname]';

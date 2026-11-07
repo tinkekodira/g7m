@@ -18,7 +18,7 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(row.locator('img')).toHaveAttribute('src', /shoulder-press-machine/);
     await row.click();
 
-    const hero = page.locator('img[src*="shoulder-press-machine-hero"]');
+    const hero = page.locator('.exercise-art-stage img');
     await expect(hero).toBeVisible();
     await expect(hero).toHaveCSS('object-fit', 'contain');
     await expect(
@@ -30,7 +30,6 @@ for (const theme of ['dark', 'light'] as const) {
       'Common mistakes',
       'Muscles worked',
       'Equipment',
-      'Starting point',
     ]) {
       await expect(page.getByRole('heading', { name: section, exact: true })).toBeVisible();
     }

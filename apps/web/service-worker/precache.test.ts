@@ -140,4 +140,13 @@ describe('the demonstration loops', () => {
     expect(built).toBe('assets/bench-press-hero-Bq3kT9xA.webp');
     expect(shouldPrecache(built)).toBe(true);
   });
+
+  it('loads large detail artwork on demand while precaching its thumbnail', async () => {
+    const hero = await builtName('src/assets/exercise-heroes/barbell-bench-press.webp');
+    expect(hero).toBe('assets/exercise-heroes/barbell-bench-press-Bq3kT9xA.webp');
+    expect(shouldPrecache(hero)).toBe(false);
+    const thumbnail = await builtName('src/assets/exercises/barbell-bench-press.webp');
+    expect(thumbnail).toBe('assets/barbell-bench-press-Bq3kT9xA.webp');
+    expect(shouldPrecache(thumbnail)).toBe(true);
+  });
 });

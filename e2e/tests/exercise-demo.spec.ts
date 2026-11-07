@@ -134,6 +134,20 @@ test('an exercise without a loop keeps the card it had', async ({ page }) => {
   expect(await howToCard(page)).toEqual(['H2', 'OL']);
 });
 
+test('the movement can be paused and resumed without hiding its instructions', async ({ page }) => {
+  const user = await createUser('demo-pause', { onboarded: true });
+  await signIn(page, user);
+  await openHowTo(page, 'barbell-bench-press', 'Barbell Bench Press');
+  const panel = page.getByRole('img', { name: 'Barbell Bench Press demonstration' });
+  await expect(panel.locator('video')).toBeAttached();
+  await page.getByRole('button', { name: 'Pause demonstration' }).click();
+  await expect(panel.locator('video')).toHaveCount(0);
+  await expect(panel.locator('img')).toBeVisible();
+  await expect(page.locator('main ol > li')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Play demonstration' }).click();
+  await expect(panel.locator('video')).toBeAttached();
+});
+
 test.describe('when the loop cannot be loaded', () => {
   // The worker would make the request itself, out of reach of `page.route`.
   test.use({ serviceWorkers: 'block' });
@@ -181,7 +195,7 @@ test('neither the exercise list nor the install downloads a loop', async ({ page
     return urls;
   });
   // Not vacuous: the precache is there, and it holds the icons.
-  expect(cached.some((url) => /assets\/squat-rack-[\w-]+\.png$/.test(url))).toBe(true);
+  expect(cached.some((url) => /assets\/barbell-back-squat-[\w-]+\.webp$/.test(url))).toBe(true);
   expect(cached.filter((url) => url.includes('/assets/demos/'))).toEqual([]);
 });
 
