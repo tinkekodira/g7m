@@ -9546,3 +9546,52 @@ the app release. No PowerSync schema, publication or sync-rule change is needed.
 Validation covers lease expiry, privacy, accepted-friend access, anonymous
 access, cross-session clearing, two-phone start/finish/privacy transitions,
 failed preference saves, both themes, phone/desktop layouts and reduced motion.
+
+## ADR-0171 — Thirty-eight movements expand the exercise catalogue
+
+**Status:** accepted · **Date:** 2026-11-07
+
+Add all requested movements as 38 independently logged exercises, including
+separate EZ-bar and dumbbell spider curls. The catalogue contains 130 exercises
+and 47 equipment entries. Add four dedicated machines (lateral raise, shrug,
+triceps extension and seated dip), an ab wheel, squat box and strongman log.
+Required benches, racks and boxes remain accessory links so equipment filters
+respect the complete setup. Bodyweight is the primary station for bench dips,
+elevated push-ups and the unweighted neck curl; the ab wheel is bodyweight
+category equipment because it does not supply external resistance.
+
+Each exercise has searchable aliases, instructions, cues, common mistakes,
+relative muscle recruitment, rep/rest defaults and a reviewed recommendation
+profile. Coaching matches the supplied variations: kipping straight-bar muscle-up,
+standing Arnold press, EZ-bar strict curl, bilateral palms-up dumbbell wrist curl, unweighted neck curl,
+barbell calf raise on a plate and bodyweight Russian twists. Alternating core
+movements count each side/leg movement as a rep; unilateral lifts log reps per
+side. Skill-dependent muscle-ups, clean and jerks, log presses, JM presses and
+pistol squats receive logged-work credit but are not ordinary accessory
+recommendations. Neck work remains a deliberate selection, and the anatomy
+model's existing non-selectable neck mesh is unchanged.
+
+Import Milan's 38 matching finished transparent 320px thumbnails from
+`Desktop/exercise-images` at WebP quality 90, alpha quality 100 and effort 6,
+without cropping or recolouring. Source originals remain untouched. Record the
+calf-raise folder alias in the asset README. Existing equipment renders supply
+heroes where appropriate; new stations retain the standard text header.
+No new demonstration animation is supplied. The existing shared list component,
+detail route, favourites, history and service-worker precache handle the additions.
+
+The more technical coaching was cross-checked with the inventor's
+[JM press tutorial](https://elitefts.com/blogs/training/how-to-perform-the-jm-press-a-step-by-step-guide-from-the-inventor),
+[Catalyst Athletics' clean and jerk reference](https://catalystathletics-org.catalystathletics.com/exercise/76/Clean-Jerk/)
+and the [strongman log equipment specification](https://www.sorinex.com/products/7-log-training-bar).
+
+Apply `20261107120000_expand_exercise_catalogue.sql` and
+`20261107130000_align_arnold_press_artwork.sql` with `npx supabase db push`
+before releasing the app. The latter corrects the initially seated Arnold
+coaching and removes its bench requirement to match the standing illustration;
+the first migration had already been applied during validation.
+Existing catalogue streams
+already sync all four affected tables; no local schema or PowerSync sync-rule
+change or dashboard deployment is required. Validate every new station and
+primary target, accessory/load behavior, ID preservation on migration replay,
+recommendation coverage, all catalogue thumbnails offline, every detail page,
+favourites, logging/upload and phone/desktop layouts in both themes.

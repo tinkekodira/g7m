@@ -42,8 +42,9 @@ describe('volumes', () => {
   it('seeds the equipment list', async () => {
     // 28 from Brief §5, plus the back extension bench the §5 list omits, the
     // six cardio machines (ADR-0069), the two hip machines, and the preacher
-    // curl machine, shoulder press machine and incline chest press machine.
-    expect(await count('select count(*) n from public.equipment')).toBe(40);
+    // curl machine, shoulder press machine and incline chest press machine,
+    // then seven stations/accessories for the November catalogue expansion.
+    expect(await count('select count(*) n from public.equipment')).toBe(47);
   });
 
   /**
@@ -54,13 +55,14 @@ describe('volumes', () => {
    * the kettlebells, rows and dips, and three more (ADR-0118): the preacher
    * curl machine and two crunches, the rear delt fly machine and the shoulder
    * press machine, then the incline machine chest press, three Smith lifts
-   * and the dumbbell shrug, then the incline Smith bench press. Counted rather than
+   * and the dumbbell shrug, then the incline Smith bench press and 38 more
+   * movements (ADR-0171). Counted rather than
    * left open, because an exercise that fails to insert — a bad slug in a join,
    * a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(92);
+    expect(await count('select count(*) n from public.exercises')).toBe(130);
   });
 });
 
@@ -159,9 +161,8 @@ describe('every muscle is trainable', () => {
   /**
    * Two different reasons a muscle is carried and not offered.
    *
-   * Nothing in the 50 trains the neck, so sternocleidomastoid is seeded for the
-   * model but deliberately not selectable — which is exactly what the flag is
-   * for (Brief §5).
+   * Sternocleidomastoid now has a neck curl, but the body model still has no
+   * selectable neck mesh. Adding the exercise does not invent tappable geometry.
    *
    * The other five are the muscles a closed sculpted skin has no room for
    * (ADR-0045). They are trained — the semimembranosus is a prime mover for
