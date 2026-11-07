@@ -53,6 +53,9 @@ export interface AnatomyViewerProps {
   readonly mode?: AnatomyMode;
   /** Slug to 0–1, for `mode: 'heatmap'`. Absent means cold. */
   readonly intensity?: ReadonlyMap<string, number>;
+  /** Optional categorical colours, for an exercise's muscle diagram. */
+  readonly muscleColors?: ReadonlyMap<string, string>;
+  readonly restingColor?: string;
   /**
    * The parts form a closed skin rather than a bundle of separate muscles.
    *
@@ -92,6 +95,8 @@ export function AnatomyViewer({
   onSelect,
   mode = 'explore',
   intensity,
+  muscleColors,
+  restingColor,
   closedSurface = false,
   view = 'front',
   cameraDistance = CAMERA_DISTANCE,
@@ -123,12 +128,21 @@ export function AnatomyViewer({
       const isSelectable = selectable.has(part.slug);
       const isSelected = part.slug === selectedSlug;
       byRegion.set(part.region.index, {
-        color: colourFor({ part, isSelectable, isSelected, mode, intensity, closedSurface }),
+        color: colourFor({
+          part,
+          isSelectable,
+          isSelected,
+          mode,
+          intensity,
+          closedSurface,
+          muscleColors,
+          restingColor,
+        }),
         glow: isSelected ? SELECTED_GLOW : 0,
       });
     }
     return byRegion;
-  }, [parts, selectable, selectedSlug, mode, intensity, closedSurface]);
+  }, [parts, selectable, selectedSlug, mode, intensity, closedSurface, muscleColors, restingColor]);
 
   const clickFor = (part: BodyPart) => {
     if (!selectable.has(part.slug) || !interactive) return undefined;
@@ -225,7 +239,16 @@ export function AnatomyViewer({
             <GeneratedMesh
               key={part.nodeName}
               mesh={part.mesh}
-              color={colourFor({ part, isSelectable, isSelected, mode, intensity, closedSurface })}
+              color={colourFor({
+                part,
+                isSelectable,
+                isSelected,
+                mode,
+                intensity,
+                closedSurface,
+                muscleColors,
+                restingColor,
+              })}
               // Skin carries no tendon weight, so the blend does nothing; the
               // resting colour keeps a stray weight from washing it out.
               tendonColor={closedSurface ? PALETTE.skin : PALETTE.tendon}
@@ -457,6 +480,8 @@ function colourFor({
   mode,
   intensity,
   closedSurface,
+  muscleColors,
+  restingColor,
 }: {
   part: BodyPart;
   isSelectable: boolean;
@@ -464,8 +489,12 @@ function colourFor({
   mode: AnatomyMode;
   intensity: ReadonlyMap<string, number> | undefined;
   closedSurface: boolean;
+  muscleColors: ReadonlyMap<string, string> | undefined;
+  restingColor: string | undefined;
 }): string {
   if (isSelected) return PALETTE.selected;
+  if (muscleColors !== undefined)
+    return muscleColors.get(part.slug) ?? restingColor ?? PALETTE.skin;
 
   const ramp = closedSurface ? PALETTE.skinHeat : PALETTE.heat;
 

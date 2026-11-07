@@ -34,15 +34,18 @@ export function FavouriteButton({
   favourite,
   disabled,
   onToggle,
+  compact = false,
 }: {
   readonly favourite: boolean;
   readonly disabled: boolean;
   readonly onToggle: () => void;
+  readonly compact?: boolean;
 }) {
   return (
     <Button
       variant="secondary"
       aria-pressed={favourite}
+      aria-label={compact ? 'Favourite' : undefined}
       disabled={disabled}
       onClick={onToggle}
       className="shrink-0"
@@ -51,7 +54,7 @@ export function FavouriteButton({
         fill={favourite ? 'currentColor' : 'none'}
         className={favourite ? 'size-5 text-warning' : 'size-5 text-muted'}
       />
-      Favourite
+      {!compact && 'Favourite'}
     </Button>
   );
 }

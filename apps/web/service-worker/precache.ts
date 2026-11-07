@@ -6,7 +6,8 @@
 import { createHash } from 'node:crypto';
 
 /**
- * Everything in `dist` is precached except four kinds of file.
+ * The shell and shared assets are precached; optional large media is fetched
+ * on demand.
  *
  * Precaching the lot, rather than a hand-listed shell, is deliberate: the
  * PowerSync workers and the wa-sqlite WebAssembly binary are loaded lazily, so
@@ -40,6 +41,10 @@ export function shouldPrecache(file: string): boolean {
   // here as well: a `<video>` asks for byte ranges, and a whole cached file
   // handed back to a range request is one Safari will not play. ADR-0102.
   if (file.startsWith('assets/demos/')) return false;
+
+  // Large detail illustrations load per exercise. Their 320px counterparts
+  // remain precached, so a first offline visit still has the same artwork.
+  if (file.startsWith('assets/exercise-heroes/')) return false;
 
   // `.nojekyll` and friends: hosting markers, zero bytes, no request ever
   // made for them.

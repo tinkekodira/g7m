@@ -3,120 +3,106 @@ import { Link, useParams } from 'react-router';
 import {
   BOUT_FIELDS,
   CURRENT_STRENGTH_WEEKS,
+  regionOf,
   strengthEstimate,
   toDisplayWeight,
+  type BodyRegion,
   type CardioKind,
   type OneRepMaxReading,
+  type Sex,
   type StrengthEstimate,
   type UnitSystem,
 } from '@g7m/core';
 import type { Exercise, MuscleRole } from '@g7m/db';
-import { cx } from '@g7m/ui';
 import { ExerciseDemo } from '../components/ExerciseDemo.js';
 import { ExerciseHero } from '../components/ExerciseHero.js';
+import { ExerciseCueIcon } from '../components/ExerciseCueIcon.js';
+import ExerciseMuscleBody from '../components/ExerciseMuscleBody.js';
 import { FavouriteButton } from '../components/Favourite.js';
-import { equipmentArt } from '../components/equipment-art.js';
 import { exerciseDemo } from '../components/exercise-demos.js';
-import { HeaderLink } from '../components/HeaderLink.js';
-import { ChevronRightIcon } from '../components/icons.js';
+import { ChevronRightIcon, DumbbellIcon, TrendIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { describeMark } from './review-copy.js';
 import { fieldLabel } from './bout-copy.js';
 
-/**
- * One exercise, in full.
- *
- * The text is the product here, not a caption for a video. Brief §7: the cues
- * are the offline answer to "how do I do this lift", and a basement is exactly
- * where somebody needs it. So the written instructions come first and stand
- * alone, and the video — when there is one — is an extra.
- */
 export function ExerciseDetailScreen() {
   const { slug = '' } = useParams();
   const now = useMemo(() => new Date(), []);
-
-  /**
-   * Whether this exercise has a hero, known from the URL rather than from the
-   * row — so the header is the right one on the first frame. Reading it off
-   * the loaded exercise instead would render the plain header, then swap it for
-   * a 400px image once SQLite answered, which is a jump on every visit.
-   */
-  const heroed = equipmentArt(slug)?.hero != null;
-
+  const { write, busy } = useWrite();
   const detail = useCatalogue(`exercise:${slug}`, async (repositories) => {
     const exercise = await repositories.exercises.bySlug(slug);
     if (exercise === null) return null;
-
-    const [involvement, equipment, muscles, sets, profile] = await Promise.all([
+    const [involvement, equipment, muscles, groups, sets, profile] = await Promise.all([
       repositories.exercises.musclesFor(exercise.id),
       repositories.exercises.equipmentFor(exercise.id),
       repositories.muscles.list(),
-      // Everything ever logged on it: the best-ever estimate needs all of it,
-      // and one exercise's history is a few hundred rows at the most.
+      repositories.muscles.groups(),
       repositories.history.completedSets({ exerciseId: exercise.id }),
       repositories.profile.current(),
     ]);
-
-    const nameById = new Map(muscles.map((muscle) => [muscle.id, muscle.commonName]));
+    const muscleById = new Map(muscles.map((muscle) => [muscle.id, muscle]));
+    const groupById = new Map(groups.map((group) => [group.id, group.slug]));
     const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
     return {
       exercise,
       favourite: profile?.favouriteExercises.includes(exercise.slug) ?? false,
+      sex: profile?.sex ?? null,
       equipment,
-      // A hold is timed, and seconds are not reps: no estimate for a plank.
       strength: exercise.isTimeBased ? null : strengthEstimate(sets, now),
       unitSystem,
-      muscles: involvement.map((entry) => ({
-        name: nameById.get(entry.muscleId) ?? 'Unknown muscle',
-        role: entry.role,
-        share: entry.recruitmentWeight,
-      })),
+      muscles: involvement.map((entry): Involvement => {
+        const muscle = muscleById.get(entry.muscleId);
+        return {
+          name: muscle?.commonName ?? 'Unknown muscle',
+          slug: muscle?.slug ?? '',
+          region: regionOf(groupById.get(muscle?.muscleGroupId ?? '') ?? ''),
+          role: entry.role,
+          share: entry.recruitmentWeight,
+        };
+      }),
     };
   });
-
+  const data = detail.data;
   return (
-    <main
-      className={cx(
-        'mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pb-safe-bottom',
-        // The hero runs up behind the status bar and insets its own contents,
-        // so the page must not inset it a second time.
-        !heroed && 'pt-safe-top',
-      )}
-    >
-      {heroed ? (
-        <ExerciseHero
-          slug={slug}
-          name={detail.data?.exercise.name ?? null}
-          aliases={detail.data?.exercise.aliases ?? []}
-        />
-      ) : (
-        <header className="pt-6 pb-2">
-          <HeaderLink to="/exercises">← All exercises</HeaderLink>
-        </header>
-      )}
-
+    <main className="exercise-details mx-auto flex min-h-full max-w-2xl flex-col gap-6 px-4 pt-safe-top pb-safe-bottom">
+      <header className="flex min-h-tap items-center justify-between gap-3 pt-4">
+        <Link to="/exercises" className="exercise-back-link">
+          ← All exercises
+        </Link>
+        {data != null && (
+          <FavouriteButton
+            compact
+            favourite={data.favourite}
+            disabled={busy}
+            onToggle={() => {
+              void write((r) => r.profile.setFavourite(data.exercise.slug, !data.favourite));
+            }}
+          />
+        )}
+      </header>
       {detail.error !== null ? (
         <p role="alert" className="text-sm text-destructive">
           {detail.error}
         </p>
       ) : detail.loading ? (
-        <p className="text-sm text-muted">Loading…</p>
-      ) : detail.data === null ? (
+        <p role="status" className="text-sm text-muted">
+          Loading…
+        </p>
+      ) : data === null ? (
         <p className="max-w-prose text-sm text-secondary">
           There is no exercise called <span className="text-primary">{slug}</span> on this device.
           It may have been renamed, or it may not have synced yet.
         </p>
       ) : (
         <ExerciseDetail
-          exercise={detail.data.exercise}
-          favourite={detail.data.favourite}
-          muscles={detail.data.muscles}
-          equipment={detail.data.equipment}
-          strength={detail.data.strength}
-          unitSystem={detail.data.unitSystem}
+          exercise={data.exercise}
+          muscles={data.muscles}
+          equipment={data.equipment}
+          strength={data.strength}
+          unitSystem={data.unitSystem}
           now={now}
-          heroed={heroed}
+          sex={data.sex}
         />
       )}
     </main>
@@ -125,6 +111,8 @@ export function ExerciseDetailScreen() {
 
 interface Involvement {
   readonly name: string;
+  readonly slug: string;
+  readonly region: BodyRegion | null;
   readonly role: MuscleRole;
   readonly share: number;
 }
@@ -137,112 +125,87 @@ const ROLE_LABELS: Record<MuscleRole, string> = {
 
 function ExerciseDetail({
   exercise,
-  favourite,
   muscles,
   equipment,
   strength,
   unitSystem,
   now,
-  heroed,
+  sex,
 }: {
   readonly exercise: Exercise;
-  /** Starred: a star by its name and first in every list. ADR-0108. */
-  readonly favourite: boolean;
   readonly muscles: readonly Involvement[];
   readonly equipment: readonly { readonly equipmentId: string; readonly name: string }[];
   readonly strength: StrengthEstimate | null;
   readonly unitSystem: UnitSystem;
   readonly now: Date;
-  /** The hero above carries the name and the aliases, so this must not. */
-  readonly heroed: boolean;
+  readonly sex: Sex | null;
 }) {
-  const { write, busy } = useWrite();
   return (
     <>
-      <div>
-        {!heroed && (
-          <>
-            <h1 className="text-2xl font-semibold text-primary">{exercise.name}</h1>
-            {exercise.aliases.length > 0 && (
-              <p className="mt-1 text-sm text-secondary">
-                Also called {exercise.aliases.join(', ')}
-              </p>
-            )}
-          </>
+      <div className="exercise-heading">
+        <h1 className="exercise-title">{exercise.name}</h1>
+        {exercise.aliases.length > 0 && (
+          <p className="mt-2 text-sm text-secondary">Also called {exercise.aliases.join(', ')}</p>
         )}
-        {/* Beside the badges rather than in the hero, so it sits in the same
-            place on every exercise, with a render behind the name or not. */}
-        <div className={cx('flex items-start justify-between gap-3', !heroed && 'mt-3')}>
-          <div className="flex flex-wrap gap-2 pt-2.5">
-            <Badge>
-              {exercise.cardioKind !== null
-                ? 'Cardio'
-                : exercise.mechanic === 'compound'
-                  ? 'Compound'
-                  : 'Isolation'}
-            </Badge>
-            <Badge>{capitalise(exercise.difficulty)}</Badge>
-            {exercise.isUnilateral && <Badge>One side at a time</Badge>}
-            {exercise.isTimeBased && <Badge>Held for time</Badge>}
-          </div>
-          <FavouriteButton
-            favourite={favourite}
-            disabled={busy}
-            onToggle={() => {
-              void write((r) => r.profile.setFavourite(exercise.slug, !favourite));
-            }}
-          />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="exercise-badge exercise-badge-primary">
+            {exercise.cardioKind !== null
+              ? 'Cardio'
+              : exercise.mechanic === 'compound'
+                ? 'Compound'
+                : 'Isolation'}
+          </span>
+          <span className="exercise-badge">{capitalise(exercise.difficulty)}</span>
+          {exercise.isUnilateral && <span className="exercise-badge">One side at a time</span>}
+          {exercise.isTimeBased && <span className="exercise-badge">Held for time</span>}
         </div>
+        <ExerciseHero slug={exercise.slug} name={exercise.name} />
       </div>
+
+      {exercise.cardioKind === null && (
+        <section aria-labelledby="exercise-starting-point" className="exercise-starting-point">
+          <h2 id="exercise-starting-point" className="sr-only">
+            Starting point
+          </h2>
+          <div>
+            <p className="numeric exercise-starting-value">
+              {exercise.defaultRepLow}–{exercise.defaultRepHigh}
+              {exercise.isTimeBased && <span className="text-lg"> s</span>}
+            </p>
+            <p className="text-sm text-secondary">
+              {exercise.isTimeBased ? 'Suggested hold' : 'Suggested reps'}
+            </p>
+          </div>
+          <div>
+            <p
+              className={`numeric exercise-starting-value${exercise.defaultRestSeconds === null ? ' exercise-rest-derived' : ''}`}
+            >
+              {restLabel(exercise)}
+            </p>
+            <p className="text-sm text-secondary">Rest between sets</p>
+          </div>
+        </section>
+      )}
 
       {strength?.best != null && (
         <OneRepMax exerciseId={exercise.id} strength={strength} unitSystem={unitSystem} now={now} />
       )}
 
-      {/* First, and never behind a tap. This is what the app is for when the
-          phone has no signal and the barbell is already loaded. */}
       {exercise.cues.length > 0 && (
-        <Section title="Cues">
-          <ul className="flex flex-col gap-2">
-            {exercise.cues.map((cue) => (
-              <li key={cue} className="flex gap-2 text-base text-primary">
-                <span aria-hidden className="text-accent">
-                  •
-                </span>
-                {cue}
+        <section className="exercise-cues">
+          <h2 className="exercise-section-title">Cues</h2>
+          <ul className="divide-y divide-strong/50">
+            {exercise.cues.map((cue, index) => (
+              <li
+                key={cue}
+                className="flex items-center gap-4 py-3 text-base font-medium text-primary"
+              >
+                <ExerciseCueIcon slug={exercise.slug} index={index} />
+                <span>{cue}</span>
               </li>
             ))}
           </ul>
-        </Section>
-      )}
-
-      {(exercise.instructions.length > 0 || exerciseDemo(exercise.slug) !== null) && (
-        <Section title="How to do it">
-          {/* The movement the steps describe, above them: it is taken in at a
-              glance, and the steps are read in order. Nothing at all for an
-              exercise without a loop. */}
-          <ExerciseDemo slug={exercise.slug} name={exercise.name} />
-          <ol className="flex flex-col gap-2">
-            {exercise.instructions.map((step, index) => (
-              <li key={step} className="flex gap-3 text-sm text-secondary">
-                <span className="numeric shrink-0 text-muted">{index + 1}</span>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </Section>
-      )}
-
-      {exercise.commonMistakes.length > 0 && (
-        <Section title="Common mistakes">
-          <ul className="flex flex-col gap-2">
-            {exercise.commonMistakes.map((mistake) => (
-              <li key={mistake} className="text-sm text-secondary">
-                {mistake}
-              </li>
-            ))}
-          </ul>
-        </Section>
+        </section>
       )}
 
       <Section title="Muscles worked">
@@ -254,76 +217,102 @@ function ExerciseDetail({
         ) : muscles.length === 0 ? (
           <p className="text-sm text-muted">Not recorded for this exercise.</p>
         ) : (
+          <div className="exercise-muscles">
+            <ExerciseMuscleBody sex={sex} muscles={muscles} />
+            <ul className="flex min-w-0 flex-col gap-4">
+              {muscles.map((muscle) => (
+                <li
+                  key={`${muscle.slug}-${muscle.role}`}
+                  style={{
+                    color:
+                      muscle.region === null ? 'var(--accent)' : `var(--region-${muscle.region})`,
+                  }}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-primary">
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{
+                          background: 'currentColor',
+                          color:
+                            muscle.region === null
+                              ? 'var(--accent)'
+                              : `var(--region-${muscle.region})`,
+                        }}
+                      />
+                      {muscle.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted">{ROLE_LABELS[muscle.role]}</span>
+                  </div>
+                  <div aria-hidden className="mt-2 h-1.5 rounded-full bg-strong">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${String(Math.round(clamp(muscle.share) * 100))}%`,
+                        background: 'currentColor',
+                      }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Section>
+
+      {(exercise.instructions.length > 0 || exerciseDemo(exercise.slug) !== null) && (
+        <section className="exercise-how-to">
+          <h2 className="exercise-section-title">How to do it</h2>
+          <ExerciseDemo slug={exercise.slug} name={exercise.name} />
+          <ol className="flex min-w-0 flex-col gap-4">
+            {exercise.instructions.map((step, index) => (
+              <li key={step} className="flex gap-3 text-sm leading-relaxed text-secondary">
+                <span className="numeric flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-on-accent">
+                  {index + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {exercise.commonMistakes.length > 0 && (
+        <section className="exercise-mistakes">
+          <h2 className="exercise-section-title">Common mistakes</h2>
           <ul className="flex flex-col gap-2">
-            {muscles.map((muscle) => (
-              <li key={`${muscle.name}-${muscle.role}`}>
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-primary">{muscle.name}</span>
-                  <span className="text-xs text-muted">{ROLE_LABELS[muscle.role]}</span>
-                </div>
-                {/* A bar rather than a percentage: recruitment weight is a
-                    relative ranking, and printing "70%" would claim a
-                    precision the number does not have. */}
-                <div className="mt-1 h-1 w-full rounded-full bg-strong">
-                  <div
-                    className="h-1 rounded-full bg-accent"
-                    style={{ width: `${String(Math.round(clamp(muscle.share) * 100))}%` }}
-                  />
-                </div>
+            {exercise.commonMistakes.map((mistake) => (
+              <li key={mistake} className="flex gap-2 text-sm text-secondary">
+                <span aria-hidden className="text-warning">
+                  •
+                </span>
+                {mistake}
               </li>
             ))}
           </ul>
-        )}
-      </Section>
+        </section>
+      )}
 
-      <Section title="Equipment">
-        {equipment.length === 0 ? (
-          <p className="text-sm text-muted">Nothing at all.</p>
-        ) : (
-          <p className="text-sm text-secondary">{equipment.map((item) => item.name).join(', ')}</p>
-        )}
-      </Section>
-
-      {exercise.cardioKind !== null ? (
+      <section className="border-t border-subtle pt-4">
+        <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-primary">
+          <DumbbellIcon className="size-5 text-muted" />
+          Equipment
+        </h2>
+        <p className="text-sm text-secondary">
+          {equipment.length === 0
+            ? 'Nothing at all.'
+            : equipment.map((item) => item.name).join(', ')}
+        </p>
+      </section>
+      {exercise.cardioKind !== null && (
         <Section title="What you log">
           <p className="max-w-prose text-sm text-secondary">
             {loggedFields(exercise.cardioKind, unitSystem)} Calories are estimated from those and
             your bodyweight, or you can type the machine’s own figure.
           </p>
         </Section>
-      ) : (
-        <Section title="Starting point">
-          <div className="flex items-baseline justify-between gap-4 border-b border-subtle py-2">
-            <span className="text-sm text-secondary">
-              {exercise.isTimeBased ? 'Suggested hold' : 'Suggested reps'}
-            </span>
-            <span className="numeric text-base text-primary">
-              {exercise.defaultRepLow}–{exercise.defaultRepHigh}
-              {exercise.isTimeBased ? ' seconds' : ''}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-4 py-2">
-            <span className="text-sm text-secondary">Rest between sets</span>
-            <span className="numeric text-base text-primary">
-              {exercise.defaultRestSeconds === null
-                ? // Null means "derive from mechanic", and the derivation lives in
-                  // @g7m/core with the generator. Saying so beats printing a
-                  // number this screen invented.
-                  exercise.mechanic === 'compound'
-                  ? 'Longer — it is a compound'
-                  : 'Shorter — it is an isolation'
-                : `${String(exercise.defaultRestSeconds)} seconds`}
-            </span>
-          </div>
-        </Section>
       )}
-
-      {/*
-        Every seeded row is `none` today, deliberately: a made-up YouTube id
-        renders as a broken player, which is worse than the text above, which
-        stands on its own (ADR-0024). The branch exists so that adding real ids
-        is a data change rather than a code change.
-      */}
       {exercise.videoProvider !== 'none' && exercise.videoRef !== null && (
         <Section title="Video">
           <p className="text-sm text-secondary">
@@ -331,12 +320,20 @@ function ExerciseDetail({
           </p>
         </Section>
       )}
-
-      <footer className="py-6 text-xs text-muted">
+      <footer className="pt-2 pb-6 text-xs text-muted">
         Educational content, not medical advice. Consult a professional before starting a program.
       </footer>
     </>
   );
+}
+
+function restLabel(exercise: Exercise): string {
+  const seconds = exercise.defaultRestSeconds;
+  if (seconds === null)
+    return exercise.mechanic === 'compound'
+      ? 'Longer — it is a compound'
+      : 'Shorter — it is an isolation';
+  return seconds % 60 === 0 ? `${String(seconds / 60)} min` : `${String(seconds)} s`;
 }
 
 /**
@@ -385,9 +382,10 @@ function OneRepMax({
   if (shown === null) return null;
 
   return (
-    <section className="rounded-card border border-subtle bg-surface p-4">
+    <section className="exercise-strength">
+      <TrendIcon className="exercise-strength-icon size-7 text-accent" />
       <h2 className="text-sm font-medium text-secondary">Your estimated one-rep max</h2>
-      <p className="numeric mt-1 text-3xl font-bold text-primary">
+      <p className="numeric mt-1 text-2xl font-bold text-primary">
         {estimate(shown.estimate.valueKg)}
       </p>
       <p className="mt-1 text-sm text-secondary">
@@ -407,7 +405,7 @@ function OneRepMax({
       </p>
       <Link
         to={`/progress/exercise/${exerciseId}`}
-        className="mt-2 inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
+        className="exercise-trend-link inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
       >
         See the trend
         <ChevronRightIcon className="size-4" />
@@ -424,16 +422,10 @@ function shortDate(date: Date, now: Date): string {
 
 function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
-    <section className="rounded-card bg-surface p-4">
-      <h2 className="mb-3 text-lg font-semibold text-primary">{title}</h2>
+    <section>
+      <h2 className="exercise-section-title">{title}</h2>
       {children}
     </section>
-  );
-}
-
-function Badge({ children }: { readonly children: ReactNode }) {
-  return (
-    <span className="rounded-full bg-elevated px-3 py-1 text-xs text-secondary">{children}</span>
   );
 }
 
