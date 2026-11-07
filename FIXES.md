@@ -40,6 +40,21 @@ behavior. A browser regression jumps both anchors across the viewport and checks
 that both controls recover. No database migration or PowerSync deployment is
 required.
 
+# Exercise expansion — search expectations and first-install offline timing
+
+The 38-exercise expansion makes the search for `Barbell Bench Press` match
+three variants: flat, incline and decline. The Browse tint regression still
+expected two rows. Include the decline result while retaining the supporting-
+muscle, search, gradient and offline assertions.
+
+The full local run also exposed an offline setup race in the weight-chart
+scenario: catalogue sync completed before the service worker finished caching
+the first install's lazy screens. Going offline at that point left the workout
+start chooser chunk unavailable. Wait for service-worker readiness and control
+before disconnecting, as the other offline cold-start checks do. Preserve the
+offline workout finish, chart, units, reload and account-isolation assertions.
+No app behavior, database schema or PowerSync rules change for these test fixes.
+
 # Layout screenshots avoid high-DPI overhead in browser CI
 
 PR #211's browser run 330 reached the twelve-minute suite deadline with 163

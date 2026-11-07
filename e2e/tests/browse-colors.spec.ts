@@ -112,8 +112,9 @@ test('dominant muscle tint survives supporting-muscle filters, search and offlin
     await gradient(rail.getByRole('button', { name: 'Triceps', exact: true })),
   );
   await page.getByLabel('Search').fill('Barbell Bench Press');
-  // Search also matches Incline Barbell Bench Press.
-  await expect(page.locator('main ul > li')).toHaveCount(2);
+  // Search also matches the incline and newly added decline barbell presses.
+  await expect(page.locator('main ul > li')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: /^Decline Bench Press/ })).toBeVisible();
   expect(await gradient(bench)).toBe(original);
   await context.setOffline(true);
   await rail.getByRole('button', { name: 'Triceps', exact: true }).click();
