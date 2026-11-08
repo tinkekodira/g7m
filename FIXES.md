@@ -1,3 +1,15 @@
+# CI downloads retry temporary GitHub release errors
+
+PR #219's secret scan and Android jobs failed on HTTP 504 downloads before
+scanning or compilation began. The scanner passed on retry, but the Gradle
+download failed again. Download the pinned Gitleaks archive to a file with
+bounded curl retries before extracting it. Bootstrap Gradle separately with
+three attempts, cache its wrapper/dependencies, and keep compilation as a
+single build that fails normally. Use the smaller runtime-only Gradle 8.11.1
+archive with its published SHA-256 and a thirty-second network timeout.
+No scanner rules, Gradle version or application behavior changes. No database
+migration, db push or PowerSync deployment is required.
+
 # Calendar opens workout details, with corrections for two hours
 
 Open the workout previously led straight to the finish recap and provided no

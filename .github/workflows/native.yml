@@ -56,6 +56,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            apps/mobile/android/**/*.gradle*
+            apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+
+      # Only bootstrap is retried: compilation failures must fail immediately.
+      - name: Download Gradle with retries
+        working-directory: apps/mobile/android
+        run: |
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon --version; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep 15
+            fi
+          done
+          echo "::error::Gradle download failed after three attempts."
+          exit 1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
