@@ -61,6 +61,12 @@ for (const theme of ['dark', 'light'] as const) {
       await seedTraining(user.id);
       await signIn(page, user);
       await waitForCatalogue(page);
+      // Advice needs five local sessions, not just the first catalogue row.
+      await openTab(page, 'Progress');
+      const recent = page.locator('section', {
+        has: page.getByRole('heading', { name: 'Recent workouts', exact: true }),
+      });
+      await expect(recent.getByRole('link')).toHaveCount(5);
       await openTab(page, 'Learn');
       const picker = page.getByRole('combobox', { name: 'Choose a muscle' });
       const results = page.getByRole('region', { name: 'Muscle exercises', exact: true });
@@ -148,6 +154,18 @@ test('Learn supports direct model taps, rotation, touch list scrolling, and offl
   context,
 }) => {
   test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    // The original is deliberately invoked with the live WebGL context via apply below.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const drawElements = WebGL2RenderingContext.prototype.drawElements;
+    WebGL2RenderingContext.prototype.drawElements = function (...args) {
+      if (this.canvas instanceof HTMLCanvasElement) {
+        const draws = Number(this.canvas.dataset['draws'] ?? '0');
+        this.canvas.dataset['draws'] = String(draws + 1);
+      }
+      return drawElements.apply(this, args);
+    };
+  });
   await page.setViewportSize({ width: 393, height: 852 });
   const user = await createUser('learn-input', { onboarded: true });
   await signIn(page, user);
@@ -173,6 +191,20 @@ test('Learn supports direct model taps, rotation, touch list scrolling, and offl
   await expect(picker).not.toHaveValue('');
   await expect(results.getByRole('heading', { level: 2 }).first()).toBeVisible();
   expect(await element?.evaluate((node) => node.isConnected)).toBe(true);
+
+  // The body stops drawing while idle, but a new selection still paints a frame.
+  await picker.selectOption('');
+  await expect(canvas).toHaveAttribute('data-draws', /\d+/);
+  await expect
+    .poll(async () => {
+      const before = await canvas.getAttribute('data-draws');
+      await page.waitForTimeout(200);
+      return before === (await canvas.getAttribute('data-draws'));
+    })
+    .toBe(true);
+  const unselected = await canvas.screenshot();
+  await picker.selectOption({ label: 'Abs' });
+  await expect.poll(async () => unselected.equals(await canvas.screenshot())).toBe(false);
 
   // A real drag changes the rendered body, rather than moving a static mockup.
   const before = await canvas.screenshot();

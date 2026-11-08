@@ -1,3 +1,20 @@
+# Learn releases the renderer while idle and waits for advice data in tests
+
+PR #220's browser run 355 passed the earlier keyboard-scroll position check,
+then stalled in the light-theme layout scenario. Worth adding was absent on
+the first attempt; the retry exhausted its two-minute limit, and the full suite
+later reached its fifteen-minute deadline with six scenarios unfinished.
+
+The anatomy viewer used a continuous render loop even when idle. Render on
+demand instead: the existing OrbitControls change listener requests frames
+through rotation and damping, and both generated and region-mapped muscles
+already invalidate after recolouring. Keep model tapping, rotation and zoom.
+The browser regression measures idle WebGL draw calls and checks that selecting
+a muscle and dragging still repaint the model. Wait for all five seeded local
+workouts through Progress before expecting advice, whose eligibility requires
+five sessions. Preserve every scenario, assertion and existing CI timeout.
+No database migration, db push or PowerSync rule deployment is required.
+
 # Learn routes keyboard scrolling to its focused exercise pane
 
 PR #220's browser run 354 finished with 186 scenarios passing and one failing:
