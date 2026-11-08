@@ -87,11 +87,11 @@ jobs:
       - name: Install gitleaks
         env:
           GITLEAKS_VERSION: 8.28.0
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl -sSfL --retry 4 --retry-delay 3 --retry-max-time 120 \
-            --connect-timeout 20 --max-time 60 \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            -o "$RUNNER_TEMP/gitleaks.tar.gz"
+          bash .github/scripts/download-release-asset.sh gitleaks/gitleaks \
+            "v${GITLEAKS_VERSION}" "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            "$RUNNER_TEMP/gitleaks.tar.gz"
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C /usr/local/bin gitleaks
           gitleaks version
 

@@ -3,9 +3,11 @@
 PR #219's secret scan and Android jobs failed on HTTP 504 downloads before
 scanning or compilation began. The scanner passed on retry, but the Gradle
 download failed again. Download the pinned Gitleaks archive to a file with
-bounded curl retries before extracting it. Bootstrap Gradle separately with
-three attempts, cache its wrapper/dependencies, and keep compilation as a
-single build that fails normally. Use the smaller runtime-only Gradle 8.11.1
+bounded curl retries before extracting it. Repeated retries still returned
+504, while the official release API redirected successfully to asset storage.
+Use that API for both tool archives, authenticated with the read-only workflow
+token. Bootstrap Gradle separately, cache its wrapper/dependencies, and keep
+compilation as a single build that fails normally. Use runtime-only Gradle 8.11.1
 archive with its published SHA-256 and a thirty-second network timeout.
 No scanner rules, Gradle version or application behavior changes. No database
 migration, db push or PowerSync deployment is required.

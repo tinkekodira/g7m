@@ -20,6 +20,7 @@ on:
       - 'packages/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/native.yml'
+      - '.github/scripts/**'
   push:
     branches: [main]
   workflow_dispatch:
@@ -61,20 +62,26 @@ jobs:
             apps/mobile/android/**/*.gradle*
             apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
 
-      # Only bootstrap is retried: compilation failures must fail immediately.
-      - name: Download Gradle with retries
+      # Fetch through the release API when the public download gateway is down.
+      # The wrapper still verifies the pinned checksum and runs the build.
+      - name: Download and verify Gradle
         working-directory: apps/mobile/android
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          for attempt in 1 2 3; do
-            if ./gradlew --no-daemon --version; then
-              exit 0
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              sleep 15
-            fi
-          done
-          echo "::error::Gradle download failed after three attempts."
-          exit 1
+          properties=gradle/wrapper/gradle-wrapper.properties
+          archive=$(sed -n 's|^distributionUrl=.*/||p' "$properties")
+          version=${archive#gradle-}
+          version=${version%-bin.zip}
+          checksum=$(sed -n 's/^distributionSha256Sum=//p' "$properties")
+          download="$HOME/.gradle/wrapper/ci-distributions/$archive"
+          if ! echo "$checksum  $download" | sha256sum --check --status; then
+            bash "$GITHUB_WORKSPACE/.github/scripts/download-release-asset.sh" \
+              gradle/gradle-distributions "v$version" "$archive" "$download"
+          fi
+          echo "$checksum  $download" | sha256sum --check
+          sed -i "s|^distributionUrl=.*|distributionUrl=file:$download|" "$properties"
+          ./gradlew --no-daemon --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
