@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@g7m/ui/tokens.css';
 @import './exercise-details.css';
+@import './learn.css';
 
 /* The native modal keeps real screens visible while making their controls inert. */
 .app-tour-dialog {

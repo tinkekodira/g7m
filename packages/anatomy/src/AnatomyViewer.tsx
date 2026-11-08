@@ -83,8 +83,9 @@ export interface AnatomyViewerProps {
   /**
    * The colour behind the body. A literal, because the canvas is WebGL and
    * cannot read a CSS variable; the app passes its theme's stage colour.
+   * Null leaves the canvas transparent above a decorative CSS stage.
    */
-  readonly background?: string;
+  readonly background?: string | null;
   readonly className?: string;
 }
 
@@ -192,7 +193,7 @@ export function AnatomyViewer({
           onSelect(null);
         }}
       >
-        <color attach="background" args={[background]} />
+        {background !== null && <color attach="background" args={[background]} />}
 
         {/*
           Three lights and a bounce, which is the whole difference between

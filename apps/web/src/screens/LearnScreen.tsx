@@ -5,9 +5,8 @@ import { Link, useSearchParams } from 'react-router';
 import { checkModelContract, placeholderBodyParts, type AnatomyMode } from '@g7m/anatomy';
 import { useSculptedBody } from '../lib/anatomy-model.js';
 import { useProfileBody } from '../lib/db/use-profile-body.js';
-import { useStageColor } from '../lib/use-theme.js';
 import { FavouriteMark } from '../components/Favourite.js';
-import { Panel } from '../components/Panel.js';
+import { ExerciseIcon } from '../components/ExerciseIcon.js';
 import { ChevronRightIcon, DumbbellIcon } from '../components/icons.js';
 import { SegmentedControl } from '@g7m/ui';
 import type { Exercise, Muscle } from '@g7m/db';
@@ -33,9 +32,6 @@ const MODES = [
   { value: 'heatmap', label: 'What I have trained' },
 ] as const satisfies readonly { value: AnatomyMode; label: string }[];
 
-/** Home's small capitals, for the labels inside a card. */
-const EYEBROW = 'text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase';
-
 interface MuscleDetail {
   readonly muscle: Muscle;
   readonly sections: MuscleSections;
@@ -56,7 +52,6 @@ export function LearnScreen() {
   const generated = useMemo(() => placeholderBodyParts(), []);
   // The body that matches the profile, and nothing until the profile has said.
   const sculpted = useSculptedBody(useProfileBody());
-  const stage = useStageColor();
 
   // Falls back without comment. Most checkouts have no model — it is licensed
   // and the repository is public — and the generated body is a complete one.
@@ -130,27 +125,28 @@ export function LearnScreen() {
    */
   const heat = useTrainingHeat(now, mode === 'heatmap');
   const todo = useNeglected(now, mode === 'heatmap');
+  const suggestionSlugs = useCatalogue(`learn:slugs:${mode}`, async (r) =>
+    mode === 'heatmap'
+      ? new Map((await r.exercises.list()).map((exercise) => [exercise.id, exercise.slug]))
+      : null,
+  );
 
   return (
-    <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
+    <main className="learn-screen">
       {/* The tool goes in the header's own slot rather than a card in the
           column. Learn's one job is the body, and a row above it pushing the
           figure down would make the calculator the first thing on a screen
           about anatomy — but tucked away at the bottom nobody would find it. */}
-      <header className="flex items-start justify-between gap-3 pt-6">
+      <header className="learn-header">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Learn</h1>
+          <h1 className="learn-title">Learn</h1>
           <p className="mt-1 text-sm text-secondary">
             {mode === 'heatmap'
               ? `What you have trained, over ${String(HEATMAP_WEEKS)} weeks.`
               : 'Tap a muscle to see what trains it.'}
           </p>
         </div>
-        <Link
-          to="/learn/plates"
-          viewTransition
-          className="inline-flex min-h-tap shrink-0 items-center gap-2 rounded-full bg-accent/15 px-4 text-sm font-medium text-accent active:bg-accent/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
+        <Link to="/learn/plates" viewTransition className="learn-plates">
           <DumbbellIcon className="size-4" />
           Plates
         </Link>
@@ -206,106 +202,137 @@ export function LearnScreen() {
           highlighted a muscle the other could not select. On the pill
           Progress and Friends switch with, so the main switch on every tab
           looks the same (ADR-0128). */}
-      <SegmentedControl label="Body view" options={MODES} value={mode} onChange={setMode} />
+      <SegmentedControl
+        label="Body view"
+        options={MODES}
+        value={mode}
+        onChange={(next) => {
+          setMode(next);
+          setSelected(null);
+        }}
+      />
 
-      {/* The stage in the large corner of every other card. */}
-      <div data-tour="body" className="overflow-hidden rounded-sheet border border-subtle bg-stage">
-        {/*
-          Nothing is drawn until it is known *which* body to draw.
-
-          `parts` falls back to the generated figure the moment this screen
-          mounts, because that is the right answer for a build with no licensed
-          model. It is the wrong answer for one that has a model and has not
-          finished fetching it yet: the procedural body rendered first and was
-          replaced a second later, so opening Learn flashed the old figure and
-          then swapped. On a warm cache the swap is too quick to see, which is
-          what made it look intermittent.
-
-          The placeholder was already the right thing to show while waiting —
-          it was only ever shown for the lazy chunk, never for the model.
-        */}
-        {sculpted.loading ? (
-          <ModelPlaceholder />
-        ) : (
-          <Suspense fallback={<ModelPlaceholder />}>
-            <AnatomyViewer
-              className="h-[52vh] w-full touch-none"
-              parts={parts}
-              // A sculpted skin is closed, so the bones and the core underneath
-              // it have nothing to show through and would sit on top instead.
-              closedSurface={sculpted.parts !== null}
-              background={stage}
-              selectableSlugs={selectableSlugs}
-              selectedSlug={selected}
-              onSelect={setSelected}
-              mode={mode}
-              {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
-            />
-          </Suspense>
-        )}
-      </div>
-
-      {/* One line under the figure, about the figure. The instruction that used
-          to be here is the header's subtitle now, which leaves this to say only
-          the thing that changes: what the colours mean, or nothing at all. */}
-      {mode === 'heatmap' && (
-        <p className="text-sm text-secondary">
-          {heat.loading
-            ? 'Working out what you have trained…'
-            : heat.data?.trained === true
-              ? 'Colour is volume relative to your hardest-worked muscle — what you trained most, not whether you trained enough.'
-              : 'Nothing logged in the last four weeks yet. Finish a workout and it shows up here.'}
-        </p>
-      )}
-
-      {/* The answer to the tap, directly under the thing that was tapped. It
-          used to render last, below both footnotes, so selecting a muscle put
-          the reply off the bottom of the screen. */}
-      {selected !== null && (
-        <LoadingScope key={selected}>
-          {detail.error !== null ? (
-            <p role="alert" className="text-sm text-destructive">
-              {detail.error}
-            </p>
-          ) : (
-            <MusclePanel
-              detail={detail.data}
-              loading={detail.loading}
-              onClear={() => {
-                setSelected(null);
-              }}
-            />
-          )}
-        </LoadingScope>
-      )}
-
-      {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
-        <Panel eyebrow={`Last ${String(HEATMAP_WEEKS)} weeks`} title="Worth adding">
-          <p className="mt-1 mb-3 text-sm text-muted">
-            The groups furthest behind their weekly target, and one thing that trains each.
-          </p>
-          <ul className="flex flex-col">
-            {todo.data.map((suggestion, index) => (
-              <li
-                key={suggestion.exerciseId}
-                className="rise flex items-baseline justify-between gap-3 border-b border-subtle/70 py-2.5 last:border-b-0"
-                style={{ animationDelay: `${String(index * 45)}ms` }}
-              >
-                <span className="min-w-0 text-sm text-primary">{suggestion.name}</span>
-                <span className="numeric shrink-0 text-xs text-muted">
-                  {suggestion.group} · {suggestion.setsBehind} sets behind
-                </span>
-              </li>
+      <div className="learn-explorer">
+        <div className="learn-body-column">
+          <div data-tour="body" className="learn-body-stage">
+            <div aria-hidden className="learn-body-backdrop" />
+            {/* Wait for the profile's model before showing the procedural fallback. */}
+            {sculpted.loading ? (
+              <ModelPlaceholder />
+            ) : (
+              <Suspense fallback={<ModelPlaceholder />}>
+                <AnatomyViewer
+                  className="learn-body-viewer"
+                  cameraDistance={4}
+                  parts={parts}
+                  // A sculpted skin is closed, so the bones and the core underneath
+                  // it have nothing to show through and would sit on top instead.
+                  closedSurface={sculpted.parts !== null}
+                  background={null}
+                  selectableSlugs={selectableSlugs}
+                  selectedSlug={selected}
+                  onSelect={setSelected}
+                  mode={mode}
+                  {...(heat.data === null ? {} : { intensity: heat.data.intensity })}
+                />
+              </Suspense>
+            )}
+          </div>
+          <p className="learn-body-hint">Drag to turn. Tap a muscle.</p>
+          <select
+            aria-label="Choose a muscle"
+            className="learn-muscle-select"
+            value={selected ?? ''}
+            onChange={(event) => setSelected(event.target.value || null)}
+          >
+            <option value="">Choose a muscle</option>
+            {taxonomy.data?.selectable.map((muscle) => (
+              <option key={muscle.slug} value={muscle.slug}>
+                {muscle.commonName}
+              </option>
             ))}
-          </ul>
-        </Panel>
-      )}
+          </select>
+        </div>
+
+        {/* Only this pane scrolls: the real, interactive body stays beside its answer. */}
+        <section
+          key={`${mode}:${selected ?? ''}`}
+          className="learn-results"
+          aria-label="Muscle exercises"
+          tabIndex={0}
+        >
+          {/* Selection changes only the answer pane, never the viewer or its camera. */}
+          {selected !== null && (
+            <LoadingScope key={selected}>
+              {detail.error !== null ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {detail.error}
+                </p>
+              ) : (
+                <MusclePanel
+                  detail={detail.data}
+                  loading={detail.loading}
+                  onClear={() => {
+                    setSelected(null);
+                  }}
+                />
+              )}
+            </LoadingScope>
+          )}
+
+          {selected === null && mode === 'explore' && (
+            <div className="learn-empty">
+              <h2 className="learn-section-title">Explore muscles</h2>
+              <p>Tap the body or choose a muscle to find exercises.</p>
+              <Link to="/exercises" className="learn-browse-link">
+                Browse all exercises
+              </Link>
+            </div>
+          )}
+
+          {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
+            <section aria-labelledby="learn-worth-adding" className="learn-suggestions">
+              <h2 id="learn-worth-adding" className="learn-section-title">
+                Worth adding
+              </h2>
+              <p className="mb-2 text-xs text-muted">Last {HEATMAP_WEEKS} weeks</p>
+              <p className="mb-3 text-sm text-secondary">
+                The groups furthest behind their weekly target, and one thing that trains each.
+              </p>
+              <ul className="flex flex-col">
+                {todo.data.map((suggestion) => (
+                  <li key={suggestion.exerciseId}>
+                    <ExerciseRow
+                      slug={suggestionSlugs.data?.get(suggestion.exerciseId) ?? null}
+                      name={suggestion.name}
+                      note={`${suggestion.group} · ${String(suggestion.setsBehind)} sets behind`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {mode === 'heatmap' && (
+            <p className="learn-heat-note">
+              {heat.error ??
+                todo.error ??
+                suggestionSlugs.error ??
+                (heat.loading
+                  ? 'Working out what you have trained…'
+                  : heat.data?.trained === true
+                    ? 'Colour is volume relative to your hardest-worked muscle — what you trained most, not whether you trained enough.'
+                    : 'Nothing logged in the last four weeks yet. Finish a workout and it shows up here.')}
+            </p>
+          )}
+        </section>
+      </div>
 
       {/* Which body is on screen, said out loud rather than left to be worked
           out. It was still claiming to be a placeholder after the real model
           had loaded, which is the kind of line nobody rereads. A footnote, at
           the foot: it is worth knowing once and never again. */}
-      <p className="pb-4 text-xs text-muted">
+      <p className="learn-model-note">
         {sculpted.parts === null
           ? 'The figure is generated from origins and insertions — the licensed anatomy model is not in this build. Everything else on this screen is real.'
           : 'A sculpted body, divided between the muscles that reach the skin.'}
@@ -316,7 +343,7 @@ export function LearnScreen() {
 
 /** The same waiting state whether the chunk or the model is still coming. */
 function ModelPlaceholder() {
-  return <BodySkeleton className="h-[52vh]" />;
+  return <BodySkeleton className="learn-body-viewer" />;
 }
 
 function MusclePanel({
@@ -342,23 +369,18 @@ function MusclePanel({
   const { muscle, sections, favourites } = detail;
 
   return (
-    // The answer to the tap is what the screen is for, so it is the hero.
-    <Panel
-      tone="hero"
-      eyebrow="Muscle"
-      title={muscle.commonName}
-      aside={
-        <button
-          type="button"
-          onClick={onClear}
-          className="-my-3 min-h-tap text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
-        >
+    <section aria-labelledby="learn-muscle-title" className="learn-muscle-panel">
+      <header className="learn-muscle-header">
+        <div className="min-w-0">
+          <h2 id="learn-muscle-title" className="learn-muscle-title" aria-live="polite">
+            {muscle.commonName}
+          </h2>
+          <p className="learn-latin-name">{muscle.latinName}</p>
+        </div>
+        <button type="button" onClick={onClear} className="learn-clear">
           Clear
         </button>
-      }
-    >
-      {/* The Latin name is the reason this is Learn and not just a filter. */}
-      <p className="mb-4 text-sm text-secondary italic">{muscle.latinName}</p>
+      </header>
 
       {sections.empty ? (
         <p className="text-sm text-muted">Nothing in the catalogue trains this yet.</p>
@@ -379,7 +401,7 @@ function MusclePanel({
           />
         </>
       )}
-    </Panel>
+    </section>
   );
 }
 
@@ -397,29 +419,54 @@ function ExerciseGroup({
 }) {
   if (exercises.length === 0) return null;
   return (
-    <div className="mb-4 last:mb-0">
-      <h3 className={`mb-2 ${EYEBROW}`}>{title}</h3>
+    <div className="learn-exercise-group">
+      <h3 className="learn-group-title">{title}</h3>
       {hint !== undefined && <p className="mb-2 text-xs text-muted">{hint}</p>}
-      {/* Tiles with a chevron, not bare names: as plain text on the card
-          they read as a list to look at, and nobody tapped them. */}
-      <ul className="flex flex-col gap-2">
+      <ul>
         {exercises.map((exercise) => (
           <li key={exercise.id}>
-            <Link
-              to={`/exercises/${exercise.slug}`}
-              className="flex min-h-tap items-center justify-between gap-3 rounded-card bg-base/70 px-3 py-2.5 text-base text-primary transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {/* The star outside the truncated name, so a long name loses
-                  its last letters rather than its star. */}
-              <span className="flex min-w-0 items-center">
-                <span className="min-w-0 truncate">{exercise.name}</span>
-                {favourites.has(exercise.slug) && <FavouriteMark />}
-              </span>
-              <ChevronRightIcon className="size-5 shrink-0 text-muted" />
-            </Link>
+            <ExerciseRow
+              slug={exercise.slug}
+              name={exercise.name}
+              favourite={favourites.has(exercise.slug)}
+            />
           </li>
         ))}
       </ul>
     </div>
+  );
+}
+
+/** Shared illustration and hit target for muscle answers and heatmap suggestions. */
+function ExerciseRow({
+  slug,
+  name,
+  favourite = false,
+  note,
+}: {
+  readonly slug: string | null;
+  readonly name: string;
+  readonly favourite?: boolean;
+  readonly note?: string;
+}) {
+  const content = (
+    <>
+      <ExerciseIcon slug={slug ?? ''} className="learn-exercise-icon" />
+      <span className="learn-exercise-copy">
+        <span className="learn-exercise-name">
+          {name}
+          {favourite && <FavouriteMark />}
+        </span>
+        {note !== undefined && <span className="learn-exercise-note numeric">{note}</span>}
+      </span>
+      {slug !== null && <ChevronRightIcon className="learn-exercise-chevron" />}
+    </>
+  );
+  return slug === null ? (
+    <div className="learn-exercise-row">{content}</div>
+  ) : (
+    <Link to={`/exercises/${slug}`} className="learn-exercise-row">
+      {content}
+    </Link>
   );
 }
