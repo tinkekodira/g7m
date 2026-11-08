@@ -43,7 +43,9 @@ What it does:
   workout. Restore the chooser in Settings → In the gym → Training →
   **Show workout start options**. This preference applies per account on this device.
 - **Learn.** An interactive 3D body. Tap a muscle to see every exercise that
-  trains it. The exercise library has search, filters by muscle, equipment and
+  trains it. The body stays beside an independently scrollable, illustrated
+  exercise list; turn the model, tap a muscle or use the muscle picker.
+  The exercise library has search, filters by muscle, equipment and
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.
   Star the exercises you use most and they come first in every list
   ([ADR-0108](./DECISIONS.md#adr-0108--kettlebell-art-twelve-more-loops-and-favourite-exercises)).

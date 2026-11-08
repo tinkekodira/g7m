@@ -9633,3 +9633,31 @@ Here the input is the exercise's recruitment weight: stronger involvement is
 redder, independent of personal workout history. The Favourite toggle has a
 visible label directly below the title. The cue card's green accent is its
 left border, joined to the tinted background around both left corners.
+
+## ADR-0173 — Learn keeps its live body beside illustrated exercise lists
+
+**Status:** accepted · **Date:** 2026-11-08 · **Amends:** ADR-0128, ADR-0164
+
+Adapt the approved side-by-side Learn mockup to the existing Soft graphite and
+green tokens in both themes. Use bold italic headings, an angled green stage
+and open exercise rows with the catalogue's existing cached illustrations.
+Keep Compound, Isolation, Also worked, favourite ordering and Latin names.
+Worth adding uses the same illustrated rows, linking to exercise details via
+slugs read from the local catalogue; its training calculations stay unchanged.
+
+One interactive AnatomyViewer stays mounted beside an independently scrollable
+answer pane. Tapping still selects muscles, dragging still rotates, and zoom
+still works. The initial camera leaves room for the whole body in the narrow
+phone column. A native muscle picker provides a keyboard alternative to tapping.
+Changing view clears the muscle selection so the heatmap's suggestions lead.
+Switching muscles or views resets only the answer pane's scroll position.
+
+AnatomyViewer accepts an optional null background for a transparent canvas over
+the CSS stage. Existing consumers retain their opaque backgrounds and controls.
+The decorative stage ignores pointer events. Keep lazy loading, offline model
+and thumbnail caching, heat colours, navigation and the tour's body anchor.
+
+Browser checks cover both themes at 320, 393 and 1280px, direct model tapping,
+rotation without remounting, keyboard and touch list scrolling, long names,
+recommendation links and offline reload/navigation. No database migration,
+`npx supabase db push` or PowerSync rule deployment is required.

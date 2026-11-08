@@ -76,15 +76,16 @@ export interface AnatomyViewerProps {
    * events at all, so a touch passes through to the page. That is what lets a
    * figure sit inside a screen that scrolls — orbit controls claim every touch
    * that starts on the canvas, and a model in the middle of a long page would
-   * otherwise trap the thumb that is trying to scroll past it. It also renders
-   * on demand rather than sixty times a second, since nothing moves.
+   * otherwise trap the thumb that is trying to scroll past it. Both modes
+   * render on demand: controls and recolours request frames when they change.
    */
   readonly interactive?: boolean;
   /**
    * The colour behind the body. A literal, because the canvas is WebGL and
    * cannot read a CSS variable; the app passes its theme's stage colour.
+   * Null leaves the canvas transparent above a decorative CSS stage.
    */
-  readonly background?: string;
+  readonly background?: string | null;
   readonly className?: string;
 }
 
@@ -168,7 +169,9 @@ export function AnatomyViewer({
           fov: 38,
         }}
         shadows={false}
-        frameloop={interactive ? 'always' : 'demand'}
+        // OrbitControls invalidates throughout a drag and its damping. An idle
+        // model must not monopolise a phone or CI's software renderer.
+        frameloop="demand"
         {...(interactive ? {} : { style: { pointerEvents: 'none' } })}
         onCreated={({ gl }) => {
           // three skips any mesh whose program failed and says so only in the
@@ -192,7 +195,7 @@ export function AnatomyViewer({
           onSelect(null);
         }}
       >
-        <color attach="background" args={[background]} />
+        {background !== null && <color attach="background" args={[background]} />}
 
         {/*
           Three lights and a bounce, which is the whole difference between
@@ -340,8 +343,7 @@ function GeneratedMesh({
   readonly onClick?: ((event: { stopPropagation: () => void }) => void) | undefined;
 }) {
   const ref = useRef<Mesh>(null);
-  // A picture renders on demand, so a recolour has to ask for the frame that
-  // shows it. Free in the interactive viewer, which draws every frame anyway.
+  // Recolouring asks for a frame, including when the camera is idle.
   const invalidate = useThree((state) => state.invalidate);
 
   const geometry = useMemo(() => {
