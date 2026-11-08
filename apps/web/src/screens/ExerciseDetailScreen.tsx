@@ -1,12 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
+import { heatColour } from '@g7m/anatomy';
 import {
   BOUT_FIELDS,
   CURRENT_STRENGTH_WEEKS,
-  regionOf,
   strengthEstimate,
   toDisplayWeight,
-  type BodyRegion,
   type CardioKind,
   type OneRepMaxReading,
   type Sex,
@@ -33,16 +32,14 @@ export function ExerciseDetailScreen() {
   const detail = useCatalogue(`exercise:${slug}`, async (repositories) => {
     const exercise = await repositories.exercises.bySlug(slug);
     if (exercise === null) return null;
-    const [involvement, equipment, muscles, groups, sets, profile] = await Promise.all([
+    const [involvement, equipment, muscles, sets, profile] = await Promise.all([
       repositories.exercises.musclesFor(exercise.id),
       repositories.exercises.equipmentFor(exercise.id),
       repositories.muscles.list(),
-      repositories.muscles.groups(),
       repositories.history.completedSets({ exerciseId: exercise.id }),
       repositories.profile.current(),
     ]);
     const muscleById = new Map(muscles.map((muscle) => [muscle.id, muscle]));
-    const groupById = new Map(groups.map((group) => [group.id, group.slug]));
     const unitSystem: UnitSystem = profile?.unitSystem ?? 'metric';
     return {
       exercise,
@@ -56,7 +53,6 @@ export function ExerciseDetailScreen() {
         return {
           name: muscle?.commonName ?? 'Unknown muscle',
           slug: muscle?.slug ?? '',
-          region: regionOf(groupById.get(muscle?.muscleGroupId ?? '') ?? ''),
           role: entry.role,
           share: entry.recruitmentWeight,
         };
@@ -70,16 +66,6 @@ export function ExerciseDetailScreen() {
         <Link to="/exercises" className="exercise-back-link">
           ← All exercises
         </Link>
-        {data != null && (
-          <FavouriteButton
-            compact
-            favourite={data.favourite}
-            disabled={busy}
-            onToggle={() => {
-              void write((r) => r.profile.setFavourite(data.exercise.slug, !data.favourite));
-            }}
-          />
-        )}
       </header>
       {detail.error !== null ? (
         <p role="alert" className="text-sm text-destructive">
@@ -103,6 +89,15 @@ export function ExerciseDetailScreen() {
           unitSystem={data.unitSystem}
           now={now}
           sex={data.sex}
+          favourite={
+            <FavouriteButton
+              favourite={data.favourite}
+              disabled={busy}
+              onToggle={() => {
+                void write((r) => r.profile.setFavourite(data.exercise.slug, !data.favourite));
+              }}
+            />
+          }
         />
       )}
     </main>
@@ -112,7 +107,6 @@ export function ExerciseDetailScreen() {
 interface Involvement {
   readonly name: string;
   readonly slug: string;
-  readonly region: BodyRegion | null;
   readonly role: MuscleRole;
   readonly share: number;
 }
@@ -131,6 +125,7 @@ function ExerciseDetail({
   unitSystem,
   now,
   sex,
+  favourite,
 }: {
   readonly exercise: Exercise;
   readonly muscles: readonly Involvement[];
@@ -139,11 +134,13 @@ function ExerciseDetail({
   readonly unitSystem: UnitSystem;
   readonly now: Date;
   readonly sex: Sex | null;
+  readonly favourite: ReactNode;
 }) {
   return (
     <>
       <div className="exercise-heading">
         <h1 className="exercise-title">{exercise.name}</h1>
+        <div className="mt-3">{favourite}</div>
         {exercise.aliases.length > 0 && (
           <p className="mt-2 text-sm text-secondary">Also called {exercise.aliases.join(', ')}</p>
         )}
@@ -224,8 +221,7 @@ function ExerciseDetail({
                 <li
                   key={`${muscle.slug}-${muscle.role}`}
                   style={{
-                    color:
-                      muscle.region === null ? 'var(--accent)' : `var(--region-${muscle.region})`,
+                    color: heatColour(muscle.share, true),
                   }}
                 >
                   <div className="flex items-baseline justify-between gap-3">
@@ -235,10 +231,7 @@ function ExerciseDetail({
                         className="size-2.5 shrink-0 rounded-full"
                         style={{
                           background: 'currentColor',
-                          color:
-                            muscle.region === null
-                              ? 'var(--accent)'
-                              : `var(--region-${muscle.region})`,
+                          color: heatColour(muscle.share, true),
                         }}
                       />
                       {muscle.name}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import type { BodyRegion, Sex } from '@g7m/core';
+import type { Sex } from '@g7m/core';
 import { ErrorBoundary } from './ErrorBoundary.js';
 
 const Preview = lazy(() => import('./ExerciseMusclePreview.js'));
@@ -8,7 +8,7 @@ export interface ExerciseMuscleBodyProps {
   readonly muscles: readonly {
     readonly slug: string;
     readonly name: string;
-    readonly region: BodyRegion | null;
+    readonly share: number;
   }[];
 }
 const unavailable = () => null;

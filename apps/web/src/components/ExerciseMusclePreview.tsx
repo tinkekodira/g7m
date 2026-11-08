@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { AnatomyViewer, placeholderBodyParts } from '@g7m/anatomy';
 import { bodyFor, useSculptedBody } from '../lib/anatomy-model.js';
-import { useStageColor, useThemeStore } from '../lib/use-theme.js';
+import { useStageColor } from '../lib/use-theme.js';
 import type { ExerciseMuscleBodyProps } from './ExerciseMuscleBody.js';
 
 const ignore = () => undefined;
@@ -11,25 +11,10 @@ export default function ExerciseMusclePreview({ sex, muscles }: ExerciseMuscleBo
   const sculpted = useSculptedBody(bodyFor(sex));
   const generated = useMemo(() => placeholderBodyParts(), []);
   const stage = useStageColor();
-  const theme = useThemeStore((state) => state.theme);
-  const palette = useMemo(() => {
-    // Canvas materials need literal colors. Reading the active CSS tokens
-    // keeps the complete theme objects out of the startup JavaScript.
-    const themedRoot =
-      document.querySelector(`:root[data-theme='${theme}']`) ?? document.documentElement;
-    const style = getComputedStyle(themedRoot);
-    return {
-      colors: new Map(
-        muscles.map((muscle) => [
-          muscle.slug,
-          style
-            .getPropertyValue(muscle.region === null ? '--accent' : `--region-${muscle.region}`)
-            .trim(),
-        ]),
-      ),
-      resting: style.getPropertyValue('--muscle-idle').trim(),
-    };
-  }, [muscles, theme]);
+  const intensity = useMemo(
+    () => new Map(muscles.map((muscle) => [muscle.slug, muscle.share])),
+    [muscles],
+  );
   const slugs = useMemo(() => muscles.map((muscle) => muscle.slug), [muscles]);
   return (
     <div
@@ -46,8 +31,8 @@ export default function ExerciseMusclePreview({ sex, muscles }: ExerciseMuscleBo
             selectableSlugs={slugs}
             selectedSlug={null}
             onSelect={ignore}
-            muscleColors={palette.colors}
-            restingColor={palette.resting}
+            mode="heatmap"
+            intensity={intensity}
             interactive={false}
             view={view}
             cameraDistance={3.1}

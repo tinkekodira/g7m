@@ -122,19 +122,10 @@
   text-wrap: balance;
 }
 .exercise-cues {
-  position: relative;
-  padding: 18px 18px 6px 22px;
+  padding: 18px 18px 6px 16px;
+  border-left: 6px solid var(--accent);
   border-radius: var(--radius-card);
   background: color-mix(in oklab, var(--accent) 12%, var(--bg-surface));
-}
-.exercise-cues::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 6px;
-  background: var(--accent);
-  border-radius: var(--radius-control);
-  transform: skewX(-4deg);
 }
 .exercise-cues .exercise-section-title {
   margin-bottom: 2px;
