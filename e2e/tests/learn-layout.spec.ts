@@ -5,6 +5,9 @@ import { expectToken } from './support/theme.js';
 
 test.use({ deviceScaleFactor: 1, reducedMotion: 'reduce' });
 
+// Network overrides must bypass the service worker; keep it enabled for the offline test.
+const layoutTest = test.extend({ serviceWorkers: 'block' });
+
 async function seedTraining(userId: string) {
   await sql(
     `with sessions as (
@@ -46,87 +49,98 @@ async function expectArtwork(page: Page) {
 }
 
 for (const theme of ['dark', 'light'] as const) {
-  test(`Learn keeps the interactive body beside illustrated lists in ${theme}`, async ({
-    page,
-  }, info) => {
-    test.setTimeout(120_000);
-    await page.addInitScript((value) => localStorage.setItem('g7m.theme', value), theme);
-    const user = await createUser(`learn-${theme}`, { onboarded: true });
-    await seedTraining(user.id);
-    await signIn(page, user);
-    await waitForCatalogue(page);
-    await openTab(page, 'Learn');
-    const picker = page.getByRole('combobox', { name: 'Choose a muscle' });
-    const results = page.getByRole('region', { name: 'Muscle exercises', exact: true });
-    const stage = page.locator('[data-tour="body"]');
-    const canvas = stage.locator('canvas');
-    await expect(canvas).toBeVisible();
+  layoutTest(
+    `Learn keeps the interactive body beside illustrated lists in ${theme}`,
+    async ({ page }, info) => {
+      test.setTimeout(120_000);
+      // Match CI's public checkout even when a licensed model is installed locally.
+      // The separate input/offline scenario also exercises whichever model is installed.
+      await page.route('**/anatomy/manifest.json', (route) => route.fulfill({ status: 404 }));
+      await page.addInitScript((value) => localStorage.setItem('g7m.theme', value), theme);
+      const user = await createUser(`learn-${theme}`, { onboarded: true });
+      await seedTraining(user.id);
+      await signIn(page, user);
+      await waitForCatalogue(page);
+      await openTab(page, 'Learn');
+      const picker = page.getByRole('combobox', { name: 'Choose a muscle' });
+      const results = page.getByRole('region', { name: 'Muscle exercises', exact: true });
+      const stage = page.locator('[data-tour="body"]');
+      const canvas = stage.locator('canvas');
+      await expect(canvas).toBeVisible();
+      await expect(
+        page.getByText(/The figure is generated from origins and insertions/),
+      ).toBeVisible();
 
-    for (const width of [320, 393, 1280]) {
-      await page.setViewportSize({ width, height: 852 });
+      for (const width of [320, 393, 1280]) {
+        await page.setViewportSize({ width, height: 852 });
+        await picker.selectOption({ label: 'Abs' });
+        await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toBeVisible();
+        await expect(results.getByRole('heading', { name: 'Compound', exact: true })).toBeVisible();
+        await expectArtwork(page);
+        await expectToken(stage, 'background-color', 'bg-stage');
+        await expectToken(
+          results.getByRole('heading', { name: 'Abs', exact: true }),
+          'color',
+          'accent',
+        );
+        const modelBox = (await canvas.boundingBox())!;
+        const listBox = (await results.boundingBox())!;
+        expect(modelBox.x + modelBox.width).toBeLessThanOrEqual(listBox.x);
+        expect(modelBox.y).toBeLessThan(listBox.y + listBox.height);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+          width,
+        );
+        expect(
+          (await page.getByRole('button', { name: 'Clear', exact: true }).boundingBox())?.height,
+        ).toBeGreaterThanOrEqual(48);
+        await expect(
+          page.getByRole('status').filter({ hasText: /From your past training/i }),
+        ).toBeHidden();
+        await page.screenshot({ path: info.outputPath(`learn-${theme}-${width}.png`) });
+
+        // Scrolling long answers never moves the model or hides the final exercise.
+        const bodyBefore = await canvas.boundingBox();
+        await results.focus();
+        await expect(results).toBeFocused();
+        await results.press('End');
+        await expect
+          .poll(() => results.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
+          .toBeLessThanOrEqual(1);
+        await expect(results.getByRole('link').last()).toBeInViewport();
+        expect(await canvas.boundingBox()).toEqual(bodyBefore);
+        await results.press('Home');
+        await expect.poll(() => results.evaluate((el) => el.scrollTop)).toBe(0);
+        await expect(results.getByRole('button', { name: 'Clear', exact: true })).toBeInViewport();
+
+        // Long muscle and exercise names wrap instead of colliding with Clear or the art.
+        await picker.selectOption({ label: 'Mid and lower chest' });
+        await expect(
+          results.getByRole('heading', { name: 'Mid and lower chest', exact: true }),
+        ).toBeVisible();
+        await expectArtwork(page);
+        await results.getByRole('button', { name: 'Clear', exact: true }).click();
+        await expect(picker).toHaveValue('');
+
+        await page.getByRole('radio', { name: 'What I have trained' }).click();
+        const suggestions = page.getByRole('region', { name: 'Worth adding', exact: true });
+        await expect(suggestions).toBeVisible();
+        await expect(suggestions.getByRole('link').first()).toBeVisible();
+        await expectArtwork(page);
+        await expect(suggestions).toContainText('sets behind');
+        expect(await canvas.boundingBox()).toEqual(bodyBefore);
+        await page.screenshot({ path: info.outputPath(`learn-heatmap-${theme}-${width}.png`) });
+        await page.getByRole('radio', { name: 'Explore', exact: true }).click();
+      }
       await picker.selectOption({ label: 'Abs' });
       await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toBeVisible();
-      await expect(results.getByRole('heading', { name: 'Compound', exact: true })).toBeVisible();
-      await expectArtwork(page);
-      await expectToken(stage, 'background-color', 'bg-stage');
-      await expectToken(
-        results.getByRole('heading', { name: 'Abs', exact: true }),
-        'color',
-        'accent',
-      );
-      const modelBox = (await canvas.boundingBox())!;
-      const listBox = (await results.boundingBox())!;
-      expect(modelBox.x + modelBox.width).toBeLessThanOrEqual(listBox.x);
-      expect(modelBox.y).toBeLessThan(listBox.y + listBox.height);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-        width,
-      );
-      expect(
-        (await page.getByRole('button', { name: 'Clear', exact: true }).boundingBox())?.height,
-      ).toBeGreaterThanOrEqual(48);
-      await expect(
-        page.getByRole('status').filter({ hasText: /From your past training/i }),
-      ).toBeHidden();
-      await page.screenshot({ path: info.outputPath(`learn-${theme}-${width}.png`) });
-
-      // Scrolling long answers never moves the model or hides the final exercise.
-      const bodyBefore = await canvas.boundingBox();
-      await results.focus();
-      await results.press('End');
-      await expect
-        .poll(() => results.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
-        .toBeLessThanOrEqual(1);
-      await expect(results.getByRole('link').last()).toBeInViewport();
-      expect(await canvas.boundingBox()).toEqual(bodyBefore);
-      await results.press('Home');
-      await expect.poll(() => results.evaluate((el) => el.scrollTop)).toBe(0);
-
-      // Long muscle and exercise names wrap instead of colliding with Clear or the art.
-      await picker.selectOption({ label: 'Mid and lower chest' });
-      await expect(
-        results.getByRole('heading', { name: 'Mid and lower chest', exact: true }),
-      ).toBeVisible();
-      await expectArtwork(page);
-      await results.getByRole('button', { name: 'Clear', exact: true }).click();
-      await expect(picker).toHaveValue('');
-
       await page.getByRole('radio', { name: 'What I have trained' }).click();
-      const suggestions = page.getByRole('region', { name: 'Worth adding', exact: true });
-      await expect(suggestions).toBeVisible();
-      await expect(suggestions.getByRole('link').first()).toBeVisible();
-      await expectArtwork(page);
-      await expect(suggestions).toContainText('sets behind');
-      expect(await canvas.boundingBox()).toEqual(bodyBefore);
-      await page.screenshot({ path: info.outputPath(`learn-heatmap-${theme}-${width}.png`) });
-      await page.getByRole('radio', { name: 'Explore', exact: true }).click();
-    }
-    await picker.selectOption({ label: 'Abs' });
-    await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toBeVisible();
-    await page.getByRole('radio', { name: 'What I have trained' }).click();
-    await expect(picker).toHaveValue('');
-    await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toHaveCount(0);
-    await expect(results.getByRole('heading', { name: 'Worth adding', exact: true })).toBeVisible();
-  });
+      await expect(picker).toHaveValue('');
+      await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toHaveCount(0);
+      await expect(
+        results.getByRole('heading', { name: 'Worth adding', exact: true }),
+      ).toBeVisible();
+    },
+  );
 }
 
 test('Learn supports direct model taps, rotation, touch list scrolling, and offline exercise links', async ({

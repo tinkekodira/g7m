@@ -260,6 +260,24 @@ export function LearnScreen() {
           className="learn-results"
           aria-label="Muscle exercises"
           tabIndex={0}
+          onKeyDown={(event) => {
+            // Mobile Chromium does not reliably route native Home/End scrolling
+            // to this nested pane. Handle its own keys without taking over child controls.
+            if (
+              event.target !== event.currentTarget ||
+              event.altKey ||
+              event.ctrlKey ||
+              event.metaKey ||
+              event.shiftKey ||
+              (event.key !== 'Home' && event.key !== 'End')
+            )
+              return;
+            event.preventDefault();
+            event.currentTarget.scrollTo({
+              top: event.key === 'Home' ? 0 : event.currentTarget.scrollHeight,
+              behavior: 'instant',
+            });
+          }}
         >
           {/* Selection changes only the answer pane, never the viewer or its camera. */}
           {selected !== null && (

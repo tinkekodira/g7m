@@ -1,3 +1,20 @@
+# Learn routes keyboard scrolling to its focused exercise pane
+
+PR #220's browser run 354 finished with 186 scenarios passing and one failing:
+the light-theme Learn layout did not reach the top with Home, and its retry
+did not reach the bottom with End. The trace shows the exercise pane had focus;
+mobile Chromium's native key scrolling did not move that nested scroll area.
+
+Handle unmodified Home and End explicitly when the pane itself owns focus,
+prevent the native default, and jump only its scroll position. Leave child
+controls, modifier combinations, ordinary scrolling and the live model alone.
+Keep the real keyboard assertions and check that Clear returns into view.
+Run layout tests against the generated body even on workstations with the
+optional licensed model, matching the public CI checkout; the input/offline
+scenario continues to exercise the installed model. Validate the full browser
+suite and the replacement GitHub check. No database migration, db push or
+PowerSync sync-rule deployment is required.
+
 # CI downloads retry temporary GitHub release errors
 
 PR #219's secret scan and Android jobs failed on HTTP 504 downloads before
