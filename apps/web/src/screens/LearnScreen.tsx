@@ -223,7 +223,7 @@ export function LearnScreen() {
               <Suspense fallback={<ModelPlaceholder />}>
                 <AnatomyViewer
                   className="learn-body-viewer"
-                  cameraDistance={4}
+                  cameraDistance={3.1}
                   parts={parts}
                   // A sculpted skin is closed, so the bones and the core underneath
                   // it have nothing to show through and would sit on top instead.
@@ -254,32 +254,8 @@ export function LearnScreen() {
           </select>
         </div>
 
-        {/* Only this pane scrolls: the real, interactive body stays beside its answer. */}
-        <section
-          key={`${mode}:${selected ?? ''}`}
-          className="learn-results"
-          aria-label="Muscle exercises"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            // Mobile Chromium does not reliably route native Home/End scrolling
-            // to this nested pane. Handle its own keys without taking over child controls.
-            if (
-              event.target !== event.currentTarget ||
-              event.altKey ||
-              event.ctrlKey ||
-              event.metaKey ||
-              event.shiftKey ||
-              (event.key !== 'Home' && event.key !== 'End')
-            )
-              return;
-            event.preventDefault();
-            event.currentTarget.scrollTo({
-              top: event.key === 'Home' ? 0 : event.currentTarget.scrollHeight,
-              behavior: 'instant',
-            });
-          }}
-        >
-          {/* Selection changes only the answer pane, never the viewer or its camera. */}
+        <section className="learn-results" aria-label="Muscle exercises">
+          {/* Answers follow the full-width body in the document's normal scroll. */}
           {selected !== null && (
             <LoadingScope key={selected}>
               {detail.error !== null ? (
