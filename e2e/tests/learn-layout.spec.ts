@@ -50,7 +50,7 @@ async function expectArtwork(page: Page) {
 
 for (const theme of ['dark', 'light'] as const) {
   layoutTest(
-    `Learn keeps the interactive body beside illustrated lists in ${theme}`,
+    `Learn shows a full-width body above illustrated exercises in ${theme}`,
     async ({ page }, info) => {
       test.setTimeout(120_000);
       // Match CI's public checkout even when a licensed model is installed locally.
@@ -73,12 +73,14 @@ for (const theme of ['dark', 'light'] as const) {
       const stage = page.locator('[data-tour="body"]');
       const canvas = stage.locator('canvas');
       await expect(canvas).toBeVisible();
+      const viewer = await canvas.elementHandle();
       await expect(
         page.getByText(/The figure is generated from origins and insertions/),
       ).toBeVisible();
 
       for (const width of [320, 393, 1280]) {
         await page.setViewportSize({ width, height: 852 });
+        await page.evaluate(() => window.scrollTo(0, 0));
         await picker.selectOption({ label: 'Abs' });
         await expect(results.getByRole('heading', { name: 'Abs', exact: true })).toBeVisible();
         await expect(results.getByRole('heading', { name: 'Compound', exact: true })).toBeVisible();
@@ -91,8 +93,12 @@ for (const theme of ['dark', 'light'] as const) {
         );
         const modelBox = (await canvas.boundingBox())!;
         const listBox = (await results.boundingBox())!;
-        expect(modelBox.x + modelBox.width).toBeLessThanOrEqual(listBox.x);
-        expect(modelBox.y).toBeLessThan(listBox.y + listBox.height);
+        const columnBox = (await page.locator('.learn-body-column').boundingBox())!;
+        expect(modelBox.width).toBeCloseTo(columnBox.width, 0);
+        expect(modelBox.y + modelBox.height).toBeLessThan(listBox.y);
+        expect(Math.abs(modelBox.x - listBox.x)).toBeLessThanOrEqual(4);
+        expect(Math.abs(modelBox.width - listBox.width)).toBeLessThanOrEqual(8);
+        if (width < 768) expect(modelBox.width).toBeGreaterThanOrEqual(width - 32);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
           width,
         );
@@ -102,21 +108,17 @@ for (const theme of ['dark', 'light'] as const) {
         await expect(
           page.getByRole('status').filter({ hasText: /From your past training/i }),
         ).toBeHidden();
-        await page.screenshot({ path: info.outputPath(`learn-${theme}-${width}.png`) });
+        await page.screenshot({ path: info.outputPath(`learn-model-${theme}-${width}.png`) });
 
-        // Scrolling long answers never moves the model or hides the final exercise.
-        const bodyBefore = await canvas.boundingBox();
-        await results.focus();
-        await expect(results).toBeFocused();
-        await results.press('End');
-        await expect
-          .poll(() => results.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
-          .toBeLessThanOrEqual(1);
+        // Answers use document scrolling, with no narrow column or nested scroll trap.
+        await expect(results).toHaveCSS('overflow-y', 'visible');
+        await results.getByRole('link').last().scrollIntoViewIfNeeded();
         await expect(results.getByRole('link').last()).toBeInViewport();
-        expect(await canvas.boundingBox()).toEqual(bodyBefore);
-        await results.press('Home');
-        await expect.poll(() => results.evaluate((el) => el.scrollTop)).toBe(0);
-        await expect(results.getByRole('button', { name: 'Clear', exact: true })).toBeInViewport();
+        expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+        expect(await results.evaluate((el) => el.scrollTop)).toBe(0);
+        expect(await viewer?.evaluate((node) => node.isConnected)).toBe(true);
+        await results.getByRole('heading', { name: 'Abs', exact: true }).scrollIntoViewIfNeeded();
+        await page.screenshot({ path: info.outputPath(`learn-exercises-${theme}-${width}.png`) });
 
         // Long muscle and exercise names wrap instead of colliding with Clear or the art.
         await picker.selectOption({ label: 'Mid and lower chest' });
@@ -133,7 +135,13 @@ for (const theme of ['dark', 'light'] as const) {
         await expect(suggestions.getByRole('link').first()).toBeVisible();
         await expectArtwork(page);
         await expect(suggestions).toContainText('sets behind');
-        expect(await canvas.boundingBox()).toEqual(bodyBefore);
+        const suggestionBox = (await suggestions.boundingBox())!;
+        const heatBodyBox = (await canvas.boundingBox())!;
+        expect(heatBodyBox.y + heatBodyBox.height).toBeLessThan(suggestionBox.y);
+        expect(await viewer?.evaluate((node) => node.isConnected)).toBe(true);
+        await suggestions
+          .getByRole('heading', { name: 'Worth adding', exact: true })
+          .scrollIntoViewIfNeeded();
         await page.screenshot({ path: info.outputPath(`learn-heatmap-${theme}-${width}.png`) });
         await page.getByRole('radio', { name: 'Explore', exact: true }).click();
       }
@@ -145,11 +153,27 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(
         results.getByRole('heading', { name: 'Worth adding', exact: true }),
       ).toBeVisible();
+      // iPhone safe areas must not put the last exercise under the tab bar.
+      await page.setViewportSize({ width: 393, height: 852 });
+      await page.evaluate(() => {
+        document.documentElement.style.setProperty('--spacing-safe-top', '59px');
+        document.documentElement.style.setProperty('--spacing-safe-bottom', '34px');
+      });
+      await page.getByRole('radio', { name: 'Explore', exact: true }).click();
+      await picker.selectOption({ label: 'Abs' });
+      const last = results.getByRole('link').last();
+      await last.scrollIntoViewIfNeeded();
+      await expect(last).toBeInViewport();
+      const lastBox = (await last.boundingBox())!;
+      const navBox = (await page
+        .getByRole('navigation', { name: 'Main', exact: true })
+        .boundingBox())!;
+      expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(navBox.y);
     },
   );
 }
 
-test('Learn supports direct model taps, rotation, touch list scrolling, and offline exercise links', async ({
+test('Learn supports direct model taps, rotation, page scrolling, and offline exercise links', async ({
   page,
   context,
 }) => {
@@ -217,30 +241,35 @@ test('Learn supports direct model taps, rotation, touch list scrolling, and offl
   await picker.selectOption({ label: 'Abs' });
   await expectArtwork(page);
 
-  const bodyBefore = await canvas.boundingBox();
-  const list = (await results.boundingBox())!;
+  await results.getByRole('link').first().scrollIntoViewIfNeeded();
+  const beforeScroll = await page.evaluate(() => window.scrollY);
   const cdp = await context.newCDPSession(page);
-  const x = list.x + list.width / 2;
-  const y = list.y + list.height - 12;
+  const x = 393 / 2;
+  const y = 852 - 110;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
   for (let step = 1; step <= 12; step++) {
     await cdp.send('Input.dispatchTouchEvent', {
       type: 'touchMove',
-      touchPoints: [{ x, y: y - (step * (list.height - 24)) / 12 }],
+      touchPoints: [{ x, y: y - (step * 320) / 12 }],
     });
     await page.waitForTimeout(16);
   }
-  await results.evaluate((el) => {
-    el.setAttribute('data-touch-scrolling', 'true');
-    el.addEventListener('scrollend', () => el.removeAttribute('data-touch-scrolling'), {
-      once: true,
-    });
+  await page.evaluate(() => {
+    document.documentElement.setAttribute('data-touch-scrolling', 'true');
+    document.addEventListener(
+      'scrollend',
+      () => document.documentElement.removeAttribute('data-touch-scrolling'),
+      {
+        once: true,
+      },
+    );
   });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
-  await expect.poll(() => results.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
-  await expect(results).not.toHaveAttribute('data-touch-scrolling', 'true');
-  expect(await canvas.boundingBox()).toEqual(bodyBefore);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(beforeScroll);
+  await expect(page.locator('html')).not.toHaveAttribute('data-touch-scrolling', 'true');
+  expect(await results.evaluate((el) => el.scrollTop)).toBe(0);
+  expect(await element?.evaluate((node) => node.isConnected)).toBe(true);
 
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
