@@ -9626,3 +9626,10 @@ Demonstrations retain lazy loading, theme-aware formats, reduced-motion posters
 and silent failure. A pause/play control lets the user stop repeated movement.
 No global theme, database migration, catalogue update or PowerSync rule change.
 No `npx supabase db push` or PowerSync deployment is required.
+
+**Refinement (2026-11-08):** Exercise muscle previews and their recruitment
+bars now use the same `heatColour` ramp as Learn's "What I have trained" view.
+Here the input is the exercise's recruitment weight: stronger involvement is
+redder, independent of personal workout history. The Favourite toggle has a
+visible label directly below the title. The cue card's green accent is its
+left border, joined to the tinted background around both left corners.

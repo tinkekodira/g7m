@@ -9,7 +9,7 @@ calculate estimates from the account's actual history.
 
 The design retains g7m's graphite and green tokens and Inter typography, with a
 bold italic exercise title, complete exercise illustration over an angled sage
-stage, compact training facts, green coaching cues and region-colored muscles.
+stage, compact training facts, green coaching cues and recruitment-colored muscles.
 Instructions, common mistakes and equipment use open sections instead of a
 repeating stack of identical cards. All cues and instructions remain visible.
 
@@ -23,3 +23,7 @@ cannot intercept scrolling. Timed holds and cardio retain their own labels.
 Original exercise artwork is preserved. High-resolution WebP copies load per
 exercise, with the already-cached thumbnails as offline fallbacks. No schema,
 catalogue or sync-rule changes are part of this redesign.
+
+The 8 November refinement puts a labelled Favourite button below the title,
+joins the cue card's green border to its background, and uses Learn's heat
+palette for the body and muscle bars: stronger recruitment is redder.
