@@ -9702,3 +9702,18 @@ change or dashboard deployment is required; existing catalogue streams sync
 all four affected tables. Validate catalogue integrity, load/accessory behavior,
 identity preservation on replay, recommendations, all thumbnails offline,
 all new detail pages, logging/upload and phone/desktop layouts in both themes.
+
+## ADR-0175 — Give the 190-scenario browser suite eighteen minutes
+
+**Status:** accepted · **Date:** 2026-11-09 · **Amends:** ADR-0168
+
+PR #222's browser run 360 passed 180 scenarios, failed an outdated search-count
+assertion on both attempts, and left nine scenarios unfinished at the
+fifteen-minute suite deadline. Update the search expectation for the new
+close-grip incline press. The complete suite has also grown from 172 to 190
+scenarios since ADR-0168; allow eighteen minutes for CI while retaining the
+twenty-minute workflow ceiling, which includes setup and diagnostic upload.
+Keep two workers, every scenario, per-test timeouts, retries and report capture.
+Local runs keep no global deadline. Validate the full suite locally and confirm
+the replacement GitHub browser check. No database or PowerSync deployment is
+needed for these test-only changes.
