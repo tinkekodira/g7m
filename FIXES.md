@@ -1,3 +1,26 @@
+# Cable-to-Viking expansion includes the close-grip incline press in search
+
+PR #222's browser run 360 failed the Browse tint scenario because its search
+still expected three matches for `Barbell Bench Press`. The close-grip incline
+press correctly supplies a fourth result through its barbell-press alias.
+Require all four results and explicitly check the incline, decline and close-grip
+incline entries while retaining the supporting-muscle tint, search and offline
+assertions. The failing assertion also repeated on retry before the full suite
+reached its fifteen-minute deadline with nine scenarios unfinished. The suite
+now has 190 scenarios; allow eighteen minutes within the existing twenty-minute
+job ceiling, retaining two workers, all scenarios, per-test limits and retries.
+See ADR-0175.
+
+Validate the full browser suite and the replacement GitHub check. No additional
+database migration, `npx supabase db push` or PowerSync rule deployment is needed;
+`20261109120000_cable_to_viking_exercises.sql` was already applied for the feature.
+
+Full local validation also exposed the completed-workout test accepting an
+intermediate upload state: three rows including the corrected bench set could
+arrive before the new Cable Fly set. Wait for all three expected weight/rep
+pairs before checking timestamps and session ownership. Keep deletion/undo,
+offline reload, cutoff and live-workout isolation assertions unchanged.
+
 # Learn releases the renderer while idle and waits for advice data in tests
 
 PR #220's browser run 355 passed the earlier keyboard-scroll position check,

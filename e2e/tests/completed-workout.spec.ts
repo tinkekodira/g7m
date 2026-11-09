@@ -113,7 +113,16 @@ test('calendar opens the exercise log and corrections persist offline without re
         `select ss.weight_kg::float8 weight_kg, ss.reps, ss.completed_at from public.session_sets ss join public.session_exercises se on se.id = ss.session_exercise_id where se.session_id = $1 order by ss.weight_kg`,
         [finished.id],
       ),
-    (sets) => sets.length === 3 && sets.some((s) => s.weight_kg === 70 && s.reps === 10),
+    // The delete/undo and new exercise upload separately. Three rows can be an
+    // intermediate state before the Cable Fly set has reached the server.
+    (sets) =>
+      sets.length === 3 &&
+      sets[0]?.weight_kg === 20 &&
+      sets[0].reps === 12 &&
+      sets[1]?.weight_kg === 65 &&
+      sets[1].reps === 9 &&
+      sets[2]?.weight_kg === 70 &&
+      sets[2].reps === 10,
   );
   expect(rows.find((row) => row.weight_kg === 20)?.completed_at).toBe(finished.ended_at);
   expect(rows.map((row) => [row.weight_kg, row.reps])).toEqual([

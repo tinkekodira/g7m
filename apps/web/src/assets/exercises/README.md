@@ -1,11 +1,17 @@
 # Exercise thumbnails
 
-The 130 transparent 320 × 320 exercise illustrations come from Milan's
-`Desktop/exercise-images` collection (2026-10-31, 2026-11-01 and 2026-11-07). Use each direct exercise
+The 151 transparent 320 × 320 exercise illustrations come from Milan's
+`Desktop/exercise-images` collection (2026-10-31 through 2026-11-09). Use each direct exercise
 folder's `<folder>_thumbnail_FINAL.png`; the four original exercises
 (`barbell-curl`, `lat-pulldown`, `push-up`, `romanian-deadlift`) use their selected
 `thumbnail.png`. Archived versions and full-resolution illustrations are not
 bundled. Originals remain unchanged in the source collection.
+
+The 21 cable-to-Viking additions use the matching direct-folder thumbnails from
+`CABLE_TO_VIKING_BATCH_2026-11-08_v3_manifest.json`. Verify SHA-256 against that
+manifest, then use the same WebP settings below. The corrected close-grip
+dumbbell press and close-grip pulldown are included. All new folder names match
+their catalogue slugs; the one-arm push-up uses the wide-foot variation.
 
 The 2026-11-01 additions are `smith-machine-bench-press`, `smith-machine-squat`,
 `smith-machine-shrug` and `dumbbell-shrug`, using their matching
