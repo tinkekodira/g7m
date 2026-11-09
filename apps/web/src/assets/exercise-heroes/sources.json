@@ -152,6 +152,14 @@
     "bytes": 50090
   },
   {
+    "slug": "burpees",
+    "source": "burpees/burpees_FINAL.png",
+    "sha256": "b92575285fe970aac0ae01b8be3c56c101ebc6493ab31a95722ebd9b5ba3b611",
+    "width": 960,
+    "height": 684,
+    "bytes": 31954
+  },
+  {
     "slug": "cable-crunch",
     "source": "cable-crunch/cable-crunch_FINAL.png",
     "sha256": "0b892e1da94e255b0539b3fda2a7deaa0dde2e3df42db61b4402cd96be8c7dba",
@@ -174,6 +182,22 @@
     "width": 960,
     "height": 822,
     "bytes": 55360
+  },
+  {
+    "slug": "cable-hammer-curl",
+    "source": "cable-hammer-curl/cable-hammer-curl_FINAL.png",
+    "sha256": "996bb543b0b5aa15dba6bfd9267fd989f30313392d50007a3c5a4131f6008016",
+    "width": 960,
+    "height": 684,
+    "bytes": 34880
+  },
+  {
+    "slug": "cable-kickback",
+    "source": "cable-kickback/cable-kickback_FINAL.png",
+    "sha256": "e6db5a4f3285953d3bb114a9896e2fc8183ed61ec498baecd52c195c84d023a5",
+    "width": 960,
+    "height": 684,
+    "bytes": 50562
   },
   {
     "slug": "cable-lat-pullover",
@@ -238,6 +262,30 @@
     "width": 960,
     "height": 731,
     "bytes": 46804
+  },
+  {
+    "slug": "close-grip-dumbbell-bench-press",
+    "source": "close-grip-dumbbell-bench-press/close-grip-dumbbell-bench-press_FINAL.png",
+    "sha256": "3bb1ff57f172969dc165acf6d3bbf7920087b788661b0c3f170cb8d2255f644e",
+    "width": 960,
+    "height": 755,
+    "bytes": 37594
+  },
+  {
+    "slug": "close-grip-incline-bench-press",
+    "source": "close-grip-incline-bench-press/close-grip-incline-bench-press_FINAL.png",
+    "sha256": "a1f54c2325325478d4c2450310e5b11dbf3a15bcd888a0b37cb973937ab61a44",
+    "width": 960,
+    "height": 684,
+    "bytes": 42864
+  },
+  {
+    "slug": "close-grip-lat-pulldown",
+    "source": "close-grip-lat-pulldown/close-grip-lat-pulldown_FINAL.png",
+    "sha256": "ed09681efc6da3c7631a5c10a112785a22289b339816e3c3c842043b5c430d45",
+    "width": 960,
+    "height": 722,
+    "bytes": 40286
   },
   {
     "slug": "concentration-curl",
@@ -344,6 +392,14 @@
     "bytes": 37836
   },
   {
+    "slug": "dumbbell-romanian-deadlift",
+    "source": "dumbbell-romanian-deadlift/dumbbell-romanian-deadlift_FINAL.png",
+    "sha256": "0437a661f60354a5ecb11f9fbe13153f349c4bf7cd02aba9bb39f3874ca1f72b",
+    "width": 960,
+    "height": 684,
+    "bytes": 28996
+  },
+  {
     "slug": "dumbbell-shoulder-press",
     "source": "dumbbell-shoulder-press/dumbbell-shoulder-press_FINAL.png",
     "sha256": "1783f0f86f12f98d8d7356a40b5da5a7f06bb29ebf01215a100dd1ade712e236",
@@ -384,6 +440,14 @@
     "bytes": 39850
   },
   {
+    "slug": "flat-bench-dumbbell-fly",
+    "source": "flat-bench-dumbbell-fly/flat-bench-dumbbell-fly_FINAL.png",
+    "sha256": "a2ceb99214d6ba2dc890b3686735b8cc7cc048f3043551c250115424edc4869a",
+    "width": 960,
+    "height": 684,
+    "bytes": 40356
+  },
+  {
     "slug": "goblet-squat",
     "source": "goblet-squat/goblet-squat_FINAL.png",
     "sha256": "d44228acfd9ca63b5664652af0041bfddf32660c767775b01703ef3c8f974fb4",
@@ -406,6 +470,22 @@
     "width": 960,
     "height": 960,
     "bytes": 35498
+  },
+  {
+    "slug": "handstand-push-ups",
+    "source": "handstand-push-ups/handstand-push-ups_FINAL.png",
+    "sha256": "c47256f6201fada04d321c9e0facee028d2278e58c63134631055fc5d1d5b094",
+    "width": 960,
+    "height": 684,
+    "bytes": 18064
+  },
+  {
+    "slug": "hanging-knee-raise",
+    "source": "hanging-knee-raise/hanging-knee-raise_FINAL.png",
+    "sha256": "4e3a14ad478cc4dfcf8cff0b3b542270698311d2bb6d53001817ab3832751b27",
+    "width": 960,
+    "height": 684,
+    "bytes": 33014
   },
   {
     "slug": "hanging-leg-raise",
@@ -504,6 +584,14 @@
     "bytes": 45650
   },
   {
+    "slug": "jumping-jacks",
+    "source": "jumping-jacks/jumping-jacks_FINAL.png",
+    "sha256": "8d0351d677eb47f43759e9576bd3414e842564977102ba64d56ab8c84b43986f",
+    "width": 960,
+    "height": 684,
+    "bytes": 23660
+  },
+  {
     "slug": "kettlebell-clean",
     "source": "kettlebell-clean/kettlebell-clean_FINAL.png",
     "sha256": "2d35082a15ced7e9e591275f4c59886af9a1844a9804bbdd039a7cb43249de66",
@@ -592,6 +680,14 @@
     "bytes": 55710
   },
   {
+    "slug": "lying-leg-raise",
+    "source": "lying-leg-raise/lying-leg-raise_FINAL.png",
+    "sha256": "715dd41f19773b01d3eafa78fc75fb35ebbd99b19d66580b1976ff3de8ec2c23",
+    "width": 960,
+    "height": 546,
+    "bytes": 20604
+  },
+  {
     "slug": "machine-chest-press",
     "source": "machine-chest-press/machine-chest-press_FINAL.png",
     "sha256": "27e82343528cdd5ff0c7febf272cedd1b2a987d89e9a0ce538d5245eb35374d7",
@@ -648,12 +744,52 @@
     "bytes": 37740
   },
   {
+    "slug": "one-arm-cable-bicep-curl",
+    "source": "one-arm-cable-bicep-curl/one-arm-cable-bicep-curl_FINAL.png",
+    "sha256": "68cbb25957ffbff5b6b30e03ba4d9867b02877f56eeba8f96dd42f124c19da04",
+    "width": 960,
+    "height": 684,
+    "bytes": 55436
+  },
+  {
+    "slug": "one-arm-pull-ups",
+    "source": "one-arm-pull-ups/one-arm-pull-ups_FINAL.png",
+    "sha256": "04fc06b84a738c5f1dce1975751eba05a71cad518efb62915843984d760ab326",
+    "width": 960,
+    "height": 684,
+    "bytes": 31880
+  },
+  {
+    "slug": "one-arm-push-ups",
+    "source": "one-arm-push-ups/one-arm-push-ups_FINAL.png",
+    "sha256": "0e955f3317ec29614e816d514eeda68514f98f0176d76614d14f7eb6619b41af",
+    "width": 960,
+    "height": 556,
+    "bytes": 26492
+  },
+  {
+    "slug": "one-arm-seated-cable-row",
+    "source": "one-arm-seated-cable-row/one-arm-seated-cable-row_FINAL.png",
+    "sha256": "f1c3e64f1ea24256dd26c791e20e8aa272d2e6ac0fc3190aa1fe2081a408949d",
+    "width": 960,
+    "height": 684,
+    "bytes": 47016
+  },
+  {
     "slug": "overhead-press",
     "source": "overhead-press/overhead-press_FINAL.png",
     "sha256": "b1b5b9851eee1c252d6804ff775e888a45d1eeb70204864b24fc4669f4b21dc0",
     "width": 960,
     "height": 960,
     "bytes": 59800
+  },
+  {
+    "slug": "overhead-squat",
+    "source": "overhead-squat/overhead-squat_FINAL.png",
+    "sha256": "a287bae95d5f95176e146960476a6c93597cf9c60ff20fe5f0576df7f8d5fb8f",
+    "width": 960,
+    "height": 684,
+    "bytes": 34766
   },
   {
     "slug": "overhead-triceps-extension",
@@ -696,20 +832,20 @@
     "bytes": 26904
   },
   {
-    "slug": "preacher-curl-machine",
-    "source": "preacher-curl-machine/preacher-curl-machine_FINAL.png",
-    "sha256": "431e2dcd4be29258fb55d521611f793b92c62ee6f0a44cbd14cae3e87dd713df",
-    "width": 960,
-    "height": 889,
-    "bytes": 51912
-  },
-  {
     "slug": "preacher-curl",
     "source": "preacher-curl-ez-bar/preacher-curl-ez-bar_FINAL.png",
     "sha256": "5707740b95793fec3ce5d114f835ad1b0391d1cdcbff25728a169d9f767bfbe5",
     "width": 919,
     "height": 960,
     "bytes": 61134
+  },
+  {
+    "slug": "preacher-curl-machine",
+    "source": "preacher-curl-machine/preacher-curl-machine_FINAL.png",
+    "sha256": "431e2dcd4be29258fb55d521611f793b92c62ee6f0a44cbd14cae3e87dd713df",
+    "width": 960,
+    "height": 889,
+    "bytes": 51912
   },
   {
     "slug": "pull-up",
@@ -728,20 +864,20 @@
     "bytes": 47154
   },
   {
-    "slug": "rear-delt-fly-machine",
-    "source": "rear-delt-fly-machine/rear-delt-fly-machine_FINAL.png",
-    "sha256": "8696489a01c842c66fd9fcbc3b00c6b9d049c60898f48e298fedb3815f3cb777",
-    "width": 889,
-    "height": 960,
-    "bytes": 57816
-  },
-  {
     "slug": "rear-delt-fly",
     "source": "rear-delt-fly/rear-delt-fly_FINAL.png",
     "sha256": "97af75372a5670fe3df6ebcad2ccac73261e4235ab18cc1c3c3b1e16a4e01862",
     "width": 960,
     "height": 889,
     "bytes": 40630
+  },
+  {
+    "slug": "rear-delt-fly-machine",
+    "source": "rear-delt-fly-machine/rear-delt-fly-machine_FINAL.png",
+    "sha256": "8696489a01c842c66fd9fcbc3b00c6b9d049c60898f48e298fedb3815f3cb777",
+    "width": 889,
+    "height": 960,
+    "bytes": 57816
   },
   {
     "slug": "recumbent-bike",
@@ -838,6 +974,14 @@
     "width": 960,
     "height": 889,
     "bytes": 50174
+  },
+  {
+    "slug": "sissy-squat",
+    "source": "sissy-squat/sissy-squat_FINAL.png",
+    "sha256": "bb7dc0608dd21e11af72cbdf1fcbc1a202898a06092f857e6eb8dd1b79dd55cd",
+    "width": 960,
+    "height": 684,
+    "bytes": 25762
   },
   {
     "slug": "ski-erg",
@@ -952,6 +1096,22 @@
     "bytes": 36098
   },
   {
+    "slug": "sumo-deadlift",
+    "source": "sumo-deadlift/sumo-deadlift_FINAL.png",
+    "sha256": "3d0dfd2375206b64f97bcca7fcaa66e6796fb094a10cb574fa8451b6284f2599",
+    "width": 960,
+    "height": 684,
+    "bytes": 37646
+  },
+  {
+    "slug": "sumo-squat",
+    "source": "sumo-squat/sumo-squat_FINAL.png",
+    "sha256": "8fa4d07b11f4e2a759c38994a7b50250d3b5c94bb97c783e2a7a0c739e357667",
+    "width": 960,
+    "height": 684,
+    "bytes": 27086
+  },
+  {
     "slug": "t-bar-row",
     "source": "t-bar-row/t-bar-row_FINAL.png",
     "sha256": "1179028afc8c24a5d16a06f0c7a479560e419d8f5c9e52510c1973e9d961aa7a",
@@ -1014,6 +1174,14 @@
     "width": 960,
     "height": 960,
     "bytes": 48742
+  },
+  {
+    "slug": "viking-press",
+    "source": "viking-press/viking-press_FINAL.png",
+    "sha256": "437e85ed5b4c25b6b8aae64df5449faf159ab9e2a65f84c0c9533599b28b3d2c",
+    "width": 960,
+    "height": 684,
+    "bytes": 50444
   },
   {
     "slug": "walking-lunge",

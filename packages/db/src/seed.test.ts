@@ -43,8 +43,8 @@ describe('volumes', () => {
     // 28 from Brief §5, plus the back extension bench the §5 list omits, the
     // six cardio machines (ADR-0069), the two hip machines, and the preacher
     // curl machine, shoulder press machine and incline chest press machine,
-    // then seven stations/accessories for the November catalogue expansion.
-    expect(await count('select count(*) n from public.equipment')).toBe(47);
+    // then seven stations/accessories for the November expansion and a Viking press.
+    expect(await count('select count(*) n from public.equipment')).toBe(48);
   });
 
   /**
@@ -56,13 +56,13 @@ describe('volumes', () => {
    * curl machine and two crunches, the rear delt fly machine and the shoulder
    * press machine, then the incline machine chest press, three Smith lifts
    * and the dumbbell shrug, then the incline Smith bench press and 38 more
-   * movements (ADR-0171). Counted rather than
+   * movements (ADR-0171), then 21 cable-to-Viking movements (ADR-0174). Counted rather than
    * left open, because an exercise that fails to insert — a bad slug in a join,
    * a check constraint — shows up
    * nowhere else. The catalogue simply comes up one short.
    */
   it('seeds the 50 exercises from the brief, and the ones added since', async () => {
-    expect(await count('select count(*) n from public.exercises')).toBe(130);
+    expect(await count('select count(*) n from public.exercises')).toBe(151);
   });
 });
 

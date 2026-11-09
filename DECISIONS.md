@@ -9666,3 +9666,39 @@ long names, recommendation links and offline reload/navigation. No database migr
 The viewer renders on demand: controls request frames during rotation and
 damping, and muscle recolours explicitly invalidate. Idle models stop drawing.
 Advice tests wait for five local workouts before expecting recommendations.
+
+## ADR-0174 — Twenty-one cable-to-Viking exercises join the catalogue
+
+**Status:** accepted · **Date:** 2026-11-09
+
+Add all 21 requested movements as separate exercise identities with aliases,
+ordered instructions, cues, mistakes, relative muscle recruitment and rep/rest
+defaults. The catalogue now has 151 exercises and 48 equipment entries, including
+a dedicated Viking press machine. Retain required benches and the incline press
+rack as accessory links. Unilateral work logs reps per side. Burpees use a
+plank-and-jump cycle without an added push-up; jumping jacks count a complete
+open-and-close cycle. Both remain rep-based conditioning movements under the
+existing logging contract, without machine-cardio calorie estimates.
+
+Coaching follows the supplied artwork: ankle-cuff glute kickback, rope hammer
+curl, close neutral dumbbell press, close overhand incline barbell press,
+V-handle pulldown, freestanding strict handstand push-ups, pronated unassisted
+one-arm pull-ups, wide-foot one-arm push-ups, bodyweight sissy/sumo squats and
+strict paired-lever Viking press. Advanced balance/skill movements and
+conditioning earn logged-work credit without ordinary accessory suggestions.
+Other additions receive reviewed training profiles. Overhead squat guidance was
+cross-checked with [Catalyst Athletics](https://catalystathletics.com/exercise/79/Overhead-Squat/).
+
+Import the 21 selected finals and thumbnails from
+`Desktop/exercise-images/CABLE_TO_VIKING_BATCH_2026-11-08_v3_manifest.json`,
+verifying source hashes. Preserve the source collection. Use the existing
+320px thumbnail and 960px maximum hero WebP settings, aspect ratio and alpha.
+No new demonstration loops are supplied. Existing detail routes, favourites,
+history, illustration fallbacks and offline caches handle the new slugs.
+
+Apply `20261109120000_cable_to_viking_exercises.sql` with
+`npx supabase db push` before the app release. No schema or PowerSync rule
+change or dashboard deployment is required; existing catalogue streams sync
+all four affected tables. Validate catalogue integrity, load/accessory behavior,
+identity preservation on replay, recommendations, all thumbnails offline,
+all new detail pages, logging/upload and phone/desktop layouts in both themes.
