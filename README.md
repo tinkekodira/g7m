@@ -24,13 +24,14 @@ What it does:
   complete exercise log. History opens the full exercise log with weights, sets
   and reps. Edit a completed workout for two hours after its saved completion
   time, including adding forgotten exercises; corrections also work offline.
-  The recap remains available from the workout details. Done, routine saving and deletion
-  stay visible below every card in a full-screen recap without the tab bar.
+  The recap remains available from the workout details. Continue, routine saving
+  and deletion stay visible below every card in a full-screen recap without the tab bar.
   Session totals fit their card, and long muscle percentage lists scroll beneath
   the body views.
-  Session rewards count up with
-  a subtle level-up animation, and comparison cards pair equipment artwork
-  with best sets and weight trends. The exercise picker can suggest
+  Session rewards count up; after Continue, a level gain gets a short full-screen
+  celebration that can be skipped. Reduced motion shows a still announcement
+  until dismissed. Reopening history never triggers it. Comparison cards pair
+  equipment artwork with best sets and weight trends. The exercise picker can suggest
   useful complements based on your own training, queued work and recent history.
   See [how recommendations work](./docs/workout-recommendations.md).
 - **Repeat.** Keep a workout as a routine when you finish it, or save any past

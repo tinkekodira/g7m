@@ -152,7 +152,7 @@ for (const theme of ['dark', 'light'] as const) {
       ).toBeInViewport({ ratio: 0.95 });
       await page.screenshot({ path: info.outputPath('recap-comparison.png'), fullPage: true });
       await context.setOffline(false);
-      await page.getByRole('link', { name: 'Done', exact: true }).click();
+      await page.getByRole('link', { name: 'Continue', exact: true }).click();
       await page.goto('/#/progress');
       await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
       await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);

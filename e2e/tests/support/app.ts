@@ -22,8 +22,11 @@ export async function openTab(
   tab: 'Learn' | 'Friends' | 'Progress' | 'Home' | 'Profile' | 'Settings',
 ): Promise<void> {
   const bar = page.getByRole('navigation');
-  if (await page.getByRole('region', { name: 'Workout recap', exact: true }).isVisible())
-    await page.getByRole('link', { name: 'Done', exact: true }).click();
+  if (await page.getByRole('region', { name: 'Workout recap', exact: true }).isVisible()) {
+    await page.getByRole('link', { name: /^(Done|Continue)$/, exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Workout recap', exact: true })).toBeHidden();
+    await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
+  }
   if (tab === 'Progress') {
     await bar.getByRole('link', { name: 'Home' }).click();
     await page.getByRole('link', { name: /^Progress/ }).click();
@@ -59,7 +62,7 @@ export async function finishWorkout(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Finish workout' }).click();
   await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeHidden();
-  await page.getByRole('link', { name: 'Done', exact: true }).click();
+  await page.getByRole('link', { name: /^(Done|Continue)$/, exact: true }).click();
   await expect(page.getByRole('navigation')).toBeVisible();
 }
 
