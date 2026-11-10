@@ -41,29 +41,22 @@ export function LevelUpCelebration({
       }}
     >
       <div className="level-up-content">
-        <div className="level-up-emblem" aria-hidden="true">
-          <div className="level-up-orbit" />
-          <div className="level-up-burst">
-            {Array.from({ length: 12 }, (_, i) => (
-              <i key={i} style={{ rotate: `${String(i * 30)}deg` }} />
-            ))}
-          </div>
-          <div className="level-up-badge">
-            <svg viewBox="0 0 64 40" fill="none" className="level-up-chevrons">
-              <path d="m8 20 24-14 24 14M8 34l24-14 24 14" />
-            </svg>
-            <span className="level-up-number numeric">{rewards.levelAfter}</span>
-            <span className="level-up-label">Level</span>
-          </div>
-        </div>
         <h2 id="level-up-title" className="level-up-title">
-          Level up!
+          Level up
         </h2>
+        <div className="level-up-score numeric" aria-hidden="true">
+          <span className="level-up-previous">{rewards.levelBefore}</span>
+          <span className="level-up-current">{rewards.levelAfter}</span>
+        </div>
+        <div className="level-up-rule" aria-hidden="true" />
         <p id="level-up-description" className="level-up-description">
-          Level {rewards.levelBefore} <span aria-hidden="true">→</span>
-          <span className="sr-only">to</span> Level {rewards.levelAfter}
+          <span className="level-up-from">Level {rewards.levelBefore}</span>
+          <span className="level-up-arrow" aria-hidden="true">
+            →
+          </span>
+          <span className="sr-only"> to </span>
+          <span>Level {rewards.levelAfter}</span>
         </p>
-        <p className="level-up-message">Your hard work is adding up.</p>
       </div>
       <div className="level-up-footer">
         <Button fullWidth onClick={onComplete}>

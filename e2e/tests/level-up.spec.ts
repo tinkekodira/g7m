@@ -47,7 +47,7 @@ test('a workout level gain celebrates only after Continue, works offline and nev
   await page.getByRole('button', { name: 'Finish workout' }).click();
   await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible();
   await expect(page.locator('.recap-level')).toContainText('Level up!');
-  const dialog = page.getByRole('dialog', { name: 'Level up!' });
+  const dialog = page.getByRole('dialog', { name: 'Level up', exact: true });
   await expect(dialog).toHaveCount(0);
   await page.getByRole('button', { name: 'Show Exercise log' }).click();
   await page.getByRole('link', { name: 'Continue', exact: true }).click();
@@ -74,7 +74,7 @@ test('reduced motion stays still until dismissed, fits both themes and clears th
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.getByRole('button', { name: 'Finish workout' }).click();
   await page.getByRole('link', { name: 'Continue', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Level up!' });
+  const dialog = page.getByRole('dialog', { name: 'Level up', exact: true });
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(3600);
   await expect(dialog).toBeVisible();
@@ -90,7 +90,8 @@ test('reduced motion stays still until dismissed, fits both themes and clears th
       }, theme);
       await expect(dialog.getByRole('heading')).toBeInViewport({ ratio: 1 });
       await expect(dialog.getByRole('button')).toBeInViewport({ ratio: 1 });
-      await expect(page.locator('.level-up-badge')).toHaveCSS('animation-name', 'none');
+      await expect(page.locator('.level-up-current')).toHaveCSS('animation-name', 'none');
+      await expect(page.locator('.level-up-previous')).toBeHidden();
       expect(
         await dialog.evaluate(
           (el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight,
@@ -126,5 +127,5 @@ test('a workout without a level gain goes straight home', async ({ page }) => {
   await expect(page.locator('.recap-level')).toHaveCount(0);
   await page.getByRole('link', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'Level up!' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Level up', exact: true })).toHaveCount(0);
 });

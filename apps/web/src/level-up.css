@@ -1,4 +1,4 @@
-/* One short lift and impact, using the app's graphite/green tokens in both themes. */
+﻿/* A scoreboard change: one vertical cut, a finish line, then a still result. */
 .level-up-dialog {
   position: fixed;
   inset: 0;
@@ -8,8 +8,8 @@
   max-height: none;
   margin: 0;
   border: 0;
-  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
-    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  padding: max(24px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
   background: var(--bg-base);
   color: var(--text-primary);
   overflow-y: auto;
@@ -19,108 +19,69 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: level-up-arrive 180ms ease-out both;
+  animation: level-up-arrive 150ms ease-out both;
 }
 .level-up-dialog::backdrop {
   background: var(--bg-base);
 }
 .level-up-content {
   margin-block: auto;
-  padding-block: 24px 32px;
-  width: 100%;
-  text-align: center;
-}
-.level-up-emblem {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: min(280px, 72vw, 38dvh);
-  aspect-ratio: 1;
-  margin: 0 auto 28px;
-  color: var(--accent);
-}
-.level-up-orbit {
-  position: absolute;
-  inset: 0;
-  border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-  border-radius: 50%;
-  animation: level-up-ring 1000ms 250ms both;
-}
-.level-up-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 82%;
-  height: 90%;
-  background: var(--accent-subtle);
-  clip-path: polygon(50% 0, 95% 22%, 89% 75%, 50% 100%, 11% 75%, 5% 22%);
-  animation: level-up-lift 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.level-up-chevrons {
-  width: 27%;
-  margin-top: 4%;
-  stroke: currentColor;
-  stroke-width: 5;
-  stroke-linecap: square;
-  animation: level-up-chevron 650ms 150ms both;
-}
-.level-up-number {
-  font-size: clamp(3.25rem, min(24vw, 13dvh), 7.5rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.06em;
-  padding-right: 0.06em;
-}
-.level-up-label {
-  margin-top: 4px;
-  font-size: 1rem;
-  font-weight: 600;
-}
-.level-up-burst {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.level-up-burst i {
-  position: absolute;
-  inset: 0;
-}
-.level-up-burst i::after {
-  content: '';
-  display: block;
-  width: 3px;
-  height: 18px;
-  margin-inline: auto;
-  background: var(--accent);
-  animation: level-up-spark 850ms 380ms both;
+  padding-block: 28px 40px;
+  width: min(100%, 440px);
+  text-align: left;
 }
 .level-up-title {
-  font-size: clamp(2.5rem, 11vw, 4rem);
+  font-size: clamp(2rem, 8vw, 2.75rem);
   font-weight: 800;
   font-style: italic;
   letter-spacing: -0.045em;
-  line-height: 1.1;
-  animation: level-up-copy 450ms 180ms both;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.level-up-score {
+  display: grid;
+  overflow: hidden;
+  margin-block: 12px 20px;
+  font-size: clamp(7rem, min(54vw, 31dvh), 15rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.05;
+  letter-spacing: -0.075em;
+}
+.level-up-score > span {
+  grid-area: 1 / 1;
+  padding-right: 0.15em;
+}
+.level-up-previous {
+  color: var(--text-muted);
+  animation: level-up-score-out 400ms 100ms cubic-bezier(0.6, 0, 0.8, 0.2) both;
+}
+.level-up-current {
+  animation: level-up-score-in 500ms 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.level-up-rule {
+  height: 4px;
+  background: var(--accent);
+  transform-origin: left;
+  animation: level-up-line 550ms 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .level-up-description {
-  margin-top: 14px;
-  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  font-size: 1rem;
   font-weight: 600;
+}
+.level-up-from {
+  color: var(--text-muted);
+}
+.level-up-arrow {
   color: var(--accent);
-  animation: level-up-copy 450ms 280ms both;
-}
-.level-up-description [aria-hidden] {
-  padding-inline: 10px;
-}
-.level-up-message {
-  margin-top: 8px;
-  color: var(--text-secondary);
-  animation: level-up-copy 450ms 360ms both;
 }
 .level-up-footer {
   flex-shrink: 0;
-  width: min(100%, 320px);
+  width: min(100%, 440px);
 }
 @keyframes level-up-arrive {
   from {
@@ -130,73 +91,36 @@
     opacity: 1;
   }
 }
-@keyframes level-up-lift {
+@keyframes level-up-score-out {
   from {
-    opacity: 0;
-    transform: translateY(36px) scale(0.82);
-  }
-  65% {
-    opacity: 1;
-    transform: translateY(-6px) scale(1.04);
+    transform: translateY(0);
   }
   to {
-    opacity: 1;
-    transform: none;
+    transform: translateY(-110%);
   }
 }
-@keyframes level-up-chevron {
+@keyframes level-up-score-in {
   from {
-    opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(110%);
   }
   to {
-    opacity: 1;
-    transform: none;
+    transform: translateY(0);
   }
 }
-@keyframes level-up-ring {
+@keyframes level-up-line {
   from {
-    opacity: 0;
-    transform: scale(0.65);
-  }
-  35% {
-    opacity: 1;
+    transform: scaleX(0);
   }
   to {
-    opacity: 0.6;
-    transform: scale(1.12);
-  }
-}
-@keyframes level-up-spark {
-  from {
-    opacity: 0;
-    transform: translateY(25px) scaleY(0.4);
-  }
-  20% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-32px) scaleY(0.4);
-  }
-}
-@keyframes level-up-copy {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+    transform: scaleX(1);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .level-up-dialog *,
   .level-up-dialog,
-  .level-up-dialog *::after {
+  .level-up-dialog * {
     animation: none !important;
   }
-  .level-up-burst {
-    display: none;
+  .level-up-previous {
+    visibility: hidden;
   }
 }

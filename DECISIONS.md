@@ -9724,8 +9724,11 @@ needed for these test-only changes.
 
 A freshly finished recap uses Continue for its exit action. When the saved
 recap rewards cross a level boundary, Continue opens a full-screen native modal
-with the new level, the previous-to-current level change and a short badge lift,
-upward chevrons and radial burst. Keep the existing theme tokens and shared
+with the new level and the previous-to-current level change. An athletic
+scoreboard treatment uses oversized italic numerals: the old level exits upward,
+the new level rolls into place, and a green finish line draws beneath. Keep the
+headline compact and omit badges, particles and motivational filler. The motion
+settles within 830ms. Keep the existing theme tokens and shared
 button. Normal motion returns to the finish flow's original destination after
 3.4 seconds; Let’s go and Escape can dismiss immediately. Reduced motion shows
 the final still state and waits for dismissal. The native dialog traps focus
