@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import type { RecapRewards } from '@g7m/core';
 import { Button } from '@g7m/ui';
 import { useReducedMotion } from '../lib/use-reduced-motion.js';
@@ -44,9 +44,28 @@ export function LevelUpCelebration({
         <h2 id="level-up-title" className="level-up-title">
           Level up
         </h2>
-        <div className="level-up-score numeric" aria-hidden="true">
-          <span className="level-up-previous">{rewards.levelBefore}</span>
-          <span className="level-up-current">{rewards.levelAfter}</span>
+        <div className="level-up-stage" aria-hidden="true">
+          <div className="level-up-confetti">
+            {Array.from({ length: 16 }, (_, i) => (
+              <i
+                key={i}
+                style={
+                  {
+                    '--confetti-x': `${String((i % 2 === 0 ? -1 : 1) * (46 + Math.floor(i / 2) * 12))}px`,
+                    '--confetti-y': `${String(-60 - ((i * 23) % 65))}px`,
+                    '--confetti-turn': `${String((i % 2 === 0 ? -1 : 1) * (120 + i * 20))}deg`,
+                    animationDelay: `${String(320 + (i % 3) * 35)}ms`,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
+          <div className="level-up-score numeric">
+            <div className="level-up-reel">
+              <span className="level-up-previous">{rewards.levelBefore}</span>
+              <span className="level-up-current">{rewards.levelAfter}</span>
+            </div>
+          </div>
         </div>
         <div className="level-up-rule" aria-hidden="true" />
         <p id="level-up-description" className="level-up-description">

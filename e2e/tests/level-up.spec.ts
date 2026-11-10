@@ -53,6 +53,18 @@ test('a workout level gain celebrates only after Continue, works offline and nev
   await page.getByRole('link', { name: 'Continue', exact: true }).click();
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText(/Level 1.*Level 2/);
+  const travel = await page.locator('.level-up-reel').evaluate((el) => {
+    const animation = el.getAnimations()[0]!;
+    animation.pause();
+    animation.currentTime = 200;
+    const before = el.getBoundingClientRect();
+    animation.currentTime = 500;
+    const after = el.getBoundingClientRect();
+    animation.play();
+    return { x: after.x - before.x, y: after.y - before.y };
+  });
+  expect(Math.abs(travel.x)).toBeLessThan(1);
+  expect(travel.y).toBeLessThan(-20);
   await expect(dialog.getByRole('button', { name: 'Let’s go' })).toBeFocused();
   await expect(page.getByRole('group', { name: 'Workout actions' })).toBeHidden();
   await page.screenshot({ path: info.outputPath('celebration-phone.png') });
@@ -90,8 +102,15 @@ test('reduced motion stays still until dismissed, fits both themes and clears th
       }, theme);
       await expect(dialog.getByRole('heading')).toBeInViewport({ ratio: 1 });
       await expect(dialog.getByRole('button')).toBeInViewport({ ratio: 1 });
-      await expect(page.locator('.level-up-current')).toHaveCSS('animation-name', 'none');
-      await expect(page.locator('.level-up-previous')).toBeHidden();
+      await expect(page.locator('.level-up-reel')).toHaveCSS('animation-name', 'none');
+      await expect(page.locator('.level-up-confetti')).toBeHidden();
+      const centreOffset = await page.locator('.level-up-current').evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const box = range.getBoundingClientRect();
+        return Math.abs(box.x + box.width / 2 - innerWidth / 2);
+      });
+      expect(centreOffset).toBeLessThan(2);
       expect(
         await dialog.evaluate(
           (el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight,
