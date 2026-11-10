@@ -101,8 +101,8 @@ test('shoulder machine logs offline into a reusable recap in both themes and siz
         fullPage: true,
       });
     }
-  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
-  await page.getByRole('link', { name: 'Done', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Continue', exact: true })).toHaveCount(1);
+  await page.getByRole('link', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Workout recap', exact: true })).toBeHidden();
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeVisible();
   await openTab(page, 'Progress');

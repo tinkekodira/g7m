@@ -1,0 +1,109 @@
+import { useEffect, useRef, type CSSProperties } from 'react';
+import { levelFor, type RecapRewards } from '@g7m/core';
+import { Button } from '@g7m/ui';
+import { useReducedMotion } from '../lib/use-reduced-motion.js';
+import '../level-up.css';
+
+/** A saved reward gets a moment of its own, after leaving a freshly finished recap. */
+export function LevelUpCelebration({
+  rewards,
+  onComplete,
+}: {
+  readonly rewards: RecapRewards;
+  readonly onComplete: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const reduced = useReducedMotion();
+  const before = levelFor(rewards.xpBefore);
+  const after = levelFor(rewards.xpAfter);
+
+  useEffect(() => {
+    const node = dialog.current;
+    if (node === null) return;
+    node.showModal();
+    return () => node.close();
+  }, []);
+
+  useEffect(() => {
+    // Reduced motion keeps the announcement still and gives the reader their own time.
+    if (reduced) return;
+    const timer = setTimeout(onComplete, 3400);
+    return () => clearTimeout(timer);
+  }, [onComplete, reduced]);
+
+  return (
+    <dialog
+      ref={dialog}
+      className="level-up-dialog"
+      aria-labelledby="level-up-title"
+      aria-describedby="level-up-description"
+      onCancel={(event) => {
+        event.preventDefault();
+        onComplete();
+      }}
+    >
+      <div className="level-up-content">
+        <h2 id="level-up-title" className="level-up-title">
+          Level up
+        </h2>
+        <div className="level-up-stage" aria-hidden="true">
+          <div className="level-up-confetti">
+            {Array.from({ length: 16 }, (_, i) => (
+              <i
+                key={i}
+                style={
+                  {
+                    '--confetti-x': `${String((i % 2 === 0 ? -1 : 1) * (46 + Math.floor(i / 2) * 12))}px`,
+                    '--confetti-y': `${String(-60 - ((i * 23) % 65))}px`,
+                    '--confetti-turn': `${String((i % 2 === 0 ? -1 : 1) * (120 + i * 20))}deg`,
+                    animationDelay: `${String(800 + (i % 3) * 35)}ms`,
+                  } as CSSProperties
+                }
+              />
+            ))}
+          </div>
+          <div className="level-up-score numeric">
+            <div className="level-up-reel">
+              <span className="level-up-previous">{rewards.levelBefore}</span>
+              <span className="level-up-current">{rewards.levelAfter}</span>
+            </div>
+          </div>
+        </div>
+        <div
+          className="level-up-rule"
+          role="progressbar"
+          aria-label={`XP toward level ${String(after.level + 1)}`}
+          aria-valuemin={0}
+          aria-valuemax={after.xpForLevel}
+          aria-valuenow={after.xpIntoLevel}
+        >
+          <div
+            className="level-up-xp-fill"
+            style={
+              { '--xp-before': before.progress, '--xp-after': after.progress } as CSSProperties
+            }
+          />
+        </div>
+        <p className="level-up-xp-labels numeric" aria-hidden="true">
+          <span className="text-accent">+{rewards.xp} XP</span>
+          <span className="level-up-xp-total">
+            {after.xpIntoLevel} / {after.xpForLevel} XP
+          </span>
+        </p>
+        <p id="level-up-description" className="level-up-description">
+          <span className="level-up-from">Level {rewards.levelBefore}</span>
+          <span className="level-up-arrow" aria-hidden="true">
+            →
+          </span>
+          <span className="sr-only"> to </span>
+          <span>Level {rewards.levelAfter}</span>
+        </p>
+      </div>
+      <div className="level-up-footer">
+        <Button fullWidth onClick={onComplete}>
+          Let’s go
+        </Button>
+      </div>
+    </dialog>
+  );
+}

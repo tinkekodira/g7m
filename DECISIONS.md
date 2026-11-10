@@ -9717,3 +9717,36 @@ Keep two workers, every scenario, per-test timeouts, retries and report capture.
 Local runs keep no global deadline. Validate the full suite locally and confirm
 the replacement GitHub browser check. No database or PowerSync deployment is
 needed for these test-only changes.
+
+## ADR-0176 — A workout level gain gets a full-screen moment after Continue
+
+**Status:** accepted · **Date:** 2026-11-10 · **Amends:** ADR-0149, ADR-0150
+
+A freshly finished recap uses Continue for its exit action. When the saved
+recap rewards cross a level boundary, Continue opens a full-screen native modal
+with the new level and the previous-to-current level change. An athletic
+scoreboard treatment centers oversized italic numerals: a single vertical reel
+moves the old level upward and brings the new level in from below. A small,
+single confetti burst sits behind the number. An XP bar fills from the previous
+level's real progress to its threshold, triggering the vertical reel, then
+resets and fills to the new level's remaining XP. Both progress values come from
+the existing chronological reward ledger, including its caps and bonuses.
+The bar settles within 1.7 seconds and the confetti ends within two seconds.
+Assistive technology reads the final XP progress; reduced motion shows it still.
+Keep the headline compact, existing theme tokens and shared
+button. Normal motion returns to the finish flow's original destination after
+3.4 seconds; Let’s go and Escape can dismiss immediately. Reduced motion shows
+the final still state and waits for dismissal. The native dialog traps focus
+and makes the recap inert; safe-area padding and scrolling support small screens.
+
+Read rewards from the existing local recap calculation; this adds no XP award,
+network dependency or persistence write. Consume the router's fresh-finish state
+when Continue starts the celebration, so reloading or reopening a historical
+recap cannot replay it. History keeps Done. A non-leveling workout leaves the
+recap immediately. Backdated finishes retain their calendar destination and
+edits continue to open the full log without a new celebration.
+
+Browser checks cover a real offline finish, deferred presentation, automatic
+completion, manual dismissal, reload/history suppression, no-level exits,
+reduced motion and phone/desktop layouts in both themes. No database migration,
+`npx supabase db push` or PowerSync sync-rule deployment is required.

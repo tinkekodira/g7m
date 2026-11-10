@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { canEditWorkout } from '@g7m/core';
+import { useCallback, useEffect, useState } from 'react';
+import { canEditWorkout, type RecapRewards } from '@g7m/core';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { loadWorkoutRecap } from '../lib/db/workout-recap.js';
 import { WorkoutRecap } from '../components/WorkoutRecap.js';
+import { LevelUpCelebration } from '../components/LevelUpCelebration.js';
 import { SessionBody } from '../components/SessionBody.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { TrashIcon } from '../components/icons.js';
@@ -14,6 +15,8 @@ export function SessionDetailScreen() {
   const { sessionId = '' } = useParams();
 
   const location = useLocation();
+  const navigate = useNavigate();
+  const [celebration, setCelebration] = useState<RecapRewards | null>(null);
   const details = location.pathname.endsWith('/details');
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -32,6 +35,9 @@ export function SessionDetailScreen() {
   const navigation = location.state as { workoutFinished?: boolean; afterwards?: string } | null;
   const fresh = navigation?.workoutFinished === true;
   const afterwards = navigation?.afterwards ?? '/';
+  const completeCelebration = useCallback(() => {
+    void navigate(afterwards, { replace: true });
+  }, [navigate, afterwards]);
   const state = useCatalogue(`session:${sessionId}`, (r) => loadWorkoutRecap(r, sessionId));
 
   const data = state.data;
@@ -93,9 +99,28 @@ export function SessionDetailScreen() {
           >
             <Link
               to={fresh ? afterwards : '/progress'}
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return;
+                if (!fresh || details || data.rewards.levelAfter <= data.rewards.levelBefore)
+                  return;
+                event.preventDefault();
+                setCelebration(data.rewards);
+                // Consume the fresh-finish state before showing it, including on reload/back.
+                void navigate(location.pathname, {
+                  replace: true,
+                  state: { ...navigation, workoutFinished: false },
+                });
+              }}
               className="col-span-2 flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              Done
+              {fresh ? 'Continue' : 'Done'}
             </Link>
             <KeepAsRoutine
               sessionId={sessionId}
@@ -107,6 +132,9 @@ export function SessionDetailScreen() {
             <DeleteWorkout sessionId={sessionId} />
           </div>
         </>
+      )}
+      {celebration !== null && (
+        <LevelUpCelebration rewards={celebration} onComplete={completeCelebration} />
       )}
     </main>
   );

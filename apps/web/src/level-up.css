@@ -1,0 +1,205 @@
+﻿/* A scoreboard change: one vertical cut, a finish line, then a still result. */
+.level-up-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: max(24px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+  background: var(--bg-base);
+  color: var(--text-primary);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.level-up-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: level-up-arrive 150ms ease-out both;
+}
+.level-up-dialog::backdrop {
+  background: var(--bg-base);
+}
+.level-up-content {
+  margin-block: auto;
+  padding-block: 28px 40px;
+  width: min(100%, 440px);
+  text-align: center;
+}
+.level-up-title {
+  font-size: clamp(2rem, 8vw, 2.75rem);
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.level-up-stage {
+  position: relative;
+  isolation: isolate;
+  margin-block: 12px 20px;
+}
+.level-up-score {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  font-size: clamp(7rem, min(54vw, 31dvh), 15rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.05;
+  letter-spacing: -0.075em;
+  height: 1.05em;
+}
+.level-up-reel {
+  display: flex;
+  flex-direction: column;
+  animation: level-up-roll 680ms 660ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.level-up-reel > span {
+  flex: 0 0 1.05em;
+  height: 1.05em;
+  padding-inline: 0.075em;
+}
+.level-up-previous {
+  color: var(--text-muted);
+}
+.level-up-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.level-up-confetti i {
+  position: absolute;
+  top: 55%;
+  left: calc(50% - 2.5px);
+  width: 5px;
+  height: 9px;
+  background: var(--accent);
+  animation: level-up-confetti 1100ms ease-out both;
+}
+.level-up-confetti i:nth-child(3n) {
+  background: var(--text-primary);
+}
+.level-up-confetti i:nth-child(4n) {
+  background: var(--medal-gold);
+  width: 4px;
+  height: 6px;
+}
+.level-up-rule {
+  height: 4px;
+  overflow: hidden;
+  background: var(--border-subtle);
+}
+.level-up-xp-fill {
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(var(--xp-after));
+  animation: level-up-xp 1600ms 100ms ease-out both;
+}
+.level-up-xp-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.level-up-xp-total {
+  animation: level-up-xp-label 180ms 850ms both;
+}
+.level-up-description {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.level-up-from {
+  color: var(--text-muted);
+}
+.level-up-arrow {
+  color: var(--accent);
+}
+.level-up-footer {
+  flex-shrink: 0;
+  width: min(100%, 440px);
+}
+@keyframes level-up-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes level-up-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes level-up-xp {
+  0% {
+    transform: scaleX(var(--xp-before));
+  }
+  35%,
+  45% {
+    transform: scaleX(1);
+  }
+  45.01% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(var(--xp-after));
+  }
+}
+@keyframes level-up-xp-label {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes level-up-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(0, 20px) rotate(0) scale(0.5);
+  }
+  12% {
+    opacity: 0.9;
+  }
+  45% {
+    opacity: 0.9;
+    transform: translate(calc(var(--confetti-x) * 0.7), var(--confetti-y))
+      rotate(calc(var(--confetti-turn) * 0.5));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--confetti-x), calc(var(--confetti-y) + 100px))
+      rotate(var(--confetti-turn)) scale(0.75);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-up-dialog,
+  .level-up-dialog * {
+    animation: none !important;
+  }
+  .level-up-reel {
+    transform: translateY(-50%);
+  }
+  .level-up-confetti {
+    display: none;
+  }
+}

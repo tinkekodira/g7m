@@ -272,6 +272,8 @@ describe('rewards as of the selected session', () => {
     expect(result.xp).toBe(115 + result.achievements.length * 100);
     expect(result.achievements.map((a) => a.key)).toContain('day-one');
     expect(result.levelBefore).toBe(1);
+    expect(result.xpBefore).toBe(0);
+    expect(result.xpAfter).toBe(result.xp);
     expect(
       workoutRecapRewards({
         ...rewardsInput,
@@ -286,10 +288,14 @@ describe('rewards as of the selected session', () => {
     expect(result.achievements.map((a) => a.key)).not.toContain('day-one');
     expect(result.xp).toBeGreaterThanOrEqual(115);
     expect(result.levelAfter).toBeGreaterThanOrEqual(result.levelBefore);
+    expect(result.xpBefore).toBe(workoutRecapRewards(rewardsInput).xpAfter);
+    expect(result.xpAfter - result.xpBefore).toBe(result.xp);
   });
   it('returns no awards for an absent or unfinished target', () => {
     expect(workoutRecapRewards({ ...rewardsInput, sessionId: 'missing' })).toEqual({
       xp: 0,
+      xpBefore: 0,
+      xpAfter: 0,
       levelBefore: 1,
       levelAfter: 1,
       achievements: [],

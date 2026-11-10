@@ -35,7 +35,7 @@ async function expectRecapActions(page: Page) {
   const actions = page.getByRole('group', { name: 'Workout actions', exact: true });
   await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeHidden();
   for (const action of [
-    actions.getByRole('link', { name: 'Done', exact: true }),
+    actions.getByRole('link', { name: /^(Done|Continue)$/, exact: true }),
     actions.getByRole('button', { name: 'Save as a routine' }),
     actions.getByRole('button', { name: 'Delete workout' }),
   ]) {
@@ -119,7 +119,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   const totals = page.getByRole('region', { name: 'Your session', exact: true });
   await expect(totals).toContainText('2.4 t');
   await expectRecapActions(page);
-  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('link', { name: /^(Done|Continue)$/, exact: true })).toHaveCount(1);
   await expect(totals).not.toContainText('Includes applicable');
   await expect(page.getByRole('heading', { name: 'Muscles trained', exact: true })).toHaveCount(0);
   const xp = page.locator('.recap-xp');
@@ -135,7 +135,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
   );
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Done', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('link', { name: /^(Done|Continue)$/, exact: true })).toHaveCount(1);
   const level = page.locator('.recap-level');
   await expect(level).toContainText('Level up!');
   await expect(level).toHaveCSS('animation-name', 'recap-level-up');
@@ -189,7 +189,7 @@ test('recap pages show session-only muscles, bounded weight history and accessib
     el.scrollTop = el.scrollHeight;
   });
   const actions = page.getByRole('group', { name: 'Workout actions', exact: true });
-  await expect(actions.getByRole('link', { name: 'Done', exact: true })).toBeVisible();
+  await expect(actions.getByRole('link', { name: /^(Done|Continue)$/, exact: true })).toBeVisible();
   await expect(actions.getByRole('button', { name: 'Save as a routine' })).toBeVisible();
   await expect(actions.getByRole('button', { name: 'Delete workout' })).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -237,7 +237,9 @@ test('recap pages show session-only muscles, bounded weight history and accessib
           );
           await page.waitForTimeout(500); // Let the on-demand WebGL frame reach the compositor.
         }
-        await expect(actions.getByRole('link', { name: 'Done', exact: true })).toBeVisible();
+        await expect(
+          actions.getByRole('link', { name: /^(Done|Continue)$/, exact: true }),
+        ).toBeVisible();
         await expectRecapActions(page);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
           true,
