@@ -56,15 +56,34 @@ test('a workout level gain celebrates only after Continue, works offline and nev
   const travel = await page.locator('.level-up-reel').evaluate((el) => {
     const animation = el.getAnimations()[0]!;
     animation.pause();
-    animation.currentTime = 200;
+    animation.currentTime = 760;
     const before = el.getBoundingClientRect();
-    animation.currentTime = 500;
+    animation.currentTime = 1160;
     const after = el.getBoundingClientRect();
     animation.play();
     return { x: after.x - before.x, y: after.y - before.y };
   });
   expect(Math.abs(travel.x)).toBeLessThan(1);
   expect(travel.y).toBeLessThan(-20);
+  const bar = dialog.getByRole('progressbar', { name: 'XP toward level 3' });
+  const fill = await bar.locator('.level-up-xp-fill').evaluate((el) => {
+    const animation = el.getAnimations()[0]!;
+    animation.pause();
+    const values = [100, 660, 821, 1700].map((time) => {
+      animation.currentTime = time;
+      return el.getBoundingClientRect().width / el.parentElement!.getBoundingClientRect().width;
+    });
+    animation.play();
+    return values;
+  });
+  expect(fill[1]).toBeCloseTo(1, 2);
+  expect(fill[1]!).toBeGreaterThan(fill[0]!);
+  expect(fill[2]!).toBeLessThan(0.01);
+  expect(fill[3]).toBeCloseTo(
+    Number(await bar.getAttribute('aria-valuenow')) /
+      Number(await bar.getAttribute('aria-valuemax')),
+    2,
+  );
   await expect(dialog.getByRole('button', { name: 'Let’s go' })).toBeFocused();
   await expect(page.getByRole('group', { name: 'Workout actions' })).toBeHidden();
   await page.screenshot({ path: info.outputPath('celebration-phone.png') });
@@ -104,6 +123,7 @@ test('reduced motion stays still until dismissed, fits both themes and clears th
       await expect(dialog.getByRole('button')).toBeInViewport({ ratio: 1 });
       await expect(page.locator('.level-up-reel')).toHaveCSS('animation-name', 'none');
       await expect(page.locator('.level-up-confetti')).toBeHidden();
+      await expect(page.locator('.level-up-xp-fill')).toHaveCSS('animation-name', 'none');
       const centreOffset = await page.locator('.level-up-current').evaluate((el) => {
         const range = document.createRange();
         range.selectNodeContents(el);

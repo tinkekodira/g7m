@@ -9727,8 +9727,12 @@ recap rewards cross a level boundary, Continue opens a full-screen native modal
 with the new level and the previous-to-current level change. An athletic
 scoreboard treatment centers oversized italic numerals: a single vertical reel
 moves the old level upward and brings the new level in from below. A small,
-single confetti burst sits behind the number; a static green rule anchors the
-result. The reel settles within 780ms and the confetti ends within 1.5 seconds.
+single confetti burst sits behind the number. An XP bar fills from the previous
+level's real progress to its threshold, triggering the vertical reel, then
+resets and fills to the new level's remaining XP. Both progress values come from
+the existing chronological reward ledger, including its caps and bonuses.
+The bar settles within 1.7 seconds and the confetti ends within two seconds.
+Assistive technology reads the final XP progress; reduced motion shows it still.
 Keep the headline compact, existing theme tokens and shared
 button. Normal motion returns to the finish flow's original destination after
 3.4 seconds; Let’s go and Escape can dismiss immediately. Reduced motion shows

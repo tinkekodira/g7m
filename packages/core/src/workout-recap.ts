@@ -141,6 +141,9 @@ export function buildWorkoutRecap(input: {
 
 export interface RecapRewards {
   readonly xp: number;
+  /** Chronological ledger totals around this workout, for level progress. */
+  readonly xpBefore: number;
+  readonly xpAfter: number;
   readonly levelBefore: number;
   readonly levelAfter: number;
   readonly achievements: readonly Achievement[];
@@ -161,7 +164,8 @@ export function workoutRecapRewards(
     );
   const index = ordered.findIndex((s) => s.sessionId === input.sessionId);
   const target = ordered[index];
-  if (target === undefined) return { xp: 0, levelBefore: 1, levelAfter: 1, achievements: [] };
+  if (target === undefined)
+    return { xp: 0, xpBefore: 0, xpAfter: 0, levelBefore: 1, levelAfter: 1, achievements: [] };
   const prefix = (sessions: typeof ordered) => {
     const ids = new Set(sessions.map((s) => s.sessionId));
     const sets = input.sets.filter((s) => ids.has(s.sessionId));
@@ -183,6 +187,8 @@ export function workoutRecapRewards(
   const earned = new Set(before.list.filter((a) => a.earnedAt !== null).map((a) => a.key));
   return {
     xp: Math.max(0, after.ledger.total - before.ledger.total),
+    xpBefore: before.ledger.total,
+    xpAfter: after.ledger.total,
     levelBefore: levelFor(before.ledger.total).level,
     levelAfter: levelFor(after.ledger.total).level,
     achievements: after.list.filter((a) => !a.secret && a.earnedAt !== null && !earned.has(a.key)),

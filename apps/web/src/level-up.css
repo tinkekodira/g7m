@@ -57,7 +57,7 @@
 .level-up-reel {
   display: flex;
   flex-direction: column;
-  animation: level-up-roll 680ms 100ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: level-up-roll 680ms 660ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .level-up-reel > span {
   flex: 0 0 1.05em;
@@ -92,7 +92,27 @@
 }
 .level-up-rule {
   height: 4px;
+  overflow: hidden;
+  background: var(--border-subtle);
+}
+.level-up-xp-fill {
+  height: 100%;
   background: var(--accent);
+  transform-origin: left;
+  transform: scaleX(var(--xp-after));
+  animation: level-up-xp 1600ms 100ms ease-out both;
+}
+.level-up-xp-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.level-up-xp-total {
+  animation: level-up-xp-label 180ms 850ms both;
 }
 .level-up-description {
   display: flex;
@@ -127,6 +147,29 @@
   }
   to {
     transform: translateY(-50%);
+  }
+}
+@keyframes level-up-xp {
+  0% {
+    transform: scaleX(var(--xp-before));
+  }
+  35%,
+  45% {
+    transform: scaleX(1);
+  }
+  45.01% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(var(--xp-after));
+  }
+}
+@keyframes level-up-xp-label {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 @keyframes level-up-confetti {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
-import type { RecapRewards } from '@g7m/core';
+import { levelFor, type RecapRewards } from '@g7m/core';
 import { Button } from '@g7m/ui';
 import { useReducedMotion } from '../lib/use-reduced-motion.js';
 import '../level-up.css';
@@ -14,6 +14,8 @@ export function LevelUpCelebration({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const reduced = useReducedMotion();
+  const before = levelFor(rewards.xpBefore);
+  const after = levelFor(rewards.xpAfter);
 
   useEffect(() => {
     const node = dialog.current;
@@ -54,7 +56,7 @@ export function LevelUpCelebration({
                     '--confetti-x': `${String((i % 2 === 0 ? -1 : 1) * (46 + Math.floor(i / 2) * 12))}px`,
                     '--confetti-y': `${String(-60 - ((i * 23) % 65))}px`,
                     '--confetti-turn': `${String((i % 2 === 0 ? -1 : 1) * (120 + i * 20))}deg`,
-                    animationDelay: `${String(320 + (i % 3) * 35)}ms`,
+                    animationDelay: `${String(800 + (i % 3) * 35)}ms`,
                   } as CSSProperties
                 }
               />
@@ -67,7 +69,27 @@ export function LevelUpCelebration({
             </div>
           </div>
         </div>
-        <div className="level-up-rule" aria-hidden="true" />
+        <div
+          className="level-up-rule"
+          role="progressbar"
+          aria-label={`XP toward level ${String(after.level + 1)}`}
+          aria-valuemin={0}
+          aria-valuemax={after.xpForLevel}
+          aria-valuenow={after.xpIntoLevel}
+        >
+          <div
+            className="level-up-xp-fill"
+            style={
+              { '--xp-before': before.progress, '--xp-after': after.progress } as CSSProperties
+            }
+          />
+        </div>
+        <p className="level-up-xp-labels numeric" aria-hidden="true">
+          <span className="text-accent">+{rewards.xp} XP</span>
+          <span className="level-up-xp-total">
+            {after.xpIntoLevel} / {after.xpForLevel} XP
+          </span>
+        </p>
         <p id="level-up-description" className="level-up-description">
           <span className="level-up-from">Level {rewards.levelBefore}</span>
           <span className="level-up-arrow" aria-hidden="true">
