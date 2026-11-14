@@ -18,6 +18,7 @@ export * from './cardio.js';
 export * from './strength.js';
 export * from './order-key.js';
 export * from './exercise-search.js';
+export * from './exercise-usage.js';
 export * from './load.js';
 export * from './rest.js';
 export * from './warmup.js';

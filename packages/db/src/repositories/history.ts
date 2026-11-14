@@ -115,6 +115,30 @@ export class HistoryRepository {
     private readonly context: RepositoryContext,
   ) {}
 
+  /** One use per finished workout with a completed non-warm-up set, bouts included. */
+  async exerciseUsage(window: {
+    readonly from: Date;
+    readonly to: Date;
+  }): Promise<Map<string, number>> {
+    const { userId } = resolveContext(this.context);
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT se.exercise_id, COUNT(DISTINCT ws.id) AS workout_count
+         FROM workout_sessions ws
+         JOIN session_exercises se ON se.session_id = ws.id
+         JOIN session_sets ss ON ss.session_exercise_id = se.id
+        WHERE ws.user_id = ? AND se.user_id = ? AND ss.user_id = ?
+          AND ws.ended_at IS NOT NULL
+          AND ss.is_completed = 1 AND ss.set_type <> 'warmup'
+          AND ${instant('ws.started_at')} >= ${INSTANT_PARAMETER}
+          AND ${instant('ws.started_at')} < ${INSTANT_PARAMETER}
+        GROUP BY se.exercise_id`,
+      [userId, userId, userId, toTimestamp(window.from), toTimestamp(window.to)],
+    );
+    return new Map(
+      rows.map((row) => [readString(row, 'exercise_id', ''), readNumber(row, 'workout_count', 0)]),
+    );
+  }
+
   /**
    * Every completed set in the window, with its session context attached.
    *

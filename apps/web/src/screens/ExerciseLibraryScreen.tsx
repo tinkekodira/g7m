@@ -4,6 +4,7 @@ import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g
 import type { Exercise, PrimaryMuscle } from '@g7m/db';
 import {
   exerciseWeightProgress,
+  exercisesByUsage,
   recommendExercises,
   type ExerciseWeightPoint,
   type UnitSystem,
@@ -185,7 +186,7 @@ export function ExerciseLibraryScreen() {
    */
   const ready = taxonomy.data !== null;
   const criteria = toExerciseFilter(filters, groupIdBySlug, equipmentIdBySlug);
-  const key = ready ? `${JSON.stringify(criteria)}|${filters.query}` : 'waiting';
+  const key = ready ? `${JSON.stringify(criteria)}|${filters.query}|${String(adding)}` : 'waiting';
 
   /**
    * The stars come in the same read as the list, so the list is drawn in its
@@ -201,7 +202,21 @@ export function ExerciseLibraryScreen() {
       repositories.profile.current(),
     ]);
     const favourites = new Set(profile?.favouriteExercises ?? []);
-    return { exercises: favouritesFirst(exercises, favourites), muscles, favourites };
+    return {
+      exercises: adding ? exercises : favouritesFirst(exercises, favourites),
+      muscles,
+      favourites,
+    };
+  });
+
+  // Independent of search and filters; refreshed by writes, sync and picker mounts.
+  const usage = useCatalogue(`workout-exercise-usage:${String(adding)}`, async (repositories) => {
+    if (!adding) return null;
+    const to = new Date();
+    return repositories.history.exerciseUsage({
+      from: new Date(to.getTime() - 90 * 86_400_000),
+      to,
+    });
   });
 
   // One history read for the list, independent of search and filter changes.
@@ -230,18 +245,30 @@ export function ExerciseLibraryScreen() {
     [adding, recommendationData.data, results.data, picked],
   );
   const recommendationIds = new Set(recommended.map((r) => r.exerciseId));
-  const ordinary = results.data?.exercises ?? [];
-  const exercises = [
-    ...recommended.flatMap((r) => ordinary.filter((e) => e.id === r.exerciseId)),
-    ...ordinary.filter((e) => !recommendationIds.has(e.id)),
-  ];
+  const exercises = useMemo(() => {
+    const ordinary = results.data?.exercises ?? [];
+    return adding
+      ? exercisesByUsage(
+          ordinary,
+          usage.data ?? new Map(),
+          results.data?.favourites ?? new Set(),
+          filters.query,
+        )
+      : ordinary;
+  }, [adding, results.data, usage.data, filters.query]);
   const error =
-    writeError ?? taxonomy.error ?? results.error ?? progress.error ?? recommendationData.error;
+    writeError ??
+    taxonomy.error ??
+    results.error ??
+    progress.error ??
+    recommendationData.error ??
+    usage.error;
   const loading =
     results.data === null ||
     taxonomy.loading ||
     (!picking && progress.loading) ||
     (adding && recommendationData.loading) ||
+    (adding && (usage.loading || usage.data === null)) ||
     !ready;
 
   return (
@@ -362,6 +389,13 @@ export function ExerciseLibraryScreen() {
           <p className="text-sm text-secondary" aria-live="polite">
             {exercises.length === 1 ? '1 exercise' : `${String(exercises.length)} exercises`}
           </p>
+          {adding && (filters.query.trim() !== '' || (usage.data?.size ?? 0) > 0) && (
+            <p className="-mt-2 text-xs text-muted">
+              {filters.query.trim() !== ''
+                ? 'Best matches first'
+                : 'Most used first · Last 90 days'}
+            </p>
+          )}
           {!picking && exercises.length > 0 && (
             <p className="-mt-2 text-xs text-muted">
               Weight per workout · Last 6 sessions. Best working set; + added, − assistance, BW
