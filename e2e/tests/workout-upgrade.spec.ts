@@ -128,6 +128,20 @@ test('recommendations wait for three complete exercises, obey search and account
   page,
 }, info) => {
   const user = await createUser('recommendation-gate', { onboarded: true });
+  // Personal frequency outranks suggestions even after the recommendation gate opens.
+  await sql(
+    `
+    with workout as (
+      insert into public.workout_sessions (user_id, started_at, ended_at)
+      values ($1, now() - interval '1 day', now() - interval '23 hours') returning id
+    ), slot as (
+      insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
+      select $1, workout.id, e.id, 'a0' from workout, public.exercises e where e.slug = 'plank' returning id
+    )
+    insert into public.session_sets (user_id, session_exercise_id, order_key, load_type, weight_kg, reps, is_completed, completed_at)
+    select $1, slot.id, 'a0', 'bodyweight', 0, 60, true, now() - interval '1 day' from slot`,
+    [user.id],
+  );
   await signIn(page, user);
   await waitForCatalogue(page);
   await startWith(page, 'Barbell Bench Press');
@@ -141,6 +155,8 @@ test('recommendations wait for three complete exercises, obey search and account
   await logExercise(page, 'Cable Fly');
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
   await expect(page.getByText('Recommended', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('list').getByRole('button').first()).toContainText('Plank');
+  await expect(page.getByRole('list').getByRole('button').first()).not.toContainText('Recommended');
   await page.getByLabel('Search').fill('incline');
   await expect(page.getByText('Recommended', { exact: true })).toHaveCount(1);
   const first = page
@@ -148,11 +164,18 @@ test('recommendations wait for three complete exercises, obey search and account
     .filter({ has: page.getByRole('button') })
     .first();
   await expect(first).toContainText('Incline');
-  await expect(first).toContainText('Recommended');
+  const suggestion = page
+    .getByRole('list')
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Recommended', { exact: true }),
+    });
+  await expect(suggestion).toHaveCount(1);
+  const suggestedName = (await suggestion.innerText()).split('Recommended')[0]!.trim();
   await page.screenshot({ path: info.outputPath('recommended-picker.png') });
   // A pending superset choice reserves its emphasis before anything is saved.
   await page.getByRole('switch', { name: /^Superset/ }).click();
-  await page.getByRole('button', { name: /^Incline Dumbbell Press/ }).click();
+  await suggestion.click();
   await expect(page.getByText('Recommended', { exact: true })).toHaveCount(0);
   await page.getByRole('switch', { name: /^Superset/ }).click();
   await expect(page.getByText('Recommended', { exact: true })).toHaveCount(1);
@@ -167,7 +190,7 @@ test('recommendations wait for three complete exercises, obey search and account
   await expect(page.getByText('Recommended', { exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: 'Back', exact: true }).click();
   await fly.getByRole('button', { name: 'Complete set 2', exact: true }).click();
-  await add(page, 'Incline Dumbbell Press');
+  await add(page, suggestedName);
   await page.getByRole('link', { name: '+ Add an exercise' }).click();
   await page.getByLabel('Search').fill('incline');
   await expect(page.getByText('Recommended', { exact: true })).toHaveCount(0);

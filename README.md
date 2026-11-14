@@ -48,8 +48,12 @@ What it does:
   turn the model, tap a muscle or use the muscle picker.
   The exercise library has search, filters by muscle, equipment and
   gym-or-home, coaching cues for every lift, and your estimated one-rep max.
-  Star the exercises you use most and they come first in every list
+  Star exercises to put them first when browsing or editing routines
   ([ADR-0108](./DECISIONS.md#adr-0108--kettlebell-art-twelve-more-loops-and-favourite-exercises)).
+  During a workout, Add an exercise puts your most-used movements from the last
+  90 days first. Each finished workout counts once per exercise; search keeps
+  the best matches first, and favourites break usage ties. Recommendation labels
+  remain visible without changing that order. Everything works offline.
   Browse also charts your best working weight over each exercise's last six
   finished workouts, with empty charts for exercises you have not logged.
 - **Coach.** Answer a few questions — height, weight, age, how active your week

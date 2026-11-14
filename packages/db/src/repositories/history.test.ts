@@ -61,6 +61,122 @@ afterEach(() => {
   db.close();
 });
 
+describe('exerciseUsage', () => {
+  const window = { from: new Date('2026-09-01T00:00:00Z'), to: new Date('2026-10-01T00:00:00Z') };
+
+  it('counts distinct workouts, including duplicate slots and supersets only once', async () => {
+    const id = await loggedSession('2026-09-07T10:00:00Z', 'bench', [
+      { weightKg: 100, reps: 5 },
+      { weightKg: 100, reps: 5 },
+    ]);
+    const entries = await sessions.addExercises(id, ['bench', 'squat'], { superset: true });
+    for (const entry of entries) {
+      const set = await sessions.addSet(entry.id, {
+        weightKg: 20,
+        reps: 8,
+        loadType: 'external',
+        setType: 'working',
+      });
+      await sessions.completeSet(set.id);
+    }
+    await loggedSession('2026-09-08T10:00:00Z', 'bench', [{ weightKg: 100, reps: 5 }]);
+    expect(await history.exerciseUsage(window)).toEqual(
+      new Map([
+        ['bench', 2],
+        ['squat', 1],
+      ]),
+    );
+  });
+
+  it('ignores open workouts, unticked sets, empty slots and warm-up-only exercises', async () => {
+    await loggedSession('2026-09-07T10:00:00Z', 'bench', [{ weightKg: 100, reps: 5 }], {
+      finish: false,
+    });
+    const session = await sessions.start();
+    const entry = await sessions.addExercise(session.id, 'squat');
+    const warmup = await sessions.addSet(entry.id, {
+      weightKg: 20,
+      reps: 5,
+      loadType: 'external',
+      setType: 'warmup',
+    });
+    await sessions.completeSet(warmup.id);
+    await sessions.addSet(entry.id, {
+      weightKg: 100,
+      reps: 5,
+      loadType: 'external',
+      setType: 'working',
+    });
+    await sessions.addExercise(session.id, 'bench');
+    await sessions.finish(session.id);
+    expect(await history.exerciseUsage(window)).toEqual(new Map());
+  });
+
+  it('includes cardio with zero reps and timed bodyweight sets', async () => {
+    await db.seed('exercises', { id: 'bike', cardio_kind: 'bike' });
+    await db.seed('exercises', { id: 'plank', is_time_based: 1 });
+    const session = await sessions.start();
+    for (const exerciseId of ['bike', 'plank']) {
+      const entry = await sessions.addExercise(session.id, exerciseId);
+      const set = await sessions.addSet(entry.id, {
+        weightKg: 0,
+        reps: exerciseId === 'bike' ? 0 : 60,
+        loadType: 'bodyweight',
+        setType: 'working',
+        ...(exerciseId === 'bike' ? { bout: { durationSeconds: 600 } } : {}),
+      });
+      await sessions.completeSet(set.id);
+    }
+    await sessions.finish(session.id);
+    expect(await history.exerciseUsage(window)).toEqual(
+      new Map([
+        ['bike', 1],
+        ['plank', 1],
+      ]),
+    );
+  });
+
+  it('uses performance dates, inclusive lower and exclusive upper bounds, with legacy timestamps', async () => {
+    await loggedSession('2026-08-31T23:59:59Z', 'bench', [{ weightKg: 100, reps: 5 }]);
+    const lower = await loggedSession('2026-09-01T00:00:00Z', 'bench', [
+      { weightKg: 100, reps: 5 },
+    ]);
+    await loggedSession('2026-10-01T00:00:00Z', 'bench', [{ weightKg: 100, reps: 5 }]);
+    await db.execute(
+      "UPDATE workout_sessions SET source = 'past', started_at = '2026-09-01 00:00:00Z', created_at = '2026-11-01T00:00:00Z' WHERE id = ?",
+      [lower],
+    );
+    expect(await history.exerciseUsage(window)).toEqual(new Map([['bench', 1]]));
+  });
+
+  it('isolates users and derives counts again after corrections and deletion', async () => {
+    const id = await loggedSession('2026-09-07T10:00:00Z', 'bench', [{ weightKg: 100, reps: 5 }]);
+    const otherHistory = new HistoryRepository(db, { userId: 'other' });
+    expect(await otherHistory.exerciseUsage(window)).toEqual(new Map());
+    const otherSessions = new SessionRepository(db, { ...context(), userId: 'other' });
+    const otherSession = await otherSessions.start();
+    const otherEntry = await otherSessions.addExercise(otherSession.id, 'squat');
+    const otherSet = await otherSessions.addSet(otherEntry.id, {
+      weightKg: 100,
+      reps: 5,
+      setType: 'working',
+      loadType: 'external',
+    });
+    await otherSessions.completeSet(otherSet.id);
+    await otherSessions.finish(otherSession.id);
+    expect(await otherHistory.exerciseUsage(window)).toEqual(new Map([['squat', 1]]));
+    const [set] = await sessions.setsForSession(id);
+    expect(await history.exerciseUsage(window)).toEqual(new Map([['bench', 1]]));
+    await sessions.uncompleteSet(set!.id);
+    expect(await history.exerciseUsage(window)).toEqual(new Map());
+    await sessions.completeSet(set!.id);
+    expect(await history.exerciseUsage(window)).toEqual(new Map([['bench', 1]]));
+    const [entry] = await sessions.exercisesFor(id);
+    await sessions.removeExercise(entry!.id);
+    expect(await history.exerciseUsage(window)).toEqual(new Map());
+  });
+});
+
 describe('completedSets', () => {
   it('returns each completed set with its session context joined on', async () => {
     await loggedSession('2026-09-07T10:00:00.000Z', 'bench', [{ weightKg: 100, reps: 5 }], {

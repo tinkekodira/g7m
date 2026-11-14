@@ -9750,3 +9750,43 @@ Browser checks cover a real offline finish, deferred presentation, automatic
 completion, manual dismissal, reload/history suppression, no-level exits,
 reduced motion and phone/desktop layouts in both themes. No database migration,
 `npx supabase db push` or PowerSync sync-rule deployment is required.
+
+## ADR-0177 — Workout pickers put personal frequency ahead of suggestions
+
+**Status:** accepted · **Date:** 2026-11-15 · **Amends:** ADR-0108, ADR-0146
+
+Add an exercise in a workout, including supersets and completed-workout
+corrections, orders eligible exercises by the user's usage over the last 90
+days. One finished workout with a completed non-warm-up set or cardio bout
+counts once per exercise, regardless of sets or repeated exercise slots.
+Open workouts and unticked work never count. Timed and bodyweight exercises
+count like other movements. Windowing uses the workout's performance date,
+started_at, from 90 days ago inclusive to now exclusive, including backdated
+training rather than its insertion date.
+
+Search keeps the existing exact, prefix, word-prefix, substring and fuzzy
+tiers first. Within a tier, or without a query, usage descends, favourites
+break count ties, and the existing catalogue order breaks remaining ties.
+Filters still decide eligibility before ordering. With no qualifying history,
+favourites and catalogue order remain. Browse, Learn and routine editing keep
+their existing ordering. Recommendation eligibility and opt-out remain intact;
+Recommended labels no longer promote rows ahead of personal frequency.
+
+An unsearched picker with history says “Most used first · Last 90 days”; a
+search says “Best matches first”. Compact rows gain no counts or controls.
+The local history repository aggregates distinct workout IDs in one owner-scoped
+read across strength, timed and cardio work, independently of filter changes.
+Initial rendering waits for that read, and existing local-write and sync
+invalidation refresh it. No counters or separate persistence are introduced,
+so offline finishes, corrections and deletion update usage from the log.
+
+The small SQL method lives in the shared repository bundle. Allow 1 KB more
+in the entry budget (784,000 to 785,000 bytes) for this query; the picker and
+ordering helper remain lazy, with no new dependency.
+
+Validation covers repository counts, dates, ownership, cardio, warm-ups and
+corrections; pure ordering tests cover search tiers, frequency and favourites.
+Browser checks cover synced and offline history, reload, account switching,
+filters, supersets, retained recommendation labels and phone/desktop layouts in
+both themes. No database migration, `npx supabase db push` or PowerSync sync-rule
+deployment is required.

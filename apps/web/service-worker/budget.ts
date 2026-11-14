@@ -38,7 +38,9 @@
 // ADR-0161: the tour's small route hooks add to the entry; its UI stays lazy.
 // ADR-0169: per-mutation workout correction guards live in the shared repositories.
 // Allow 2 KB for those checks; detail/editor UI still loads with its route.
-export const ENTRY_BUDGET_BYTES = 784_000;
+// ADR-0177: allow 1 KB for the shared history repository's exercise-usage query.
+// Ordering and picker UI remain in the lazy exercise-library route.
+export const ENTRY_BUDGET_BYTES = 785_000;
 
 /**
  * The module entry from a built `index.html`.
