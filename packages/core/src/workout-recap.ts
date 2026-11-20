@@ -3,6 +3,7 @@ import { countSets, totalVolumeKg, type LoggedSet } from './load.js';
 import { sessionBests, type LiftMark } from './lift-progress.js';
 import { bestsFrom, recordsInSession, type SetRecord } from './records.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
+import { liftKey } from './lift-key.js';
 import type { PrimaryWork } from './workout-title.js';
 import {
   achievements,
@@ -19,6 +20,8 @@ export interface RecapSet extends LoggedSet {
 }
 export interface RecapBlock {
   readonly exerciseId: string;
+  /** The gym it is compared within, for a machine at one of several. ADR-0179. */
+  readonly gymScope?: string | null;
   readonly isTimeBased: boolean;
   readonly cardioKind: CardioKind | null;
   readonly sets: readonly RecapSet[];
@@ -59,9 +62,12 @@ export function buildWorkoutRecap(input: {
     (s) => s.sessionId !== input.sessionId && s.performedAt < input.startedAt,
   );
   const comparisons: RecapComparison[] = [];
-  const ids = new Set(strength.map((b) => b.exerciseId));
-  for (const exerciseId of ids) {
-    const own = strength.filter((b) => b.exerciseId === exerciseId);
+  // By lift, not by exercise: a machine is compared with itself at this gym.
+  const keys = new Set(strength.map((b) => liftKey(b)));
+  for (const key of keys) {
+    const own = strength.filter((b) => liftKey(b) === key);
+    const exerciseId = own[0]?.exerciseId ?? key;
+    const gymScope = own[0]?.gymScope ?? null;
     const ownSets = own.flatMap((b) => b.sets);
     if (!ownSets.some((s) => s.isCompleted && s.setType !== 'warmup')) continue;
     const timed = own[0]?.isTimeBased === true;
@@ -71,11 +77,12 @@ export function buildWorkoutRecap(input: {
           ...s,
           sessionId: input.sessionId,
           exerciseId,
+          gymScope,
           performedAt: input.startedAt,
           bodyweightKg: input.bodyweightKg,
         })),
       )[0]?.best ?? null;
-    const history = earlier.filter((s) => s.exerciseId === exerciseId);
+    const history = earlier.filter((s) => liftKey(s) === key);
     const previous = sessionBests(history).at(-1)?.best ?? null;
     comparisons.push({
       exerciseId,

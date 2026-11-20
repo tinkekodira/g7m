@@ -116,6 +116,7 @@ export {
   type GoalInput,
   type TrainingGoal,
 } from './repositories/goals.js';
+export { GymRepository, MAX_GYM_NAME_LENGTH, cleanGymName, type Gym } from './repositories/gyms.js';
 export {
   ACTIVITY_LEVELS,
   BodyMetricsRepository,

@@ -54,6 +54,8 @@ export async function startRoutineWorkout(
     readonly routine: RoutineDetail;
     readonly bodyweightKg: number | null;
     readonly now?: Date;
+    /** Chosen in the start dialog. Left out, wherever they usually train. */
+    readonly gymId?: string;
   },
 ): Promise<WorkoutSession> {
   const routine = input.routine.routine;
@@ -63,6 +65,7 @@ export async function startRoutineWorkout(
     routineId: routine.id,
     name: routine.name,
     bodyweightKg: input.bodyweightKg,
+    ...(input.gymId === undefined ? {} : { gymId: input.gymId }),
   });
   await writeMovements(repositories, session.id, input.routine.exercises);
 

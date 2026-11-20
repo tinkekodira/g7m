@@ -23,6 +23,11 @@ export interface HistoricalSet extends LoggedSet {
   readonly performedAt: Date;
   /** The session's snapshot, not today's profile value. */
   readonly bodyweightKg: number | null;
+  /**
+   * The gym this set is compared within: a machine's at one of several gyms.
+   * Null or absent when it is compared everywhere. See `lift-key.ts`.
+   */
+  readonly gymScope?: string | null;
 }
 
 /** How much of an exercise's work a muscle does. From `exercise_muscles`. */

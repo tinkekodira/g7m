@@ -155,15 +155,17 @@ async function workout(
   startedAt: Date,
   lifts: readonly Lift[],
   name: string | null = null,
+  gymId: string | null = null,
 ): Promise<void> {
   const [session] = await sql<{ id: string }>(
-    `insert into public.workout_sessions (user_id, name, started_at, ended_at, bodyweight_kg)
-     values ($1, $2, $3, $4, 80) returning id`,
+    `insert into public.workout_sessions (user_id, name, started_at, ended_at, bodyweight_kg, gym_id)
+     values ($1, $2, $3, $4, 80, $5) returning id`,
     [
       userId,
       name,
       startedAt.toISOString(),
       new Date(startedAt.getTime() + 70 * 60_000).toISOString(),
+      gymId,
     ],
   );
   let minute = 4;
@@ -196,7 +198,11 @@ async function workout(
 }
 
 async function seed(): Promise<Person[]> {
-  const you = await person('you@friends.test', 'Milan', 'you, friends with Alex and Sam');
+  const you = await person(
+    'you@friends.test',
+    'Milan',
+    'you, friends with Alex and Sam, trains at two gyms',
+  );
   const alex = await person('alex@friends.test', 'Alex', 'trains four days a week, online now');
   const sam = await person('sam@friends.test', 'Sam', 'three days a week, some cardio');
   const jordan = await person('jordan@friends.test', 'Jordan', 'has sent you a friend request');
@@ -301,17 +307,35 @@ async function seed(): Promise<Person[]> {
     }
   }
 
+  // You train at two gyms (ADR-0178), and their pulldowns do not weigh the
+  // same: 90 kg at Iron Works is as hard as 100 kg at City Gym.
+  const gyms = await sql<{ id: string; name: string }>(
+    `insert into public.gyms (user_id, name, order_key)
+     values ($1, 'Iron Works', 'a0'), ($1, 'City Gym', 'a1') returning id, name`,
+    [you.id],
+  );
+  const gym = (name: string): string | null => gyms.find((row) => row.name === name)?.id ?? null;
+  await sql(`update public.profiles set multiple_gyms = true where user_id = $1`, [you.id]);
+
   // You: enough history for the comparisons, nothing today.
-  for (const [ago, bench, squat, deadlift] of [
-    [12, 95, 130, 180],
-    [8, 100, 132.5, 185],
-    [3, 102.5, 135, 190],
+  for (const [ago, bench, squat, deadlift, place, pulldown] of [
+    [12, 95, 130, 180, 'Iron Works', 87.5],
+    [8, 100, 132.5, 185, 'City Gym', 100],
+    [3, 102.5, 135, 190, 'Iron Works', 90],
   ] as const) {
-    await workout(you.id, ids, daysAgo(ago, 19), [
-      { slug: 'barbell-bench-press', kg: bench, warmup: true },
-      { slug: 'barbell-back-squat', kg: squat, warmup: true },
-      { slug: 'conventional-deadlift', kg: deadlift, reps: 3 },
-    ]);
+    await workout(
+      you.id,
+      ids,
+      daysAgo(ago, 19),
+      [
+        { slug: 'barbell-bench-press', kg: bench, warmup: true },
+        { slug: 'barbell-back-squat', kg: squat, warmup: true },
+        { slug: 'conventional-deadlift', kg: deadlift, reps: 3 },
+        { slug: 'lat-pulldown', kg: pulldown, reps: 8 },
+      ],
+      null,
+      gym(place),
+    );
   }
 
   return [you, alex, sam, jordan];

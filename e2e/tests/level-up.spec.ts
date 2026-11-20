@@ -149,10 +149,16 @@ test('reduced motion stays still until dismissed, fits both themes and clears th
   await page.reload();
   await page.getByRole('link', { name: 'Continue', exact: true }).click();
   await expect(dialog).toBeVisible();
+  // A slow phone, as CI is: the route change is a transition, and the recap
+  // stays on screen until Home has rendered. Dismissing must close the dialog
+  // itself, or coming back to this workout meanwhile replays it from history.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
   await page.keyboard.press('Escape');
   await expect(page).toHaveURL(/\/#\/$/);
   await page.goto(`/#/progress/session/${session}`);
   await expect(dialog).toHaveCount(0);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 });
 
 test('a workout without a level gain goes straight home', async ({ page }) => {

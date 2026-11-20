@@ -9790,3 +9790,113 @@ Browser checks cover synced and offline history, reload, account switching,
 filters, supersets, retained recommendation labels and phone/desktop layouts in
 both themes. No database migration, `npx supabase db push` or PowerSync sync-rule
 deployment is required.
+
+## ADR-0178 — Workouts say which gym they were at
+
+**Status:** accepted · **Date:** 2026-11-20
+
+Somebody with two gym memberships logs the same machine at both, and the two
+machines do not weigh the same: 90 kg on one pulldown is harder than 100 kg on
+the other. Before any number can compare a machine lift within one gym, a
+workout has to say where it happened. This decision records the place; the
+comparison is ADR-0179.
+
+A `gyms` table holds each lifter's gyms: a name of 1 to 40 characters, a
+fractional `order_key`, and `archived_at`. `workout_sessions.gym_id` points at
+one, through a composite key with `user_id` like every other child row
+(ADR-0021). Its `on delete set null (gym_id)` names the column, because a bare
+`set null` would null the shared, non-nullable `user_id` too. The app archives
+and never deletes, so a workout done somewhere the lifter no longer goes keeps
+its gym's name. `profiles.multiple_gyms` is the switch, off by default: one gym
+is the common case, and nobody with one is asked anything.
+
+Settings → In the gym → Gyms switches it on. The first time, it asks for the
+gym trained at so far, and every workout already logged is tagged with it on
+the device (`GymRepository.tagUntaggedSessions`). The history somebody already
+has therefore keeps counting at the gym it came from, and the next gym starts
+fresh. Switching on again later tags anything logged while it was off with the
+last gym used. Gyms can be added, renamed and removed (archived) there.
+
+A workout is at the last gym used. `SessionRepository.start` decides that when
+no gym is passed, so every way of starting one gets it: routines, today's plan,
+a friend's routine, Home quick access and a past workout from the calendar.
+With two or more gyms, the start dialog shows them as chips with the last one
+already chosen, so a lifter at their usual gym starts in the same tap as
+before. The workout's header shows the gym under the timer; tapping it opens a
+bottom sheet to change it, under the same two-hour correction window as every
+other edit. Recent workouts, the calendar and a workout's details name the gym.
+
+Only the repository, the session's gym and a pin icon reach the entry chunk.
+The settings panel, the start-dialog chips and the switcher sheet load with
+their routes. ADR-0179 records the entry budget for this and the comparisons.
+
+Validation covers the repository (order, archive, rename, last used, tagging,
+the usual-gym default), the Postgres constraints (the column-list `set null`, a
+blank name, a workout at somebody else's gym), account deletion and export, and
+an end-to-end run: naming the first gym tags a past workout on the server, the
+start dialog preselects and changes the gym, and the header switches it, while
+somebody with one gym is never asked. Checked at phone and desktop widths in
+both themes.
+
+Rollout: apply the migration (`20261120120000_gyms.sql`) with
+`npx supabase db push`, deploy the regenerated `powersync/sync-rules.yaml`
+(the `gyms` table, `workout_sessions.gym_id`, `profiles.multiple_gyms`), then
+release the app.
+
+## ADR-0179 — A machine is compared with itself at the same gym
+
+**Status:** accepted · **Date:** 2026-11-20 · **Amends:** ADR-0072, ADR-0132
+
+The same machine at two gyms does not weigh the same. Somebody who presses
+100 kg for eight at one gym and manages 90 kg for six at the other has not
+regressed, and has not set a record either. For somebody who trains at more
+than one gym (ADR-0178), a lift whose primary equipment is a `machine` or a
+`cable` stack is compared only with itself at the same gym. A barbell, a
+dumbbell, bodyweight, bands and everything else weigh the same anywhere and
+keep one history. The Smith machine is a machine and is scoped; that is right,
+since Smith bars are counterbalanced differently.
+
+The rule is decided once, in SQL (`gym-scope.ts`): a set's `gymScope` is its
+workout's gym when the owner has `multiple_gyms` on and the exercise's primary
+equipment is a machine or cable, and null otherwise. `@g7m/core` groups by
+`liftKey` — the exercise id, plus the gym when there is a scope — wherever it
+used to group by exercise. With no scope the key is the exercise id, so
+nothing changes for anybody with one gym, or with the switch off.
+
+Scoped: the logger's "Last:" hint and prefill (`lastPerformance` reads the
+open workout's gym), its record badges, the workout recap's "last time" and
+records, Home's records this month (labelled with the gym), XP for records and
+the record-count achievements, the training review's climbing and stalled
+lifts, today's plan's suggested loads (from the gym the next workout starts
+at, the last one used), the exercise trend (gym chips, most recent first), the
+exercise page's estimate, and the one-line-per-exercise views — sparklines,
+the recap chart and Profile's best lifts — which show the gym each machine was
+last done at.
+
+Global on purpose: volume, tonnage, sets and workouts, the muscle heat map,
+exercise usage, the leaderboard, challenges and everything friends see. Those
+are about how much work was done, not how one stack compares with another, and
+splitting them would hide half of somebody's training.
+
+The first time a machine is done at a gym it is a baseline, not a record, as
+any first time already was. Its weight is left empty rather than prefilled
+with the other gym's machine, under a hint: "First time on this machine here.
+Last time at Iron Works: 90 kg × 8." Changing the workout's gym refills the
+machine and cable sets not done yet from the new gym's history, and empties
+the weight where there is none; ticked sets never change. History logged
+before the switch was turned on is all tagged with one gym, so XP and
+achievements do not move retroactively.
+
+The scope SQL, lift keys and the read-only last-used-gym lookup are shared by
+the repositories in the entry chunk, so the entry budget goes from 785,000 to
+794,000 bytes for ADR-0178 and this together. The gym filter, the hint and the
+switcher remain in lazy routes.
+
+Validation: core tests for the two-gym chest press (no regression or record on
+the first visit, a record once the second gym's own best is beaten, the first
+gym untouched, one gym unchanged) and monthly records; repository tests for
+scoped history, prefill, the hint, the refill and the planner; an end-to-end
+run where the pulldown at a new gym shows the other gym's hint and no "Last:",
+and switching gym brings back its own prefill.
+
+Rollout: no further migration or sync rules beyond ADR-0178's.

@@ -39,6 +39,7 @@ import {
   type RawRow,
 } from './rows.js';
 import { SESSION_SOURCES, readBout, type SessionSource } from './sessions.js';
+import { gymScopeSql } from './gym-scope.js';
 
 const SET_TYPE_VALUES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
 const LOAD_TYPE_VALUES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
@@ -90,6 +91,8 @@ export interface SessionSummary {
   readonly lastSetAt: Date | null;
   /** What the sets trained, for `workoutTitle` to name a workout nobody named. */
   readonly work: readonly PrimaryWork[];
+  /** Where it happened, archived gyms included. Null when it names none. ADR-0178. */
+  readonly gymName: string | null;
 }
 
 function toHistoricalSet(row: RawRow): HistoricalSet {
@@ -101,6 +104,7 @@ function toHistoricalSet(row: RawRow): HistoricalSet {
     // days would split one session across two entries in the history.
     performedAt: new Date(readString(row, 'started_at', '')),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
+    gymScope: readOptionalString(row, 'gym_scope'),
     setType: readEnum(row, 'set_type', SET_TYPE_VALUES, 'working'),
     loadType: readEnum(row, 'load_type', LOAD_TYPE_VALUES, 'external'),
     weightKg: readNumber(row, 'weight_kg', 0),
@@ -171,7 +175,7 @@ export class HistoryRepository {
 
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.started_at, ws.bodyweight_kg,
-              se.exercise_id,
+              se.exercise_id, ${gymScopeSql('ws', 'se.exercise_id')} AS gym_scope,
               ss.set_type, ss.load_type, ss.weight_kg, ss.reps, ss.is_completed
          FROM session_sets ss
          JOIN session_exercises se ON se.id = ss.session_exercise_id
@@ -314,7 +318,7 @@ export class HistoryRepository {
     const bound = limit === null ? -1 : Math.max(1, Math.trunc(limit));
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg, ws.source,
-              ws.created_at,
+              ws.created_at, g.name AS gym_name,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
               counted.set_count, counted.bout_count, counted.first_set_at, counted.last_set_at
@@ -338,6 +342,7 @@ export class HistoryRepository {
                 WHERE ss.is_completed = 1
                   AND ss.set_type <> 'warmup'
                 GROUP BY se2.session_id) counted ON counted.session_id = ws.id
+         LEFT JOIN gyms g ON g.id = ws.gym_id AND g.user_id = ws.user_id
         WHERE ws.user_id = ? ${options.includeOpen === true ? '' : 'AND ws.ended_at IS NOT NULL'}
         ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT ?`,
@@ -359,6 +364,7 @@ export class HistoryRepository {
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
       work: work.get(readString(row, 'session_id', '')) ?? [],
+      gymName: readOptionalString(row, 'gym_name'),
     }));
   }
 

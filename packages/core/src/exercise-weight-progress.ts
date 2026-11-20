@@ -1,3 +1,4 @@
+import { latestScopeOnly } from './lift-key.js';
 import { countsTowardVolume, type LoadType } from './load.js';
 import type { HistoricalSet } from './progress.js';
 
@@ -20,7 +21,9 @@ export function exerciseWeightProgress(
   sets: readonly HistoricalSet[],
 ): Map<string, ExerciseWeightPoint[]> {
   const exercises = new Map<string, Map<string, ExerciseWeightPoint>>();
-  for (const set of sets) {
+  // One line per exercise, at the gym it was last done at: two gyms' machines
+  // on one line would draw a drop that never happened (ADR-0179).
+  for (const set of latestScopeOnly(sets)) {
     if (
       !countsTowardVolume(set) ||
       !Number.isFinite(set.reps) ||

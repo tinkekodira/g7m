@@ -1,7 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Routine } from '@g7m/db';
 import { Button } from '@g7m/ui';
+import { useGyms } from '../lib/db/use-gyms.js';
 import { useRoutines } from '../lib/db/use-routines.js';
+import { GymChips } from './GymChips.js';
 
 export default function WorkoutStartDialog({
   busy,
@@ -11,7 +13,8 @@ export default function WorkoutStartDialog({
 }: {
   readonly busy: boolean;
   readonly error: string | null;
-  readonly onStart: (routineId: string | null, skip: boolean) => void;
+  /** `gymId` only when the lifter was asked which gym. ADR-0178. */
+  readonly onStart: (routineId: string | null, skip: boolean, gymId?: string) => void;
   readonly onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -19,6 +22,15 @@ export default function WorkoutStartDialog({
   const hint = useId();
   const [skip, setSkip] = useState(false);
   const routines = useRoutines();
+  const gyms = useGyms();
+  // The last gym is chosen before anybody touches the row: somebody at their
+  // usual gym starts in the same one tap as before.
+  const [pickedGym, setPickedGym] = useState<string | null>(null);
+  const asking = gyms.data?.asking === true;
+  const gymId = asking ? (pickedGym ?? gyms.data?.lastUsed ?? undefined) : undefined;
+  const start = (routineId: string | null, skip: boolean): void => {
+    onStart(routineId, skip, gymId);
+  };
 
   useEffect(() => {
     const node = dialog.current;
@@ -70,6 +82,17 @@ export default function WorkoutStartDialog({
             Cancel
           </Button>
         </header>
+        {asking && gyms.data !== null && (
+          <div className="shrink-0 px-5 pb-4">
+            <GymChips
+              gyms={gyms.data.gyms}
+              value={gymId ?? null}
+              disabled={busy}
+              label="Where are you training?"
+              onChange={setPickedGym}
+            />
+          </div>
+        )}
         <section
           aria-label="Your routines"
           className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-4"
@@ -88,7 +111,7 @@ export default function WorkoutStartDialog({
               No routines yet. Finish a workout and save it as a routine to use it here next time.
             </p>
           ) : (
-            <RoutinePages routines={routines.data ?? []} busy={busy} onStart={onStart} />
+            <RoutinePages routines={routines.data ?? []} busy={busy} onStart={start} />
           )}
         </section>
         <div className="shrink-0 border-t border-subtle px-5 pt-4 pb-5">
@@ -97,7 +120,7 @@ export default function WorkoutStartDialog({
               {error}
             </p>
           )}
-          <Button fullWidth disabled={busy} onClick={() => onStart(null, skip)}>
+          <Button fullWidth disabled={busy} onClick={() => start(null, skip)}>
             {busy ? 'Setting it up…' : 'Start a blank workout'}
           </Button>
           <label className="mt-3 flex min-h-tap cursor-pointer items-center gap-3 text-base font-medium text-primary">

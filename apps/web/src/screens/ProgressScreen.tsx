@@ -677,6 +677,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
           {describeWhen(summary.startedAt, now)} ·{' '}
           {describeWork(summary.setCount, summary.boutCount)}
           {minutes !== null && ` · ${String(minutes)} min`}
+          {summary.gymName !== null && ` · ${summary.gymName}`}
         </span>
       </span>
       <ChevronRightIcon className="size-5 shrink-0 text-muted" />

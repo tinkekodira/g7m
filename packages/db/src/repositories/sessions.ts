@@ -26,6 +26,7 @@ import {
   EMPTY_BOUT,
   canEditWorkout,
   initialOrderKeys,
+  isTopSet,
   orderKeyBetween,
   orderKeysBetween,
   type Bout,
@@ -40,6 +41,8 @@ import {
   type SqlValue,
   type WritableDatabase,
 } from './database.js';
+import { GymRepository } from './gyms.js';
+import { gymScopeSql } from './gym-scope.js';
 import { instant } from './instants.js';
 import {
   readBoolean,
@@ -80,6 +83,8 @@ export interface WorkoutSession {
   readonly routineId: string | null;
   /** Snapshot, so a pull-up logged at 80 kg stays an 80 kg pull-up. */
   readonly bodyweightKg: number | null;
+  /** Where it happened. Null for anybody with one gym. ADR-0178. */
+  readonly gymId: string | null;
 }
 
 export interface SessionExercise {
@@ -129,6 +134,15 @@ export interface StartSessionInput {
    * one dated ahead would sit at the top of every list until its day came.
    */
   readonly startedAt?: Date;
+  /**
+   * Where it happens. ADR-0178.
+   *
+   * Omitted means "wherever they usually train": the last gym used, for
+   * somebody who has said they train at more than one, and none otherwise.
+   * Every way of starting a workout gets that for free, and only the start
+   * dialog, which asks, passes one. Null means no gym.
+   */
+  readonly gymId?: string | null;
 }
 
 /**
@@ -179,6 +193,7 @@ function toSession(row: RawRow): WorkoutSession {
     source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
     routineId: readOptionalString(row, 'routine_id'),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
+    gymId: readOptionalString(row, 'gym_id'),
   };
 }
 
@@ -332,8 +347,8 @@ export class SessionRepository {
     await this.db.execute(
       `INSERT INTO workout_sessions
          (id, user_id, name, started_at, ended_at, notes, source, routine_id,
-          generation_metadata, bodyweight_kg, created_at, updated_at)
-       VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, NULL, ?, ?, ?)`,
+          generation_metadata, bodyweight_kg, gym_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?)`,
       [
         id,
         userId,
@@ -342,6 +357,7 @@ export class SessionRepository {
         source,
         routineId,
         positiveOrNull(input.bodyweightKg ?? null),
+        input.gymId === undefined ? await this.usualGym() : emptyToNull(input.gymId),
         at,
         at,
       ],
@@ -406,6 +422,33 @@ export class SessionRepository {
     await this.db.execute(
       'UPDATE workout_sessions SET bodyweight_kg = ?, updated_at = ? WHERE id = ? AND user_id = ?',
       [positiveOrNull(bodyweightKg), toTimestamp(now()), sessionId, userId],
+    );
+  }
+
+  /** The gym a workout started without one is at. See `StartSessionInput.gymId`. */
+  private async usualGym(): Promise<string | null> {
+    const { userId } = resolveContext(this.context);
+    const profile = await this.db.getOptional<RawRow>(
+      'SELECT multiple_gyms FROM profiles WHERE user_id = ?',
+      [userId],
+    );
+    if (profile === null || !readBoolean(profile, 'multiple_gyms')) return null;
+    return new GymRepository(this.db, this.context).lastUsed();
+  }
+
+  /**
+   * Say which gym a workout was at, or that it was at none.
+   *
+   * For the lifter who started at the wrong one. Under the same correction
+   * window as every other edit, because which gym it was decides which
+   * history a machine lift is compared with.
+   */
+  async setGym(sessionId: string, gymId: string | null): Promise<void> {
+    await this.assertEditable(sessionId);
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(
+      'UPDATE workout_sessions SET gym_id = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+      [emptyToNull(gymId), toTimestamp(now()), sessionId, userId],
     );
   }
 
@@ -937,36 +980,118 @@ export class SessionRepository {
     exerciseId: string,
     excludeSessionId: string | null = null,
   ): Promise<SetTemplate[]> {
+    // At this workout's gym, for a machine at one of several (ADR-0179): the
+    // same machine elsewhere weighs differently, and its numbers would prefill
+    // the wrong load. Nothing from there means nothing to prefill.
+    const scope =
+      excludeSessionId === null ? null : await this.gymScopeFor(excludeSessionId, exerciseId);
+    const found = await this.latestPerformance(exerciseId, excludeSessionId, { at: scope });
+    return found?.sets ?? [];
+  }
+
+  /**
+   * The last time a machine was done at another gym, for a workout where it
+   * has no history at this one.
+   *
+   * Not a prefill — the weights are another machine's — but a fair hint at
+   * where to start: "At Iron Works: 100 kg × 8". Null for a lift compared
+   * everywhere, or one never done anywhere else.
+   */
+  async lastPerformanceElsewhere(
+    exerciseId: string,
+    sessionId: string,
+  ): Promise<{ readonly gymName: string | null; readonly sets: SetTemplate[] } | null> {
+    const scope = await this.gymScopeFor(sessionId, exerciseId);
+    if (scope === null) return null;
+    return this.latestPerformance(exerciseId, sessionId, { notAt: scope });
+  }
+
+  /**
+   * The gym a lift in this workout is compared within, or null when it is
+   * compared everywhere. See `gym-scope.ts`.
+   */
+  async gymScopeFor(sessionId: string, exerciseId: string): Promise<string | null> {
     const { userId } = resolveContext(this.context);
+    const row = await this.db.getOptional<RawRow>(
+      `SELECT ${gymScopeSql('ws', '?')} AS gym_scope
+         FROM workout_sessions ws WHERE ws.id = ? AND ws.user_id = ?`,
+      [exerciseId, sessionId, userId],
+    );
+    return row === null ? null : readOptionalString(row, 'gym_scope');
+  }
+
+  /**
+   * Fill the sets not done yet from this gym's history, after the workout
+   * moved gym (ADR-0179).
+   *
+   * Only machines and cables, and only sets not ticked: what was lifted stays
+   * what was lifted. A set with nothing to go on at the new gym loses its
+   * weight rather than keeping the other machine's, and keeps its reps.
+   * Warm-ups and drops are left alone; they follow the working sets.
+   */
+  async refillForGym(sessionId: string): Promise<void> {
+    await this.assertEditable(sessionId);
+    const { userId, now } = resolveContext(this.context);
+    const at = toTimestamp(now());
+    for (const entry of await this.exercisesFor(sessionId)) {
+      if ((await this.gymScopeFor(sessionId, entry.exerciseId)) === null) continue;
+      const previous = (await this.lastPerformance(entry.exerciseId, sessionId)).filter(isTopSet);
+      const sets = (await this.setsFor(entry.id)).filter(isTopSet);
+      for (const [index, set] of sets.entries()) {
+        if (set.isCompleted) continue;
+        const from = previous[index] ?? previous.at(-1) ?? null;
+        await this.db.execute(
+          'UPDATE session_sets SET weight_kg = ?, reps = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+          [from?.weightKg ?? 0, from?.reps ?? set.reps, at, set.id, userId],
+        );
+      }
+    }
+  }
+
+  /** The latest completed sets of an exercise, at one gym or away from one. */
+  private async latestPerformance(
+    exerciseId: string,
+    excludeSessionId: string | null,
+    gym: { readonly at?: string | null; readonly notAt?: string },
+  ): Promise<{ readonly gymName: string | null; readonly sets: SetTemplate[] } | null> {
+    const { userId } = resolveContext(this.context);
+    const at = gym.at ?? null;
+    const notAt = gym.notAt ?? null;
 
     const previous = await this.db.getOptional<RawRow>(
-      `SELECT se.id AS session_exercise_id
+      `SELECT se.id AS session_exercise_id, g.name AS gym_name
          FROM session_exercises se
          JOIN workout_sessions ws ON ws.id = se.session_id
+         LEFT JOIN gyms g ON g.id = ws.gym_id
         WHERE se.exercise_id = ?
           AND se.user_id = ?
           AND (? IS NULL OR se.session_id <> ?)
+          AND (? IS NULL OR ws.gym_id = ?)
+          AND (? IS NULL OR ws.gym_id IS NULL OR ws.gym_id <> ?)
           AND EXISTS (
             SELECT 1 FROM session_sets ss
              WHERE ss.session_exercise_id = se.id AND ss.is_completed = 1
           )
         ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT 1`,
-      [exerciseId, userId, excludeSessionId, excludeSessionId],
+      [exerciseId, userId, excludeSessionId, excludeSessionId, at, at, notAt, notAt],
     );
-    if (previous === null) return [];
+    if (previous === null) return null;
 
     const sets = await this.setsFor(readString(previous, 'session_exercise_id', ''));
     // Only what was actually done. A planned set the lifter skipped is not a
     // thing to prefill this week's session from.
-    return sets
-      .filter((set) => set.isCompleted)
-      .map((set) => ({
-        weightKg: set.weightKg,
-        reps: set.reps,
-        loadType: set.loadType,
-        setType: set.setType,
-      }));
+    return {
+      gymName: readOptionalString(previous, 'gym_name'),
+      sets: sets
+        .filter((set) => set.isCompleted)
+        .map((set) => ({
+          weightKg: set.weightKg,
+          reps: set.reps,
+          loadType: set.loadType,
+          setType: set.setType,
+        })),
+    };
   }
 }
 

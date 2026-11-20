@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   MAX_REPS_FOR_1RM_ESTIMATE,
@@ -10,7 +10,9 @@ import {
 } from '@g7m/core';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { TrendChart } from '../components/Charts.js';
+import { GymChips } from '../components/GymChips.js';
 import { useCatalogue } from '../lib/db/use-catalogue.js';
+import { scopesIn, setsAtGym } from '../lib/gym-filter.js';
 
 /**
  * One exercise over time.
@@ -25,21 +27,33 @@ export function ExerciseTrendScreen() {
   const now = useMemo(() => new Date(), []);
 
   const state = useCatalogue(`trend:${exerciseId}`, async (repositories) => {
-    const [exercise, profile, sets] = await Promise.all([
+    const [exercise, profile, sets, gyms] = await Promise.all([
       repositories.exercises.byId(exerciseId),
       repositories.profile.current(),
       repositories.history.completedSets({ exerciseId }),
+      repositories.gyms.list({ includeArchived: true }),
     ]);
 
+    return { exercise, unitSystem: profile?.unitSystem ?? 'metric', sets, gyms };
+  });
+
+  // One gym's machine at a time (ADR-0179); the most recent gym first.
+  const [picked, setPicked] = useState<string | null>(null);
+  const scopes = useMemo(() => scopesIn(state.data?.sets ?? []), [state.data]);
+  const scope = picked !== null && scopes.includes(picked) ? picked : (scopes[0] ?? null);
+  const data = useMemo(() => {
+    if (state.data === null) return null;
+    const sets = setsAtGym(state.data.sets, scope);
     return {
-      exercise,
-      unitSystem: profile?.unitSystem ?? 'metric',
+      ...state.data,
       points: exerciseTrend(sets),
       records: personalRecords(sets),
     };
-  });
-
-  const data = state.data;
+  }, [state.data, scope]);
+  const gymOptions = scopes.map((id) => ({
+    id,
+    name: state.data?.gyms.find((gym) => gym.id === id)?.name ?? 'Removed gym',
+  }));
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
@@ -61,13 +75,18 @@ export function ExerciseTrendScreen() {
           Nothing logged for this exercise yet, or the sessions containing it were never finished.
         </p>
       ) : (
-        <Trend
-          points={data.points}
-          records={data.records}
-          unitSystem={data.unitSystem}
-          exerciseSlug={data.exercise?.slug ?? null}
-          now={now}
-        />
+        <>
+          {gymOptions.length > 1 && (
+            <GymChips gyms={gymOptions} value={scope} label="Machine at" onChange={setPicked} />
+          )}
+          <Trend
+            points={data.points}
+            records={data.records}
+            unitSystem={data.unitSystem}
+            exerciseSlug={data.exercise?.slug ?? null}
+            now={now}
+          />
+        </>
       )}
     </main>
   );

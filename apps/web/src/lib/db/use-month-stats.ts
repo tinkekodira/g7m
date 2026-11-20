@@ -42,6 +42,8 @@ export interface HomeStats {
   readonly records: MonthRecords;
   /** Exercise names, for the records card. */
   readonly names: ReadonlyMap<string, string>;
+  /** Gym names, for a machine's record at one of several gyms. ADR-0179. */
+  readonly gymNames?: ReadonlyMap<string, string>;
   readonly unitSystem: UnitSystem;
 }
 
@@ -52,12 +54,13 @@ export function useMonthStats(now: Date): QueryState<HomeStats> {
     // Every set, not two months': "heavier than ever" on the records card is
     // measured against all of history. A year is a few thousand small rows,
     // and the achievements check at launch already reads them all.
-    const [profile, sessions, sets, groupsByExercise, trained] = await Promise.all([
+    const [profile, sessions, sets, groupsByExercise, trained, gyms] = await Promise.all([
       repositories.profile.current(),
       repositories.history.sessionSummaries(SESSIONS_READ),
       repositories.history.completedSets(),
       repositories.history.groupsByExercise(),
       repositories.history.trainedExercises(),
+      repositories.gyms.list({ includeArchived: true }),
     ]);
     const since = monthStatsSince(now);
     const recent = sets.filter((set) => set.performedAt >= since);
@@ -75,6 +78,7 @@ export function useMonthStats(now: Date): QueryState<HomeStats> {
         new Set(trained.filter((entry) => entry.isTimeBased).map((entry) => entry.exerciseId)),
       ),
       names: new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
+      gymNames: new Map(gyms.map((gym) => [gym.id, gym.name])),
       hasHistory: sessions.length > 0,
       trainedToday:
         latestToday === undefined

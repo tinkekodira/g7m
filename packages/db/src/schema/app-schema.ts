@@ -198,9 +198,29 @@ const profiles = new Table({
    * exercise list. Null when nothing is starred. ADR-0108.
    */
   favourite_exercises: column.text,
+  /** Whether workouts say which gym they were at. ADR-0178. */
+  multiple_gyms: column.integer,
   created_at: column.text,
   updated_at: column.text,
 });
+
+/**
+ * The gyms one lifter trains at. ADR-0178.
+ *
+ * Archived rather than deleted, so a workout done somewhere they no longer go
+ * still says where it was.
+ */
+const gyms = new Table(
+  {
+    user_id: column.text,
+    name: column.text,
+    order_key: column.text,
+    archived_at: column.text,
+    created_at: column.text,
+    updated_at: column.text,
+  },
+  { indexes: { by_order: ['order_key'] } },
+);
 
 const userEquipment = new Table(
   {
@@ -254,6 +274,8 @@ const workoutSessions = new Table(
     generation_metadata: column.text,
     /** Snapshot, so a pull-up logged at 80 kg stays an 80 kg pull-up. */
     bodyweight_kg: column.real,
+    /** Where it happened, once somebody trains at more than one gym. ADR-0178. */
+    gym_id: column.text,
     created_at: column.text,
     updated_at: column.text,
   },
@@ -261,6 +283,7 @@ const workoutSessions = new Table(
     indexes: {
       by_start: ['started_at'],
       by_routine: ['routine_id'],
+      by_gym: ['gym_id', 'started_at'],
     },
   },
 );
@@ -414,6 +437,7 @@ export const AppSchema = new Schema({
   personal_records: personalRecords,
   body_metrics: bodyMetrics,
   training_goals: trainingGoals,
+  gyms,
 });
 
 /**

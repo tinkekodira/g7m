@@ -15,14 +15,14 @@ export function useWorkoutStart() {
   const [open, setOpen] = useState(false);
   const starting = useRef(false);
 
-  async function begin(routineId: string | null, skip = false): Promise<void> {
+  async function begin(routineId: string | null, skip = false, gymId?: string): Promise<void> {
     if (starting.current) return;
     starting.current = true;
     buzz('tick');
     try {
       const result = await write(async (r) => {
         const { startWorkout } = await import('./db/start-workout.js');
-        return startWorkout(r, routineId);
+        return startWorkout(r, routineId, gymId);
       });
       if (result !== null) {
         if (result.blank && skip) saveWorkoutStartOptions(user, false);
@@ -47,7 +47,7 @@ export function useWorkoutStart() {
         <Chooser
           busy={busy}
           error={error}
-          onStart={(routineId, skip) => void begin(routineId, skip)}
+          onStart={(routineId, skip, gymId) => void begin(routineId, skip, gymId)}
           onClose={() => {
             if (!starting.current) setOpen(false);
           }}

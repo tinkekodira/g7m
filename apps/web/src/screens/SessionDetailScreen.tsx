@@ -6,7 +6,7 @@ import { WorkoutRecap } from '../components/WorkoutRecap.js';
 import { LevelUpCelebration } from '../components/LevelUpCelebration.js';
 import { SessionBody } from '../components/SessionBody.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { TrashIcon } from '../components/icons.js';
+import { PinIcon, TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -36,6 +36,13 @@ export function SessionDetailScreen() {
   const fresh = navigation?.workoutFinished === true;
   const afterwards = navigation?.afterwards ?? '/';
   const completeCelebration = useCallback(() => {
+    // Closed here, not by leaving the screen. The router changes routes inside
+    // a transition, so while Home is still rendering — a slow phone, a chunk
+    // still loading — React keeps this screen, dialog and all, on display. A
+    // visit back to this workout before Home lands then reuses this instance
+    // and its celebration, and the moment replays from history. Clearing it is
+    // an urgent update, so the dialog goes the instant it is dismissed.
+    setCelebration(null);
     void navigate(afterwards, { replace: true });
   }, [navigate, afterwards]);
   const state = useCatalogue(`session:${sessionId}`, (r) => loadWorkoutRecap(r, sessionId));
@@ -68,6 +75,12 @@ export function SessionDetailScreen() {
         <>
           {details ? (
             <>
+              {data.gymName !== null && (
+                <p className="flex items-center gap-1.5 text-sm text-secondary">
+                  <PinIcon className="size-4 shrink-0 text-muted" />
+                  {data.gymName}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 {canEditWorkout(data.session.endedAt, now) ? (
                   <>
