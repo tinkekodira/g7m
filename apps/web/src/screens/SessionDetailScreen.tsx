@@ -36,6 +36,13 @@ export function SessionDetailScreen() {
   const fresh = navigation?.workoutFinished === true;
   const afterwards = navigation?.afterwards ?? '/';
   const completeCelebration = useCallback(() => {
+    // Closed here, not by leaving the screen. The router changes routes inside
+    // a transition, so while Home is still rendering — a slow phone, a chunk
+    // still loading — React keeps this screen, dialog and all, on display. A
+    // visit back to this workout before Home lands then reuses this instance
+    // and its celebration, and the moment replays from history. Clearing it is
+    // an urgent update, so the dialog goes the instant it is dismissed.
+    setCelebration(null);
     void navigate(afterwards, { replace: true });
   }, [navigate, afterwards]);
   const state = useCatalogue(`session:${sessionId}`, (r) => loadWorkoutRecap(r, sessionId));
