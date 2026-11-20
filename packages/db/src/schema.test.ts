@@ -39,6 +39,7 @@ const USER_TABLES = [
   'personal_records',
   'body_metrics',
   'training_goals',
+  'gyms',
   'feedback',
 ];
 
@@ -485,6 +486,52 @@ describe('the search_text generated column', () => {
   });
 });
 
+describe('gyms', () => {
+  /**
+   * The composite key shares `user_id` with the session, and a bare
+   * `on delete set null` would null that too, which the column refuses. The
+   * column list keeps the workout and its owner, and drops only the gym.
+   */
+  it('leaves the workout and its owner when a gym row goes', async () => {
+    const user = await h.createUser('two-gyms@example.test');
+    const { rows } = await h.db.query<{ id: string }>(
+      `with gym as (
+         insert into public.gyms (user_id, name, order_key) values ($1, 'Work', 'a0')
+         returning id
+       )
+       insert into public.workout_sessions (user_id, gym_id)
+       select $1, id from gym returning id`,
+      [user],
+    );
+    await h.db.query(`delete from public.gyms where user_id = $1`, [user]);
+    const after = await h.db.query<{ user_id: string; gym_id: string | null }>(
+      `select user_id, gym_id from public.workout_sessions where id = $1`,
+      [rows[0]?.id],
+    );
+    expect(after.rows).toEqual([{ user_id: user, gym_id: null }]);
+  });
+
+  it('refuses a blank name and a workout at somebody else’s gym', async () => {
+    const mine = await h.createUser('gym-owner@example.test');
+    const theirs = await h.createUser('gym-other@example.test');
+    await expect(
+      h.db.query(`insert into public.gyms (user_id, name, order_key) values ($1, '   ', 'a0')`, [
+        mine,
+      ]),
+    ).rejects.toThrow();
+    const { rows } = await h.db.query<{ id: string }>(
+      `insert into public.gyms (user_id, name, order_key) values ($1, 'Theirs', 'a0') returning id`,
+      [theirs],
+    );
+    await expect(
+      h.db.query(`insert into public.workout_sessions (user_id, gym_id) values ($1, $2)`, [
+        mine,
+        rows[0]?.id,
+      ]),
+    ).rejects.toThrow();
+  });
+});
+
 describe('deleting your own account', () => {
   /**
    * One of everything a user can own, so the cascade is checked table by
@@ -507,8 +554,12 @@ describe('deleting your own account', () => {
       )
       insert into public.routine_exercises (user_id, routine_id, exercise_id, order_key)
       select '${user}', id, ${bench}, 'a0' from routine;
-      with session as (
-        insert into public.workout_sessions (user_id) values ('${user}') returning id
+      with gym as (
+        insert into public.gyms (user_id, name, order_key) values ('${user}', 'Home', 'a0')
+        returning id
+      ), session as (
+        insert into public.workout_sessions (user_id, gym_id)
+        select '${user}', id from gym returning id
       ), exercise as (
         insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
         select '${user}', id, ${bench}, 'a0' from session returning id

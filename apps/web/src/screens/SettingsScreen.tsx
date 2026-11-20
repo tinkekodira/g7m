@@ -38,6 +38,7 @@ import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words
 import { useOnline } from '../lib/use-online.js';
 import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
 import { PlatePicker } from '../components/PlatePicker.js';
+import { GymSettings } from '../components/GymSettings.js';
 import {
   BellIcon,
   ClockIcon,
@@ -48,6 +49,7 @@ import {
   KettlebellIcon,
   MessageIcon,
   MoonIcon,
+  PinIcon,
   ProfileIcon,
   StorageIcon,
   SyncIcon,
@@ -98,6 +100,9 @@ export function SettingsScreen() {
           account and the data, ending on the two ways out. */}
       <Group id="settings-gym" title="In the gym">
         <WorkoutRecommendations />
+        <Panel title="Gyms" icon={<PinIcon className="size-5" />}>
+          <GymSettings />
+        </Panel>
         <Units />
         <AvailablePlates />
         <RestTimes />

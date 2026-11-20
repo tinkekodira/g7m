@@ -77,6 +77,8 @@ export interface Profile {
   readonly achievementsSeen: readonly string[];
   /** Slugs of the starred exercises, sorted. ADR-0108. */
   readonly favouriteExercises: readonly string[];
+  /** Whether workouts say which gym they were at. ADR-0178. */
+  readonly multipleGyms: boolean;
 }
 
 /**
@@ -104,6 +106,7 @@ export interface ProfileChanges {
   readonly weekStartsOn?: number;
   readonly onboardedAt?: Date | null;
   readonly workoutRecommendations?: boolean;
+  readonly multipleGyms?: boolean;
 }
 
 function toProfile(row: RawRow): Profile {
@@ -124,6 +127,7 @@ function toProfile(row: RawRow): Profile {
       row.workout_recommendations == null ? null : readBoolean(row, 'workout_recommendations'),
     achievementsSeen: parseKeys(readOptionalString(row, 'achievements_seen')),
     favouriteExercises: parseKeys(readOptionalString(row, 'favourite_exercises')),
+    multipleGyms: readBoolean(row, 'multiple_gyms'),
   };
 }
 
@@ -188,6 +192,7 @@ export class ProfileRepository {
     if (changes.experienceLevel !== undefined) set('experience_level', changes.experienceLevel);
     if (changes.workoutRecommendations !== undefined)
       set('workout_recommendations', changes.workoutRecommendations ? 1 : 0);
+    if (changes.multipleGyms !== undefined) set('multiple_gyms', changes.multipleGyms ? 1 : 0);
     if (changes.birthDate !== undefined) {
       // Stored as the date the column is, not as an instant. A timestamp here
       // would be read back a day earlier anywhere west of Greenwich.

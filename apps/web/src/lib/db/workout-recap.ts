@@ -125,6 +125,8 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
     profile,
     blocks,
     title,
+    /** Where it happened, for somebody who trains at more than one gym. ADR-0178. */
+    gymName: summaries.find((summary) => summary.sessionId === sessionId)?.gymName ?? null,
     recap,
     rewards,
     exercises,

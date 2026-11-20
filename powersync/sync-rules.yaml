@@ -62,8 +62,8 @@ bucket_definitions:
       - >-
         SELECT id, user_id, display_name, unit_system, experience_level, birth_date, sex,
         country, bodyweight_kg, rest_seconds_default, week_starts_on, onboarded_at,
-        workout_recommendations, achievements_seen, favourite_exercises, created_at, updated_at
-        FROM profiles WHERE user_id = bucket.user_id
+        workout_recommendations, achievements_seen, favourite_exercises, multiple_gyms,
+        created_at, updated_at FROM profiles WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, equipment_id, created_at, updated_at FROM user_equipment WHERE
         user_id = bucket.user_id
@@ -76,8 +76,8 @@ bucket_definitions:
         user_id = bucket.user_id
       - >-
         SELECT id, user_id, name, started_at, ended_at, notes, source, routine_id,
-        generation_metadata, bodyweight_kg, created_at, updated_at FROM workout_sessions WHERE
-        user_id = bucket.user_id
+        generation_metadata, bodyweight_kg, gym_id, created_at, updated_at FROM workout_sessions
+        WHERE user_id = bucket.user_id
       - >-
         SELECT id, user_id, session_id, exercise_id, order_key, notes, superset_id, created_at,
         updated_at FROM session_exercises WHERE user_id = bucket.user_id
@@ -96,3 +96,6 @@ bucket_definitions:
       - >-
         SELECT id, user_id, goal, selected_goals, days_per_week, started_at, note, created_at,
         updated_at FROM training_goals WHERE user_id = bucket.user_id
+      - >-
+        SELECT id, user_id, name, order_key, archived_at, created_at, updated_at FROM gyms WHERE
+        user_id = bucket.user_id

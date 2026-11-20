@@ -40,6 +40,7 @@ import {
   type SqlValue,
   type WritableDatabase,
 } from './database.js';
+import { GymRepository } from './gyms.js';
 import { instant } from './instants.js';
 import {
   readBoolean,
@@ -80,6 +81,8 @@ export interface WorkoutSession {
   readonly routineId: string | null;
   /** Snapshot, so a pull-up logged at 80 kg stays an 80 kg pull-up. */
   readonly bodyweightKg: number | null;
+  /** Where it happened. Null for anybody with one gym. ADR-0178. */
+  readonly gymId: string | null;
 }
 
 export interface SessionExercise {
@@ -129,6 +132,15 @@ export interface StartSessionInput {
    * one dated ahead would sit at the top of every list until its day came.
    */
   readonly startedAt?: Date;
+  /**
+   * Where it happens. ADR-0178.
+   *
+   * Omitted means "wherever they usually train": the last gym used, for
+   * somebody who has said they train at more than one, and none otherwise.
+   * Every way of starting a workout gets that for free, and only the start
+   * dialog, which asks, passes one. Null means no gym.
+   */
+  readonly gymId?: string | null;
 }
 
 /**
@@ -179,6 +191,7 @@ function toSession(row: RawRow): WorkoutSession {
     source: readEnum(row, 'source', SESSION_SOURCES, 'manual'),
     routineId: readOptionalString(row, 'routine_id'),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
+    gymId: readOptionalString(row, 'gym_id'),
   };
 }
 
@@ -332,8 +345,8 @@ export class SessionRepository {
     await this.db.execute(
       `INSERT INTO workout_sessions
          (id, user_id, name, started_at, ended_at, notes, source, routine_id,
-          generation_metadata, bodyweight_kg, created_at, updated_at)
-       VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, NULL, ?, ?, ?)`,
+          generation_metadata, bodyweight_kg, gym_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?)`,
       [
         id,
         userId,
@@ -342,6 +355,7 @@ export class SessionRepository {
         source,
         routineId,
         positiveOrNull(input.bodyweightKg ?? null),
+        input.gymId === undefined ? await this.usualGym() : emptyToNull(input.gymId),
         at,
         at,
       ],
@@ -406,6 +420,33 @@ export class SessionRepository {
     await this.db.execute(
       'UPDATE workout_sessions SET bodyweight_kg = ?, updated_at = ? WHERE id = ? AND user_id = ?',
       [positiveOrNull(bodyweightKg), toTimestamp(now()), sessionId, userId],
+    );
+  }
+
+  /** The gym a workout started without one is at. See `StartSessionInput.gymId`. */
+  private async usualGym(): Promise<string | null> {
+    const { userId } = resolveContext(this.context);
+    const profile = await this.db.getOptional<RawRow>(
+      'SELECT multiple_gyms FROM profiles WHERE user_id = ?',
+      [userId],
+    );
+    if (profile === null || !readBoolean(profile, 'multiple_gyms')) return null;
+    return new GymRepository(this.db, this.context).lastUsed();
+  }
+
+  /**
+   * Say which gym a workout was at, or that it was at none.
+   *
+   * For the lifter who started at the wrong one. Under the same correction
+   * window as every other edit, because which gym it was decides which
+   * history a machine lift is compared with.
+   */
+  async setGym(sessionId: string, gymId: string | null): Promise<void> {
+    await this.assertEditable(sessionId);
+    const { userId, now } = resolveContext(this.context);
+    await this.db.execute(
+      'UPDATE workout_sessions SET gym_id = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+      [emptyToNull(gymId), toTimestamp(now()), sessionId, userId],
     );
   }
 

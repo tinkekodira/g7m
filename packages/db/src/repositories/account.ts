@@ -41,6 +41,7 @@ export const USER_TABLE_NAMES = [
   'body_metrics',
   'training_goals',
   'user_equipment',
+  'gyms',
   'workout_sessions',
   'session_exercises',
   'session_sets',
@@ -66,7 +67,7 @@ export function schemaUserTables(): string[] {
 export const EXPORT_COLUMN_TYPES: Readonly<
   Partial<Record<UserTableName, Readonly<Record<string, 'boolean' | 'json'>>>>
 > = {
-  profiles: { workout_recommendations: 'boolean' },
+  profiles: { workout_recommendations: 'boolean', multiple_gyms: 'boolean' },
   workout_sessions: { generation_metadata: 'json' },
   session_sets: { is_completed: 'boolean' },
 };

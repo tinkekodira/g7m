@@ -90,6 +90,8 @@ export interface SessionSummary {
   readonly lastSetAt: Date | null;
   /** What the sets trained, for `workoutTitle` to name a workout nobody named. */
   readonly work: readonly PrimaryWork[];
+  /** Where it happened, archived gyms included. Null when it names none. ADR-0178. */
+  readonly gymName: string | null;
 }
 
 function toHistoricalSet(row: RawRow): HistoricalSet {
@@ -314,7 +316,7 @@ export class HistoryRepository {
     const bound = limit === null ? -1 : Math.max(1, Math.trunc(limit));
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.name, ws.started_at, ws.ended_at, ws.bodyweight_kg, ws.source,
-              ws.created_at,
+              ws.created_at, g.name AS gym_name,
               (SELECT COUNT(*) FROM session_exercises se
                 WHERE se.session_id = ws.id) AS exercise_count,
               counted.set_count, counted.bout_count, counted.first_set_at, counted.last_set_at
@@ -338,6 +340,7 @@ export class HistoryRepository {
                 WHERE ss.is_completed = 1
                   AND ss.set_type <> 'warmup'
                 GROUP BY se2.session_id) counted ON counted.session_id = ws.id
+         LEFT JOIN gyms g ON g.id = ws.gym_id AND g.user_id = ws.user_id
         WHERE ws.user_id = ? ${options.includeOpen === true ? '' : 'AND ws.ended_at IS NOT NULL'}
         ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
         LIMIT ?`,
@@ -359,6 +362,7 @@ export class HistoryRepository {
       firstSetAt: readDate(row, 'first_set_at'),
       lastSetAt: readDate(row, 'last_set_at'),
       work: work.get(readString(row, 'session_id', '')) ?? [],
+      gymName: readOptionalString(row, 'gym_name'),
     }));
   }
 

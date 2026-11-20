@@ -9790,3 +9790,55 @@ Browser checks cover synced and offline history, reload, account switching,
 filters, supersets, retained recommendation labels and phone/desktop layouts in
 both themes. No database migration, `npx supabase db push` or PowerSync sync-rule
 deployment is required.
+
+## ADR-0178 — Workouts say which gym they were at
+
+**Status:** accepted · **Date:** 2026-11-20
+
+Somebody with two gym memberships logs the same machine at both, and the two
+machines do not weigh the same: 90 kg on one pulldown is harder than 100 kg on
+the other. Before any number can compare a machine lift within one gym, a
+workout has to say where it happened. This decision records the place; the
+comparison is ADR-0179.
+
+A `gyms` table holds each lifter's gyms: a name of 1 to 40 characters, a
+fractional `order_key`, and `archived_at`. `workout_sessions.gym_id` points at
+one, through a composite key with `user_id` like every other child row
+(ADR-0021). Its `on delete set null (gym_id)` names the column, because a bare
+`set null` would null the shared, non-nullable `user_id` too. The app archives
+and never deletes, so a workout done somewhere the lifter no longer goes keeps
+its gym's name. `profiles.multiple_gyms` is the switch, off by default: one gym
+is the common case, and nobody with one is asked anything.
+
+Settings → In the gym → Gyms switches it on. The first time, it asks for the
+gym trained at so far, and every workout already logged is tagged with it on
+the device (`GymRepository.tagUntaggedSessions`). The history somebody already
+has therefore keeps counting at the gym it came from, and the next gym starts
+fresh. Switching on again later tags anything logged while it was off with the
+last gym used. Gyms can be added, renamed and removed (archived) there.
+
+A workout is at the last gym used. `SessionRepository.start` decides that when
+no gym is passed, so every way of starting one gets it: routines, today's plan,
+a friend's routine, Home quick access and a past workout from the calendar.
+With two or more gyms, the start dialog shows them as chips with the last one
+already chosen, so a lifter at their usual gym starts in the same tap as
+before. The workout's header shows the gym under the timer; tapping it opens a
+bottom sheet to change it, under the same two-hour correction window as every
+other edit. Recent workouts, the calendar and a workout's details name the gym.
+
+Only the repository, the session's gym and a pin icon reach the entry chunk.
+The settings panel, the start-dialog chips and the switcher sheet load with
+their routes. The entry budget rises from 785,000 to 790,000 bytes for them.
+
+Validation covers the repository (order, archive, rename, last used, tagging,
+the usual-gym default), the Postgres constraints (the column-list `set null`, a
+blank name, a workout at somebody else's gym), account deletion and export, and
+an end-to-end run: naming the first gym tags a past workout on the server, the
+start dialog preselects and changes the gym, and the header switches it, while
+somebody with one gym is never asked. Checked at phone and desktop widths in
+both themes.
+
+Rollout: apply the migration (`20261120120000_gyms.sql`) with
+`npx supabase db push`, deploy the regenerated `powersync/sync-rules.yaml`
+(the `gyms` table, `workout_sessions.gym_id`, `profiles.multiple_gyms`), then
+release the app.

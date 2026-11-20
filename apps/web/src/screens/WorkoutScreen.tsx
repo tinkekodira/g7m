@@ -57,6 +57,7 @@ import { readFriendWorkoutNote } from '../lib/friends/cache.js';
 import { describeReference, friendName } from './friends-view.js';
 import { HeaderLink } from '../components/HeaderLink.js';
 import { ElapsedTime } from '../components/ElapsedTime.js';
+import { GymSwitcher } from '../components/GymSwitcher.js';
 import { FloatingHome } from '../components/FloatingHome.js';
 import { ArrowUpIcon, StopwatchIcon } from '../components/icons.js';
 import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
@@ -740,7 +741,9 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
   return (
     <Shell live={!past}>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <div>
+        {/* Takes the free width, so a gym name is cut short only when it
+            really does not fit beside Home. */}
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-primary">
             {editing ? 'Edit workout' : past ? 'Past workout' : 'Workout'}
           </h1>
@@ -768,6 +771,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
               </span>
             )}
           </p>
+          <GymSwitcher sessionId={session.id} gymId={session.gymId} />
         </div>
         {editing ? (
           <HeaderLink to={`/progress/session/${session.id}/details`}>Done</HeaderLink>

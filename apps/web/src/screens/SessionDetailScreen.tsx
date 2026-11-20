@@ -6,7 +6,7 @@ import { WorkoutRecap } from '../components/WorkoutRecap.js';
 import { LevelUpCelebration } from '../components/LevelUpCelebration.js';
 import { SessionBody } from '../components/SessionBody.js';
 import { HeaderLink } from '../components/HeaderLink.js';
-import { TrashIcon } from '../components/icons.js';
+import { PinIcon, TrashIcon } from '../components/icons.js';
 import { Button, TextField } from '@g7m/ui';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 
@@ -68,6 +68,12 @@ export function SessionDetailScreen() {
         <>
           {details ? (
             <>
+              {data.gymName !== null && (
+                <p className="flex items-center gap-1.5 text-sm text-secondary">
+                  <PinIcon className="size-4 shrink-0 text-muted" />
+                  {data.gymName}
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-3">
                 {canEditWorkout(data.session.endedAt, now) ? (
                   <>

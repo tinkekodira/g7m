@@ -508,6 +508,7 @@ function DayWorkouts({
               <p className="numeric mt-0.5 text-xs text-muted">
                 {describeWork(workout.setCount, workout.boutCount)}
                 {minutes !== null && ` · ${String(minutes)} min`}
+                {workout.gymName !== null && ` · ${workout.gymName}`}
               </p>
 
               {detail === undefined ? (
