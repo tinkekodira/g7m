@@ -18,6 +18,9 @@ export default defineConfig({
   retries: process.env['CI'] === undefined ? 0 : 1,
   // Stop through Playwright so reporters flush before CI's 20-minute job limit.
   // Includes the production build and backend setup, as well as the tests.
+  // Per shard: CI runs a third of the files in each of three jobs (ADR-0180),
+  // so this is headroom, not a target. Do not raise it to fit a slow suite;
+  // add a shard.
   globalTimeout: process.env['CI'] === undefined ? 0 : 18 * 60_000,
   timeout: 60_000,
   expect: { timeout: 15_000 },

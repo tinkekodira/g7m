@@ -1,3 +1,27 @@
+# Red "Browser tests" were the suite running out of time, not flaky tests
+
+From late October, many End-to-end runs failed in `workout-upgrade.spec.ts`
+and `workout.spec.ts` with "Test ended" or "Test was interrupted". Every one
+of those runs ends with "Timed out waiting …s for the test suite to run" and
+six to eleven tests marked "did not run". The single job hit Playwright's
+global deadline, and whichever file was running, usually the last in the
+alphabet, took the blame. Raising the deadline only moved the cliff. CI now
+runs three shards (ADR-0180).
+
+How to tell next time: look at the end of the log, not the first error. If it
+says "Timed out waiting" with tests that "did not run", the suite is out of
+time. Add a shard; do not raise the deadline or weaken the tests.
+
+# The level-up celebration replayed from history on a slow runner
+
+PR #227's browser run failed `level-up.spec.ts` twice: after Escape dismissed
+the celebration, coming back to the same workout showed it again. The router
+changes routes inside a React transition, so the recap and its open dialog
+stayed on screen until Home had rendered, and a visit back in that window
+reused the recap and its state. Dismissing now clears the celebration as an
+urgent update. The test throttles the CPU 20 times around that step, so the
+race fails on any machine; it does fail without the fix.
+
 # Cable-to-Viking expansion includes the close-grip incline press in search
 
 PR #222's browser run 360 failed the Browse tint scenario because its search
