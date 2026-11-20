@@ -9828,7 +9828,7 @@ other edit. Recent workouts, the calendar and a workout's details name the gym.
 
 Only the repository, the session's gym and a pin icon reach the entry chunk.
 The settings panel, the start-dialog chips and the switcher sheet load with
-their routes. The entry budget rises from 785,000 to 790,000 bytes for them.
+their routes. ADR-0179 records the entry budget for this and the comparisons.
 
 Validation covers the repository (order, archive, rename, last used, tagging,
 the usual-gym default), the Postgres constraints (the column-list `set null`, a
@@ -9842,3 +9842,61 @@ Rollout: apply the migration (`20261120120000_gyms.sql`) with
 `npx supabase db push`, deploy the regenerated `powersync/sync-rules.yaml`
 (the `gyms` table, `workout_sessions.gym_id`, `profiles.multiple_gyms`), then
 release the app.
+
+## ADR-0179 — A machine is compared with itself at the same gym
+
+**Status:** accepted · **Date:** 2026-11-20 · **Amends:** ADR-0072, ADR-0132
+
+The same machine at two gyms does not weigh the same. Somebody who presses
+100 kg for eight at one gym and manages 90 kg for six at the other has not
+regressed, and has not set a record either. For somebody who trains at more
+than one gym (ADR-0178), a lift whose primary equipment is a `machine` or a
+`cable` stack is compared only with itself at the same gym. A barbell, a
+dumbbell, bodyweight, bands and everything else weigh the same anywhere and
+keep one history. The Smith machine is a machine and is scoped; that is right,
+since Smith bars are counterbalanced differently.
+
+The rule is decided once, in SQL (`gym-scope.ts`): a set's `gymScope` is its
+workout's gym when the owner has `multiple_gyms` on and the exercise's primary
+equipment is a machine or cable, and null otherwise. `@g7m/core` groups by
+`liftKey` — the exercise id, plus the gym when there is a scope — wherever it
+used to group by exercise. With no scope the key is the exercise id, so
+nothing changes for anybody with one gym, or with the switch off.
+
+Scoped: the logger's "Last:" hint and prefill (`lastPerformance` reads the
+open workout's gym), its record badges, the workout recap's "last time" and
+records, Home's records this month (labelled with the gym), XP for records and
+the record-count achievements, the training review's climbing and stalled
+lifts, today's plan's suggested loads (from the gym the next workout starts
+at, the last one used), the exercise trend (gym chips, most recent first), the
+exercise page's estimate, and the one-line-per-exercise views — sparklines,
+the recap chart and Profile's best lifts — which show the gym each machine was
+last done at.
+
+Global on purpose: volume, tonnage, sets and workouts, the muscle heat map,
+exercise usage, the leaderboard, challenges and everything friends see. Those
+are about how much work was done, not how one stack compares with another, and
+splitting them would hide half of somebody's training.
+
+The first time a machine is done at a gym it is a baseline, not a record, as
+any first time already was. Its weight is left empty rather than prefilled
+with the other gym's machine, under a hint: "First time on this machine here.
+Last time at Iron Works: 90 kg × 8." Changing the workout's gym refills the
+machine and cable sets not done yet from the new gym's history, and empties
+the weight where there is none; ticked sets never change. History logged
+before the switch was turned on is all tagged with one gym, so XP and
+achievements do not move retroactively.
+
+The scope SQL, lift keys and the read-only last-used-gym lookup are shared by
+the repositories in the entry chunk, so the entry budget goes from 785,000 to
+794,000 bytes for ADR-0178 and this together. The gym filter, the hint and the
+switcher remain in lazy routes.
+
+Validation: core tests for the two-gym chest press (no regression or record on
+the first visit, a record once the second gym's own best is beaten, the first
+gym untouched, one gym unchanged) and monthly records; repository tests for
+scoped history, prefill, the hint, the refill and the planner; an end-to-end
+run where the pulldown at a new gym shows the other gym's hint and no "Last:",
+and switching gym brings back its own prefill.
+
+Rollout: no further migration or sync rules beyond ADR-0178's.

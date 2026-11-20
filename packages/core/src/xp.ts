@@ -33,6 +33,7 @@
  * at a time. One logged later earns nothing and counts towards no week, though
  * its sets still set the bar the next record has to beat — the lift happened.
  */
+import { liftKey } from './lift-key.js';
 import type { Achievement, GoalSpan } from './achievements.js';
 import { achievementsToPublish } from './achievements.js';
 import type { LoggedBout } from './cardio.js';
@@ -196,7 +197,8 @@ export function xpLedger(input: XpInput): XpLedger {
 
   for (const session of finished) {
     const sets = setsBySession.get(session.sessionId) ?? [];
-    const byExercise = groupBy(sets, (set) => set.exerciseId);
+    // By lift: a machine at a second gym starts its own bar (ADR-0179).
+    const byExercise = groupBy(sets, liftKey);
 
     const topSets = sets.filter(countsAsSet).length;
     const qualifies =
@@ -213,11 +215,11 @@ export function xpLedger(input: XpInput): XpLedger {
       award('sets', Math.min(topSets, XP_CAPS.setsPerWorkout) * XP.set, at, session.sessionId);
 
       let records = 0;
-      for (const [exerciseId, exerciseSets] of byExercise) {
+      for (const [key, exerciseSets] of byExercise) {
         records += recordsInSession({
           sets: exerciseSets.map((set, index) => ({ ...set, id: String(index) })),
           bodyweightKg: exerciseSets[0]?.bodyweightKg ?? null,
-          bests: bests.get(exerciseId) ?? NO_HISTORY,
+          bests: bests.get(key) ?? NO_HISTORY,
         }).length;
       }
       award(
@@ -234,11 +236,8 @@ export function xpLedger(input: XpInput): XpLedger {
     }
 
     // Every finished workout raises the bar, counted or not: the lift happened.
-    for (const [exerciseId, exerciseSets] of byExercise) {
-      bests.set(
-        exerciseId,
-        mergeBests(bests.get(exerciseId) ?? NO_HISTORY, bestsFrom(exerciseSets)),
-      );
+    for (const [key, exerciseSets] of byExercise) {
+      bests.set(key, mergeBests(bests.get(key) ?? NO_HISTORY, bestsFrom(exerciseSets)));
     }
   }
 

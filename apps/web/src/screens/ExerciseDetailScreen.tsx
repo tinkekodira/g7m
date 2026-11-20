@@ -21,6 +21,7 @@ import { FavouriteButton } from '../components/Favourite.js';
 import { exerciseDemo } from '../components/exercise-demos.js';
 import { ChevronRightIcon, DumbbellIcon, TrendIcon } from '../components/icons.js';
 import { monthName } from '../lib/date-words.js';
+import { scopesIn, setsAtGym } from '../lib/gym-filter.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import { describeMark } from './review-copy.js';
 import { fieldLabel } from './bout-copy.js';
@@ -46,7 +47,11 @@ export function ExerciseDetailScreen() {
       favourite: profile?.favouriteExercises.includes(exercise.slug) ?? false,
       sex: profile?.sex ?? null,
       equipment,
-      strength: exercise.isTimeBased ? null : strengthEstimate(sets, now),
+      // A machine's estimate at the gym it was last done at (ADR-0179); the
+      // trend screen offers the others.
+      strength: exercise.isTimeBased
+        ? null
+        : strengthEstimate(setsAtGym(sets, scopesIn(sets)[0] ?? null), now),
       unitSystem,
       muscles: involvement.map((entry): Involvement => {
         const muscle = muscleById.get(entry.muscleId);

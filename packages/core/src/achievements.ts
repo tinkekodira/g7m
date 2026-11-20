@@ -34,6 +34,7 @@
  * They are close in difficulty and not identical, and a round number on the
  * badge beats a converted one: nobody chases 102.06 kg.
  */
+import { liftKey } from './lift-key.js';
 import {
   CARDIO_KINDS,
   METRES_PER_MILE,
@@ -340,9 +341,11 @@ function recordDates(facts: Facts): Date[] {
 
   for (const set of facts.sets) {
     const load = effectiveLoadKg(set, set.bodyweightKg);
-    const known = bests.get(set.exerciseId);
+    // By lift, like the logger's badge: a machine at each gym has its own bar.
+    const key = liftKey(set);
+    const known = bests.get(key);
     const own = known ?? { firstSession: set.sessionId, weight: null, oneRepMax: null };
-    if (known === undefined) bests.set(set.exerciseId, own);
+    if (known === undefined) bests.set(key, own);
     if (load === null) continue;
 
     const estimate = estimateOneRepMax(load, set.reps)?.valueKg ?? null;

@@ -25,6 +25,8 @@ import {
   type RepositoryContext,
 } from './database.js';
 import { INSTANT_PARAMETER, instant } from './instants.js';
+import { gymScopeSql } from './gym-scope.js';
+import { lastUsedGym } from './gyms.js';
 import {
   readNumber,
   readOptionalNumber,
@@ -124,6 +126,10 @@ export class PlannerRepository {
    */
   async lastPerformances(since: Date, perExercise = RECENT_SESSIONS): Promise<ExerciseHistory[]> {
     const { userId } = resolveContext(this.context);
+    // A machine's sessions only at the gym the next workout starts at, which
+    // is the last one used (ADR-0179). Its sessions elsewhere are another
+    // machine, and their weights would suggest the wrong load.
+    const usualGym = await lastUsedGym(this.db, this.context);
 
     const rows = await this.db.getAll<RawRow>(
       `SELECT se.exercise_id, ws.id AS session_id, ws.started_at,
@@ -133,8 +139,9 @@ export class PlannerRepository {
          JOIN workout_sessions ws ON ws.id = se.session_id
         WHERE ss.user_id = ? AND ${COUNTED_SETS}
           AND ws.ended_at IS NOT NULL AND ${instant('ws.started_at')} >= ${INSTANT_PARAMETER}
+          AND (${gymScopeSql('ws', 'se.exercise_id')} IS NULL OR ws.gym_id = ?)
         ORDER BY se.exercise_id ASC, ${instant('ws.started_at')} DESC, ss.order_key ASC`,
-      [userId, toTimestamp(since)],
+      [userId, toTimestamp(since), usualGym],
     );
 
     return groupPerformances(rows, perExercise);

@@ -6,6 +6,7 @@ import {
   activityInsight,
   formatMinutes,
   musclesInsight,
+  liftKey,
   percentChange,
   recordsInsight,
   toDisplayWeight,
@@ -474,7 +475,7 @@ function ActivityCard({
 const RECORDS_SHOWN = 4;
 
 function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly motion: Motion }) {
-  const { records, names, unitSystem } = home;
+  const { records, names, gymNames, unitSystem } = home;
   const weight = (kg: number): string => {
     const shown = toDisplayWeight(kg, unitSystem);
     return `${String(shown.value)} ${shown.unit}`;
@@ -509,7 +510,7 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
               const best = toDisplayWeight(lift.bestKg, unitSystem);
               return (
                 <li
-                  key={lift.exerciseId}
+                  key={liftKey(lift)}
                   className={cx(
                     'min-w-0 rounded-card border px-3 py-2',
                     lift.isRecord ? 'border-subtle bg-accent/10' : 'border-subtle/70 bg-base/50',
@@ -517,6 +518,10 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
                 >
                   <span className="block truncate text-xs leading-4 text-muted">
                     {names.get(lift.exerciseId) ?? 'Exercise'}
+                    {/* Which gym's machine: the two are separate records (ADR-0179). */}
+                    {lift.gymScope != null &&
+                      gymNames?.get(lift.gymScope) !== undefined &&
+                      ` · ${gymNames.get(lift.gymScope) ?? ''}`}
                   </span>
                   <span className="numeric block text-lg leading-6 font-bold text-primary">
                     {String(best.value)}

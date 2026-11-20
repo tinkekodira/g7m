@@ -83,8 +83,11 @@ function GymSheet({
       onClose();
       return;
     }
+    // The sets not done yet follow the gym: a machine's numbers are the new
+    // gym's machine's (ADR-0179). What was lifted stays what was lifted.
     const done = await write(async (r) => {
       await r.sessions.setGym(sessionId, id);
+      await r.sessions.refillForGym(sessionId);
       return true;
     });
     if (done !== null) onClose();
@@ -155,7 +158,8 @@ function GymSheet({
           </p>
         )}
         <p className="pb-4 text-sm text-muted">
-          The workout is saved with the gym you pick.{' '}
+          Machines and cables are compared with their own history at each gym. Sets you haven’t done
+          yet switch to the new gym’s numbers.{' '}
           <Link
             to="/settings"
             className="font-medium text-accent underline-offset-4 hover:underline"

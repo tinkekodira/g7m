@@ -29,6 +29,7 @@
  * ordered by how much it matters, so a screen can show two and be showing the
  * two that count.
  */
+import { exerciseOfLiftKey, liftKey } from './lift-key.js';
 import { daysBetween } from './week.js';
 import { paceTarget, type ExperienceLevel, type TrainingGoal } from './goals.js';
 import { prescriptionFor } from './programming.js';
@@ -308,16 +309,19 @@ function lifts(
   timed: ReadonlySet<string>,
   now: Date,
 ): Observation[] {
+  // By lift: a machine is judged against itself at the same gym (ADR-0179).
   const byExercise = new Map<string, HistoricalSet[]>();
   for (const set of sets) {
-    byExercise.set(set.exerciseId, [...(byExercise.get(set.exerciseId) ?? []), set]);
+    const key = liftKey(set);
+    byExercise.set(key, [...(byExercise.get(key) ?? []), set]);
   }
 
   const bodyweight = latestBodyweight(sets) ?? RANKING_BODYWEIGHT_KG;
   let climber: { readonly observation: Observation; readonly score: number } | undefined;
   let staller: { readonly observation: Observation; readonly days: number } | undefined;
 
-  for (const [exerciseId, own] of byExercise) {
+  for (const [key, own] of byExercise) {
+    const exerciseId = exerciseOfLiftKey(key);
     const verdict = judgeLift(own, now);
     const name = names.get(exerciseId) ?? 'that lift';
 

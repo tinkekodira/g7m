@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { countryName, firstName, levelFor, personalRecords, type UnitSystem } from '@g7m/core';
+import {
+  countryName,
+  firstName,
+  latestScopeOnly,
+  levelFor,
+  personalRecords,
+  type UnitSystem,
+} from '@g7m/core';
 import { cx, Skeleton } from '@g7m/ui';
 import { LoadingRegion } from '../components/LoadingRegion.js';
 import { NumbersSkeleton, TextSkeleton } from '../components/ContentSkeletons.js';
@@ -72,8 +79,10 @@ export function ProfileScreen() {
       r.history.completedSets(),
       r.history.trainedExercises(),
     ]);
+    // A machine's best at the gym it was last done at (ADR-0179): the
+    // heavier stack at the other gym is not a heavier lift.
     return bestLifts(
-      personalRecords(sets),
+      personalRecords(latestScopeOnly(sets)),
       new Map(trained.map((entry) => [entry.exerciseId, entry.name])),
     );
   });

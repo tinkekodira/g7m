@@ -12,6 +12,7 @@ import { orderKeyBetween, orderKeyForIndex, sortByOrder } from '@g7m/core';
 import {
   resolveContext,
   toTimestamp,
+  type QueryableDatabase,
   type RepositoryContext,
   type WritableDatabase,
 } from './database.js';
@@ -51,6 +52,30 @@ export function cleanGymName(name: string): string {
     throw new Error(`Keep the name to ${String(MAX_GYM_NAME_LENGTH)} characters.`);
   }
   return trimmed;
+}
+
+/** `GymRepository.lastUsed`, for the read-only repositories that need it. */
+export async function lastUsedGym(
+  db: QueryableDatabase,
+  context: RepositoryContext,
+): Promise<string | null> {
+  const { userId } = resolveContext(context);
+  const row = await db.getOptional<RawRow>(
+    `SELECT ws.gym_id
+       FROM workout_sessions ws
+       JOIN gyms g ON g.id = ws.gym_id
+      WHERE ws.user_id = ? AND g.user_id = ? AND g.archived_at IS NULL
+      ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
+      LIMIT 1`,
+    [userId, userId],
+  );
+  const recent = row === null ? null : readOptionalString(row, 'gym_id');
+  if (recent !== null) return recent;
+  const first = await db.getAll<RawRow>(
+    'SELECT * FROM gyms WHERE user_id = ? AND archived_at IS NULL',
+    [userId],
+  );
+  return sortByOrder(first.map(toGym))[0]?.id ?? null;
 }
 
 export class GymRepository {
@@ -134,19 +159,7 @@ export class GymRepository {
    * use, and to null when there are no gyms at all.
    */
   async lastUsed(): Promise<string | null> {
-    const { userId } = resolveContext(this.context);
-    const row = await this.db.getOptional<RawRow>(
-      `SELECT ws.gym_id
-         FROM workout_sessions ws
-         JOIN gyms g ON g.id = ws.gym_id
-        WHERE ws.user_id = ? AND g.user_id = ? AND g.archived_at IS NULL
-        ORDER BY ${instant('ws.started_at')} DESC, ws.id DESC
-        LIMIT 1`,
-      [userId, userId],
-    );
-    const recent = row === null ? null : readOptionalString(row, 'gym_id');
-    if (recent !== null) return recent;
-    return (await this.list())[0]?.id ?? null;
+    return lastUsedGym(this.db, this.context);
   }
 
   /**

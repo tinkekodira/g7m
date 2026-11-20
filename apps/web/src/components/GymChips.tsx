@@ -1,5 +1,4 @@
 import { useId } from 'react';
-import type { Gym } from '@g7m/db';
 import { Chip } from '@g7m/ui';
 import { PinIcon } from './icons.js';
 
@@ -17,7 +16,7 @@ export function GymChips({
   disabled = false,
   label = 'Which gym',
 }: {
-  readonly gyms: readonly Gym[];
+  readonly gyms: readonly { readonly id: string; readonly name: string }[];
   readonly value: string | null;
   readonly onChange: (gymId: string) => void;
   readonly disabled?: boolean;

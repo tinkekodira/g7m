@@ -59,7 +59,7 @@ import { HeaderLink } from '../components/HeaderLink.js';
 import { ElapsedTime } from '../components/ElapsedTime.js';
 import { GymSwitcher } from '../components/GymSwitcher.js';
 import { FloatingHome } from '../components/FloatingHome.js';
-import { ArrowUpIcon, StopwatchIcon } from '../components/icons.js';
+import { ArrowUpIcon, PinIcon, StopwatchIcon } from '../components/icons.js';
 import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
@@ -101,6 +101,11 @@ interface ExerciseBlock {
   readonly exercise: Exercise | null;
   readonly sets: readonly SessionSet[];
   readonly previous: readonly SetTemplate[];
+  /**
+   * A machine done at another gym and never at this one: where it was last
+   * done, for a hint and not a prefill. ADR-0179.
+   */
+  readonly elsewhere: { readonly gymName: string | null; readonly sets: SetTemplate[] } | null;
   readonly loadType: LoadType;
   /**
    * Loaded with dumbbells, so the weight field steps by the rack rather than
@@ -220,13 +225,21 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
             // them is worth a badge.
             repositories.history.completedSets({ exerciseId: entry.exerciseId }),
           ]);
+          // A machine's bests are this gym's (ADR-0179): the other gym's
+          // stack would make every set here a record, or none of them.
+          const scope = await repositories.sessions.gymScopeFor(session.id, entry.exerciseId);
+          const elsewhere =
+            previous.length === 0 && scope !== null
+              ? await repositories.sessions.lastPerformanceElsewhere(entry.exerciseId, session.id)
+              : null;
 
           return {
             entry,
             exercise,
             sets,
             previous,
-            bests: bestsFrom(history),
+            elsewhere,
+            bests: bestsFrom(history.filter((set) => (set.gymScope ?? null) === scope)),
             loadType: loadTypeForEquipment(equipment),
             barbell: equipment.some((item) => item.slug === 'barbell'),
             dumbbell: equipment.some((item) => item.slug === 'dumbbell'),
@@ -1314,6 +1327,19 @@ function ExerciseCard({
   );
   const offersWarmup = !hasWarmup && ramp.length > 0;
   const numbered = numberSets(block.sets);
+  // First time on this machine at this gym. The other gym's numbers are a
+  // starting point to read, not to prefill: its stack weighs differently.
+  const elsewhereTop = block.elsewhere?.sets.find(isTopSet) ?? null;
+  const elsewhereNote =
+    block.elsewhere === null || elsewhereTop === null
+      ? null
+      : `First time on this machine here. Last time ${
+          block.elsewhere.gymName === null ? 'elsewhere' : `at ${block.elsewhere.gymName}`
+        }: ${describePreviousSet(
+          elsewhereTop,
+          (kg) => showWeight(kg, unitSystem),
+          block.exercise?.isTimeBased === true,
+        )}.`;
 
   // Asked once, at the end, about the last set only. Once per set would be
   // four questions for one exercise, which is three too many with a bar in
@@ -1355,6 +1381,13 @@ function ExerciseCard({
       </div>
 
       {friendNote !== null && <p className="-mt-1 mb-3 text-sm text-secondary">{friendNote}</p>}
+
+      {elsewhereNote !== null && (
+        <p className="-mt-1 mb-3 flex items-start gap-1.5 text-sm text-secondary">
+          <PinIcon className="mt-0.5 size-4 shrink-0 text-muted" />
+          <span>{elsewhereNote}</span>
+        </p>
+      )}
 
       {block.sets.length === 0 ? (
         <p className="mb-3 text-sm text-muted">No sets yet.</p>

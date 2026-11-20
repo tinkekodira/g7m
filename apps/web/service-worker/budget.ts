@@ -40,10 +40,10 @@
 // Allow 2 KB for those checks; detail/editor UI still loads with its route.
 // ADR-0177: allow 1 KB for the shared history repository's exercise-usage query.
 // Ordering and picker UI remain in the lazy exercise-library route.
-// ADR-0178: allow 5 KB for the shared gyms repository, the session's gym and
-// the pin icon. The settings panel, start-dialog chips and switcher sheet are
-// all in lazy chunks.
-export const ENTRY_BUDGET_BYTES = 790_000;
+// ADR-0178: allow 9 KB for the shared gyms repository, the session's gym, the
+// per-gym comparison SQL and core lift keys, and the pin icon. The settings
+// panel, start-dialog chips, switcher sheet and gym filters are lazy chunks.
+export const ENTRY_BUDGET_BYTES = 794_000;
 
 /**
  * The module entry from a built `index.html`.

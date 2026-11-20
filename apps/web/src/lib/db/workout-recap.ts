@@ -58,6 +58,11 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
         .filter((b) => b.exercise?.cardioKind != null)
         .reduce((n, b) => n + b.sets.filter((s) => s.isCompleted).length, 0),
     );
+  // Which gym each machine is compared within, so the recap's "last time" and
+  // records are this gym's (ADR-0179).
+  const scopes = await Promise.all(
+    blocks.map((b) => r.sessions.gymScopeFor(sessionId, b.entry.exerciseId)),
+  );
   const recap = buildWorkoutRecap({
     sessionId,
     startedAt: session.startedAt,
@@ -66,8 +71,9 @@ export async function loadWorkoutRecap(r: Repositories, sessionId: string) {
     bodyweightKg: session.bodyweightKg,
     history,
     work: primaryWork,
-    blocks: blocks.map((b) => ({
+    blocks: blocks.map((b, index) => ({
       exerciseId: b.entry.exerciseId,
+      gymScope: scopes[index] ?? null,
       isTimeBased: b.exercise?.isTimeBased ?? false,
       cardioKind: b.exercise?.cardioKind ?? null,
       sets: b.sets,

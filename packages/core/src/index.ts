@@ -27,6 +27,7 @@ export * from './superset.js';
 export * from './session-time.js';
 export * from './workout-edit.js';
 export * from './prefill.js';
+export * from './lift-key.js';
 export * from './week.js';
 export * from './explain.js';
 export * from './progress.js';

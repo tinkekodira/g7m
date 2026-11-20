@@ -24,6 +24,7 @@
  * a colour-blind reader. The palette was validated in that order, so do not
  * re-sort it.
  */
+import { liftKey } from './lift-key.js';
 import { countsAsSet, countsTowardVolume, effectiveLoadKg, setVolumeKg } from './load.js';
 import { startOfMonth, type SessionTimes, type Span } from './periods.js';
 import { trainingMinutes, type HistoricalSet } from './progress.js';
@@ -425,6 +426,8 @@ export function percentChange(current: number, previous: number): number | null 
 /** One lift trained this month, against everything before it. */
 export interface LiftBest {
   readonly exerciseId: string;
+  /** The gym it was measured at, for a machine at one of several. ADR-0179. */
+  readonly gymScope?: string | null;
   /**
    * The heaviest load this month, counted the way Profile's best lifts count
    * it (the max weight in `personalRecords`): what was on the bar, the belt or
@@ -459,6 +462,7 @@ export function monthRecords(
   const end = now.getTime();
   const thisMonth = new Map<string, number>();
   const before = new Map<string, number>();
+  const scopes = new Map<string, { exerciseId: string; gymScope: string | null }>();
 
   for (const set of sets) {
     if (!countsTowardVolume(set) || skip.has(set.exerciseId)) continue;
@@ -467,13 +471,18 @@ export function monthRecords(
     const time = set.performedAt.getTime();
     if (Number.isNaN(time) || time > end) continue;
     const into = time >= start ? thisMonth : before;
-    into.set(set.exerciseId, Math.max(into.get(set.exerciseId) ?? 0, load));
+    // By lift: a machine's best at one gym is no record at the other.
+    const key = liftKey(set);
+    into.set(key, Math.max(into.get(key) ?? 0, load));
+    scopes.set(key, { exerciseId: set.exerciseId, gymScope: set.gymScope ?? null });
   }
 
-  const lifts = [...thisMonth].map(([exerciseId, best]) => {
-    const previous = before.get(exerciseId) ?? null;
+  const lifts = [...thisMonth].map(([key, best]): LiftBest => {
+    const previous = before.get(key) ?? null;
+    const { exerciseId, gymScope } = scopes.get(key) ?? { exerciseId: key, gymScope: null };
     return {
       exerciseId,
+      ...(gymScope === null ? {} : { gymScope }),
       bestKg: round2(best),
       previousKg: previous === null ? null : round2(previous),
       isRecord: previous !== null && best > previous,

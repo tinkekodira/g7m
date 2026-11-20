@@ -39,6 +39,7 @@ import {
   type RawRow,
 } from './rows.js';
 import { SESSION_SOURCES, readBout, type SessionSource } from './sessions.js';
+import { gymScopeSql } from './gym-scope.js';
 
 const SET_TYPE_VALUES = ['warmup', 'working', 'dropset', 'failure', 'amrap'] as const;
 const LOAD_TYPE_VALUES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
@@ -103,6 +104,7 @@ function toHistoricalSet(row: RawRow): HistoricalSet {
     // days would split one session across two entries in the history.
     performedAt: new Date(readString(row, 'started_at', '')),
     bodyweightKg: readOptionalNumber(row, 'bodyweight_kg'),
+    gymScope: readOptionalString(row, 'gym_scope'),
     setType: readEnum(row, 'set_type', SET_TYPE_VALUES, 'working'),
     loadType: readEnum(row, 'load_type', LOAD_TYPE_VALUES, 'external'),
     weightKg: readNumber(row, 'weight_kg', 0),
@@ -173,7 +175,7 @@ export class HistoryRepository {
 
     const rows = await this.db.getAll<RawRow>(
       `SELECT ws.id AS session_id, ws.started_at, ws.bodyweight_kg,
-              se.exercise_id,
+              se.exercise_id, ${gymScopeSql('ws', 'se.exercise_id')} AS gym_scope,
               ss.set_type, ss.load_type, ss.weight_kg, ss.reps, ss.is_completed
          FROM session_sets ss
          JOIN session_exercises se ON se.id = ss.session_exercise_id
