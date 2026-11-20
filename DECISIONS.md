@@ -9900,3 +9900,30 @@ run where the pulldown at a new gym shows the other gym's hint and no "Last:",
 and switching gym brings back its own prefill.
 
 Rollout: no further migration or sync rules beyond ADR-0178's.
+
+## ADR-0180 — Browser tests run in three shards
+
+**Status:** accepted · **Date:** 2026-11-20 · **Amends:** ADR-0067, ADR-0175
+
+The End-to-end workflow ran every browser test, close to 200 of them, in one
+job on one runner. For weeks its red runs were that job reaching Playwright's
+global deadline with the last six to eleven tests not yet run, reported as
+"Test ended" or "Test was interrupted". It was never a failing assertion. The
+files last in the alphabet, `workout-upgrade` and `workout`, were the ones cut
+off most often, so they looked flaky. Each time, the deadline was raised: 12
+minutes, then 15, then 18 against a 20-minute job limit. The run that passed
+on 2026-11-20 took 16 minutes 40 seconds.
+
+The workflow now runs three shards in parallel (`--shard=n/3`). Each builds
+the app, starts its own fake backend, and runs about a third of the files,
+which takes a third of the time. A shard keeps the existing two workers, one
+retry, per-test limits and deadline, so a slow runner now has room rather than
+a cliff. A small job named "Browser tests (Playwright)", the check's
+existing name, passes only when every shard does. Each shard uploads its own
+report as `playwright-report-<n>`.
+
+When the suite outgrows this, add a shard; do not raise the deadline.
+
+Validation: the three shards list 67, 68 and 63 tests. A CI run shows each
+shard's duration and the combined check. No database migration,
+`npx supabase db push` or PowerSync sync-rule deployment is required.

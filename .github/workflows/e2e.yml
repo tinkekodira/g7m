@@ -19,9 +19,22 @@ permissions:
   contents: read
 
 jobs:
+  # Three shards, each building the app and running a third of the files
+  # against its own fake backend. One job ran close to 200 browser tests on
+  # one runner, and every red "Browser tests" for weeks was that job reaching
+  # its deadline with the last few files unrun — `workout-upgrade` and
+  # `workout` most often, being last in the alphabet — never a failed
+  # assertion. Raising the deadline (12, 15, then 18 minutes) only moved the
+  # cliff. A shard takes about a third of the time, so a slow runner has room.
+  # See ADR-0180.
   e2e:
-    name: Browser tests (Playwright)
+    name: Browser tests (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
+    strategy:
+      # Every shard reports, so one red run shows everything that is wrong.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     # Includes browsers and OS libraries: no apt mirror downloads on every PR.
     # Keep this version in sync with @playwright/test in e2e/package.json.
     container:
@@ -52,16 +65,30 @@ jobs:
 
       # Builds the app against the fake backend (playwright.config.ts,
       # `webServer`). Two workers share one backend, with separate accounts
-      # and browser-scoped offline tests. One job owns the result and report.
+      # and browser-scoped offline tests. Each shard has its own backend.
       - name: Run the browser tests
-        run: pnpm --filter @g7m/e2e test
+        run: pnpm --filter @g7m/e2e test --shard=${{ matrix.shard }}/3
 
       - name: Upload the report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             e2e/playwright-report/
             e2e/test-results/
           retention-days: 7
+
+  # The one check a pull request shows, under the name it has always had:
+  # green only when every shard is.
+  result:
+    name: Browser tests (Playwright)
+    needs: e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every shard passed
+        run: |
+          echo "Shards: ${{ needs.e2e.result }}"
+          test "${{ needs.e2e.result }}" = "success"
