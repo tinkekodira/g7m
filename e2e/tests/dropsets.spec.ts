@@ -64,6 +64,33 @@ test('a drop comes off a ticked set, and the rest waits for the last one', async
   await expect(page.getByText('Set 2', { exact: true })).toHaveCount(0);
 });
 
+/**
+ * An iPhone 13 mini is 375 wide. A ticked drop is indented and carries a Drop
+ * button beside its tick, and the line between them used to be truncated to
+ * "80 kg …": the reps, the half that was actually done, cut off.
+ */
+test('a ticked drop shows its reps on a narrow phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const user = await createUser('dropset-narrow', { onboarded: true });
+  await signIn(page, user);
+  await waitForCatalogue(page);
+
+  await startWith(page, 'Barbell Bench Press');
+  await logSet(page, 1, '100', '12');
+  await page.getByRole('button', { name: 'Drop after set 1' }).click();
+  await page.getByRole('button', { name: 'Complete drop 1 of set 1' }).click();
+  await expect(page.getByRole('button', { name: 'Undo drop 1 of set 1' })).toBeVisible();
+
+  const drop = page.getByRole('listitem').filter({
+    has: page.getByRole('button', { name: 'Undo drop 1 of set 1' }),
+  });
+  const line = drop.getByText(/80\s?kg\s×\s12/);
+  await expect(line).toBeVisible();
+  // Nothing clipped: the text fits the box it is drawn in.
+  const clipped = await line.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(clipped).toBe(false);
+});
+
 /** A percentage of "your own bodyweight" is not a weight anybody can strip off. */
 test('a plain bodyweight set is offered no drop', async ({ page }) => {
   const user = await createUser('dropset-bodyweight', { onboarded: true });
