@@ -32,20 +32,19 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
 
   await page.goto('/');
   await page.getByRole('tab', { name: 'Create account' }).click();
-  await expect(page.getByRole('combobox')).toHaveCount(0);
+  // The only choice besides the two fields is the app's language (ADR-0181).
+  await expect(page.getByRole('combobox')).toHaveCount(1);
   await expect(page.locator('form input')).toHaveCount(2);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
 
   // Registration opens onboarding without waiting for the profile to sync.
-  await expect(page.getByRole('heading', { name: 'What should we call you?' })).toBeVisible();
-  await page.getByLabel('Your name').fill('Alex');
+  // The first question is the language (ADR-0181), already set to the phone's.
+  await expect(page.getByRole('heading', { name: 'Choose your language' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
   await expect(page.getByRole('status')).toHaveText('Setting up your account…');
-  // Enter must not advance either: an UPDATE with no local profile is a no-op.
-  await page.getByLabel('Your name').press('Enter');
-  await expect(page).toHaveURL(/\/welcome\/name$/);
+  await expect(page).toHaveURL(/\/welcome\/language$/);
   await expect(page.getByRole('navigation')).toHaveCount(0);
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 900 });
@@ -60,7 +59,10 @@ test('a new account answers the welcome questions and lands on Home', async ({ p
   }
   releaseSync();
   await expect(page.getByRole('button', { name: 'Continue' })).toBeEnabled();
-  await expect(page.getByLabel('Your name')).toHaveValue('Alex');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(page.getByRole('heading', { name: 'What should we call you?' })).toBeVisible();
+  await page.getByLabel('Your name').fill('Alex');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await expect(page.getByRole('heading', { name: 'When were you born?' })).toBeVisible();

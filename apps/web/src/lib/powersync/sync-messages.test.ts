@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatTime } from '@g7m/i18n';
 import type { DiscardedWrite } from '@g7m/db';
 import {
   describeDiscarded,
@@ -36,7 +37,7 @@ describe('describeSyncPhase', () => {
 
   it('says when it last reached the server, once it has', () => {
     const at = new Date('2026-09-06T09:30:00Z');
-    expect(describeSyncPhase('offline', at)).toContain(at.toLocaleTimeString());
+    expect(describeSyncPhase('offline', at)).toContain(formatTime(at));
   });
 
   /**
