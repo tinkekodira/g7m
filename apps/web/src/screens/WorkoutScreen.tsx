@@ -1619,6 +1619,15 @@ const EFFORT_ANSWERS = [
  * not a request — but each one re-reads the workout, and the row would be
  * fighting the field for the value while somebody was still typing in it.
  */
+/**
+ * "56 kg × 10" with every space made unbreakable except the one before "×", so
+ * a row too narrow for the line puts "× 10" underneath rather than splitting
+ * "56" from "kg" or "×" from its count.
+ */
+function breakBeforeReps(summary: string): string {
+  return summary.replaceAll(' ', ' ').replace(' ×', ' ×');
+}
+
 function SetRow({
   title,
   editing,
@@ -1750,11 +1759,23 @@ function SetRow({
         */
         <div className="rounded-control bg-elevated/60 px-3 py-2">
           <div className="flex items-center gap-3">
-            <span className="w-16 shrink-0 text-xs font-medium text-muted">{title}</span>
+            {/* A drop sits indented and carries its own Drop button, so on a
+                narrow phone (an iPhone mini) the fixed title column left the
+                numbers too little room. It takes only the width of its word. */}
             <span
-              className={`numeric min-w-0 flex-1 truncate text-base font-medium ${set.isCompleted ? 'text-muted' : 'text-primary'}`}
+              className={`${set.setType === 'dropset' ? '' : 'w-16'} shrink-0 text-xs font-medium text-muted`}
             >
-              {describePreviousSet(set, (kg) => showWeight(kg, unitSystem), isTimeBased)}
+              {title}
+            </span>
+            {/* Never truncated: "56 kg …" hid the reps, the half that was
+                actually done. Too narrow for one line, it wraps between the
+                weight and the reps, and nowhere else. */}
+            <span
+              className={`numeric min-w-0 flex-1 break-words text-base font-medium ${set.isCompleted ? 'text-muted' : 'text-primary'}`}
+            >
+              {breakBeforeReps(
+                describePreviousSet(set, (kg) => showWeight(kg, unitSystem), isTimeBased),
+              )}
             </span>
             {set.setType === 'warmup' && !set.isCompleted && (
               <button
