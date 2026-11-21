@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { Link } from 'react-router';
 import {
   supersededBy,
@@ -97,13 +98,11 @@ export function ReviewCard({
   return (
     <Panel
       id={REVIEW_ANCHOR}
-      eyebrow="From your log"
-      title="How it is going"
+      eyebrow={t().review.card.eyebrow}
+      title={t().review.card.title}
       className={cx('scroll-mt-4', arrived && 'spotlight')}
     >
-      <p className="mt-1 text-sm text-muted">
-        Read from what you logged, whether the plan wrote it or you did.
-      </p>
+      <p className="mt-1 text-sm text-muted">{t().review.card.intro}</p>
 
       {/* Rows with the tone in a mark beside them, like Home's note, rather
           than a coloured box each: three red boxes read as three errors. */}
@@ -171,7 +170,7 @@ export function ReviewNudge({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-          How it is going
+          {t().review.card.title}
         </span>
         <span className="block text-sm leading-5 font-medium text-primary">{headline.heading}</span>
       </span>

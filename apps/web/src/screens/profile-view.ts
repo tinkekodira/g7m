@@ -7,6 +7,7 @@
  * blanks can be tested: a profile is mostly blanks for the first week, and
  * each one should say so rather than print "null cm".
  */
+import { formatNumber, intlLocale, live, t } from '@g7m/i18n';
 import { monthName } from '../lib/date-words.js';
 import {
   ACTIVITY_LABELS,
@@ -77,22 +78,26 @@ export function profileStats(facts: ProfileFacts, now: Date): StatTile[] {
   return [
     {
       key: 'weight',
-      label: 'Weight',
-      value: weight === null ? null : `${String(weight.value)} ${weight.unit}`,
+      label: t().profile.tiles.weight,
+      value: weight === null ? null : `${formatNumber(weight.value)} ${weight.unit}`,
       ...(facts.weightAt === null ? {} : { detail: describeWhen(facts.weightAt, now) }),
     },
     {
       key: 'height',
-      label: 'Height',
-      value: height === null ? null : `${String(height.value)} ${height.unit}`,
+      label: t().profile.tiles.height,
+      value: height === null ? null : `${formatNumber(height.value)} ${height.unit}`,
     },
-    { key: 'age', label: 'Age', value: age === null ? null : String(age) },
+    { key: 'age', label: t().profile.tiles.age, value: age === null ? null : String(age) },
     {
       key: 'activity',
-      label: 'Outside the gym',
+      label: t().profile.tiles.activity,
       value: facts.activityLevel === null ? null : ACTIVITY_LABELS[facts.activityLevel],
     },
-    { key: 'sex', label: 'Sex', value: facts.sex === null ? null : SEX_LABELS[facts.sex] },
+    {
+      key: 'sex',
+      label: t().profile.tiles.sex,
+      value: facts.sex === null ? null : SEX_LABELS[facts.sex],
+    },
     bmiTile(indexFor(facts, now)),
   ];
 }
@@ -111,12 +116,7 @@ export function indexFor(facts: ProfileFacts, now: Date): BodyIndex | null {
 }
 
 /** How each band reads on a tile. Short, because the range sits beside it. */
-const BAND_WORDS: Record<BodyBand, string> = {
-  below: 'Below range',
-  healthy: 'Healthy',
-  above: 'Above range',
-  well_above: 'Well above',
-};
+const BAND_WORDS: Readonly<Record<BodyBand, string>> = live(() => t().profile.bands);
 
 /**
  * BMI, and the band it was judged against — never the textbook one unquoted.
@@ -127,11 +127,11 @@ const BAND_WORDS: Record<BodyBand, string> = {
  * somebody notices the band widening as they fill the rest of the screen in.
  */
 function bmiTile(index: BodyIndex | null): StatTile {
-  if (index === null) return { key: 'bmi', label: 'BMI', value: null };
+  if (index === null) return { key: 'bmi', label: t().profile.tiles.bmi, value: null };
   return {
     key: 'bmi',
-    label: 'BMI',
-    value: index.bmi.toFixed(1),
+    label: t().profile.tiles.bmi,
+    value: formatNumber(index.bmi, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
     detail: `${BAND_WORDS[index.band]} · ${trim(index.healthyLow)}–${trim(index.healthyHigh)}`,
     tone: index.band === 'healthy' ? 'good' : 'caution',
   };
@@ -139,7 +139,7 @@ function bmiTile(index: BodyIndex | null): StatTile {
 
 /** 27.5 stays 27.5; 25.0 becomes 25, because a band is not a measurement. */
 function trim(value: number): string {
-  return String(Math.round(value * 10) / 10);
+  return formatNumber(Math.round(value * 10) / 10);
 }
 
 /**
@@ -154,12 +154,12 @@ function trim(value: number): string {
 export function bmiNote(index: BodyIndex | null): string | null {
   if (index === null) return null;
   if (index.adjustedFor.length === 0) {
-    return 'That is the standard range. Fill in your age and how many days a week you train and it is set for your body instead.';
+    return t().profile.bmiStandard;
   }
   // "Moves with" rather than "is set from", which would claim a sex nobody has
   // given. All three shift the band; which of them have been answered is the
   // reader's business, and the band beside the verdict already shows the result.
-  return 'Your range moves with your age, your sex and how much you train. Plain BMI counts muscle as excess weight, so 18.5–25 is the wrong band for somebody who lifts.';
+  return t().profile.bmiAdjusted;
 }
 
 /**
@@ -197,11 +197,11 @@ export function bestLifts(
     .filter((record) => record.recordType === 'max_weight' && record.value > 0)
     .map((record) => ({
       exerciseId: record.exerciseId,
-      name: names.get(record.exerciseId) ?? 'Unknown exercise',
+      name: names.get(record.exerciseId) ?? t().profile.unknownExercise,
       valueKg: record.value,
       achievedAt: record.achievedAt,
     }))
-    .sort((a, b) => b.valueKg - a.valueKg || a.name.localeCompare(b.name, 'en'));
+    .sort((a, b) => b.valueKg - a.valueKg || a.name.localeCompare(b.name, intlLocale()));
 }
 
 export interface GoalCardLine {
@@ -226,14 +226,13 @@ export function goalCardLine(
   },
   now: Date,
 ): GoalCardLine {
-  const days = `${String(goal.daysPerWeek)} ${goal.daysPerWeek === 1 ? 'day' : 'days'} a week`;
-  const date = `${String(goal.startedAt.getDate())} ${monthName(goal.startedAt)}`;
+  const date = t().common.dates.dayMonth(goal.startedAt.getDate(), monthName(goal.startedAt));
   const year =
     goal.startedAt.getFullYear() === now.getFullYear()
       ? ''
       : ` ${String(goal.startedAt.getFullYear())}`;
   return {
     title: (goal.selectedGoals ?? [goal.goal]).map((value) => GOAL_LABELS[value]).join(', '),
-    detail: `${days} · since ${date}${year}`,
+    detail: t().profile.goalLine(goal.daysPerWeek, `${date}${year}`),
   };
 }

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { canEditWorkout, type RecapRewards } from '@g7m/core';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
@@ -55,9 +56,9 @@ export function SessionDetailScreen() {
     >
       <header className="flex shrink-0 items-baseline justify-between gap-4 pt-4 pb-1">
         <h1 className="min-w-0 text-2xl font-semibold break-words text-primary">
-          {fresh ? 'Workout saved' : (data?.title ?? 'Workout')}
+          {fresh ? t().history.session.saved : (data?.title ?? t().history.session.workout)}
         </h1>
-        {!fresh && <HeaderLink to="/progress">Progress</HeaderLink>}
+        {!fresh && <HeaderLink to="/progress">{t().progress.title}</HeaderLink>}
       </header>
 
       {state.error !== null ? (
@@ -65,12 +66,9 @@ export function SessionDetailScreen() {
           {state.error}
         </p>
       ) : state.loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : data === null ? (
-        <p className="max-w-prose text-sm text-secondary">
-          That workout is not on this device. It may not have synced yet, or it may have been
-          discarded.
-        </p>
+        <p className="max-w-prose text-sm text-secondary">{t().history.session.notOnDevice}</p>
       ) : (
         <>
           {details ? (
@@ -84,13 +82,15 @@ export function SessionDetailScreen() {
               <div className="flex flex-wrap items-center gap-3">
                 {canEditWorkout(data.session.endedAt, now) ? (
                   <>
-                    <HeaderLink to={`/workout/${sessionId}`}>Edit workout</HeaderLink>
-                    <p className="text-sm text-secondary">Editable for 2 hours after completion.</p>
+                    <HeaderLink to={`/workout/${sessionId}`}>{t().history.session.edit}</HeaderLink>
+                    <p className="text-sm text-secondary">{t().history.session.editable}</p>
                   </>
                 ) : (
-                  <p className="text-sm text-secondary">Editing closed 2 hours after completion.</p>
+                  <p className="text-sm text-secondary">{t().history.session.closed}</p>
                 )}
-                <HeaderLink to={`/progress/session/${sessionId}`}>Workout recap</HeaderLink>
+                <HeaderLink to={`/progress/session/${sessionId}`}>
+                  {t().history.session.recap}
+                </HeaderLink>
               </div>
               <SessionBody
                 startedAt={data.session.startedAt}
@@ -99,7 +99,7 @@ export function SessionDetailScreen() {
                 blocks={data.blocks}
               />
               {data.blocks.length === 0 && (
-                <p className="text-sm text-muted">No exercises logged.</p>
+                <p className="text-sm text-muted">{t().history.session.noExercises}</p>
               )}
             </>
           ) : (
@@ -107,7 +107,7 @@ export function SessionDetailScreen() {
           )}
           <div
             className="recap-actions grid shrink-0 grid-cols-2 gap-2 pb-3"
-            aria-label="Workout actions"
+            aria-label={t().history.session.actions}
             role="group"
           >
             <Link
@@ -133,7 +133,7 @@ export function SessionDetailScreen() {
               }}
               className="col-span-2 flex min-h-tap items-center justify-center rounded-control bg-accent px-4 font-medium text-on-accent hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              {fresh ? 'Continue' : 'Done'}
+              {fresh ? t().common.continue : t().common.done}
             </Link>
             <KeepAsRoutine
               sessionId={sessionId}
@@ -179,11 +179,13 @@ function KeepAsRoutine({
     <section className={open ? 'col-span-2' : 'min-w-0'}>
       {open ? (
         <>
-          <h2 className="mb-3 text-base font-semibold text-primary">Name the routine</h2>
+          <h2 className="mb-3 text-base font-semibold text-primary">
+            {t().history.session.nameRoutine}
+          </h2>
           <TextField
-            label="Routine name"
+            label={t().history.session.routineName}
             value={name}
-            placeholder="Push Day"
+            placeholder={t().history.session.routinePlaceholder}
             onChange={(event) => {
               setName(event.target.value);
             }}
@@ -228,7 +230,7 @@ function KeepAsRoutine({
               setOpen(true);
             }}
           >
-            Save as a routine
+            {t().history.session.saveAsRoutine}
           </Button>
         </>
       )}
@@ -260,7 +262,7 @@ function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
         className="px-2 text-sm"
         disabled={busy}
         onClick={() => {
-          if (!globalThis.confirm("Delete this workout? This can't be undone.")) return;
+          if (!globalThis.confirm(t().history.confirmDelete)) return;
           void write((r) => r.sessions.discard(sessionId)).then((result) => {
             // Null means the write failed and its error is already set below —
             // leaving means the error message goes with it, unread.
@@ -269,7 +271,7 @@ function DeleteWorkout({ sessionId }: { readonly sessionId: string }) {
         }}
       >
         <TrashIcon className="hidden size-4 shrink-0 sm:block" />
-        Delete workout
+        {t().history.session.delete}
       </Button>
       {error !== null && (
         <p role="alert" className="mt-2 text-sm text-destructive">

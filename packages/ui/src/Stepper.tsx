@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import { cx } from './cx.js';
 import { repeatDelay } from './hold-repeat.js';
@@ -101,7 +102,7 @@ export function Stepper({
 
       <div className="flex items-stretch rounded-control border border-subtle bg-input">
         <StepButton
-          label={`Decrease ${label}`}
+          label={t().library.stepper.decrease(label)}
           disabled={disabled || value <= min}
           onStep={() => stepBy(-1)}
         >
@@ -140,7 +141,7 @@ export function Stepper({
         />
 
         <StepButton
-          label={`Increase ${label}`}
+          label={t().library.stepper.increase(label)}
           disabled={disabled || value >= max}
           onStep={() => stepBy(1)}
         >

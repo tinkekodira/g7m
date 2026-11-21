@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { checkFriendCode } from '@g7m/core';
@@ -136,10 +137,10 @@ export function FriendsScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header data-tour="friends" className="flex items-center justify-between gap-4 pt-6">
-        <h1 className="text-3xl font-bold text-primary">Friends</h1>
+        <h1 className="text-3xl font-bold text-primary">{t().friends.title}</h1>
         <button
           type="button"
-          aria-label="Add a friend"
+          aria-label={t().friends.addFriend}
           disabled={!online || !named || code === null}
           onClick={() => {
             setAdding(true);
@@ -160,7 +161,7 @@ export function FriendsScreen() {
         <FriendsSkeleton tab={tab} />
       ) : mine.data?.hasProfile !== true ? (
         <p role="status" className="text-sm text-secondary">
-          Your profile is unavailable. Open your profile and try again.
+          {t().friends.profileUnavailable}
         </p>
       ) : !named ? (
         <NamePrompt />
@@ -201,7 +202,7 @@ export function FriendsScreen() {
                 cards !== null &&
                 !cards.others.some((card) => card.id === target) && (
                   <p role="status" className="text-sm text-secondary">
-                    This result has already been dismissed.
+                    {t().friends.resultDismissed}
                   </p>
                 )}
               <FriendsLeaderboard mine={mine.data} code={code}>
@@ -210,9 +211,7 @@ export function FriendsScreen() {
                 {overview.data.friends.length > 0 &&
                   cards !== null &&
                   cards.others.length === 0 && (
-                    <p className="text-xs text-muted">
-                      Challenge a friend to a week: open their page and pick a stat.
-                    </p>
+                    <p className="text-xs text-muted">{t().friends.challengeHint}</p>
                   )}
               </FriendsLeaderboard>
             </>
@@ -258,17 +257,17 @@ function SubTabs({
   return (
     <SegmentedControl
       role="tablist"
-      label="Friends"
+      label={t().friends.title}
       value={value}
       onChange={onChange}
       options={[
-        { value: 'friends', label: 'Friends' },
-        { value: 'leaderboard', label: 'Leaderboard' },
+        { value: 'friends', label: t().friends.tabs.friends },
+        { value: 'leaderboard', label: t().friends.tabs.leaderboard },
         {
           value: 'requests',
           label: (
             <span className="flex items-center gap-1.5">
-              Requests
+              {t().friends.tabs.requests}
               {requests > 0 && (
                 <span
                   className={cx(
@@ -278,7 +277,7 @@ function SubTabs({
                   )}
                 >
                   {requests}
-                  <span className="sr-only"> waiting</span>
+                  <span className="sr-only">{t().friends.tabs.waiting}</span>
                 </span>
               )}
             </span>
@@ -318,11 +317,8 @@ function FriendList({
 
   if (cards.length === 0) {
     return (
-      <Panel tone="hero" eyebrow="Friends" title="Train with friends">
-        <p className="mt-1 text-sm text-secondary">
-          Share your code with someone you train with. Once they add you, you’ll see each other’s
-          week, best lifts and workouts here.
-        </p>
+      <Panel tone="hero" eyebrow={t().friends.empty.eyebrow} title={t().friends.empty.title}>
+        <p className="mt-1 text-sm text-secondary">{t().friends.empty.body}</p>
         {overview.me !== null && (
           <div className="mt-4 border-t border-subtle/70 pt-4">
             <YourCode code={overview.me.code} />
@@ -353,8 +349,8 @@ function FriendList({
 function LevelPill({ level }: { readonly level: number }) {
   return (
     <span className="numeric shrink-0 rounded-full bg-elevated px-2 py-0.5 text-[11px] leading-4 font-semibold text-secondary">
-      <span aria-hidden>Lv {level}</span>
-      <span className="sr-only">Level {level}</span>
+      <span aria-hidden>{t().friends.card.levelShort(level)}</span>
+      <span className="sr-only">{t().friends.card.level(level)}</span>
     </span>
   );
 }
@@ -395,7 +391,7 @@ function FriendCard({
             {workingOut && (
               <span className="workout-status inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/25 bg-accent-subtle px-2 py-0.5 text-[11px] leading-4 font-semibold text-accent">
                 <span aria-hidden className="size-1.5 rounded-full bg-current" />
-                Working out
+                {t().friends.card.workingOut}
               </span>
             )}
           </div>
@@ -405,7 +401,7 @@ function FriendCard({
       </div>
 
       {!card.sharing ? (
-        <p className="mt-3 text-sm text-muted">Not sharing their training</p>
+        <p className="mt-3 text-sm text-muted">{t().friends.card.notSharing}</p>
       ) : (
         <>
           {card.dots !== null && (
@@ -426,7 +422,7 @@ function FriendCard({
               className="relative z-10 mt-4 flex min-h-tap items-center gap-3 rounded-card bg-base/70 px-3 py-2.5 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-xs text-muted">Last workout</span>
+                <span className="block text-xs text-muted">{t().friends.card.lastWorkout}</span>
                 <span className="block truncate text-sm font-medium text-primary">
                   {card.lastWorkout.title}
                 </span>
@@ -452,8 +448,8 @@ function WorkoutStatusSharing({ presence }: { readonly presence: RemoteState<Wor
       <Switch
         checked={presence.data?.sharing ?? false}
         disabled={presence.data === null || presence.error !== null || busy}
-        label="Share my workout status"
-        description="Let friends see when you’re working out."
+        label={t().friends.status.label}
+        description={t().friends.status.description}
         onChange={(enabled) => {
           setBusy(true);
           setFailure(null);
@@ -462,9 +458,7 @@ function WorkoutStatusSharing({ presence }: { readonly presence: RemoteState<Wor
               presence.reload();
             })
             .catch((cause: unknown) => {
-              setFailure(
-                cause instanceof FriendsError ? cause.message : 'That did not save. Try again.',
-              );
+              setFailure(cause instanceof FriendsError ? cause.message : t().friends.didNotSave);
             })
             .finally(() => setBusy(false));
         }}
@@ -492,10 +486,10 @@ function BestLifts({ lifts }: { readonly lifts: readonly CardLift[] }) {
         id={captionId}
         className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase"
       >
-        Best lifts
+        {t().friends.card.bestLifts}
       </p>
       {lifts.length === 0 ? (
-        <p className="mt-1 text-sm text-secondary">No lifts logged yet</p>
+        <p className="mt-1 text-sm text-secondary">{t().friends.card.noLifts}</p>
       ) : (
         <dl aria-labelledby={captionId} className="mt-2 grid grid-cols-3 gap-2">
           {lifts.map((lift) => (
@@ -545,7 +539,7 @@ function ChallengesSection({
   return (
     <section aria-labelledby="challenges-heading" className="flex flex-col gap-3">
       <h2 id="challenges-heading" className="text-lg font-semibold text-primary">
-        Challenges
+        {t().friends.challenge.heading}
       </h2>
       <ChallengeList cards={cards} onChanged={onChanged} />
     </section>
@@ -571,8 +565,7 @@ function RequestList({
   if (rows.length === 0 && challenges.length === 0) {
     return (
       <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
-        No requests waiting. When someone adds you with your code, or challenges you, it shows up
-        here for you to accept.
+        {t().friends.requests.none}
       </p>
     );
   }
@@ -614,7 +607,7 @@ function RequestCard({
       },
       (cause: unknown) => {
         setBusy(false);
-        setFailure(cause instanceof FriendsError ? cause.message : 'That did not go through.');
+        setFailure(cause instanceof FriendsError ? cause.message : t().friends.didNotGoThrough);
       },
     );
   };
@@ -631,22 +624,22 @@ function RequestCard({
       <div className="mt-3 grid grid-cols-2 gap-3">
         <Button
           disabled={busy}
-          aria-label={`Accept ${row.name}`}
+          aria-label={t().friends.requests.acceptLabel(row.name)}
           onClick={() => {
             answer(true);
           }}
         >
-          Accept
+          {t().friends.requests.accept}
         </Button>
         <Button
           variant="secondary"
           disabled={busy}
-          aria-label={`Decline ${row.name}`}
+          aria-label={t().friends.requests.declineLabel(row.name)}
           onClick={() => {
             answer(false);
           }}
         >
-          Decline
+          {t().friends.requests.decline}
         </Button>
       </div>
       {failure !== null && (
@@ -711,7 +704,7 @@ function AddFriendSheet({
         setSending(false);
         setMessage({
           tone: 'error',
-          text: cause instanceof FriendsError ? cause.message : 'That did not go through.',
+          text: cause instanceof FriendsError ? cause.message : t().friends.didNotGoThrough,
         });
       },
     );
@@ -726,7 +719,7 @@ function AddFriendSheet({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t().common.close}
         tabIndex={-1}
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
@@ -739,7 +732,7 @@ function AddFriendSheet({
       >
         <div className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="text-xl font-semibold text-primary">
-            Add a friend
+            {t().friends.addFriend}
           </h2>
           <button
             ref={closeRef}
@@ -747,7 +740,7 @@ function AddFriendSheet({
             onClick={onClose}
             className="inline-flex min-h-tap items-center rounded-control px-3 text-sm font-medium text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
           >
-            Done
+            {t().common.done}
           </button>
         </div>
 
@@ -763,7 +756,7 @@ function AddFriendSheet({
           }}
         >
           <TextField
-            label="Their code"
+            label={t().friends.code.theirs}
             value={typed}
             placeholder="K7PX4M"
             autoComplete="off"
@@ -777,7 +770,7 @@ function AddFriendSheet({
             }}
           />
           <Button type="submit" fullWidth disabled={sending || typed.trim() === ''}>
-            {sending ? 'Sending…' : 'Send request'}
+            {sending ? t().friends.code.sending : t().friends.code.send}
           </Button>
           <p
             role="status"

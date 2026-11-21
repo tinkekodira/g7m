@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@g7m/core": "workspace:*",
+    "@g7m/i18n": "workspace:*",
     "@powersync/web": "2.3.0"
   }
 }

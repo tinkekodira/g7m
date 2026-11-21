@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Routine } from '@g7m/db';
 import { Button } from '@g7m/ui';
@@ -76,10 +77,10 @@ export default function WorkoutStartDialog({
       <div className="flex max-h-[90dvh] flex-col">
         <header className="flex shrink-0 items-center justify-between gap-3 px-5 pt-4 pb-3">
           <h2 id={heading} className="text-xl font-semibold">
-            Start a workout
+            {t().workout.startDialog.title}
           </h2>
           <Button variant="ghost" disabled={busy} onClick={onClose}>
-            Cancel
+            {t().common.cancel}
           </Button>
         </header>
         {asking && gyms.data !== null && (
@@ -88,28 +89,28 @@ export default function WorkoutStartDialog({
               gyms={gyms.data.gyms}
               value={gymId ?? null}
               disabled={busy}
-              label="Where are you training?"
+              label={t().workout.gym.where}
               onChange={setPickedGym}
             />
           </div>
         )}
         <section
-          aria-label="Your routines"
+          aria-label={t().workout.startDialog.routines}
           className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-4"
         >
-          <h3 className="mb-2 text-base font-medium text-primary">Choose a routine</h3>
+          <h3 className="mb-2 text-base font-medium text-primary">
+            {t().workout.startDialog.chooseRoutine}
+          </h3>
           {routines.loading && routines.data === null ? (
             <p role="status" className="text-sm text-muted">
-              Loading routines…
+              {t().workout.startDialog.loading}
             </p>
           ) : routines.error !== null ? (
             <p role="alert" className="text-sm text-destructive">
               {routines.error}
             </p>
           ) : routines.data?.length === 0 ? (
-            <p className="text-sm text-secondary">
-              No routines yet. Finish a workout and save it as a routine to use it here next time.
-            </p>
+            <p className="text-sm text-secondary">{t().workout.startDialog.none}</p>
           ) : (
             <RoutinePages routines={routines.data ?? []} busy={busy} onStart={start} />
           )}
@@ -121,7 +122,7 @@ export default function WorkoutStartDialog({
             </p>
           )}
           <Button fullWidth disabled={busy} onClick={() => start(null, skip)}>
-            {busy ? 'Setting it up…' : 'Start a blank workout'}
+            {busy ? t().workout.startDialog.settingUp : t().workout.startDialog.blank}
           </Button>
           <label className="mt-3 flex min-h-tap cursor-pointer items-center gap-3 text-base font-medium text-primary">
             <input
@@ -133,10 +134,10 @@ export default function WorkoutStartDialog({
               onChange={(event) => setSkip(event.target.checked)}
               className="size-5 shrink-0 accent-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             />
-            Do not show this again
+            {t().workout.startDialog.dontShow}
           </label>
           <p id={hint} className="pl-8 text-sm text-secondary">
-            Always start blank workouts. Change this in Settings.
+            {t().workout.startDialog.dontShowHint}
           </p>
         </div>
       </div>
@@ -212,7 +213,7 @@ function RoutinePages({
   }
 
   return (
-    <div role="group" aria-label="Saved routines" aria-roledescription="carousel">
+    <div role="group" aria-label={t().workout.startDialog.saved} aria-roledescription="carousel">
       <div
         ref={track}
         className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
@@ -234,7 +235,7 @@ function RoutinePages({
             id={`${id}-${String(index)}`}
             role="group"
             aria-roledescription="slide"
-            aria-label={`Routine page ${String(index + 1)} of ${String(pages.length)}`}
+            aria-label={t().workout.startDialog.page(index + 1, pages.length)}
             inert={index !== active}
             aria-hidden={index !== active}
             className="w-full min-w-0 shrink-0 snap-start snap-always p-0.5"
@@ -254,7 +255,7 @@ function RoutinePages({
                   </div>
                   <Button
                     variant="secondary"
-                    aria-label={`Start ${routine.name}`}
+                    aria-label={t().workout.startDialog.start(routine.name)}
                     disabled={busy || routine.exerciseCount === 0}
                     onClick={() => onStart(routine.id, false)}
                   >
@@ -271,14 +272,14 @@ function RoutinePages({
           <div
             ref={dots}
             role="group"
-            aria-label="Choose routine page"
+            aria-label={t().workout.startDialog.choosePage}
             className="mt-1 flex flex-wrap justify-center"
           >
             {pages.map((_, index) => (
               <button
                 key={index}
                 type="button"
-                aria-label={`Show routine page ${String(index + 1)} of ${String(pages.length)}`}
+                aria-label={t().workout.startDialog.showPage(index + 1, pages.length)}
                 aria-controls={`${id}-${String(index)}`}
                 aria-pressed={active === index}
                 className="flex size-12 touch-manipulation items-center justify-center rounded-control hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"

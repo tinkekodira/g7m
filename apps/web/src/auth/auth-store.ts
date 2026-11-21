@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase.js';
@@ -13,7 +14,7 @@ import {
 import { authCodeFrom } from '../lib/native/shell-rules.js';
 import { forgetDeletedAccount, handOverDevice } from '../lib/powersync/database.js';
 import { forgetFriendsOnDevice } from '../lib/friends/cache.js';
-import { ACCOUNT_DELETED_NOTICE, describeDeletionError } from '../lib/account-words.js';
+import { accountDeletedNotice, describeDeletionError } from '../lib/account-words.js';
 import {
   INITIAL_AUTH_STATE,
   friendlyAuthError,
@@ -137,9 +138,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       busy: false,
       error: null,
       registeredUserId: data.session?.user.id ?? null,
-      notice: needsConfirmation
-        ? 'Account created. Check your email for a confirmation link, then sign in.'
-        : null,
+      notice: needsConfirmation ? t().auth.notices.confirm : null,
     });
   },
 
@@ -183,7 +182,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // session arrives later through `appUrlOpen`.
     if (native && data.url !== null) {
       const opened = await openExternal(data.url);
-      if (!opened) set({ busy: false, error: 'Could not open the sign-in page.' });
+      if (!opened) set({ busy: false, error: t().auth.notices.googleFailed });
     }
   },
 
@@ -219,7 +218,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     const unsent =
       handover.state === 'kept' && handover.pending > 0
-        ? `${String(handover.pending)} changes had not reached the server, so nothing on this device was cleared. Sign back in with a connection to save them.`
+        ? t().auth.notices.unsent(handover.pending)
         : null;
 
     set({
@@ -263,7 +262,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     await supabase.auth.signOut({ scope: 'local' });
     forgetFriendsOnDevice();
 
-    set({ busy: false, error: null, notice: ACCOUNT_DELETED_NOTICE });
+    set({ busy: false, error: null, notice: accountDeletedNotice() });
     return null;
   },
 
@@ -293,7 +292,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
      */
     set({
       busy: false,
-      notice: 'If that email has an account, a reset link is on its way. It expires in an hour.',
+      notice: t().auth.notices.resetSent,
     });
   },
 

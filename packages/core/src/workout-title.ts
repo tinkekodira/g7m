@@ -11,6 +11,7 @@
  * review use. Counting assistants would call a heavy bench day "Upper body",
  * because the lats and biceps help with everything.
  */
+import { t } from '@g7m/i18n';
 
 /** One exercise's working sets in a workout, and one primary muscle it trains. */
 export interface PrimaryWork {
@@ -121,8 +122,14 @@ function total(of: readonly Share[]): number {
   return of.reduce((sum, share) => sum + share.sets, 0);
 }
 
-/** "(quad focused)" when one thing clearly led, "(all-round)" when nothing did. */
+/**
+ * "(quad focused)" when one thing clearly led, "(all-round)" when nothing did.
+ *
+ * The labels are the app's own keys — "upper back", "quad" — and become words
+ * only here, in the language speaking now.
+ */
 function focusFor(of: readonly Share[], label: (share: Share) => string): string {
+  const words = t().core.workoutTitle;
   const byFocus = new Map<string, number>();
   for (const share of of) {
     const key = label(share);
@@ -131,9 +138,9 @@ function focusFor(of: readonly Share[], label: (share: Share) => string): string
   const ranked = [...byFocus.entries()].sort((a, b) => b[1] - a[1]);
   const [lead, next] = ranked;
   const sum = total(of);
-  if (lead === undefined || sum === 0) return '(all-round)';
+  if (lead === undefined || sum === 0) return words.allRound;
   const clear = lead[1] / sum >= FOCUSED && (next === undefined || lead[1] >= next[1] * LEAD);
-  return clear ? `(${lead[0]} focused)` : '(all-round)';
+  return clear ? words.focused(words.focus[lead[0]] ?? lead[0]) : words.allRound;
 }
 
 /**
@@ -144,13 +151,14 @@ function focusFor(of: readonly Share[], label: (share: Share) => string): string
  * can place — neck work, or exercises still syncing — is plain "Workout".
  */
 export function workoutTitle(work: readonly PrimaryWork[], bouts = 0): string {
+  const words = t().core.workoutTitle;
   const all = shares(work);
-  if (total(all) === 0) return bouts > 0 ? 'Cardio' : 'Workout';
+  if (total(all) === 0) return bouts > 0 ? words.cardio : words.workout;
 
   const region = (name: Region): Share[] => all.filter((share) => regionOf(share.entry) === name);
   const core = region('core');
   if (total(core) / total(all) >= DOMINANT)
-    return `Core day ${focusFor(core, (s) => focusOf(s.entry))}`;
+    return words.core(focusFor(core, (s) => focusOf(s.entry)));
 
   // Three sets of crunches at the end do not turn a leg day into full body.
   const lifted = all.filter((share) => regionOf(share.entry) !== 'core');
@@ -161,13 +169,15 @@ export function workoutTitle(work: readonly PrimaryWork[], bouts = 0): string {
   const arms = lifted.filter((share) => ARM_GROUPS.has(share.entry.group));
   const byMuscle = (share: Share): string => focusOf(share.entry);
 
-  if (total(legs) / sum >= DOMINANT) return `Leg day ${focusFor(legs, byMuscle)}`;
-  if (total(arms) / sum >= DOMINANT) return `Arm day ${focusFor(arms, byMuscle)}`;
-  if (total(push) / sum >= DOMINANT) return `Push day ${focusFor(push, byMuscle)}`;
-  if (total(pull) / sum >= DOMINANT) return `Pull day ${focusFor(pull, byMuscle)}`;
+  if (total(legs) / sum >= DOMINANT) return words.leg(focusFor(legs, byMuscle));
+  if (total(arms) / sum >= DOMINANT) return words.arm(focusFor(arms, byMuscle));
+  if (total(push) / sum >= DOMINANT) return words.push(focusFor(push, byMuscle));
+  if (total(pull) / sum >= DOMINANT) return words.pull(focusFor(pull, byMuscle));
 
   const upper = [...push, ...pull];
   const byRegion = (share: Share): string => regionOf(share.entry) ?? '';
-  if (total(upper) / sum >= DOMINANT) return `Upper body ${focusFor(upper, byRegion)}`;
-  return `Full body ${focusFor(lifted, (share) => (byRegion(share) === 'legs' ? 'leg' : 'upper body'))}`;
+  if (total(upper) / sum >= DOMINANT) return words.upper(focusFor(upper, byRegion));
+  return words.full(
+    focusFor(lifted, (share) => (byRegion(share) === 'legs' ? 'leg' : 'upper body')),
+  );
 }

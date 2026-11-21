@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useState } from 'react';
 import { Button, TextField } from '@g7m/ui';
 import {
@@ -76,19 +77,17 @@ export function CardioCard({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-primary">{name}</h2>
-          <p className="text-xs text-muted">Cardio</p>
+          <p className="text-xs text-muted">{t().workout.cardio.label}</p>
         </div>
         <RemoveExerciseButton disabled={busy} onClick={onRemove} />
       </div>
 
       {bodyweightKg === null && (
-        <p className="mb-3 text-sm text-muted">
-          Calories need your bodyweight. Add it in Your profile and they will be worked out.
-        </p>
+        <p className="mb-3 text-sm text-muted">{t().workout.cardio.needsBodyweight}</p>
       )}
 
       {sets.length === 0 ? (
-        <p className="mb-3 text-sm text-muted">No bouts yet. Add one when you get on.</p>
+        <p className="mb-3 text-sm text-muted">{t().workout.cardio.noBouts}</p>
       ) : (
         <ul className="mb-3 flex flex-col gap-3">
           {sets.map((set, index) => (
@@ -123,7 +122,7 @@ export function CardioCard({
       {/* Not disabled while saving, for the reason BoutRow gives: it is the
           next thing tapped after typing, and a swallowed tap reads as broken. */}
       <Button variant="secondary" fullWidth onClick={onAddBout}>
-        Add bout
+        {t().workout.cardio.addBout}
       </Button>
     </section>
   );
@@ -232,7 +231,7 @@ function BoutRow({
   const [problem, setProblem] = useState<string | null>(null);
   const [timer, setTimer] = useState(() => (past ? null : readTimer(set.id)));
   const [now, setNow] = useState(() => Date.now());
-  const label = `bout ${String(index + 1)}`;
+  const label = t().workout.cardio.boutLabel(index + 1);
 
   // Ticks only while the timer runs; the time itself comes from the clock.
   useEffect(() => {
@@ -259,8 +258,8 @@ function BoutRow({
     if ('invalid' in result) {
       setProblem(
         result.invalid === 'time'
-          ? 'Time is minutes, or minutes:seconds like 25:30.'
-          : `${fieldName(result.invalid, kind, unitSystem)} is not a number.`,
+          ? t().workout.cardio.timeFormat
+          : t().workout.cardio.notANumber(fieldName(result.invalid, kind, unitSystem)),
       );
       return;
     }
@@ -301,7 +300,9 @@ function BoutRow({
   return (
     <div className="rounded-control border border-subtle p-3">
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <span className="text-sm font-medium text-secondary">Bout {String(index + 1)}</span>
+        <span className="text-sm font-medium text-secondary">
+          {t().workout.cardio.bout(index + 1)}
+        </span>
         {pace !== null && <span className="numeric text-xs text-muted">{pace}</span>}
       </div>
 
@@ -310,7 +311,7 @@ function BoutRow({
           className={`grid min-w-0 flex-1 grid-cols-2 gap-2 ${set.isCompleted ? 'opacity-60' : ''}`}
         >
           <div className="col-span-2 flex items-end gap-2">
-            <div className="min-w-0 flex-1">{field('time', 'Time')}</div>
+            <div className="min-w-0 flex-1">{field('time', t().workout.cardio.time)}</div>
             {!past && !set.isCompleted && (
               <button
                 type="button"
@@ -328,7 +329,7 @@ function BoutRow({
                     : 'min-h-tap shrink-0 rounded-control bg-accent px-4 text-sm font-medium text-on-accent'
                 }
               >
-                {running === null ? 'Start' : 'Stop'}
+                {running === null ? t().workout.cardio.start : t().workout.cardio.stop}
               </button>
             )}
           </div>
@@ -339,16 +340,19 @@ function BoutRow({
           ))}
           <div className="col-span-2">
             <TextField
-              label="Calories"
+              label={t().workout.cardio.calories}
               inputMode="numeric"
               value={shown.calories}
               placeholder={estimate === null ? '' : `≈ ${String(estimate.kcal)}`}
               hint={
                 shown.calories.trim() !== ''
-                  ? 'From the machine. Clear it to use the estimate.'
+                  ? t().workout.cardio.fromMachine
                   : estimate === null
-                    ? 'Add the time to estimate them, or type what the machine says.'
-                    : `${caloriesText(estimate)}. ${describeCalorieSource(estimate.method, kind)} Type the machine’s figure to use it instead.`
+                    ? t().workout.cardio.addTime
+                    : t().workout.cardio.estimate(
+                        caloriesText(estimate),
+                        describeCalorieSource(estimate.method, kind),
+                      )
               }
               onChange={(event) => {
                 setDrafts((current) => ({ ...current, calories: event.target.value }));
@@ -362,7 +366,9 @@ function BoutRow({
 
         <button
           type="button"
-          aria-label={set.isCompleted ? `Undo ${label}` : `Complete ${label}`}
+          aria-label={
+            set.isCompleted ? t().workout.cardio.undo(label) : t().workout.cardio.complete(label)
+          }
           aria-pressed={set.isCompleted}
           onClick={() => {
             if (set.isCompleted) {
@@ -401,7 +407,7 @@ function BoutRow({
             }}
             className="text-xs text-muted underline-offset-4 hover:underline"
           >
-            Save without ticking
+            {t().workout.cardio.saveWithoutTicking}
           </button>
         )}
         <button
@@ -409,7 +415,7 @@ function BoutRow({
           onClick={onRemove}
           className="text-xs text-destructive underline-offset-4 hover:underline"
         >
-          Remove
+          {t().common.remove}
         </button>
       </div>
     </div>
@@ -418,6 +424,6 @@ function BoutRow({
 
 /** A field's name without its unit, for an error message. */
 function fieldName(field: string, kind: CardioKind, unitSystem: UnitSystem): string {
-  if (field === 'calories') return 'Calories';
+  if (field === 'calories') return t().workout.cardio.calories;
   return fieldLabel(field as BoutField, kind, unitSystem).replace(/\s*\(.*\)$/, '');
 }

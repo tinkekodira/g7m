@@ -23,6 +23,7 @@
     "@g7m/anatomy": "workspace:*",
     "@g7m/core": "workspace:*",
     "@g7m/db": "workspace:*",
+    "@g7m/i18n": "workspace:*",
     "@g7m/ui": "workspace:*",
     "@journeyapps/wa-sqlite": "2.0.4",
     "@powersync/web": "2.3.0",

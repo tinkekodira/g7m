@@ -135,6 +135,9 @@ importers:
       '@g7m/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@g7m/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@g7m/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -225,13 +228,20 @@ importers:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      '@g7m/i18n':
+        specifier: workspace:*
+        version: link:../i18n
 
   packages/db:
     dependencies:
       '@g7m/core':
         specifier: workspace:*
         version: link:../core
+      '@g7m/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@powersync/web':
         specifier: 2.3.0
         version: 2.3.0(@powersync/common@2.2.0)(@powersync/shared-internals@1.2.0(@powersync/common@2.2.0))
@@ -240,7 +250,13 @@ importers:
         specifier: ^0.5.8
         version: 0.5.8
 
+  packages/i18n: {}
+
   packages/ui:
+    dependencies:
+      '@g7m/i18n':
+        specifier: workspace:*
+        version: link:../i18n
     devDependencies:
       '@types/react':
         specifier: ^19.1.12

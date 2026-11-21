@@ -26,6 +26,7 @@
  * for a different bar.
  */
 
+import { t } from '@g7m/i18n';
 import { loadBar, type Loading, type PlateKit } from './plates.js';
 
 export const PLATE_SLOTS = [
@@ -153,11 +154,29 @@ export interface BarSpec {
 }
 
 export const BAR_SPECS: Readonly<Record<BarId, BarSpec>> = {
-  bar_20: { id: 'bar_20', label: '20 kg barbell', weightKg: 20, weightLb: 45, sleeveUsableMm: 415 },
-  bar_15: { id: 'bar_15', label: '15 kg barbell', weightKg: 15, weightLb: 35, sleeveUsableMm: 320 },
+  bar_20: {
+    id: 'bar_20',
+    get label() {
+      return t().core.bars.bar_20;
+    },
+    weightKg: 20,
+    weightLb: 45,
+    sleeveUsableMm: 415,
+  },
+  bar_15: {
+    id: 'bar_15',
+    get label() {
+      return t().core.bars.bar_15;
+    },
+    weightKg: 15,
+    weightLb: 35,
+    sleeveUsableMm: 320,
+  },
   bar_ez: {
     id: 'bar_ez',
-    label: 'EZ curl bar',
+    get label() {
+      return t().core.bars.bar_ez;
+    },
     weightKg: null,
     weightLb: null,
     sleeveUsableMm: 215,

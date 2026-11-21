@@ -5,6 +5,7 @@
  * weight, and whether a series counts as movement or as noise — and a
  * judgement inside JSX is one nobody can write a test against.
  */
+import { formatNumber, t } from '@g7m/i18n';
 import {
   WEIGH_IN_DUE_DAYS,
   toDisplayWeight,
@@ -35,20 +36,20 @@ export function weighInPrompt(status: WeighInStatus): Prompt | null {
   switch (status.state) {
     case 'never':
       return {
-        title: 'Add your weight',
-        body: 'It sets the load for pull-ups and dips, and it is the first point on your trend.',
+        title: t().profile.prompt.addWeight,
+        body: t().profile.prompt.addWeightBody,
         tone: 'neutral',
       };
     case 'due':
       return {
-        title: 'Time to weigh in',
-        body: `It has been ${describeDays(status.days)}. Once a week is enough to see a trend.`,
+        title: t().profile.prompt.due,
+        body: t().profile.prompt.dueBody(describeDays(status.days)),
         tone: 'neutral',
       };
     case 'overdue':
       return {
-        title: 'Your trend has gone quiet',
-        body: `The last weight here is ${describeDays(status.days)} old. One reading brings it back.`,
+        title: t().profile.prompt.overdue,
+        body: t().profile.prompt.overdueBody(describeDays(status.days)),
         tone: 'urgent',
       };
     case 'fresh':
@@ -57,11 +58,12 @@ export function weighInPrompt(status: WeighInStatus): Prompt | null {
 }
 
 function describeDays(days: number | null): string {
-  if (days === null || days < 1) return 'less than a day';
-  if (days === 1) return 'a day';
-  if (days < WEIGH_IN_DUE_DAYS * 2) return `${String(days)} days`;
+  const words = t().profile.prompt;
+  if (days === null || days < 1) return words.lessThanDay;
+  if (days === 1) return words.aDay;
+  if (days < WEIGH_IN_DUE_DAYS * 2) return words.days(days);
   const weeks = Math.floor(days / 7);
-  return weeks === 1 ? 'a week' : `${String(weeks)} weeks`;
+  return weeks === 1 ? words.aWeek : words.weeks(weeks);
 }
 
 /**
@@ -87,26 +89,26 @@ export function describeChange(trend: WeightTrend | null, unitSystem: UnitSystem
   const size = show(Math.abs(trend.changeKg), unitSystem);
 
   if (Math.abs(trend.changeKg) < HOLDING_KG) {
-    return `Holding steady over ${span}.`;
+    return t().profile.prompt.holding(span);
   }
 
-  const direction = trend.changeKg < 0 ? 'Down' : 'Up';
+  const down = trend.changeKg < 0;
   if (trend.perWeekKg === null) {
     // Under a fortnight the rate would be noise with a decimal point on it.
-    return `${direction} ${size} over ${span} — too soon to call a rate.`;
+    return t().profile.prompt.tooSoon(down, size, span);
   }
 
   const rate = show(Math.abs(trend.perWeekKg), unitSystem);
-  return `${direction} ${size} over ${span} — about ${rate} a week.`;
+  return t().profile.prompt.rate(down, size, span, rate);
 }
 
 function describeSpan(days: number): string {
-  if (days < 14) return `${String(days)} days`;
+  if (days < 14) return t().profile.prompt.days(days);
   const weeks = Math.round(days / 7);
-  return `${String(weeks)} weeks`;
+  return t().profile.prompt.weeks(weeks);
 }
 
 function show(kg: number, unitSystem: UnitSystem): string {
   const display = toDisplayWeight(kg, unitSystem);
-  return `${display.value.toFixed(1)} ${display.unit}`;
+  return `${formatNumber(display.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${display.unit}`;
 }

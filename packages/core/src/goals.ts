@@ -20,6 +20,7 @@
  * judgement, because it is a description of their own behaviour rather than an
  * opinion about their body.
  */
+import { live, t } from '@g7m/i18n';
 import type { Sex, WeightTrend } from './body.js';
 
 export const TRAINING_GOALS = ['lose_fat', 'build_muscle', 'recomp', 'get_stronger'] as const;
@@ -27,7 +28,7 @@ export type TrainingGoal = (typeof TRAINING_GOALS)[number];
 
 /** A combined goal uses recomp's balanced prescription; strength can accompany any goal. */
 export function trainingFocus(goals: readonly TrainingGoal[]): TrainingGoal {
-  if (goals.length === 0) throw new Error('Choose at least one training goal.');
+  if (goals.length === 0) throw new Error(t().core.goals.chooseOne);
   if (goals.includes('recomp') || (goals.includes('lose_fat') && goals.includes('build_muscle')))
     return 'recomp';
   return goals.find((goal) => goal !== 'get_stronger') ?? 'get_stronger';
@@ -44,12 +45,9 @@ export function trainingFocus(goals: readonly TrainingGoal[]): TrainingGoal {
 export const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
 export type ExperienceLevel = (typeof EXPERIENCE_LEVELS)[number];
 
-export const GOAL_LABELS: Record<TrainingGoal, string> = {
-  lose_fat: 'Lose fat',
-  build_muscle: 'Build muscle',
-  recomp: 'Both at once',
-  get_stronger: 'Get stronger',
-};
+export const GOAL_LABELS: Readonly<Record<TrainingGoal, string>> = live(
+  () => t().core.goals.labels,
+);
 
 /**
  * One line each, for the picker.
@@ -59,24 +57,14 @@ export const GOAL_LABELS: Record<TrainingGoal, string> = {
  * goal is chosen or suggested, which is the only point at which somebody
  * actually wants it.
  */
-export const GOAL_SUMMARIES: Record<TrainingGoal, string> = {
-  lose_fat: 'Weight down, strength kept.',
-  build_muscle: 'More size, in the reps that build it.',
-  recomp: 'Both at once, slower than either alone.',
-  get_stronger: 'Heavier bar, fewer reps.',
-};
+export const GOAL_SUMMARIES: Readonly<Record<TrainingGoal, string>> = live(
+  () => t().core.goals.summaries,
+);
 
 /** What choosing it changes about the training itself. */
-export const GOAL_DESCRIPTIONS: Record<TrainingGoal, string> = {
-  lose_fat:
-    'Keep the strength you have while the weight comes down. The loads stay heavy and the total work comes down a little.',
-  build_muscle:
-    'More sets per muscle and more moderate reps, with enough recovery between sessions to actually use them.',
-  recomp:
-    'Muscle up and fat down together. Slower than doing either on its own, and it works best if you are new to lifting or coming back after a break.',
-  get_stronger:
-    'Heavier loads, fewer reps, longer rests. Fewer sets that count, and each one matters more.',
-};
+export const GOAL_DESCRIPTIONS: Readonly<Record<TrainingGoal, string>> = live(
+  () => t().core.goals.descriptions,
+);
 
 /**
  * What is realistic, said plainly before they start.
@@ -95,23 +83,14 @@ export const GOAL_DESCRIPTIONS: Record<TrainingGoal, string> = {
  * setup for disappointment for another. Saying so is the whole point of
  * stating a rate — it is not a smaller goal, it is the real number.
  */
-const EXPECTATIONS: Record<TrainingGoal, string> = {
-  lose_fat:
-    'Expect 0.5–1% of your bodyweight a week. Much faster than that and strength usually goes with it.',
-  build_muscle:
-    'Expect 0.1–0.3 kg a week for men, around half that for women. Faster is mostly fat.',
-  recomp:
-    'Expect the scale to barely move. The progress shows up in the log weeks before it shows up on the scale.',
-  get_stronger:
-    'Expect the numbers on the bar to move first. Bodyweight can go either way and neither is a problem.',
-};
+const EXPECTATIONS: Readonly<Record<TrainingGoal, string>> = live(
+  () => t().core.goals.expectations,
+);
 
 /** The one goal where the honest number depends on who is asking. */
-const MUSCLE_GAIN_BY_SEX: Record<Sex, string> = {
-  male: 'Expect 0.1–0.3 kg a week. Faster than that is mostly fat.',
-  female:
-    'Expect 0.05–0.15 kg a week. Muscle is gained at about half the absolute rate, which is biology rather than effort.',
-};
+const MUSCLE_GAIN_BY_SEX: Readonly<Record<Sex, string>> = live(
+  () => t().core.goals.muscleGainBySex,
+);
 
 /**
  * The pace to expect, narrowed by sex where sex actually changes the answer.
@@ -214,11 +193,11 @@ export function suggestGoal(context: GoalContext): GoalSuggestion | null {
     return rate < 0
       ? {
           goal: 'lose_fat',
-          because: `Your weight has been coming down about ${size} kg a week. If that is on purpose, this is the goal that matches it.`,
+          because: t().core.goals.comingDown(size),
         }
       : {
           goal: 'build_muscle',
-          because: `Your weight has been going up about ${size} kg a week. If that is on purpose, this is the goal that matches it.`,
+          because: t().core.goals.goingUp(size),
         };
   }
 
@@ -229,8 +208,7 @@ export function suggestGoal(context: GoalContext): GoalSuggestion | null {
   if (context.experienceLevel === 'beginner') {
     return {
       goal: 'recomp',
-      because:
-        'In your first year of lifting, muscle up and fat down at the same time is genuinely possible. It stops being the easy option later.',
+      because: t().core.goals.beginner,
     };
   }
 

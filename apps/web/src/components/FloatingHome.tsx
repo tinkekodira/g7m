@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { HomeIcon } from './icons.js';
@@ -47,7 +48,7 @@ export function FloatingHome({ anchor }: { readonly anchor: RefObject<HTMLDivEle
     >
       <Link
         to="/"
-        aria-label="Go home"
+        aria-label={t().common.goHome}
         className="workout-home focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <HomeIcon className="size-5" />

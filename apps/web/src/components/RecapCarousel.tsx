@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import {
   useId,
   useLayoutEffect,
@@ -65,7 +66,7 @@ export function RecapCarousel({
 
   return (
     <section
-      aria-label="Workout recap"
+      aria-label={t().history.recap.label}
       aria-roledescription="carousel"
       className="recap-carousel min-w-0"
     >
@@ -102,12 +103,17 @@ export function RecapCarousel({
           </div>
         ))}
       </div>
-      <div ref={dots} className="flex justify-center" role="group" aria-label="Choose recap card">
+      <div
+        ref={dots}
+        className="flex justify-center"
+        role="group"
+        aria-label={t().history.recap.choose}
+      >
         {cards.map((card, index) => (
           <button
             key={card.title}
             type="button"
-            aria-label={`Show ${card.title}`}
+            aria-label={t().history.recap.show(card.title)}
             aria-controls={`${id}-${String(index)}`}
             aria-pressed={active === index}
             className="flex size-12 touch-manipulation items-center justify-center rounded-control hover:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"

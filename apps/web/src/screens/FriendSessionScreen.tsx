@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { describeWorkoutDay } from '@g7m/core';
@@ -102,7 +103,7 @@ export function FriendSessionScreen() {
             ? kept
             : {
                 step: 'failed',
-                message: cause instanceof FriendsError ? cause.message : 'Could not load it.',
+                message: cause instanceof FriendsError ? cause.message : t().friends.couldNotLoad,
               },
         );
       },
@@ -115,16 +116,16 @@ export function FriendSessionScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-center justify-between gap-3 pt-6">
-        <HeaderLink to="/friends">Friends</HeaderLink>
+        <HeaderLink to="/friends">{t().friends.title}</HeaderLink>
       </header>
 
       {loaded.step === 'loading' ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : loaded.step === 'offline' ? (
         <FriendsOffline />
       ) : loaded.step === 'gone' ? (
         <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
-          This workout isn’t shared with you any more.
+          {t().friends.session.gone}
         </p>
       ) : loaded.step === 'failed' ? (
         <p role="alert" className="rounded-card bg-surface p-4 text-sm text-destructive">
@@ -203,7 +204,7 @@ function FriendWorkout({
   );
 
   if (mine.data === null || catalogue.data === null) {
-    return <p className="text-sm text-muted">Loading…</p>;
+    return <p className="text-sm text-muted">{t().common.loading}</p>;
   }
 
   const title = summaryTitle(session, mine.data.movers);
@@ -223,12 +224,12 @@ function FriendWorkout({
         <Link
           to={`/friends/${friendId}`}
           state={{ name: avatarName }}
-          aria-label={`${friend}’s workout, open ${friend}’s profile`}
+          aria-label={t().friends.session.label(friend)}
           className="-mx-1 mb-3 flex min-h-tap w-fit max-w-full items-center gap-3 rounded-card px-1 py-1 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Avatar name={avatarName} tint />
           <span className="min-w-0 truncate text-base font-medium text-secondary">
-            {friend}’s workout
+            {t().friends.session.whose(friend)}
           </span>
           <ChevronRightIcon aria-hidden className="size-5 shrink-0 text-muted" />
         </Link>
@@ -237,11 +238,7 @@ function FriendWorkout({
           {describeWorkoutDay(session.startedAt, new Date())}
           {duration !== null && ` · ${duration}`}
         </p>
-        {fromDevice && (
-          <p className="mt-2 text-xs text-muted">
-            Saved on this phone from when you last opened it.
-          </p>
-        )}
+        {fromDevice && <p className="mt-2 text-xs text-muted">{t().friends.session.fromDevice}</p>}
       </section>
 
       <section className="rounded-card border border-subtle bg-surface p-4">
@@ -254,23 +251,20 @@ function FriendWorkout({
           className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-accent px-6 text-lg font-medium text-on-accent shadow-floating select-none hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:bg-strong disabled:text-muted disabled:shadow-none"
         >
           <PlayIcon className="size-5" />
-          {busy ? 'Setting it up…' : 'Do this workout'}
+          {busy ? t().friends.session.settingUp : t().friends.session.doIt}
         </button>
         {hasOpenWorkout ? (
           <p className="mt-3 text-sm text-muted">
-            Finish the workout you have open before starting this one.{' '}
+            {t().friends.session.finishFirst}{' '}
             <Link
               to="/workout"
               className="font-medium text-accent underline-offset-4 hover:underline"
             >
-              Open it
+              {t().friends.session.openIt}
             </Link>
           </p>
         ) : (
-          <p className="mt-3 text-sm text-secondary">
-            Their exercises and sets, with your own weights from last time. Their numbers are shown
-            beside each exercise as a guide.
-          </p>
+          <p className="mt-3 text-sm text-secondary">{t().friends.session.explain}</p>
         )}
         {error !== null && (
           <p role="alert" className="mt-2 text-sm text-destructive">

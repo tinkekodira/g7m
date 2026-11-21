@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { gymBarKit, loadBar, type UnitSystem } from '@g7m/core';
 import { usePlateSettingsStore } from '../lib/use-plate-settings.js';
 
@@ -29,17 +30,17 @@ export function PlateLine({
 
   const kit = gymBarKit(unitSystem === 'imperial' ? 'lb' : 'kg', availableSlots);
   const loading = loadBar(weight, kit);
-  const bar = `${plate(kit.bar)} ${kit.unit} bar`;
+  const bar = t().workout.plates.bar(plate(kit.bar), kit.unit);
 
   return (
     <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
       {loading.kind === 'below_bar' ? (
-        <span>Lighter than a {bar}</span>
+        <span>{t().workout.plates.lighter(bar)}</span>
       ) : loading.kind === 'bar_only' ? (
-        <span>Just the {bar}</span>
+        <span>{t().workout.plates.just(bar)}</span>
       ) : (
         <>
-          <span>Each side</span>
+          <span>{t().workout.plates.eachSide}</span>
           {loading.perSide.map((size, index) => (
             <span
               // Position, because the same plate can appear twice.

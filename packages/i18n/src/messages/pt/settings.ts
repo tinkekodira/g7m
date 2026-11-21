@@ -1,0 +1,223 @@
+import type { Messages } from '../en/index.js';
+
+const changes = (count: number): string =>
+  `${String(count)} ${count === 1 ? 'alteração' : 'alterações'}`;
+
+export const settings: Messages['settings'] = {
+  title: 'Ajustes',
+  groups: { gym: 'Na academia', app: 'App', account: 'Conta' },
+  gyms: 'Academias',
+  tour: { title: 'Conheça o app', body: 'Reveja a introdução em cinco paradas quando quiser.' },
+  disclaimer:
+    'Conteúdo informativo, não aconselhamento médico. Consulte um profissional antes de começar um programa.',
+  language: {
+    title: 'Idioma',
+    label: 'Idioma do app',
+    hint: 'O app inteiro, exercícios incluídos. Fica salvo na sua conta, então seus outros dispositivos acompanham.',
+  },
+  appearance: {
+    title: 'Aparência',
+    dark: 'Modo escuro',
+    darkOn: 'Desative para o tema claro, mais fácil de ler à luz do dia.',
+    darkOff: 'Desativado: o app está no tema claro.',
+  },
+  training: {
+    title: 'Treino',
+    recommendations: 'Recomendações de treino',
+    recommendationsOn: 'Receba o treino de hoje e sugestões de exercícios.',
+    recommendationsOff: 'Desativado: escolha seus próprios exercícios, treinos e rotinas.',
+    startOptions: 'Mostrar opções ao começar o treino',
+    startOptionsOn: 'Escolha uma rotina ou comece do zero neste dispositivo.',
+    startOptionsOff: 'Desativado: sempre começar treinos em branco neste dispositivo.',
+  },
+  units: {
+    title: 'Unidades',
+    weight: 'Peso',
+    weightDetail: 'Para todos os pesos do app.',
+    weightUnit: 'Unidade de peso',
+    kilograms: 'Quilogramas',
+    pounds: 'Libras',
+    note: 'Tudo é salvo em quilogramas e só exibido em libras, então alternar nunca muda um número que você registrou.',
+  },
+  plates: {
+    title: 'Anilhas disponíveis',
+    yours: 'As anilhas da sua academia',
+    detail: 'A mesma lista de Aprender → Anilhas. Uma mudança aqui aparece lá também.',
+    keepOne: 'Mantenha pelo menos uma anilha selecionada.',
+  },
+  rest: {
+    title: 'Timer de descanso',
+    own: 'Definir meus próprios descansos',
+    ownOn: 'Um tempo para exercícios compostos e outro para os isolados.',
+    ownOff: 'Desativado: cada exercício usa o descanso sugerido.',
+    compound: 'Compostos',
+    compoundHint: 'Agachamentos, supinos, remadas, levantamentos terra, barras.',
+    isolation: 'Isolados',
+    isolationHint: 'Roscas, elevações, extensões, crucifixos.',
+    step: 'Menos e mais',
+    stepHint: 'O que os botões − e + do timer tiram e acrescentam.',
+    stepGroup: 'Passo do timer de descanso',
+    smaller: 'Passo menor',
+    bigger: 'Passo maior',
+    sound: 'Som ao fim do descanso',
+    soundOn: 'Um aviso sonoro de três segundos além da vibração, com o app aberto.',
+    soundOff: 'Desativado: o fim do descanso só vibra.',
+    group: (label: string) => `Descanso nos ${label.toLowerCase()}`,
+    shorter: (label: string) => `Descanso menor nos ${label.toLowerCase()}`,
+    longer: (label: string) => `Descanso maior nos ${label.toLowerCase()}`,
+  },
+  friends: {
+    title: 'Amigos',
+    didNotSave: 'Não foi salvo.',
+    share: 'Compartilhar meu treino com amigos',
+    shareOff: 'Desativado: amigos veem seu nome e que você não está compartilhando.',
+    shareOn: 'Seus treinos, melhores marcas, semana e quando você esteve online pela última vez.',
+    needConnection: 'Você precisa de conexão para mudar isso.',
+  },
+  feedback: {
+    title: 'Enviar feedback',
+    intro:
+      'Relate um bug, sugira algo ou simplesmente diga o que está pensando: vai direto para o desenvolvedor.',
+    category: 'Categoria',
+    bug: 'Bug',
+    idea: 'Ideia',
+    other: 'Outro',
+    message: 'Mensagem',
+    tooLong: (length: number, max: number) => `${String(length)}/${String(max)}: longo demais`,
+    count: (length: number, max: number) => `${String(length)}/${String(max)}`,
+    needConnection: 'Você precisa de conexão para enviar feedback.',
+    thanks: 'Obrigado, chegou ao desenvolvedor.',
+    sending: 'Enviando…',
+    send: 'Enviar feedback',
+    sentWith: 'Enviado com o e-mail da sua conta, a versão do app e a plataforma.',
+  },
+  account: {
+    title: 'Sua conta',
+    noProfile: 'Não existe nenhuma linha de perfil para esta conta.',
+    signedIn: 'Conectado',
+    exercises: 'Exercícios disponíveis',
+    muscles: 'Músculos no modelo',
+  },
+  sync: {
+    title: 'Sincronização',
+    working: ' · trabalhando…',
+    status: 'Status',
+    connected: 'Conectado',
+    connecting: 'Conectando',
+    notSetUp: 'Não configurada',
+    offline: 'Offline',
+    exercises: 'Exercícios no dispositivo',
+    muscles: 'Músculos no dispositivo',
+    equipment: 'Equipamentos no dispositivo',
+    profiles: 'Linhas do seu perfil',
+    workouts: 'Treinos registrados',
+    sets: 'Séries registradas',
+    phase: {
+      unconfigured:
+        'A sincronização não está configurada. Seus treinos ficam salvos só neste dispositivo.',
+      idle: 'Não iniciada.',
+      connecting: 'Conectando…',
+      synced: 'Em dia com o servidor.',
+      offline:
+        'Trabalhando offline. Seus treinos ficam salvos aqui e serão sincronizados quando você se reconectar.',
+      offlineSince: (time: string) =>
+        `Offline desde ${time}. Tudo está salvo aqui e será sincronizado quando você se reconectar.`,
+    },
+    lost: (count: number, detail: string) =>
+      `${changes(count)} deste dispositivo não ${count === 1 ? 'pôde' : 'puderam'} ser ${count === 1 ? 'salva' : 'salvas'} no servidor. ${detail}`,
+    refusedBug: 'O servidor as recusou. Isso é um bug, por favor relate.',
+    rejected: 'Elas foram rejeitadas como inválidas e não serão reenviadas.',
+    jwks: 'O serviço de sincronização recusou o login deste dispositivo. O Client Auth dele precisa da URL JWKS do Supabase para verificar o token. Tudo continua salvo aqui.',
+    refusedAccount:
+      'O serviço de sincronização recusou esta conta. Tudo continua salvo neste dispositivo.',
+    notFound: 'O serviço de sincronização não foi encontrado no endereço configurado.',
+    noRules: 'O serviço de sincronização não tem regras de sincronização utilizáveis.',
+    couldNotConnect: (message: string) => `A sincronização não conseguiu se conectar: ${message}`,
+    uploadLost: (count: number, tables: string) =>
+      `${changes(count)} não ${count === 1 ? 'pôde' : 'puderam'} ser ${count === 1 ? 'salva' : 'salvas'} no servidor (${tables}) e ${count === 1 ? 'foi ignorada' : 'foram ignoradas'}. Todo o resto foi sincronizado.`,
+    nothingToSync: 'Nada para sincronizar.',
+    synced: (count: number) =>
+      `${changes(count)} ${count === 1 ? 'sincronizada' : 'sincronizadas'}.`,
+  },
+  storage: {
+    title: 'Armazenamento offline',
+    checking: 'Verificando…',
+    persistent: 'Persistente',
+    granted: 'Concedido',
+    refused: 'Recusado',
+    unsupported: 'Sem suporte',
+    unknown: 'Desconhecido',
+    space: 'Espaço disponível',
+    used: 'Usado',
+    unknownSize: 'desconhecido',
+    grantedDetail: 'Seus treinos ficam armazenados permanentemente neste dispositivo.',
+    deniedDetail:
+      'Este dispositivo pode apagar seus dados offline se o armazenamento ficar baixo ou se você não abrir o app por um tempo. O login continua disponível, então nada que já foi sincronizado se perde.',
+    unsupportedDetail: 'Este navegador não consegue garantir armazenamento offline.',
+    errorDetail: 'Não foi possível verificar o armazenamento offline deste dispositivo.',
+  },
+  device: {
+    title: 'Onde isto está rodando',
+    shell: 'Contêiner',
+    platform: 'Plataforma',
+    pointer: 'Ponteiro',
+    fine: 'Preciso: com hover',
+    coarse: 'Toque: só toques',
+    web: 'Navegador web',
+  },
+  data: {
+    title: 'Seus dados',
+    intro:
+      'Tudo o que você registrou (treinos, séries, recordes, pesagens, objetivos e seu perfil) em um único arquivo que você pode guardar ou abrir em outro app. Ele é criado neste celular, então funciona offline.',
+    failed: 'Não foi possível criar o arquivo. Nada foi alterado; tente de novo em instantes.',
+    preparing: 'Preparando seu arquivo…',
+    download: 'Baixar seus dados',
+    empty:
+      'Nada foi registrado ainda, então o arquivo contém seu perfil e suas respostas às perguntas de boas-vindas.',
+    holds: (parts: string) => `Ele contém ${parts}.`,
+    workouts: (count: string, n: number) => `${count} ${n === 1 ? 'treino' : 'treinos'}`,
+    sets: (count: string, n: number) => `${count} ${n === 1 ? 'série' : 'séries'}`,
+    weighIns: (count: string, n: number) => `${count} ${n === 1 ? 'pesagem' : 'pesagens'}`,
+    notSynced:
+      'Este dispositivo ainda não terminou de baixar seu histórico, então treinos antigos podem estar faltando. Conecte-se, espere a sincronização terminar e baixe de novo.',
+    noFriends:
+      'Seu código de amigo e sua lista de amigos precisam de conexão, então ficaram de fora.',
+  },
+  deletion: {
+    title: 'Excluir sua conta',
+    intro:
+      'Exclui sua conta e tudo o que há nela (cada treino, série, recorde, pesagem e objetivo) do servidor e deste celular. Não dá para desfazer. Se quiser uma cópia, baixe seus dados antes.',
+    open: 'Excluir minha conta…',
+    word: 'EXCLUIR',
+    typeToConfirm: (word: string) => `Digite ${word} para confirmar`,
+    needConnection:
+      'Você precisa de conexão. Sua conta é excluída no servidor, não só neste celular.',
+    deleting: 'Excluindo…',
+    confirm: 'Excluir minha conta para sempre',
+    keep: 'Manter minha conta',
+    unreachable:
+      'Não foi possível acessar o servidor, então nada foi excluído. Sua conta precisa ser excluída lá, não só neste dispositivo; tente de novo com conexão.',
+    expired: 'Sua sessão expirou, então nada foi excluído. Saia, entre de novo e tente outra vez.',
+    failed: (message: string) => `Nada foi excluído: ${message}`,
+    deleted:
+      'Sua conta foi excluída, junto com tudo o que havia nela, do servidor e deste dispositivo.',
+  },
+  gymSettings: {
+    multiple: 'Treino em mais de uma academia',
+    multipleOn: 'Cada treino é salvo com a academia onde foi feito.',
+    multipleOff: 'Desativado: os treinos não ficam ligados a uma academia.',
+    first: 'A academia onde você treinou até agora',
+    firstHint: 'Cada treino que você já registrou é salvo como desta academia.',
+    saveGym: 'Salvar academia',
+    yours: 'Suas academias',
+    add: 'Adicionar uma academia',
+    addHint:
+      'Adicione a outra academia que você frequenta. Ao começar um treino, o app vai perguntar qual.',
+    addAction: 'Adicionar academia',
+    rename: (name: string) => `Renomear ${name}`,
+    remove: (name: string) => `Remover ${name}`,
+    confirmRemove: (name: string) =>
+      `Remover ${name}? Os treinos feitos lá mantêm o nome, e ela deixa de ser oferecida ao começar um.`,
+    tooLong: (max: number) => `Use no máximo ${String(max)} caracteres no nome.`,
+  },
+};

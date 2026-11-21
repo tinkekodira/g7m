@@ -7,6 +7,7 @@
  * save handlers, one per Save button; the screen now saves everything at once
  * and Profile logs a weight without opening it, so both read the same rules.
  */
+import { t } from '@g7m/i18n';
 import {
   MAX_AGE,
   MIN_AGE,
@@ -28,11 +29,11 @@ function decimal(text: string): number {
 /** A weight in the person's unit, as the kilograms stored. */
 export function readWeight(text: string, unitSystem: UnitSystem): Read<number> {
   const typed = decimal(text);
-  if (!Number.isFinite(typed) || typed <= 0) return { problem: 'Enter a weight.' };
+  if (!Number.isFinite(typed) || typed <= 0) return { problem: t().profile.editProblems.weight };
   const kg = fromDisplayWeight(typed, unitSystem);
   // Mirrors the CHECK on the column. Caught here so the person sees why,
   // rather than at upload where the row would be discarded silently.
-  if (kg <= 0 || kg >= 1000) return { problem: 'That is outside the range this can store.' };
+  if (kg <= 0 || kg >= 1000) return { problem: t().profile.editProblems.range };
   return { value: kg };
 }
 
@@ -42,7 +43,7 @@ export function readHeight(text: string, unitSystem: UnitSystem): Read<number> {
   const typed = decimal(text);
   const cm = Number.isFinite(typed) ? fromDisplayHeight(typed, unitSystem) : Number.NaN;
   if (!Number.isFinite(cm) || cm <= 50 || cm >= 300)
-    return { problem: `Enter a height in ${unit}.` };
+    return { problem: t().profile.editProblems.height(unit) };
   return { value: cm };
 }
 
@@ -52,7 +53,7 @@ export function readBirthDate(text: string, now: Date): Read<Date> {
   const age = ageFrom(born, now);
   if (born === null || age === null || age < MIN_AGE || age > MAX_AGE) {
     return {
-      problem: `Enter the day you were born. Between ${String(MIN_AGE)} and ${String(MAX_AGE)}.`,
+      problem: t().profile.editProblems.born(MIN_AGE, MAX_AGE),
     };
   }
   return { value: born };

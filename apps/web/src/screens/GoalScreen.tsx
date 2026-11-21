@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router';
 import {
@@ -87,7 +88,7 @@ export function GoalScreen() {
   async function choose(): Promise<void> {
     setProblem(null);
     if (selected.length === 0) {
-      setProblem('Choose at least one training goal.');
+      setProblem(t().profile.goal.chooseOne);
       return;
     }
     if (
@@ -120,17 +121,15 @@ export function GoalScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6 pb-2">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Your goal</h1>
-          <p className="mt-1 text-sm text-secondary">
-            What the training is for. You can change it whenever you like.
-          </p>
+          <h1 className="text-2xl font-semibold text-primary">{t().profile.goal.title}</h1>
+          <p className="mt-1 text-sm text-secondary">{t().profile.goal.intro}</p>
         </div>
         {/* Back to wherever the goal was opened from: Profile's goal card
             or the You screen. */}
         {cameFromProfile ? (
-          <HeaderLink to="/profile">Profile</HeaderLink>
+          <HeaderLink to="/profile">{t().profile.goal.profile}</HeaderLink>
         ) : (
-          <HeaderLink to="/you">You</HeaderLink>
+          <HeaderLink to="/you">{t().profile.goal.you}</HeaderLink>
         )}
       </header>
 
@@ -147,20 +146,17 @@ export function GoalScreen() {
           className="rise rounded-card border border-subtle bg-surface p-4"
           style={{ animationDelay: '30ms' }}
         >
-          <h2 className="text-sm font-semibold text-accent">Based on what you have been doing</h2>
+          <h2 className="text-sm font-semibold text-accent">{t().profile.goal.basedOn}</h2>
           <p className="mt-1 text-base text-primary">{GOAL_LABELS[suggestion.goal]}</p>
           <p className="mt-1 text-sm text-secondary">{suggestion.because}</p>
         </section>
       )}
 
       <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-1 text-lg font-semibold text-primary">Days a week</h2>
-        <p className="mb-3 text-sm text-muted">
-          How often you can realistically train. Answer for a bad week, not a good one — the plan is
-          built to fit this exactly.
-        </p>
+        <h2 className="mb-1 text-lg font-semibold text-primary">{t().profile.goal.daysAWeek}</h2>
+        <p className="mb-3 text-sm text-muted">{t().profile.goal.daysHint}</p>
         <Stepper
-          label="Training days per week"
+          label={t().profile.goal.daysLabel}
           value={days}
           min={MIN_DAYS_PER_WEEK}
           max={MAX_DAYS_PER_WEEK}
@@ -174,7 +170,7 @@ export function GoalScreen() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-primary">
-          {current === null ? 'Choose your goals' : 'Change your goals'}
+          {current === null ? t().profile.goal.chooseGoals : t().profile.goal.changeGoals}
         </h2>
         <TrainingGoalChoices selected={selected} disabled={busy} onChange={setChoices} />
         {focus !== null && (
@@ -193,15 +189,13 @@ export function GoalScreen() {
             void choose();
           }}
         >
-          {busy ? 'Saving…' : 'Save goals'}
+          {busy ? t().common.saving : t().profile.goal.save}
         </Button>
       </section>
 
       {past.data !== null && past.data.length > 1 && <PastGoals goals={past.data} />}
 
-      <p className="py-6 text-xs text-muted">
-        Educational content, not medical advice. Consult a professional before starting a program.
-      </p>
+      <p className="py-6 text-xs text-muted">{t().settings.disclaimer}</p>
     </main>
   );
 }
@@ -209,13 +203,12 @@ export function GoalScreen() {
 function CurrentGoal({ goal, now }: { readonly goal: Goal; readonly now: Date }) {
   return (
     <section className="rise rounded-card bg-accent px-4 py-3 text-on-accent">
-      <p className="text-xs uppercase opacity-80">Training for</p>
+      <p className="text-xs uppercase opacity-80">{t().profile.goal.trainingFor}</p>
       <p className="text-xl font-semibold">
         {goal.selectedGoals.map((value) => GOAL_LABELS[value]).join(', ')}
       </p>
       <p className="mt-1 text-sm opacity-90">
-        {goal.daysPerWeek} {goal.daysPerWeek === 1 ? 'day' : 'days'} a week ·{' '}
-        {describeRun(goal.startedAt, now)}
+        {t().profile.goal.daysPerWeek(goal.daysPerWeek)} · {describeRun(goal.startedAt, now)}
       </p>
     </section>
   );
@@ -224,7 +217,7 @@ function CurrentGoal({ goal, now }: { readonly goal: Goal; readonly now: Date })
 function PastGoals({ goals }: { readonly goals: readonly Goal[] }) {
   return (
     <section className="rounded-card bg-surface p-4">
-      <h2 className="mb-3 text-lg font-semibold text-primary">Before this</h2>
+      <h2 className="mb-3 text-lg font-semibold text-primary">{t().profile.goal.before}</h2>
       <ul className="flex flex-col">
         {goals.slice(1).map((goal, index) => (
           <li
@@ -243,9 +236,7 @@ function PastGoals({ goals }: { readonly goals: readonly Goal[] }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-sm text-muted">
-        Kept because how long something ran is part of whether it worked.
-      </p>
+      <p className="mt-3 text-sm text-muted">{t().profile.goal.kept}</p>
     </section>
   );
 }
@@ -254,15 +245,16 @@ function PastGoals({ goals }: { readonly goals: readonly Goal[] }) {
 function describeSpan(from: Date, until: Date | undefined): string {
   if (until === undefined) return '';
   const days = daysBetween(from, until);
-  if (days < 14) return `${String(Math.max(days, 0))} days`;
-  return `${String(Math.floor(days / 7))} weeks`;
+  if (days < 14) return t().profile.goal.spanDays(Math.max(days, 0));
+  return t().profile.goal.spanWeeks(Math.floor(days / 7));
 }
 
 /** "Started today", "3 weeks in" — the length of the run, not a date. */
 function describeRun(startedAt: Date, now: Date): string {
   const days = daysBetween(startedAt, now);
-  if (days <= 0) return 'started today';
-  if (days === 1) return 'one day in';
-  if (days < 14) return `${String(days)} days in`;
-  return `${String(Math.floor(days / 7))} weeks in`;
+  const words = t().profile.goal;
+  if (days <= 0) return words.startedToday;
+  if (days === 1) return words.oneDayIn;
+  if (days < 14) return words.daysIn(days);
+  return words.weeksIn(Math.floor(days / 7));
 }

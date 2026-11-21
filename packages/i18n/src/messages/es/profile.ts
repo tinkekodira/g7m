@@ -1,0 +1,270 @@
+import type { Messages } from '../en/index.js';
+
+const lower = (text: string): string => text.charAt(0).toLowerCase() + text.slice(1);
+
+export const profile: Messages['profile'] = {
+  title: 'Tu perfil',
+  edit: 'Editar',
+  you: 'Tú',
+  loading: 'Cargando tu perfil…',
+  addName: 'Añade tu nombre',
+  numbers: 'Tus datos',
+  addWeight: 'Añade tu peso',
+  logWeight: (value: string) => `Peso ${value}. Registrar el peso de hoy`,
+  notSet: 'Sin definir: añádelo',
+  bestLiftsDescription:
+    'Lo más pesado que has movido en cada ejercicio. En los de peso corporal también cuenta tu peso.',
+  disclaimer:
+    'Contenido informativo, no consejo médico. Estos números dan forma a un plan de entrenamiento, nada más.',
+  achievementsLine: 'Hitos de tu entrenamiento',
+  toEarn: (total: number) =>
+    `${String(total)} por conseguir. Tu primer entrenamiento es el primero.`,
+  earnedOf: (earned: number, total: number) => `${String(earned)} de ${String(total)} conseguidos`,
+  achievements: 'Logros',
+  loadingLevel: 'Cargando tu nivel…',
+  level: 'Nivel',
+  levelLabel: (level: number, into: string, of: string) =>
+    `Nivel ${String(level)}: ${into} de ${of} XP para el nivel ${String(level + 1)}`,
+  routines: 'Tus rutinas',
+  routinesEmpty: 'Entrenamientos que has guardado',
+  routinesNone: 'Guarda un entrenamiento y se convierte en una',
+  loadingGoal: 'Cargando tu objetivo…',
+  yourGoal: 'Tu objetivo',
+  chooseGoal: 'Elige para qué entrenas',
+  goalDecides: 'Decide el entrenamiento que Inicio prepara para ti.',
+  choose: 'Elegir',
+  change: 'Cambiar',
+  training: 'Tu entrenamiento',
+  trainingSubtitle: (weeks: number) => `Las últimas ${String(weeks)} semanas, en tu cuerpo.`,
+  workingOut: 'Calculando lo que has entrenado…',
+  trainingEmpty: (weeks: number) =>
+    `Aún no hay nada registrado en las últimas ${String(weeks)} semanas. Termina un entrenamiento y aparecerá aquí.`,
+  worthAdding: 'Merece la pena añadir',
+  lookingAtWeek: 'Revisando tu semana…',
+  afterWorkouts: (sessions: number) =>
+    `Tras ${String(sessions)} entrenamientos, aquí verás lo que se queda atrás y un ejercicio para cada cosa.`,
+  nothingBehind: 'Ahora mismo nada va por detrás de su objetivo semanal.',
+  behind: (group: string, sets: number) => `${group} · faltan ${String(sets)} series`,
+  views: { front: 'Frente', back: 'Espalda' },
+  less: 'Menos',
+  more: 'Más',
+  trainedMost: 'Lo más entrenado',
+  personalRecords: 'Récords personales',
+  bestLifts: 'Mejores marcas',
+  exercises: (count: number) => (count === 1 ? 'ejercicio' : 'ejercicios'),
+  loadingBests: 'Cargando mejores marcas…',
+  nothingMeasurable: 'Aún no hay nada medible.',
+  showFewer: 'Mostrar menos',
+  showAll: (count: number) => `Mostrar los ${String(count)}`,
+  tiles: {
+    weight: 'Peso',
+    height: 'Altura',
+    age: 'Edad',
+    activity: 'Fuera del gimnasio',
+    sex: 'Sexo',
+    bmi: 'IMC',
+  },
+  bands: {
+    below: 'Por debajo',
+    healthy: 'Saludable',
+    above: 'Por encima',
+    well_above: 'Muy por encima',
+  },
+  bmiStandard:
+    'Ese es el rango estándar. Indica tu edad y cuántos días a la semana entrenas y se ajustará a tu cuerpo.',
+  bmiAdjusted:
+    'Tu rango se ajusta a tu edad, tu sexo y cuánto entrenas. El IMC básico cuenta el músculo como exceso de peso, así que 18,5–25 no es el rango adecuado para alguien que levanta pesas.',
+  unknownExercise: 'Ejercicio desconocido',
+  goalLine: (days: number, date: string) =>
+    `${String(days)} ${days === 1 ? 'día' : 'días'} por semana · desde el ${date}`,
+  editProblems: {
+    weight: 'Escribe un peso.',
+    range: 'Está fuera del rango que se puede guardar.',
+    height: (unit: string) => `Escribe una altura en ${unit}.`,
+    born: (min: number, max: number) =>
+      `Escribe tu fecha de nacimiento. Entre ${String(min)} y ${String(max)}.`,
+  },
+  country: { label: '¿De dónde eres?', ratherNot: 'Prefiero no decirlo' },
+  goalChoicesHint: 'Elige todas las que correspondan.',
+  weighIn: {
+    title: 'Registra tu peso',
+    first: 'El primer punto de tu tendencia.',
+    last: (weight: string, when: string) => `Último ${weight} · ${when}`,
+    today: (unit: string) => `Peso de hoy (${unit})`,
+    save: 'Guardar peso',
+  },
+  challengeRecord: {
+    title: 'Historial de retos',
+    wins: (count: string) => `${count} victorias`,
+    losses: (count: string) => `${count} derrotas`,
+    draws: (count: string) => `${count} empates`,
+    offline: 'Conéctate para cargar tu historial de retos.',
+    unavailable: 'Historial de retos no disponible. Se reintentará automáticamente.',
+    loading: 'Cargando historial de retos…',
+  },
+  metrics: {
+    title: 'Editar perfil',
+    intro: 'Con lo que se construye tu plan. Nada de esto se comparte.',
+    weight: 'Peso',
+    chartSummary: (weeks: number, readings: number) =>
+      `Peso en las últimas ${String(weeks)} semanas, ${String(readings)} mediciones.`,
+    aboutYou: 'Sobre ti',
+    yourName: 'Tu nombre',
+    nameHint: 'Con él te saluda la pantalla de inicio, y es lo que ven tus amigos.',
+    height: (unit: string) => `Altura (${unit})`,
+    dateOfBirth: 'Fecha de nacimiento',
+    youAre: (age: number) => `Tienes ${String(age)} años`,
+    whereFrom: 'De dónde eres',
+    countryHint: 'Tu bandera en el perfil y un saludo en tu idioma en Inicio.',
+    sex: 'Sexo',
+    sexHint:
+      'Sirve para darte ritmos realistas de ganancia y pérdida. Nunca cambia cuánto entrenamiento recibes.',
+    setAtSignup: 'Indicado al registrarte',
+    saved: 'Guardado',
+    saveChanges: 'Guardar cambios',
+    outside: 'Fuera del gimnasio',
+    outsideHint:
+      'Tu semana media fuera del entrenamiento. Los entrenamientos se cuentan desde tu registro.',
+    outsideLabel: 'Tu semana fuera del gimnasio',
+    readings: 'Mediciones recientes',
+    readingsHint:
+      'Aquí no se sobrescribe nada. Elimina una medición solo si se escribió mal: una eliminada deja un hueco en la tendencia.',
+    remove: (line: string, when: string) => `Eliminar ${line}, ${when}`,
+    fat: (percent: string) => `${percent} % de grasa`,
+  },
+  prompt: {
+    addWeight: 'Añade tu peso',
+    addWeightBody:
+      'Fija la carga de las dominadas y los fondos, y es el primer punto de tu tendencia.',
+    due: 'Toca pesarse',
+    dueBody: (days: string) =>
+      `Ha pasado ${days}. Una vez por semana basta para ver una tendencia.`,
+    overdue: 'Tu tendencia se ha quedado en silencio',
+    overdueBody: (days: string) =>
+      `El último peso registrado tiene ${days}. Una medición la recupera.`,
+    lessThanDay: 'menos de un día',
+    aDay: 'un día',
+    days: (days: number) => `${String(days)} días`,
+    aWeek: 'una semana',
+    weeks: (weeks: number) => `${String(weeks)} semanas`,
+    holding: (span: string) => `Estable durante ${span}.`,
+    tooSoon: (down: boolean, size: string, span: string) =>
+      `${down ? 'Baja' : 'Sube'} ${size} en ${span}: es pronto para hablar de ritmo.`,
+    rate: (down: boolean, size: string, span: string, rate: string) =>
+      `${down ? 'Baja' : 'Sube'} ${size} en ${span}: unos ${rate} por semana.`,
+  },
+  goal: {
+    chooseOne: 'Elige al menos un objetivo de entrenamiento.',
+    title: 'Tu objetivo',
+    intro: 'Para qué es el entrenamiento. Puedes cambiarlo cuando quieras.',
+    profile: 'Perfil',
+    you: 'Tú',
+    basedOn: 'Según lo que has estado haciendo',
+    daysAWeek: 'Días por semana',
+    daysHint:
+      'Con qué frecuencia puedes entrenar de verdad. Responde pensando en una semana mala, no en una buena: el plan se ajusta exactamente a esto.',
+    daysLabel: 'Días de entrenamiento por semana',
+    chooseGoals: 'Elige tus objetivos',
+    changeGoals: 'Cambia tus objetivos',
+    save: 'Guardar objetivos',
+    trainingFor: 'Entrenando para',
+    daysPerWeek: (days: number) => `${String(days)} ${days === 1 ? 'día' : 'días'} por semana`,
+    before: 'Antes de esto',
+    kept: 'Se conserva porque cuánto duró algo es parte de si funcionó.',
+    spanDays: (days: number) => `${String(days)} días`,
+    spanWeeks: (weeks: number) => `${String(weeks)} semanas`,
+    startedToday: 'empezado hoy',
+    oneDayIn: 'desde hace un día',
+    daysIn: (days: number) => `desde hace ${String(days)} días`,
+    weeksIn: (weeks: number) => `desde hace ${String(weeks)} semanas`,
+  },
+  plan: {
+    noLimit: 'Sin límite',
+    title: 'Sesión de hoy',
+    builtFor: (goal: string, days: number) =>
+      `Hecha para «${lower(goal)}», ${String(days)} días por semana.`,
+    working: 'Preparando tu sesión…',
+    timeToday: 'Tiempo hoy (minutos)',
+    timeLabel: 'Tiempo hoy',
+    paired: (minutes: number, estimate: number) =>
+      `Emparejados para caber en ${String(minutes)} min: unos ${String(estimate)} min`,
+    about: (estimate: number) => `Unos ${String(estimate)} min`,
+    leftOut: (items: string) => `Se ha dejado fuera para que quepa en el tiempo: ${items}.`,
+    resting: (groups: string) =>
+      `Te sugerimos descansar ${groups}: ya se trabajó en los últimos 7 días.`,
+    superset: 'Superserie',
+    supersetRest: 'Superserie · descanso tras cada ronda',
+    start: 'Empezar este entrenamiento',
+    startingPoint:
+      'Cada número aquí es un punto de partida. Cambia lo que quieras una vez dentro: el registro no sabe que lo escribió un generador.',
+    swapTo: (name: string) => `Cambiar a ${name}`,
+    swap: 'cambiar',
+    findWeight: 'Encuentra tu peso',
+    rest: (group: string, rest: string) => `${group} · ${rest} de descanso`,
+    reasons: {
+      progress: (from: string) => `La última vez completaste el rango con ${from}: sube.`,
+      jump: (from: string, reps: number) =>
+        `Completaste el rango con ${from} y te sobraban ${String(reps)} repeticiones. Es un salto mayor de lo habitual.`,
+      deload: (misses: number, from: string) =>
+        `${String(misses)} sesiones sin llegar al rango con ${from}. Baja un poco y vuelve a intentarlo.`,
+      repeat: (reps: number, kg: string) =>
+        `La última vez hiciste ${String(reps)} con ${kg}. Mismo peso, más repeticiones.`,
+      returning: (days: number, from: string) =>
+        `Han pasado ${String(days)} días. Empiezas por debajo de tus ${from} para volver poco a poco.`,
+      firstTime: 'Primera vez: elige algo con lo que podrías hacer dos o tres repeticiones más.',
+    },
+    noGoalTitle: 'Primero elige un objetivo',
+    noGoalBody:
+      'La sesión se construye según para qué entrenas y cuántos días a la semana tienes. Se tarda unos diez segundos.',
+    chooseGoal: 'Elegir un objetivo',
+    weekDone: 'Has completado la semana',
+    weekDoneBody: (rested: string) =>
+      `Todo lo que trabajaría esta sesión ya tuvo sus series: ${rested}. Otra sesión ahora costaría más recuperación de la que aporta.`,
+    trainAnyway: 'Entrenar igualmente',
+  },
+  routinesScreen: {
+    title: 'Tus rutinas',
+    finishOpen: 'Termina el entrenamiento que tienes abierto antes de empezar una rutina.',
+    openIt: 'Abrirlo',
+    nameRoutine: 'Ponle nombre a la rutina',
+    name: 'Nombre',
+    placeholder: 'Día de empuje',
+    create: 'Crear',
+    build: '+ Crear una rutina desde cero',
+    remembers:
+      'Una rutina recuerda los ejercicios y los rangos de repeticiones, no los pesos. Esos salen de lo que levantaste la última vez, así que una rutina nunca se queda anticuada.',
+    exercises: (count: number) => (count === 1 ? '1 ejercicio' : `${String(count)} ejercicios`),
+    start: (name: string) => `Empezar ${name}`,
+    nothingSaved: 'Aún no hay nada guardado',
+    nothingSavedBody:
+      'Termina un entrenamiento y podrás guardarlo como rutina: es la forma más fácil de crear una, porque acabas de hacerla. También puedes empezar con una vacía abajo, o guardar cualquier entrenamiento pasado desde su página en Progreso.',
+  },
+  routine: {
+    confirmDelete: '¿Eliminar esta rutina? Se conservan los entrenamientos que hiciste con ella.',
+    notOnDevice:
+      'Esa rutina no está en este dispositivo. Puede que se haya eliminado o que aún no se haya sincronizado.',
+    routines: 'Rutinas',
+    rename: 'Cambiar nombre',
+    empty:
+      'Aún está vacía. Añade los ejercicios que quieras y se incluirán en cada entrenamiento que empieces con ella.',
+    superset: 'Superserie',
+    supersetLabel: (label: string) => `${label} · Superserie`,
+    ungroup: 'Desagrupar',
+    moveSupersetUp: 'Subir superserie',
+    moveSupersetDown: 'Bajar superserie',
+    addExercise: '+ Añadir un ejercicio',
+    delete: 'Eliminar esta rutina',
+    deleteHint: 'Los entrenamientos que ya hiciste con ella se conservan: ocurrieron.',
+    moveUp: (name: string) => `Subir ${name}`,
+    moveDown: (name: string) => `Bajar ${name}`,
+    remove: (name: string) => `Quitar ${name}`,
+  },
+  data: {
+    readFailed: 'No se pudo leer la copia de tus datos en este dispositivo.',
+    saveFailed: 'No se guardó. Vuelve a intentarlo: todavía no se ha enviado nada.',
+    saveFailedShort: 'No se guardó. Vuelve a intentarlo.',
+    routineGone: 'Esta rutina ya no está disponible o no tiene ejercicios.',
+    recommendationsOff: 'Las recomendaciones de entrenamiento están desactivadas.',
+    somethingWrong: 'Algo salió mal. Vuelve a intentarlo.',
+  },
+};

@@ -6,6 +6,7 @@
  * the component so the edges can be tested — the caption that is blank on
  * purpose, the comparison that must not point downwards on a Tuesday.
  */
+import { formatNumber, t } from '@g7m/i18n';
 import {
   formatMinutes,
   isChartMetric,
@@ -18,19 +19,16 @@ import {
 } from '@g7m/core';
 import { formatVolumeShort, formatWeightTotal } from '../components/chart-scale.js';
 import type { Insight } from './home-copy.js';
-import {
-  MONTHS_SHORT,
-  monthName,
-  monthShort,
-  weekdayName,
-  weekdayShort,
-} from '../lib/date-words.js';
+import { dayMonth, monthName, monthShort, weekdayName, weekdayShort } from '../lib/date-words.js';
 
-export const PERIOD_OPTIONS = [
-  { value: 'week', label: 'Weekly' },
-  { value: 'month', label: 'Monthly' },
-  { value: 'all', label: 'All time' },
-] as const satisfies readonly { value: Period; label: string }[];
+export const PERIOD_OPTIONS: readonly { readonly value: Period; readonly label: string }[] = (
+  ['week', 'month', 'all'] as const
+).map((value) => ({
+  value,
+  get label() {
+    return t().progress.periods[value];
+  },
+}));
 
 /** The URL's `?period=`, if it names one. Anything else is the default week. */
 export function periodFrom(value: string | null): Period {
@@ -56,57 +54,43 @@ export function backFrom(value: string | null, max: number): number {
  * somebody count; a month by its name, with the year once it is another one.
  */
 export function chartPeriodLabel(period: Period, back: number, span: Span, now: Date): string {
-  if (period === 'all') return 'All time';
+  const words = t().progress.label;
+  if (period === 'all') return words.allTime;
   if (period === 'week') {
-    if (back === 0) return 'This week';
-    if (back === 1) return 'Last week';
+    if (back === 0) return words.thisWeek;
+    if (back === 1) return words.lastWeek;
     // The end is exclusive: the week's last day is the day before it.
     const last = new Date(span.end);
     last.setDate(last.getDate() - 1);
     const sameYear =
       span.start.getFullYear() === now.getFullYear() && last.getFullYear() === now.getFullYear();
     const day = (date: Date) =>
-      `${String(date.getDate())} ${MONTHS_SHORT[date.getMonth()] ?? ''}${
-        sameYear ? '' : ` ${String(date.getFullYear())}`
-      }`;
-    return `${day(span.start)} – ${day(last)}`;
+      sameYear ? dayMonth(date) : words.dayMonthYear(dayMonth(date), date.getFullYear());
+    return words.range(day(span.start), day(last));
   }
-  if (back === 0) return 'This month';
+  if (back === 0) return words.thisMonth;
   const name = monthName(span.start);
   return span.start.getFullYear() === now.getFullYear()
     ? name
-    : `${name} ${String(span.start.getFullYear())}`;
+    : words.monthYear(name, span.start.getFullYear());
 }
 
 /** The same, mid-sentence: "last week", "31 Aug – 6 Sep", "in August". */
 export function chartPeriodPhrase(period: Period, back: number, span: Span, now: Date): string {
   if (back === 0 || period === 'all') return periodPhrase(period);
   const label = chartPeriodLabel(period, back, span, now);
-  return period === 'week' ? (back === 1 ? 'last week' : label) : `in ${label}`;
+  const phrase = t().progress.phrase;
+  return period === 'week' ? (back === 1 ? phrase.lastWeek : label) : phrase.in(label);
 }
 
 /** Under a headline number: "this week", "this month", "all time". */
 export function periodPhrase(period: Period): string {
-  switch (period) {
-    case 'week':
-      return 'this week';
-    case 'month':
-      return 'this month';
-    case 'all':
-      return 'all time';
-  }
+  return t().progress.phrase.this[period];
 }
 
 /** What the current period is measured against, or null for all time. */
 export function previousPhrase(period: Period): string | null {
-  switch (period) {
-    case 'week':
-      return 'last week';
-    case 'month':
-      return 'last month';
-    case 'all':
-      return null;
-  }
+  return period === 'all' ? null : (t().progress.phrase.previous[period] ?? null);
 }
 
 /**
@@ -129,8 +113,8 @@ export function captionFor(bucket: Pick<VolumeBucket, 'start'>, period: Period):
 export function bucketName(bucket: Pick<VolumeBucket, 'start'>, period: Period): string {
   const date = bucket.start;
   if (period === 'week') return weekdayName(date);
-  if (period === 'month') return `${String(date.getDate())} ${monthName(date)}`;
-  return `${monthName(date)} ${String(date.getFullYear())}`;
+  if (period === 'month') return t().common.dates.dayMonth(date.getDate(), monthName(date));
+  return t().progress.label.monthYear(monthName(date), date.getFullYear());
 }
 
 /**
@@ -142,8 +126,8 @@ export function bucketName(bucket: Pick<VolumeBucket, 'start'>, period: Period):
 export function describeWork(setCount: number, boutCount: number): string {
   const sets = Math.max(0, setCount - boutCount);
   const parts: string[] = [];
-  if (sets > 0 || boutCount === 0) parts.push(`${String(sets)} ${sets === 1 ? 'set' : 'sets'}`);
-  if (boutCount > 0) parts.push(`${String(boutCount)} ${boutCount === 1 ? 'bout' : 'bouts'}`);
+  if (sets > 0 || boutCount === 0) parts.push(t().progress.work.sets(sets));
+  if (boutCount > 0) parts.push(t().progress.work.bouts(boutCount));
   return parts.join(' · ');
 }
 
@@ -159,44 +143,20 @@ export interface MetricOption {
 }
 
 /** In the menu's order: lifting, then showing up, then cardio. */
-export const METRIC_OPTIONS: readonly MetricOption[] = [
-  {
-    value: 'volume',
-    label: 'Weight lifted',
-    description: 'Weight times reps',
-    caption: 'Weight times reps, over every working set.',
+export const METRIC_OPTIONS: readonly MetricOption[] = (
+  ['volume', 'sets', 'workouts', 'time', 'cardio', 'calories'] as const
+).map((value) => ({
+  value,
+  get label() {
+    return t().progress.metrics[value].label;
   },
-  {
-    value: 'sets',
-    label: 'Sets',
-    description: 'Working sets, warm-ups left out',
-    caption: 'Working sets, warm-ups left out.',
+  get description() {
+    return t().progress.metrics[value].description;
   },
-  {
-    value: 'workouts',
-    label: 'Workouts',
-    description: 'How many you finished',
-    caption: 'Workouts finished.',
+  get caption() {
+    return t().progress.metrics[value].caption;
   },
-  {
-    value: 'time',
-    label: 'Active time',
-    description: 'Training time, cardio included',
-    caption: 'Time training, first set to last, cardio included.',
-  },
-  {
-    value: 'cardio',
-    label: 'Cardio time',
-    description: 'Minutes on the machines',
-    caption: 'Time on the cardio machines.',
-  },
-  {
-    value: 'calories',
-    label: 'Calories',
-    description: 'Burned on cardio',
-    caption: 'From cardio: the machine’s figure, or the estimate.',
-  },
-];
+}));
 
 /** The view in the URL, or weight lifted — what the chart always showed. */
 export function metricFrom(value: string | null): ChartMetric {
@@ -218,7 +178,11 @@ export function metricShort(metric: ChartMetric, value: number, unitSystem: Unit
     case 'cardio':
       return formatMinutes(value);
     case 'calories':
-      return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value));
+      return value >= 1000
+        ? t().progress.totals.thousand(
+            formatNumber(value / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+          )
+        : String(Math.round(value));
     case 'workouts':
     case 'sets':
       return String(Math.round(value));
@@ -227,20 +191,20 @@ export function metricShort(metric: ChartMetric, value: number, unitSystem: Unit
 
 /** A total with its unit: `12.4 t`, `3 workouts`, `2h 5m`, `54 sets`, `≈ 1,420 kcal`. */
 export function metricTotal(metric: ChartMetric, value: number, unitSystem: UnitSystem): string {
-  const count = (singular: string, plural: string) =>
-    `${Math.round(value).toLocaleString('en-GB')} ${Math.round(value) === 1 ? singular : plural}`;
+  const totals = t().progress.totals;
+  const whole = Math.round(value);
   switch (metric) {
     case 'volume':
       return formatWeightTotal(value, unitSystem);
     case 'workouts':
-      return count('workout', 'workouts');
+      return totals.workouts(formatNumber(whole), whole);
     case 'sets':
-      return count('set', 'sets');
+      return totals.sets(formatNumber(whole), whole);
     case 'time':
     case 'cardio':
       return formatMinutes(value);
     case 'calories':
-      return `≈ ${Math.round(value).toLocaleString('en-GB')} kcal`;
+      return totals.calories(formatNumber(whole));
   }
 }
 
@@ -258,16 +222,17 @@ export function metricChartSummary(
   when: string = periodPhrase(period),
 ): string {
   const { label } = metricOption(metric);
-  const scope = period === 'all' ? 'by month' : 'by day';
+  const words = t().progress.summary;
+  const scope = period === 'all' ? words.byMonth : words.byDay;
   const active = buckets.filter((bucket) => bucket.value > 0);
-  if (active.length === 0) return `${label} ${scope}, ${when}. Nothing logged.`;
+  if (active.length === 0) return words.nothing(label, scope, when);
   const total = buckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const columns = active
-    .map(
-      (bucket) => `${bucketName(bucket, period)} ${metricTotal(metric, bucket.value, unitSystem)}`,
+    .map((bucket) =>
+      words.column(bucketName(bucket, period), metricTotal(metric, bucket.value, unitSystem)),
     )
     .join(', ');
-  return `${label} ${scope}, ${when}: ${columns}. ${metricTotal(metric, total, unitSystem)} in total.`;
+  return words.columns(label, scope, when, columns, metricTotal(metric, total, unitSystem));
 }
 
 export interface ComparisonLine {
@@ -296,9 +261,17 @@ export function describeComparison(
 
   switch (comparison.kind) {
     case 'ahead':
-      return { headline: `↑ ${format(comparison.by)}`, detail: `vs ${previous}`, ahead: true };
+      return {
+        headline: `↑ ${format(comparison.by)}`,
+        detail: t().progress.comparison.vs(previous),
+        ahead: true,
+      };
     case 'level':
-      return { headline: 'Same', detail: `as ${previous}`, ahead: false };
+      return {
+        headline: t().progress.comparison.same,
+        detail: t().progress.comparison.as(previous),
+        ahead: false,
+      };
     case 'behind':
       return { headline: format(comparison.previous), detail: previous, ahead: false };
     case 'none':
@@ -327,11 +300,12 @@ export function describeAverageSession(
   previousMonth: string,
 ): Insight | null {
   if (average === null) return null;
-  const heading = `Average session ${formatMinutes(average)}`;
+  const words = t().progress.average;
+  const heading = words.heading(formatMinutes(average));
   if (previous === null) {
     return {
       heading,
-      detail: 'From your first ticked set to your last, in each workout.',
+      detail: words.first,
       tone: 'neutral',
       symbol: 'clock',
     };
@@ -341,8 +315,10 @@ export function describeAverageSession(
     heading,
     detail:
       Math.abs(difference) < SAME_LENGTH
-        ? `About the same as in ${previousMonth}.`
-        : `${formatMinutes(Math.abs(difference))} ${difference > 0 ? 'longer' : 'shorter'} than in ${previousMonth}.`,
+        ? words.same(previousMonth)
+        : difference > 0
+          ? words.longer(formatMinutes(Math.abs(difference)), previousMonth)
+          : words.shorter(formatMinutes(Math.abs(difference)), previousMonth),
     tone: 'neutral',
     symbol: 'clock',
   };
@@ -351,8 +327,8 @@ export function describeAverageSession(
 export function sinceLine(firstAt: Date | null): ComparisonLine | null {
   if (firstAt === null) return null;
   return {
-    headline: `${monthShort(firstAt)} ${String(firstAt.getFullYear())}`,
-    detail: 'first workout',
+    headline: t().progress.since.at(monthShort(firstAt), firstAt.getFullYear()),
+    detail: t().progress.since.first,
     ahead: false,
   };
 }

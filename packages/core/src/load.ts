@@ -13,6 +13,7 @@
  * `null` rather than nought — a total that silently omits half a session is
  * worse than one that says which sets it could not count.
  */
+import { t } from '@g7m/i18n';
 
 /** How to read the number in the weight field. Mirrors the CHECK in Postgres. */
 export const LOAD_TYPES = ['external', 'bodyweight', 'bodyweight_plus', 'assisted'] as const;
@@ -29,12 +30,18 @@ export type SetType = (typeof SET_TYPES)[number];
  * "Weight" and then subtracts the answer from bodyweight is a bug nobody
  * reports, they just stop trusting the numbers.
  */
-export const WEIGHT_FIELD_MEANING: Record<LoadType, string | null> = {
-  external: 'Weight',
+export const WEIGHT_FIELD_MEANING: Readonly<Record<LoadType, string | null>> = {
+  get external() {
+    return t().core.weightField.external;
+  },
   /** No field at all: the load is the lifter, and there is nothing to type. */
   bodyweight: null,
-  bodyweight_plus: 'Added',
-  assisted: 'Assistance',
+  get bodyweight_plus() {
+    return t().core.weightField.bodyweight_plus;
+  },
+  get assisted() {
+    return t().core.weightField.assisted;
+  },
 };
 
 /**
@@ -73,8 +80,9 @@ export function describePreviousSet(
   show: (kg: number) => string,
   isTimeBased = false,
 ): string {
-  const amount = isTimeBased ? `${String(set.reps)} s` : String(set.reps);
-  const reps = isTimeBased ? amount : `${amount} ${set.reps === 1 ? 'rep' : 'reps'}`;
+  const words = t().workout.previousSet;
+  const amount = isTimeBased ? words.seconds(set.reps) : String(set.reps);
+  const reps = isTimeBased ? amount : words.reps(set.reps);
   const bare = !Number.isFinite(set.weightKg) || set.weightKg <= 0;
 
   switch (set.loadType) {

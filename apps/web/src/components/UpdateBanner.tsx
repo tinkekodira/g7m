@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useState } from 'react';
 import { Button } from '@g7m/ui';
 import { applyUpdate, watchForUpdates } from '../lib/service-worker/register.js';
@@ -29,13 +30,13 @@ export function UpdateBanner() {
       className="fixed inset-x-0 bottom-(--tab-bar-offset) z-50 border-t border-subtle bg-elevated pb-(--pinned-inset)"
     >
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
-        <p className="text-sm text-secondary">A new version of g7m is ready.</p>
+        <p className="text-sm text-secondary">{t().app.update.ready}</p>
         <Button
           onClick={() => {
             applyUpdate();
           }}
         >
-          Reload
+          {t().common.reload}
         </Button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useEffect, useId, useMemo, useState, type FormEvent } from 'react';
 import {
   ACTIVITY_DESCRIPTIONS,
@@ -84,14 +85,12 @@ export function MetricsScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Edit profile</h1>
-          <p className="mt-1 text-sm text-secondary">
-            What your plan is built from. None of it is shared.
-          </p>
+          <h1 className="text-2xl font-semibold text-primary">{t().profile.metrics.title}</h1>
+          <p className="mt-1 text-sm text-secondary">{t().profile.metrics.intro}</p>
         </div>
         {/* Back to Profile, which is the only way in here. Home is one tap
             away in the tab bar regardless. */}
-        <HeaderLink to="/profile">Back</HeaderLink>
+        <HeaderLink to="/profile">{t().common.back}</HeaderLink>
       </header>
 
       {error !== null && (
@@ -128,9 +127,7 @@ export function MetricsScreen() {
 
       <Readings entries={readings} unitSystem={unitSystem} now={now} />
 
-      <p className="py-4 text-xs text-muted">
-        Educational content, not medical advice. These numbers shape a training plan, nothing more.
-      </p>
+      <p className="py-4 text-xs text-muted">{t().profile.disclaimer}</p>
     </main>
   );
 }
@@ -174,11 +171,11 @@ function WeightPanel({
   return (
     <Panel
       tone="hero"
-      title="Weight"
+      title={t().profile.metrics.weight}
       aside={
         shown !== null && (
           <>
-            <StatValue text={`${String(shown.value)} ${shown.unit}`} />
+            <StatValue text={`${formatNumber(shown.value)} ${shown.unit}`} />
             {weightAt !== null && (
               <span className="block text-xs text-muted">{describeWhen(weightAt, now)}</span>
             )}
@@ -214,8 +211,10 @@ function WeightPanel({
           <TrendChart
             values={chartValues}
             baseline="fit"
-            summary={`Weight over the last ${String(HISTORY_WEEKS)} weeks, ${String(chartValues.length)} readings.`}
-            format={(value) => `${value.toFixed(1)} ${unit}`}
+            summary={t().profile.metrics.chartSummary(HISTORY_WEEKS, chartValues.length)}
+            format={(value) =>
+              `${formatNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${unit}`
+            }
           />
         </div>
       )}
@@ -231,7 +230,7 @@ function WeightPanel({
         <div className="flex items-end gap-2">
           <div className="min-w-0 flex-1">
             <TextField
-              label={`Today’s weight (${unit})`}
+              label={t().profile.weighIn.today(unit)}
               inputMode="decimal"
               enterKeyHint="done"
               autoComplete="off"
@@ -245,7 +244,7 @@ function WeightPanel({
             />
           </div>
           <Button type="submit" disabled={busy || draft.trim() === ''}>
-            Save weight
+            {t().profile.weighIn.save}
           </Button>
         </div>
         {/* Under the row rather than inside the field, so the button stays
@@ -366,7 +365,7 @@ function AboutYou({
   }
 
   return (
-    <Panel title="About you">
+    <Panel title={t().profile.metrics.aboutYou}>
       <form
         className="mt-3 flex flex-col gap-4"
         onSubmit={(event) => {
@@ -374,10 +373,10 @@ function AboutYou({
         }}
       >
         <TextField
-          label="Your name"
+          label={t().profile.metrics.yourName}
           autoComplete="given-name"
           value={name ?? stored.name}
-          hint="What the home screen greets you by, and what friends see."
+          hint={t().profile.metrics.nameHint}
           onChange={(event) => {
             setName(event.target.value);
           }}
@@ -387,7 +386,7 @@ function AboutYou({
             needs no more width than half the card. */}
         <div className="grid grid-cols-2 gap-3">
           <TextField
-            label={`Height (${heightUnit})`}
+            label={t().profile.metrics.height(heightUnit)}
             inputMode="decimal"
             autoComplete="off"
             value={height ?? stored.height}
@@ -398,12 +397,12 @@ function AboutYou({
             }}
           />
           <TextField
-            label="Date of birth"
+            label={t().profile.metrics.dateOfBirth}
             type="date"
             value={dob ?? stored.dob}
             max={toDateOnly(now)}
             error={problems.dob}
-            hint={age === null ? undefined : `You are ${String(age)}`}
+            hint={age === null ? undefined : t().profile.metrics.youAre(age)}
             onChange={(event) => {
               setDob(event.target.value);
               setProblems(({ height: kept }) => (kept === undefined ? {} : { height: kept }));
@@ -417,8 +416,8 @@ function AboutYou({
         <CountryPicker
           value={place === null ? country : place.value}
           disabled={busy}
-          label="Where you are from"
-          hint="Your flag on your profile, and a hello in your language on Home."
+          label={t().profile.metrics.whereFrom}
+          hint={t().profile.metrics.countryHint}
           onChange={(next) => {
             setPlace({ value: next });
           }}
@@ -430,7 +429,9 @@ function AboutYou({
             asked: it changes the rates quoted back, never how much training. */}
         {sex === null ? (
           <fieldset className="border-0 p-0">
-            <legend className="text-sm font-medium text-secondary">Sex</legend>
+            <legend className="text-sm font-medium text-secondary">
+              {t().profile.metrics.sex}
+            </legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {SEXES.map((option) => (
                 <Chip
@@ -445,17 +446,14 @@ function AboutYou({
                 </Chip>
               ))}
             </div>
-            <p className="mt-2 text-sm text-muted">
-              Used to quote realistic rates of gain and loss. It never changes how much training you
-              are given.
-            </p>
+            <p className="mt-2 text-sm text-muted">{t().profile.metrics.sexHint}</p>
           </fieldset>
         ) : (
           <div className="flex items-center justify-between gap-3 rounded-control bg-base/70 px-3 py-2.5">
-            <span className="text-sm font-medium text-secondary">Sex</span>
+            <span className="text-sm font-medium text-secondary">{t().profile.metrics.sex}</span>
             <span className="text-right">
               <span className="block text-base font-medium text-primary">{SEX_LABELS[sex]}</span>
-              <span className="block text-xs text-muted">Set when you signed up</span>
+              <span className="block text-xs text-muted">{t().profile.metrics.setAtSignup}</span>
             </span>
           </div>
         )}
@@ -466,12 +464,12 @@ function AboutYou({
             {saved && !dirty && (
               <span className="inline-flex items-center gap-1.5">
                 <CheckIcon aria-hidden className="size-4" />
-                Saved
+                {t().profile.metrics.saved}
               </span>
             )}
           </p>
           <Button type="submit" disabled={busy || !dirty}>
-            Save changes
+            {t().profile.metrics.saveChanges}
           </Button>
         </div>
       </form>
@@ -491,13 +489,11 @@ function Activity({ level }: { readonly level: ActivityLevel | null }) {
   const name = useId();
 
   return (
-    <Panel title="Outside the gym">
-      <p className="mt-1 text-sm text-muted">
-        Your average week away from training. Workouts are counted from your log.
-      </p>
+    <Panel title={t().profile.metrics.outside}>
+      <p className="mt-1 text-sm text-muted">{t().profile.metrics.outsideHint}</p>
       <div
         role="radiogroup"
-        aria-label="Your week outside the gym"
+        aria-label={t().profile.metrics.outsideLabel}
         className="mt-3 flex flex-col gap-2"
       >
         {ACTIVITY_LEVELS.map((option) => {
@@ -562,11 +558,8 @@ function Readings({
   if (recent.length === 0) return null;
 
   return (
-    <Panel title="Recent readings">
-      <p className="mt-1 text-sm text-muted">
-        Nothing here is overwritten. Remove a reading only if it was typed wrong: a removed one
-        leaves a gap in the trend.
-      </p>
+    <Panel title={t().profile.metrics.readings}>
+      <p className="mt-1 text-sm text-muted">{t().profile.metrics.readingsHint}</p>
 
       <ul className="mt-2 flex flex-col">
         {recent.map((entry) => {
@@ -583,7 +576,7 @@ function Readings({
               </div>
               <button
                 type="button"
-                aria-label={`Remove ${line}, ${when}`}
+                aria-label={t().profile.metrics.remove(line, when)}
                 disabled={busy}
                 onClick={() => {
                   void write((r) => r.bodyMetrics.remove(entry.id));
@@ -606,14 +599,16 @@ function summarise(entry: BodyMetric, unitSystem: UnitSystem): string {
 
   if (entry.weightKg !== null) {
     const weight = toDisplayWeight(entry.weightKg, unitSystem);
-    parts.push(`${String(weight.value)} ${weight.unit}`);
+    parts.push(`${formatNumber(weight.value)} ${weight.unit}`);
   }
   if (entry.heightCm !== null) {
     const height = toDisplayHeight(entry.heightCm, unitSystem);
-    parts.push(`${String(height.value)} ${height.unit}`);
+    parts.push(`${formatNumber(height.value)} ${height.unit}`);
   }
   if (entry.activityLevel !== null) parts.push(ACTIVITY_LABELS[entry.activityLevel]);
-  if (entry.bodyFatPercent !== null) parts.push(`${String(entry.bodyFatPercent)}% fat`);
+  if (entry.bodyFatPercent !== null) {
+    parts.push(t().profile.metrics.fat(formatNumber(entry.bodyFatPercent)));
+  }
 
   return parts.join(' · ');
 }

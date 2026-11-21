@@ -10,6 +10,7 @@
  * major, sternal head" is not. The 3D model in Phase 5 needs individual
  * muscles, their mesh node names, and which of them are worth tapping.
  */
+import { muscleGroupName, muscleName } from '@g7m/i18n';
 import type { QueryableDatabase } from './database.js';
 import {
   readBoolean,
@@ -58,7 +59,7 @@ function toGroup(row: RawRow): MuscleGroup {
   return {
     id: readString(row, 'id', ''),
     slug: readString(row, 'slug', ''),
-    name: readString(row, 'name', ''),
+    name: muscleGroupName(readString(row, 'slug', '')) ?? readString(row, 'name', ''),
     // Last rather than first, so a row that lost its order does not silently
     // become the top filter chip.
     displayOrder: readNumber(row, 'display_order', 1000),
@@ -69,7 +70,7 @@ function toMuscle(row: RawRow): Muscle {
   return {
     id: readString(row, 'id', ''),
     slug: readString(row, 'slug', ''),
-    commonName: readString(row, 'common_name', ''),
+    commonName: muscleName(readString(row, 'slug', '')) ?? readString(row, 'common_name', ''),
     latinName: readString(row, 'latin_name', ''),
     muscleGroupId: readString(row, 'muscle_group_id', ''),
     meshNodeNames: readStringArray(row, 'mesh_node_names'),

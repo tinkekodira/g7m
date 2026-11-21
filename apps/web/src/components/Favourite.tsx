@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { Button } from '@g7m/ui';
 import { StarIcon } from './icons.js';
 
@@ -18,7 +19,7 @@ export function FavouriteMark() {
         className="ml-1.5 inline size-4 shrink-0 align-[-2px] text-warning"
         data-testid="favourite-star"
       />
-      <span className="sr-only">(favourite)</span>
+      <span className="sr-only">{t().library.favouriteMark}</span>
     </>
   );
 }
@@ -45,7 +46,7 @@ export function FavouriteButton({
     <Button
       variant="secondary"
       aria-pressed={favourite}
-      aria-label={compact ? 'Favourite' : undefined}
+      aria-label={compact ? t().library.favourite : undefined}
       disabled={disabled}
       onClick={onToggle}
       className="shrink-0"
@@ -54,7 +55,7 @@ export function FavouriteButton({
         fill={favourite ? 'currentColor' : 'none'}
         className={favourite ? 'size-5 text-warning' : 'size-5 text-muted'}
       />
-      {!compact && 'Favourite'}
+      {!compact && t().library.favourite}
     </Button>
   );
 }

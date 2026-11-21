@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useMemo } from 'react';
 import { AnatomyViewer, placeholderBodyParts } from '@g7m/anatomy';
 import { bodyFor, useSculptedBody } from '../lib/anatomy-model.js';
@@ -19,7 +20,7 @@ export default function ExerciseMusclePreview({ sex, muscles }: ExerciseMuscleBo
   return (
     <div
       role="img"
-      aria-label={`Muscles worked: ${muscles.map((muscle) => muscle.name).join(', ')}. Front and back views.`}
+      aria-label={t().library.detail.musclesLabel(muscles.map((muscle) => muscle.name).join(', '))}
       className="grid grid-cols-2 overflow-hidden rounded-card bg-stage"
     >
       {(['front', 'back'] as const).map((view) => (
@@ -39,7 +40,7 @@ export default function ExerciseMusclePreview({ sex, muscles }: ExerciseMuscleBo
             background={stage}
           />
           <figcaption className="pb-2 text-center text-xs text-muted">
-            {view === 'front' ? 'Front' : 'Back'}
+            {view === 'front' ? t().library.detail.front : t().library.detail.back}
           </figcaption>
         </figure>
       ))}

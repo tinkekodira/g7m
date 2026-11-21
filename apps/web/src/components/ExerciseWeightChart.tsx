@@ -1,15 +1,16 @@
+import { formatDate, formatNumber, t } from '@g7m/i18n';
 import { useId } from 'react';
 import { toDisplayWeight, type ExerciseWeightPoint, type UnitSystem } from '@g7m/core';
 import { linePointsWithin, niceRange, polylinePoints } from './chart-scale.js';
 
 function describeWeight(point: ExerciseWeightPoint, units: UnitSystem): string {
   if (point.loadType === 'bodyweight' || (point.loadType !== 'external' && point.weightKg === 0)) {
-    return 'BW';
+    return t().progress.weightChart.bw;
   }
   const { value, unit } = toDisplayWeight(Math.abs(point.weightKg), units);
   const sign =
     point.loadType === 'assisted' ? '−' : point.loadType === 'bodyweight_plus' ? '+' : '';
-  return `${sign}${String(value)} ${unit}`;
+  return `${sign}${formatNumber(value)} ${unit}`;
 }
 
 /** A non-interactive preview inside the row's existing link. */
@@ -34,31 +35,36 @@ export function ExerciseWeightChart({
   }));
   const last = plot.at(-1);
   const first = plot[0];
+  const words = t().progress.weightChart;
   const caption =
     latest === undefined
       ? cardio
-        ? 'No weight data'
-        : 'Not logged yet'
+        ? words.noWeightData
+        : words.notLogged
       : points.length === 1
-        ? '1 session'
-        : `Last ${String(points.length)} sessions`;
+        ? words.oneSession
+        : words.lastSessions(points.length);
   const history = points
     .map((point) => {
-      const date = point.performedAt.toLocaleDateString(undefined, {
+      const date = formatDate(point.performedAt, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       });
-      const weight = describeWeight(point, unitSystem).replace('BW', 'Bodyweight');
-      return `${date}: ${weight}${point.loadType === 'assisted' ? ' assistance' : point.loadType === 'bodyweight_plus' ? ' added' : ''}`;
+      const weight = describeWeight(point, unitSystem).replace(words.bw, words.bodyweight);
+      return words.point(
+        date,
+        weight,
+        point.loadType === 'assisted'
+          ? 'assisted'
+          : point.loadType === 'bodyweight_plus'
+            ? 'added'
+            : null,
+      );
     })
     .join('; ');
   const summary =
-    latest === undefined
-      ? cardio
-        ? 'Weight progress is not available for cardio.'
-        : 'No weight history. Complete a working set and finish the workout to start your chart.'
-      : `Weight progress, ${caption.toLowerCase()}, oldest to newest. ${history}.`;
+    latest === undefined ? (cardio ? words.cardio : words.none) : words.summary(caption, history);
 
   return (
     <span className="exercise-weight-chart" role="img" aria-label={summary}>

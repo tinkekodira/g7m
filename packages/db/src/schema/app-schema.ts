@@ -200,6 +200,8 @@ const profiles = new Table({
   favourite_exercises: column.text,
   /** Whether workouts say which gym they were at. ADR-0178. */
   multiple_gyms: column.integer,
+  /** The app's language for this account; null follows the device. ADR-0181. */
+  language: column.text,
   created_at: column.text,
   updated_at: column.text,
 });

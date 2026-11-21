@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { dayTitle } from './calendar-view.js';
 
 /**
@@ -102,11 +103,12 @@ export function openSessionSummary(session: OpenSession, now: Date): OpenSession
    * which is the one thing it certainly is not.
    */
   if (session.past === true) {
+    const words = t().workout.open;
     const parts = [dayTitle(session.startedAt)];
-    if (session.exerciseCount > 0) parts.push(plural(session.exerciseCount, 'exercise'));
-    if (session.completedSets > 0) parts.push(`${plural(session.completedSets, 'set')} done`);
+    if (session.exerciseCount > 0) parts.push(words.exercises(session.exerciseCount));
+    if (session.completedSets > 0) parts.push(words.setsDone(session.completedSets));
     return {
-      headline: 'Finish logging your past workout',
+      headline: words.past,
       detail: parts.join(' · '),
       stale: false,
     };
@@ -115,15 +117,16 @@ export function openSessionSummary(session: OpenSession, now: Date): OpenSession
   const stale = looksAbandoned(session.startedAt, now);
   const minutes = Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 60000));
 
+  const words = t().workout.open;
   const parts = [elapsedPhrase(minutes, stale)];
-  if (session.exerciseCount > 0) parts.push(plural(session.exerciseCount, 'exercise'));
-  if (session.completedSets > 0) parts.push(`${plural(session.completedSets, 'set')} done`);
+  if (session.exerciseCount > 0) parts.push(words.exercises(session.exerciseCount));
+  if (session.completedSets > 0) parts.push(words.setsDone(session.completedSets));
 
   return {
     // Not an invitation to carry on when it has been open since yesterday —
     // by then the useful action is closing it, and the elapsed time stored
     // with it is already wrong.
-    headline: stale ? 'You left a workout open' : 'Continue your workout',
+    headline: stale ? words.stale : words.continue,
     detail: parts.join(' · '),
     stale,
   };
@@ -131,14 +134,11 @@ export function openSessionSummary(session: OpenSession, now: Date): OpenSession
 
 function elapsedPhrase(minutes: number, stale: boolean): string {
   // "0 min in" is worse than saying nothing about the clock at all.
-  if (minutes < 1) return 'just started';
-  if (stale) return `open for ${plural(Math.floor(minutes / 60), 'hour')}`;
-  if (minutes < 60) return `${String(minutes)} min in`;
-  return `${String(Math.floor(minutes / 60))} h ${String(minutes % 60)} min in`;
-}
-
-function plural(count: number, noun: string): string {
-  return `${String(count)} ${noun}${count === 1 ? '' : 's'}`;
+  const words = t().workout.open;
+  if (minutes < 1) return words.justStarted;
+  if (stale) return words.openFor(Math.floor(minutes / 60));
+  if (minutes < 60) return words.minutesIn(minutes);
+  return words.hoursIn(Math.floor(minutes / 60), minutes % 60);
 }
 
 /**
@@ -263,21 +263,19 @@ export function autoFinishNotice(input: {
   const when = dayTitle(input.startedAt);
   const at = input.endedAt === null ? null : clockTime(input.endedAt);
 
+  const words = t().workout.autoFinish;
   const parts: string[] = [];
-  if (input.exerciseCount > 0) parts.push(plural(input.exerciseCount, 'exercise'));
+  if (input.exerciseCount > 0) parts.push(words.exercises(input.exerciseCount));
   const sets = input.setCount - input.boutCount;
-  if (sets > 0) parts.push(plural(sets, 'set'));
-  if (input.boutCount > 0) parts.push(plural(input.boutCount, 'bout'));
-  if (input.minutes !== null && input.minutes > 0) parts.push(`${String(input.minutes)} min`);
+  if (sets > 0) parts.push(words.sets(sets));
+  if (input.boutCount > 0) parts.push(words.bouts(input.boutCount));
+  if (input.minutes !== null && input.minutes > 0) parts.push(words.minutes(input.minutes));
 
   return {
-    title: 'We finished your workout',
-    reason:
-      at === null
-        ? `Nothing was ticked for a while, so your workout from ${when} was closed for you.`
-        : `Nothing was ticked for a while, so your workout from ${when} was closed at your last set, ${at}.`,
+    title: words.title,
+    reason: at === null ? words.closed(when) : words.closedAt(when, at),
     // Never empty: a workout with nothing in it is never closed this way.
-    detail: parts.length === 0 ? 'Everything you logged is saved.' : `Saved: ${parts.join(' · ')}.`,
+    detail: parts.length === 0 ? words.allSaved : words.saved(parts.join(' · ')),
   };
 }
 

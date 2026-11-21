@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { publishedAchievements } from '@g7m/core';
@@ -33,8 +34,8 @@ export function FriendAchievementsScreen() {
 
   return (
     <AchievementsPage
-      title={`${name}’s achievements`}
-      subtitle={`Milestones from ${name}’s training.`}
+      title={t().history.achievements.friendTitle(name)}
+      subtitle={t().history.achievements.friendSubtitle(name)}
       back={{ to: `/friends/${friendId}`, label: name }}
       list={list}
       loading={online && profile.loading}
@@ -43,12 +44,12 @@ export function FriendAchievementsScreen() {
       spotlight={null}
       notice={
         !online
-          ? 'Friends need a connection. This will fill in when you’re back online.'
+          ? t().history.achievements.friendOffline
           : profile.data === null
-            ? 'Not sharing their training right now, or no longer on your friends list.'
-            : `${name}’s achievements show up here once they next open the app.`
+            ? t().history.achievements.friendNotSharing
+            : t().history.achievements.friendLater(name)
       }
-      footer={`As ${name}’s phone worked them out, the last time they opened the app.`}
+      footer={t().history.achievements.friendFooter(name)}
     />
   );
 }

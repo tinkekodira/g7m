@@ -1,3 +1,4 @@
+import { formatDate, formatNumber, t } from '@g7m/i18n';
 import { Link } from 'react-router';
 import {
   boutCalories,
@@ -122,23 +123,29 @@ export function SessionBody({
       {showSummary && (
         <section className="rounded-card bg-surface p-4">
           <div className="flex flex-wrap gap-x-6 gap-y-2">
-            <Stat label="Date" value={startedAt.toLocaleDateString()} />
-            {minutes !== null && <Stat label="Duration" value={`${String(minutes)} min`} />}
+            <Stat label={t().history.body.date} value={formatDate(startedAt)} />
+            {minutes !== null && (
+              <Stat label={t().history.body.duration} value={t().history.body.minutes(minutes)} />
+            )}
             {/* Drops folded into their sets: a set with two drops is one set,
               as it is on the leaderboard (ADR-0112). */}
-            {hasLifts && <Stat label="Sets" value={String(countSets(allSets))} />}
+            {hasLifts && <Stat label={t().history.body.sets} value={String(countSets(allSets))} />}
             {hasLifts && (
-              <Stat label="Volume" value={formatWeightTotal(volume.volumeKg, unitSystem)} />
+              <Stat
+                label={t().history.body.volume}
+                value={formatWeightTotal(volume.volumeKg, unitSystem)}
+              />
             )}
-            {cardioSeconds > 0 && <Stat label="Cardio" value={formatDuration(cardioSeconds)} />}
+            {cardioSeconds > 0 && (
+              <Stat label={t().history.body.cardio} value={formatDuration(cardioSeconds)} />
+            )}
             {cardioKcal > 0 && (
-              <Stat label="Calories" value={`${cardioKcal.toLocaleString('en-GB')} kcal`} />
+              <Stat label={t().history.body.calories} value={`${formatNumber(cardioKcal)} kcal`} />
             )}
           </div>
           {explainUnmeasured && volume.unknownSets > 0 && (
             <p className="mt-3 text-xs text-muted">
-              {volume.unknownSets === 1 ? 'One set is' : `${String(volume.unknownSets)} sets are`}{' '}
-              not counted — no bodyweight was recorded for this workout, so they cannot be measured.
+              {t().history.body.uncounted(volume.unknownSets)}
             </p>
           )}
         </section>
@@ -157,11 +164,11 @@ export function SessionBody({
           // One frame, so a superset reads as the one thing it was.
           <section
             key={unit.supersetId}
-            aria-label="Superset"
+            aria-label={t().history.body.superset}
             className="flex flex-col gap-3 rounded-card border-l-4 border-subtle pl-2"
           >
             <p className="px-2 text-xs font-semibold tracking-wide text-accent uppercase">
-              Superset
+              {t().history.body.superset}
             </p>
             {unit.members.map((block) => (
               <ExerciseSection
@@ -196,7 +203,7 @@ function ExerciseSection({
     <section className="rounded-card bg-surface p-4">
       <h2 className="mb-3 text-lg font-semibold text-primary">
         {block.exercise === null ? (
-          'Unknown exercise'
+          t().history.body.unknownExercise
         ) : (
           <Link
             to={linkTo(block.entry.exerciseId, block.exercise)}
@@ -215,7 +222,7 @@ function ExerciseSection({
           bodyweightKg={bodyweightKg}
         />
       ) : block.sets.length === 0 ? (
-        <p className="text-sm text-muted">No sets logged.</p>
+        <p className="text-sm text-muted">{t().history.body.noSets}</p>
       ) : (
         <ul className="flex flex-col">
           {/* Numbered the way the logger numbers them, warm-ups apart, so
@@ -236,15 +243,17 @@ function ExerciseSection({
                   {/* A set that was written down and never done is part of
                         the record of what happened, and hiding it would make
                         the list disagree with the totals above. */}
-                  {!set.isCompleted && <span className="text-muted"> · skipped</span>}
+                  {!set.isCompleted && (
+                    <span className="text-muted">{t().history.body.skipped}</span>
+                  )}
                 </span>
                 <span className="numeric text-sm text-primary">
                   {set.loadType === 'bodyweight'
-                    ? 'Bodyweight'
-                    : `${String(toDisplayWeight(set.weightKg, unitSystem).value)} ${unit}`}
+                    ? t().history.body.bodyweight
+                    : `${formatNumber(toDisplayWeight(set.weightKg, unitSystem).value)} ${unit}`}
                   {' × '}
                   {set.reps}
-                  {block.exercise?.isTimeBased === true ? ' sec' : ''}
+                  {block.exercise?.isTimeBased === true ? t().history.body.seconds : ''}
                 </span>
               </li>
             );
@@ -267,7 +276,7 @@ function BoutList({
   readonly unitSystem: UnitSystem;
   readonly bodyweightKg: number | null;
 }) {
-  if (sets.length === 0) return <p className="text-sm text-muted">No bouts logged.</p>;
+  if (sets.length === 0) return <p className="text-sm text-muted">{t().history.body.noBouts}</p>;
   return (
     <ul className="flex flex-col">
       {sets.map((set, index) => (
@@ -276,8 +285,8 @@ function BoutList({
           className="flex items-baseline justify-between gap-3 border-b border-subtle py-2 last:border-b-0"
         >
           <span className="shrink-0 text-sm text-secondary">
-            Bout {String(index + 1)}
-            {!set.isCompleted && <span className="text-muted"> · skipped</span>}
+            {t().history.body.bout(index + 1)}
+            {!set.isCompleted && <span className="text-muted">{t().history.body.skipped}</span>}
           </span>
           <span className="numeric text-right text-sm text-primary">
             {boutSummary(kind, set.bout, unitSystem, bodyweightKg)}

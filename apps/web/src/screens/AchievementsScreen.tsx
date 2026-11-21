@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import {
@@ -42,15 +43,15 @@ export function AchievementsScreen() {
 
   return (
     <AchievementsPage
-      title="Achievements"
-      subtitle="Milestones from your training."
-      back={{ to: '/profile', label: 'Profile' }}
+      title={t().history.achievements.title}
+      subtitle={t().history.achievements.subtitle}
+      back={{ to: '/profile', label: t().history.achievements.profile }}
       list={state.data?.list ?? null}
       loading={state.loading}
       error={state.error}
       unitSystem={state.data?.unitSystem ?? 'metric'}
       spotlight={params.get('badge')}
-      footer="Worked out from your training log, so past workouts count and a deleted set takes its badge with it."
+      footer={t().history.achievements.footer}
     />
   );
 }
@@ -109,7 +110,7 @@ export function AchievementsPage({
       {error !== null && <p className="text-sm text-destructive">{error}</p>}
       {list === null ? (
         loading ? (
-          <p className="text-sm text-muted">Loading…</p>
+          <p className="text-sm text-muted">{t().common.loading}</p>
         ) : (
           notice !== null && (
             <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
@@ -154,9 +155,11 @@ function Overview({ list, now }: { readonly list: readonly Achievement[]; readon
         <p className="text-sm text-secondary">
           <span className="numeric text-3xl font-bold text-primary">{earned}</span>
           <span className="numeric text-lg text-muted"> / {total}</span>
-          <span className="sr-only"> achievements earned</span>
+          <span className="sr-only">{t().history.achievements.earnedSr}</span>
         </p>
-        <p className="text-xs text-muted">{earned === 0 ? 'None yet' : 'earned'}</p>
+        <p className="text-xs text-muted">
+          {earned === 0 ? t().history.achievements.noneYet : t().history.achievements.earned}
+        </p>
       </div>
       <Bar fraction={total === 0 ? 0 : earned / total} fill="bg-accent" className="mt-3 h-2" />
       {latest !== null && latestAt !== null && (
@@ -172,8 +175,9 @@ function Overview({ list, now }: { readonly list: readonly Achievement[]; readon
             ))}
           </div>
           <p className="min-w-0 text-xs text-muted">
-            Latest: <span className="font-semibold text-primary">{latest.name}</span>, earned{' '}
-            {shortDate(latestAt, now)}
+            {t().history.achievements.latest}
+            <span className="font-semibold text-primary">{latest.name}</span>
+            {t().history.achievements.earnedOn(shortDate(latestAt, now))}
           </p>
         </div>
       )}
@@ -241,8 +245,8 @@ function Badge({
 }) {
   const earned = achievement.earnedAt !== null;
   const hidden = achievement.secret && !earned;
-  const name = hidden ? 'Secret achievement' : achievement.name;
-  const description = hidden ? 'Keep training. It will find you.' : achievement.description;
+  const name = hidden ? t().history.achievements.secret : achievement.name;
+  const description = hidden ? t().history.achievements.secretHint : achievement.description;
 
   return (
     <li
@@ -312,7 +316,7 @@ function Status({
       </p>
     );
   }
-  return <p className="text-[11px] text-muted">Not yet</p>;
+  return <p className="text-[11px] text-muted">{t().history.achievements.notYet}</p>;
 }
 
 function Bar({

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
@@ -73,7 +74,7 @@ export function FriendScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-center justify-between gap-3 pt-6">
-        <HeaderLink to="/friends">Friends</HeaderLink>
+        <HeaderLink to="/friends">{t().friends.title}</HeaderLink>
         <FriendMenu friendId={friendId} name={name} disabled={!online} />
       </header>
 
@@ -84,13 +85,11 @@ export function FriendScreen() {
           {detail.error}
         </p>
       ) : detail.loading || mine.data === null ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : detail.data === null ? (
         <section className="rounded-sheet border border-subtle bg-surface p-5">
           <h1 className="text-xl font-semibold text-primary">{name}</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Not sharing their training right now, or no longer on your friends list.
-          </p>
+          <p className="mt-1 text-sm text-secondary">{t().friends.page.notSharing}</p>
         </section>
       ) : (
         <FriendPage
@@ -192,16 +191,14 @@ function FriendPage({
         className="rounded-sheet border border-subtle bg-surface p-5"
       >
         <h2 id="head-to-head" className="text-lg font-semibold text-primary">
-          Head-to-head
+          {t().friends.page.headToHead}
         </h2>
         {versus.comparison === null ? (
-          <p className="mt-1 text-sm text-secondary">
-            Nothing to compare yet. Once you’ve both logged the same lift, it shows up here.
-          </p>
+          <p className="mt-1 text-sm text-secondary">{t().friends.page.nothingToCompare}</p>
         ) : (
           <>
             <label className="mt-3 block">
-              <span className="text-sm text-secondary">Exercise</span>
+              <span className="text-sm text-secondary">{t().friends.page.exercise}</span>
               <select
                 value={versus.selectedId ?? ''}
                 onChange={(event) => {
@@ -218,7 +215,7 @@ function FriendPage({
             </label>
             <dl className="mt-4 flex flex-col gap-3">
               <Bar
-                label="You"
+                label={t().friends.you}
                 value={versus.comparison.mine}
                 share={versus.comparison.mineShare}
                 highlight={versus.comparison.standing === 'ahead'}
@@ -237,11 +234,11 @@ function FriendPage({
 
       <section aria-labelledby="recent">
         <h2 id="recent" className="mb-3 text-lg font-semibold text-primary">
-          Recent workouts
+          {t().friends.page.recent}
         </h2>
         {recent.length === 0 ? (
           <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
-            No finished workouts yet.
+            {t().friends.page.noRecent}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -314,32 +311,32 @@ function ProfileCards({
         list={achievements}
         line={
           profile === null
-            ? 'Loading…'
+            ? t().common.loading
             : published === null
-              ? `Shows up once ${name} next opens the app`
+              ? t().friends.page.achievementsPending(name)
               : earned === 0
-                ? 'None earned yet'
-                : `${String(earned)} of ${String(total)} earned`
+                ? t().friends.page.noneEarned
+                : t().friends.page.earnedOf(earned, total)
         }
       />
 
       <FriendRoutines friendId={friendId} profile={profile} names={mine.names} />
 
       <TrainingBodyCard
-        title={`${name}’s training`}
-        subtitle={`The last ${String(HEATMAP_WEEKS)} weeks, on their body.`}
+        title={t().friends.page.training(name)}
+        subtitle={t().friends.page.lastWeeks(HEATMAP_WEEKS)}
         body={profile === null ? null : bodyFor(profile.sex)}
         heat={heat}
         heatLoading={loading}
-        loadingText="Loading…"
-        emptyText={`Nothing logged in the last ${String(HEATMAP_WEEKS)} weeks.`}
+        loadingText={t().common.loading}
+        emptyText={t().friends.page.nothingLogged(HEATMAP_WEEKS)}
       />
 
       <BestLiftsCard
         lifts={bests}
         loading={loading}
         unitSystem={mine.unitSystem}
-        description={`The heaviest ${name} has moved on each exercise. Bodyweight exercises are left out: their bodyweight stays private.`}
+        description={t().friends.page.bestsDescription(name)}
         linkTo={(lift) => {
           const slug = mine.slugs.get(lift.exerciseId);
           return slug === undefined ? `/friends/${friendId}` : `/exercises/${slug}`;
@@ -376,7 +373,7 @@ function FriendRoutines({
           <ClipboardIcon className="size-5" />
         </span>
         <h2 id="friend-routines" className="flex-1 text-base font-medium text-primary">
-          Routines
+          {t().friends.page.routines}
         </h2>
         {routines.length > 0 && (
           <span className="numeric shrink-0 text-sm text-secondary">{routines.length}</span>
@@ -384,9 +381,9 @@ function FriendRoutines({
       </div>
 
       {profile === null ? (
-        <p className="mt-3 text-sm text-muted">Loading…</p>
+        <p className="mt-3 text-sm text-muted">{t().common.loading}</p>
       ) : routines.length === 0 ? (
-        <p className="mt-3 text-sm text-secondary">No routines saved yet.</p>
+        <p className="mt-3 text-sm text-secondary">{t().friends.page.noRoutines}</p>
       ) : (
         <ul className="mt-2 flex flex-col">
           {shown.map((routine) => (
@@ -418,7 +415,7 @@ function FriendRoutines({
           }}
           className="mt-2 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated"
         >
-          {all ? 'Show fewer' : `Show all ${String(routines.length)}`}
+          {all ? t().friends.page.showFewer : t().friends.page.showAll(routines.length)}
         </button>
       )}
     </section>
@@ -474,7 +471,7 @@ function FriendMenu({
 
   const remove = () => {
     setOpen(false);
-    if (!globalThis.confirm(`Remove ${name} from your friends? They won’t be told.`)) return;
+    if (!globalThis.confirm(t().friends.page.confirmRemove(name))) return;
     setBusy(true);
     removeFriend(friendId).then(
       () => {
@@ -482,7 +479,7 @@ function FriendMenu({
       },
       (cause: unknown) => {
         setBusy(false);
-        setFailure(cause instanceof FriendsError ? cause.message : 'That did not go through.');
+        setFailure(cause instanceof FriendsError ? cause.message : t().friends.didNotGoThrough);
       },
     );
   };
@@ -491,7 +488,7 @@ function FriendMenu({
     <div className="relative">
       <button
         type="button"
-        aria-label="More options"
+        aria-label={t().friends.page.moreOptions}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled || busy}
@@ -513,7 +510,7 @@ function FriendMenu({
             onClick={remove}
             className="flex min-h-tap w-full items-center rounded-control px-3 text-left text-base text-destructive active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
           >
-            Remove friend
+            {t().friends.page.remove}
           </button>
         </div>
       )}

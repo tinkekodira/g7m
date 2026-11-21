@@ -10,6 +10,7 @@
  * which is the equipment picker in Phase 4 — writing them now would be
  * guessing at an interface.
  */
+import { equipmentName, intlLocale } from '@g7m/i18n';
 import type { QueryableDatabase } from './database.js';
 import { readEnum, readString, type RawRow } from './rows.js';
 
@@ -41,7 +42,7 @@ function toEquipment(row: RawRow): Equipment {
   return {
     id: readString(row, 'id', ''),
     slug: readString(row, 'slug', ''),
-    name: readString(row, 'name', ''),
+    name: equipmentName(readString(row, 'slug', '')) ?? readString(row, 'name', ''),
     category: readEnum(row, 'category', EQUIPMENT_CATEGORIES, 'other'),
   };
 }
@@ -54,7 +55,10 @@ export class EquipmentRepository {
   /** Everything the catalogue knows about, alphabetically. */
   async list(): Promise<Equipment[]> {
     const rows = await this.db.getAll<RawRow>(`SELECT * FROM equipment ${LIST_ORDER}`);
-    return rows.map(toEquipment);
+    // Sorted again by the name as shown: SQL only has the English one.
+    return rows
+      .map(toEquipment)
+      .sort((a, b) => a.name.localeCompare(b.name, intlLocale(), { sensitivity: 'base' }));
   }
 
   async byId(id: string): Promise<Equipment | null> {

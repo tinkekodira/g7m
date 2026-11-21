@@ -13,6 +13,7 @@
  * remembers doing it in. Nobody would report that; they would just find the
  * chart slightly wrong and stop trusting it.
  */
+import { formatDate, t } from '@g7m/i18n';
 
 /** 0 = Sunday, 1 = Monday, matching `Date.getDay()` and `profiles.week_starts_on`. */
 export type WeekStart = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -113,9 +114,10 @@ export function daysBetween(from: Date, to: Date): number {
  */
 export function describeWhen(date: Date, now: Date): string {
   const days = daysBetween(date, now);
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${String(days)} days ago`;
-  if (days < 14) return 'Last week';
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const words = t().core.when;
+  if (days <= 0) return words.today;
+  if (days === 1) return words.yesterday;
+  if (days < 7) return words.daysAgo(days);
+  if (days < 14) return words.lastWeek;
+  return formatDate(date, { day: 'numeric', month: 'short', year: 'numeric' });
 }

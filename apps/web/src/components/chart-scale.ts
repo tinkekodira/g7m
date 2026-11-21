@@ -7,6 +7,7 @@
  * What that costs is exactly this: the scaling nobody writes tests for and
  * everybody gets subtly wrong.
  */
+import { formatNumber } from '@g7m/i18n';
 import { kgToLb, type UnitSystem } from '@g7m/core';
 
 /**
@@ -197,7 +198,7 @@ export function smoothPath(points: readonly Point[]): string {
  */
 export function formatVolume(kg: number): string {
   if (!Number.isFinite(kg) || kg <= 0) return '0';
-  if (kg >= 1000) return `${(kg / 1000).toFixed(kg >= 10_000 ? 0 : 1)}t`;
+  if (kg >= 1000) return `${fixed(kg / 1000, kg >= 10_000 ? 0 : 1)}t`;
   return String(Math.round(kg));
 }
 
@@ -211,7 +212,7 @@ export function formatVolumeShort(kg: number, unitSystem: UnitSystem): string {
   if (unitSystem === 'metric') return formatVolume(kg);
   const lb = Number.isFinite(kg) ? kgToLb(kg) : 0;
   if (lb <= 0) return '0';
-  if (lb >= 1000) return `${(lb / 1000).toFixed(lb >= 10_000 ? 0 : 1)}k`;
+  if (lb >= 1000) return `${fixed(lb / 1000, lb >= 10_000 ? 0 : 1)}k`;
   return String(Math.round(lb));
 }
 
@@ -227,12 +228,12 @@ export function formatWeightTotal(kg: number, unitSystem: UnitSystem): string {
 
   if (unitSystem === 'imperial') {
     const lb = kgToLb(usable);
-    if (lb < 10_000) return `${Math.round(lb).toLocaleString('en')} lb`;
-    return `${(lb / 1000).toFixed(lb >= 100_000 ? 0 : 1)}k lb`;
+    if (lb < 10_000) return `${formatNumber(Math.round(lb))} lb`;
+    return `${fixed(lb / 1000, lb >= 100_000 ? 0 : 1)}k lb`;
   }
 
   if (usable < 1000) return `${String(Math.round(usable))} kg`;
-  return `${(usable / 1000).toFixed(usable >= 10_000 ? 0 : 1)} t`;
+  return `${fixed(usable / 1000, usable >= 10_000 ? 0 : 1)} t`;
 }
 
 /**
@@ -245,7 +246,16 @@ export function formatWeightTotal(kg: number, unitSystem: UnitSystem): string {
 export function formatWeightExact(kg: number, unitSystem: UnitSystem): string {
   const usable = Number.isFinite(kg) && kg > 0 ? kg : 0;
   const value = unitSystem === 'imperial' ? kgToLb(usable) : usable;
-  return `${Math.round(value).toLocaleString('en')} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
+  return `${formatNumber(Math.round(value))} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
+}
+
+/** `toFixed`, with the decimal mark of the language speaking: "2.5" or "2,5". */
+function fixed(value: number, digits: number): string {
+  return formatNumber(value, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+    useGrouping: false,
+  });
 }
 
 function round1(value: number): number {

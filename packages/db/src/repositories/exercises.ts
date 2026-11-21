@@ -10,6 +10,7 @@
  * app that falls back to the network for its own catalogue is one that stops
  * working exactly where it is needed.
  */
+import { equipmentName, exerciseText, muscleName } from '@g7m/i18n';
 import {
   isCardioKind,
   searchExercises,
@@ -46,6 +47,8 @@ export interface Exercise extends SearchableExercise {
   readonly slug: string;
   readonly name: string;
   readonly aliases: readonly string[];
+  /** What search matches besides the name; see `SearchableExercise`. */
+  readonly searchAliases?: readonly string[];
   readonly mechanic: Mechanic;
   readonly force: Force;
   readonly jointCount: number;
@@ -107,21 +110,34 @@ export interface ExerciseEquipment {
   readonly isPrimary: boolean;
 }
 
+/**
+ * A catalogue row in the language speaking now (ADR-0181).
+ *
+ * Postgres holds the catalogue in English; the other languages ship with the
+ * app, keyed by slug, and are laid over each row here as it is read. Every
+ * screen that shows an exercise reads it through this function or one of the
+ * small lookups below, so none of them has to know a translation exists.
+ */
 function toExercise(row: RawRow): Exercise {
+  const slug = readString(row, 'slug', '');
+  const english = readString(row, 'name', '');
+  const aliases = readStringArray(row, 'aliases');
+  const local = exerciseText(slug);
   return {
     id: readString(row, 'id', ''),
-    slug: readString(row, 'slug', ''),
-    name: readString(row, 'name', ''),
-    aliases: readStringArray(row, 'aliases'),
+    slug,
+    name: local?.name ?? english,
+    aliases: local?.aliases ?? aliases,
+    searchAliases: local === undefined ? aliases : [...local.aliases, english, ...aliases],
     mechanic: readEnum(row, 'mechanic', MECHANICS, 'compound'),
     force: readEnum(row, 'force', FORCES, 'push'),
     jointCount: readNumber(row, 'joint_count', 1),
     difficulty: readEnum(row, 'difficulty', DIFFICULTIES, 'beginner'),
     isUnilateral: readBoolean(row, 'is_unilateral'),
     isTimeBased: readBoolean(row, 'is_time_based'),
-    instructions: readStringArray(row, 'instructions'),
-    cues: readStringArray(row, 'cues'),
-    commonMistakes: readStringArray(row, 'common_mistakes'),
+    instructions: local?.instructions ?? readStringArray(row, 'instructions'),
+    cues: local?.cues ?? readStringArray(row, 'cues'),
+    commonMistakes: local?.commonMistakes ?? readStringArray(row, 'common_mistakes'),
     defaultRepLow: readNumber(row, 'default_rep_low', 8),
     defaultRepHigh: readNumber(row, 'default_rep_high', 12),
     defaultRestSeconds: readOptionalNumber(row, 'default_rest_seconds'),
@@ -406,7 +422,7 @@ export class ExerciseRepository {
   /** One local read for the whole list, independent of the active filters. */
   async primaryMuscles(): Promise<ReadonlyMap<string, PrimaryMuscle>> {
     const rows = await this.db.getAll<RawRow>(
-      `SELECT em.exercise_id, m.common_name, mg.slug AS group_slug
+      `SELECT em.exercise_id, m.slug AS muscle_slug, m.common_name, mg.slug AS group_slug
          FROM exercise_muscles em
          JOIN muscles m ON m.id = em.muscle_id
          LEFT JOIN muscle_groups mg ON mg.id = m.muscle_group_id
@@ -420,7 +436,8 @@ export class ExerciseRepository {
       // row seen for an exercise is the one to keep.
       if (id !== '' && !muscles.has(id)) {
         muscles.set(id, {
-          name: readString(row, 'common_name', ''),
+          name:
+            muscleName(readString(row, 'muscle_slug', '')) ?? readString(row, 'common_name', ''),
           groupSlug: readOptionalString(row, 'group_slug'),
         });
       }
@@ -566,7 +583,7 @@ export class ExerciseRepository {
     return rows.map((row) => ({
       equipmentId: readString(row, 'equipment_id', ''),
       slug: readString(row, 'slug', ''),
-      name: readString(row, 'name', ''),
+      name: equipmentName(readString(row, 'slug', '')) ?? readString(row, 'name', ''),
       category: readString(row, 'category', 'other'),
       isPrimary: readBoolean(row, 'is_primary'),
     }));

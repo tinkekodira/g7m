@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
@@ -18,10 +19,10 @@ import { YourCode } from '../components/FriendParts.js';
 import { fetchLeaderboard } from '../lib/friends/api.js';
 import { useMyBoard, useRemote, type MySide } from '../lib/friends/use-friends-data.js';
 import {
-  PERIOD_OPTIONS,
-  RANKING_OPTIONS,
-  STAT_OPTIONS,
   boardSummary,
+  periodOptions,
+  rankingOptions,
+  statOptions,
   leaderboard,
   type BoardRowView,
 } from './leaderboard-view.js';
@@ -92,15 +93,15 @@ export function FriendsLeaderboard({
   const error = friends.error ?? myBoard.error;
 
   return (
-    <section aria-label="Leaderboard" className="flex flex-col gap-4">
+    <section aria-label={t().friends.board.label} className="flex flex-col gap-4">
       <BoardFilters
         summary={boardSummary(ranking, stat, period)}
         left={view !== null && !view.alone ? view.left : null}
       >
         <SegmentedControl
           variant="quiet"
-          label="Rank by"
-          options={RANKING_OPTIONS}
+          label={t().friends.board.rankBy}
+          options={rankingOptions()}
           value={ranking}
           onChange={(value) => {
             choose('rank', value);
@@ -108,8 +109,8 @@ export function FriendsLeaderboard({
         />
         <SegmentedControl
           variant="quiet"
-          label="Stat"
-          options={STAT_OPTIONS}
+          label={t().friends.board.stat}
+          options={statOptions()}
           value={stat}
           onChange={(value) => {
             choose('stat', value);
@@ -117,8 +118,8 @@ export function FriendsLeaderboard({
         />
         <SegmentedControl
           variant="quiet"
-          label="Period"
-          options={PERIOD_OPTIONS}
+          label={t().friends.board.period}
+          options={periodOptions()}
           value={period}
           onChange={(value) => {
             choose('period', value);
@@ -136,10 +137,8 @@ export function FriendsLeaderboard({
         error === null && <FriendsSkeleton tab="leaderboard" />
       ) : view.alone ? (
         <div className="rounded-sheet border border-subtle bg-surface p-4">
-          <h2 className="text-lg font-semibold text-primary">Nobody to race yet</h2>
-          <p className="mt-1 text-sm text-secondary">
-            Once a friend adds you, you’ll see who trained most this week and this month.
-          </p>
+          <h2 className="text-lg font-semibold text-primary">{t().friends.board.nobody}</h2>
+          <p className="mt-1 text-sm text-secondary">{t().friends.board.nobodyBody}</p>
           {code !== null && (
             <div className="mt-4 border-t border-subtle/70 pt-4">
               <YourCode code={code} />
@@ -199,7 +198,9 @@ function BoardFilters({
           <span className="block text-base font-medium text-primary">{summary}</span>
           {left !== null && <span className="mt-0.5 block text-sm text-muted">{left}</span>}
         </span>
-        <span className="shrink-0 text-sm font-medium text-accent">{open ? 'Done' : 'Change'}</span>
+        <span className="shrink-0 text-sm font-medium text-accent">
+          {open ? t().friends.board.done : t().friends.board.change}
+        </span>
       </button>
       {open && (
         <div id={panel} className="flex flex-col gap-2 px-4 pb-4">

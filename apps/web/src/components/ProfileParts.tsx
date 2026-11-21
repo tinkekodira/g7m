@@ -1,3 +1,4 @@
+import { formatDate, t } from '@g7m/i18n';
 import { Suspense, lazy, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { heatRampFor, placeholderBodyParts } from '@g7m/anatomy';
@@ -46,8 +47,18 @@ const PODIUM = 3;
 const ignore = (): void => undefined;
 
 const VIEWS = [
-  { view: 'front', label: 'Front' },
-  { view: 'back', label: 'Back' },
+  {
+    view: 'front',
+    get label() {
+      return t().profile.views.front;
+    },
+  },
+  {
+    view: 'back',
+    get label() {
+      return t().profile.views.back;
+    },
+  },
 ] as const;
 
 /**
@@ -78,7 +89,7 @@ export function AchievementsCard({
         <TrophyIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-medium text-primary">Achievements</span>
+        <span className="block text-base font-medium text-primary">{t().profile.achievements}</span>
         <span className="block truncate text-xs text-muted">{line}</span>
       </span>
       {recent.length > 0 && (
@@ -189,7 +200,7 @@ export function TrainingBodyCard({
       <div className="flex flex-col gap-4 p-4">
         {/* The key, in the colours the body is actually painted with. */}
         <div className="flex items-center gap-2 text-xs text-muted">
-          <span>Less</span>
+          <span>{t().profile.less}</span>
           <span
             aria-hidden
             className="h-2 flex-1 rounded-full"
@@ -197,7 +208,7 @@ export function TrainingBodyCard({
               background: `linear-gradient(to right, ${heatRampFor(sculpted.parts !== null).join(', ')})`,
             }}
           />
-          <span>More</span>
+          <span>{t().profile.more}</span>
         </div>
 
         {heatLoading && heat === null ? (
@@ -207,7 +218,7 @@ export function TrainingBodyCard({
         ) : (
           heat.top.length > 0 && (
             <div>
-              <h3 className={cx('mb-2', EYEBROW)}>Trained most</h3>
+              <h3 className={cx('mb-2', EYEBROW)}>{t().profile.trainedMost}</h3>
               <ul className="flex flex-wrap gap-2">
                 {heat.top.map((muscle) => (
                   <li
@@ -259,8 +270,8 @@ export function BestLiftsCard({
   return (
     <Panel
       tone="hero"
-      eyebrow="Personal records"
-      title="Best lifts"
+      eyebrow={t().profile.personalRecords}
+      title={t().profile.bestLifts}
       aside={
         lifts !== null &&
         lifts.length > 0 && (
@@ -268,9 +279,7 @@ export function BestLiftsCard({
             <span className="numeric block text-2xl leading-7 font-bold text-primary">
               {lifts.length}
             </span>
-            <span className="block text-xs text-muted">
-              {lifts.length === 1 ? 'exercise' : 'exercises'}
-            </span>
+            <span className="block text-xs text-muted">{t().profile.exercises(lifts.length)}</span>
           </>
         )
       }
@@ -280,7 +289,7 @@ export function BestLiftsCard({
       <p className="mt-1 mb-2 text-xs text-muted">{description}</p>
 
       {loading && lifts === null ? (
-        <LoadingRegion label="Loading best lifts…">
+        <LoadingRegion label={t().profile.loadingBests}>
           <div className="divide-y divide-subtle">
             {[0, 1, 2].map((index) => (
               <div key={index} className="py-3">
@@ -290,7 +299,7 @@ export function BestLiftsCard({
           </div>
         </LoadingRegion>
       ) : shown.length === 0 ? (
-        <p className="text-sm text-muted">Nothing measurable yet.</p>
+        <p className="text-sm text-muted">{t().profile.nothingMeasurable}</p>
       ) : (
         <ul className="flex flex-col">
           {shown.map((lift, index) => {
@@ -314,7 +323,7 @@ export function BestLiftsCard({
                       {lift.name}
                     </span>
                     <span className="block text-xs text-muted">
-                      {lift.achievedAt.toLocaleDateString(undefined, {
+                      {formatDate(lift.achievedAt, {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric',
@@ -373,7 +382,7 @@ export function BestLiftsCard({
           }}
           className="mt-4 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated"
         >
-          {all ? 'Show fewer' : `Show all ${String(lifts.length)}`}
+          {all ? t().profile.showFewer : t().profile.showAll(lifts.length)}
         </button>
       )}
     </Panel>

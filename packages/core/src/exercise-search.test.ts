@@ -215,3 +215,24 @@ describe('spelling mistakes', () => {
     expect(searchTierFor(rdl, 'stif')).toBe('word-prefix');
   });
 });
+
+describe('search in another language (ADR-0181)', () => {
+  const bench = {
+    name: 'Bankdrücken',
+    aliases: ['Bank'],
+    searchAliases: ['Bank', 'Barbell Bench Press', 'bench', 'bp'],
+    popularityRank: 1,
+  };
+
+  it('ignores accents the lifter did not type', () => {
+    expect(searchTierFor(bench, 'bankdrucken')).toBe('exact');
+    expect(searchTierFor({ name: 'Elevación lateral', popularityRank: 1 }, 'elevacion')).toBe(
+      'prefix',
+    );
+  });
+
+  it('still finds the lift by its English name', () => {
+    expect(searchTierFor(bench, 'bench')).toBe('prefix');
+    expect(searchTierFor(bench, 'barbell bench')).toBe('substring');
+  });
+});

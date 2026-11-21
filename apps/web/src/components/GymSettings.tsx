@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 import { MAX_GYM_NAME_LENGTH, type Gym } from '@g7m/db';
 import { Button, Switch, TextField } from '@g7m/ui';
@@ -54,13 +55,11 @@ export function GymSettings() {
   return (
     <>
       <Switch
-        label="I train at more than one gym"
+        label={t().settings.gymSettings.multiple}
         checked={shown}
         disabled={busy || gyms.data === null}
         description={
-          shown
-            ? 'Each workout is saved with the gym it was at.'
-            : 'Off: workouts are not tied to a gym.'
+          shown ? t().settings.gymSettings.multipleOn : t().settings.gymSettings.multipleOff
         }
         onChange={(next) => {
           if (next) turnOn();
@@ -69,9 +68,9 @@ export function GymSettings() {
       />
       {naming && !saved && (
         <NameForm
-          label="The gym you’ve trained at so far"
-          hint="Every workout you’ve already logged is saved as this gym."
-          action="Save gym"
+          label={t().settings.gymSettings.first}
+          hint={t().settings.gymSettings.firstHint}
+          action={t().settings.gymSettings.saveGym}
           busy={busy}
           onSave={async (name) => {
             const done = await write(async (r) => {
@@ -86,19 +85,15 @@ export function GymSettings() {
       )}
       {saved && gyms.data !== null && (
         <div className="mt-4 border-t border-subtle pt-4">
-          <ul className="flex flex-col gap-2" aria-label="Your gyms">
+          <ul className="flex flex-col gap-2" aria-label={t().settings.gymSettings.yours}>
             {gyms.data.gyms.map((gym) => (
               <GymRow key={gym.id} gym={gym} busy={busy} write={write} />
             ))}
           </ul>
           <NameForm
-            label="Add a gym"
-            hint={
-              gyms.data.gyms.length < 2
-                ? 'Add the other gym you go to. Starting a workout then asks which one.'
-                : undefined
-            }
-            action="Add gym"
+            label={t().settings.gymSettings.add}
+            hint={gyms.data.gyms.length < 2 ? t().settings.gymSettings.addHint : undefined}
+            action={t().settings.gymSettings.addAction}
             busy={busy}
             clearOnSave
             onSave={async (name) => (await write((r) => r.gyms.create(name))) !== null}
@@ -129,9 +124,9 @@ function GymRow({
     return (
       <li>
         <NameForm
-          label={`Rename ${gym.name}`}
+          label={t().settings.gymSettings.rename(gym.name)}
           initial={gym.name}
-          action="Save"
+          action={t().common.save}
           busy={busy}
           onCancel={() => {
             setRenaming(false);
@@ -157,7 +152,7 @@ function GymRow({
       </span>
       <button
         type="button"
-        aria-label={`Rename ${gym.name}`}
+        aria-label={t().settings.gymSettings.rename(gym.name)}
         disabled={busy}
         onClick={() => {
           setRenaming(true);
@@ -168,15 +163,10 @@ function GymRow({
       </button>
       <button
         type="button"
-        aria-label={`Remove ${gym.name}`}
+        aria-label={t().settings.gymSettings.remove(gym.name)}
         disabled={busy}
         onClick={() => {
-          if (
-            !globalThis.confirm(
-              `Remove ${gym.name}? Workouts you did there keep its name, and it stops being offered when you start one.`,
-            )
-          )
-            return;
+          if (!globalThis.confirm(t().settings.gymSettings.confirmRemove(gym.name))) return;
           void write(async (r) => {
             await r.gyms.archive(gym.id);
             return true;
@@ -217,7 +207,7 @@ function NameForm({
   async function submit(event: FormEvent): Promise<void> {
     event.preventDefault();
     if ([...trimmed].length > MAX_GYM_NAME_LENGTH) {
-      setProblem(`Keep the name to ${String(MAX_GYM_NAME_LENGTH)} characters.`);
+      setProblem(t().settings.gymSettings.tooLong(MAX_GYM_NAME_LENGTH));
       return;
     }
     if ((await onSave(trimmed)) && clearOnSave) setDraft('');

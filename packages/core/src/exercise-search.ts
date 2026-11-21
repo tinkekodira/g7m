@@ -39,6 +39,13 @@ export type SearchTier = (typeof SEARCH_TIERS)[number];
 export interface SearchableExercise {
   readonly name: string;
   readonly aliases?: readonly string[];
+  /**
+   * Every other name a search should find it by, in place of `aliases` when
+   * given. In a language other than English this is the translated aliases
+   * plus the English name and aliases, so a German lifter who learned the
+   * lifts as "bench press" still finds them. ADR-0181.
+   */
+  readonly searchAliases?: readonly string[];
   /** Lower is more popular. Used to break ties within a tier. */
   readonly popularityRank: number;
 }
@@ -50,7 +57,16 @@ export interface SearchMatch<T> {
 
 /** Normalised the same way on both sides of the network. */
 function normalise(value: string): string {
-  return value.trim().toLowerCase();
+  return fold(value.trim().toLowerCase());
+}
+
+/**
+ * Accents dropped, so "bankdrucken" finds Bankdrücken and "elevacion" finds
+ * Elevación. Nobody types the accent on a phone keyboard between sets, and
+ * nobody who did would be surprised to see a match without it. ADR-0181.
+ */
+function fold(value: string): string {
+  return value.normalize('NFD').replace(/\p{M}/gu, '');
 }
 
 /**
@@ -76,11 +92,12 @@ export function searchTierFor(exercise: SearchableExercise, query: string): Sear
   if (name === needle) return 'exact';
   if (name.startsWith(needle)) return 'prefix';
 
-  const haystack = exerciseSearchText(exercise.name, exercise.aliases ?? []);
+  const aliases = exercise.searchAliases ?? exercise.aliases ?? [];
+  const haystack = fold(exerciseSearchText(exercise.name, aliases));
 
   // An alias that matches exactly is as good as a name prefix: somebody typing
   // "bp" means bench press and does not want to see everything containing "bp".
-  for (const alias of exercise.aliases ?? []) {
+  for (const alias of aliases) {
     if (normalise(alias) === needle) return 'prefix';
   }
 

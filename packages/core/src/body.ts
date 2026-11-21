@@ -33,6 +33,7 @@
  * Calorie and macro estimates are also absent, and that is scope rather than
  * scepticism: g7m writes training plans, not diets.
  */
+import { live, t } from '@g7m/i18n';
 import { daysBetween } from './week.js';
 
 /**
@@ -46,13 +47,9 @@ import { daysBetween } from './week.js';
 export const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
 export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number];
 
-export const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
-  sedentary: 'Sedentary',
-  light: 'Lightly active',
-  moderate: 'Moderately active',
-  active: 'Active',
-  very_active: 'Very active',
-};
+export const ACTIVITY_LABELS: Readonly<Record<ActivityLevel, string>> = live(
+  () => t().core.activity,
+);
 
 /**
  * What each level means, in the terms somebody would use about their own week.
@@ -62,13 +59,9 @@ export const ACTIVITY_LABELS: Record<ActivityLevel, string> = {
  * a desk job is sedentary here, and that is not a criticism — their training
  * is already counted, by the session log.
  */
-export const ACTIVITY_DESCRIPTIONS: Record<ActivityLevel, string> = {
-  sedentary: 'Desk job, driving, little walking',
-  light: 'On your feet for part of the day',
-  moderate: 'Walking or standing most of the day',
-  active: 'Physical job, or a lot of walking',
-  very_active: 'Heavy manual work, or a second sport',
-};
+export const ACTIVITY_DESCRIPTIONS: Readonly<Record<ActivityLevel, string>> = live(
+  () => t().core.activityDescriptions,
+);
 
 /**
  * Biological sex, for the rates the app quotes back at somebody.
@@ -85,10 +78,7 @@ export const ACTIVITY_DESCRIPTIONS: Record<ActivityLevel, string> = {
 export const SEXES = ['male', 'female'] as const;
 export type Sex = (typeof SEXES)[number];
 
-export const SEX_LABELS: Record<Sex, string> = {
-  male: 'Male',
-  female: 'Female',
-};
+export const SEX_LABELS: Readonly<Record<Sex, string>> = live(() => t().core.sex);
 
 /**
  * Age from a birth year alone, which is all `profiles.birth_year` holds.

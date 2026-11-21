@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useState } from 'react';
 import { describeDot, type Presence, type WeekDot } from '@g7m/core';
 import { Button, TextField, cx } from '@g7m/ui';
@@ -31,11 +32,11 @@ export function PresenceLine({ presence }: { readonly presence: Presence }) {
  */
 export function WeekDots({ dots }: { readonly dots: readonly WeekDot[] }) {
   return (
-    <ol aria-label="This week" className="flex items-center justify-between gap-1">
+    <ol aria-label={t().friends.card.thisWeek} className="flex items-center justify-between gap-1">
       {dots.map((dot) => (
         <li
           key={dot.date.toISOString()}
-          aria-label={`${describeDot(dot)}${dot.isToday ? ' (today)' : ''}`}
+          aria-label={`${describeDot(dot)}${dot.isToday ? t().friends.card.today : ''}`}
           className="flex flex-col items-center gap-1"
         >
           <span
@@ -64,7 +65,7 @@ export function Streak({ streak }: { readonly streak: string | null }) {
   return (
     <p className="flex items-center gap-1 text-sm font-medium text-primary">
       <FlameIcon className="size-4 text-accent" />
-      <span className="sr-only">Streak: </span>
+      <span className="sr-only">{t().friends.card.streak}</span>
       {streak}
     </p>
   );
@@ -76,10 +77,10 @@ export function Streak({ streak }: { readonly streak: string | null }) {
  * file (ADR-0064).
  */
 async function shareCode(code: string): Promise<'shared' | 'copied' | 'cancelled' | 'failed'> {
-  const text = `Add me on g7m: my friend code is ${code}`;
+  const text = t().friends.code.shareText(code);
   if (typeof navigator.share === 'function') {
     try {
-      await navigator.share({ title: 'g7m friend code', text, url: appBaseUrl() });
+      await navigator.share({ title: t().friends.code.shareTitle, text, url: appBaseUrl() });
       return 'shared';
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled';
@@ -104,11 +105,11 @@ export function YourCode({ code }: { readonly code: string }) {
   return (
     <div>
       <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-        Your code
+        {t().friends.code.yours}
       </p>
       <p
         className="numeric mt-1 font-mono text-4xl font-bold tracking-[0.25em] text-primary"
-        aria-label={`Your code: ${code.split('').join(' ')}`}
+        aria-label={t().friends.code.yoursLabel(code.split('').join(' '))}
       >
         {code}
       </p>
@@ -117,12 +118,12 @@ export function YourCode({ code }: { readonly code: string }) {
           variant="secondary"
           onClick={() => {
             void copyCode(code).then((copied) => {
-              setSaid(copied ? 'Copied.' : `Could not copy. Your code is ${code}.`);
+              setSaid(copied ? t().friends.code.copied : t().friends.code.couldNotCopy(code));
             });
           }}
         >
           <CopyIcon className="size-5" />
-          Copy
+          {t().friends.code.copy}
         </Button>
         <Button
           variant="secondary"
@@ -130,16 +131,16 @@ export function YourCode({ code }: { readonly code: string }) {
             void shareCode(code).then((outcome) => {
               setSaid(
                 outcome === 'copied'
-                  ? 'Copied, ready to paste.'
+                  ? t().friends.code.copiedToPaste
                   : outcome === 'failed'
-                    ? `Could not share. Your code is ${code}.`
+                    ? t().friends.code.couldNotShare(code)
                     : null,
               );
             });
           }}
         >
           <ShareIcon className="size-5" />
-          Share
+          {t().friends.code.share}
         </Button>
       </div>
       <p role="status" className="mt-2 min-h-5 text-sm text-secondary">
@@ -154,17 +155,13 @@ export function FriendsOffline() {
   return (
     <section className="rounded-sheet border border-subtle bg-surface p-5 text-center">
       <FriendsIcon className="mx-auto size-8 text-muted" />
-      <h2 className="mt-2 text-base font-semibold text-primary">You’re offline</h2>
-      <p className="mx-auto mt-1 max-w-prose text-sm text-secondary">
-        Friends need a connection. Your own training is all still here, and this will fill in when
-        you’re back online.
-      </p>
+      <h2 className="mt-2 text-base font-semibold text-primary">{t().friends.offline.title}</h2>
+      <p className="mx-auto mt-1 max-w-prose text-sm text-secondary">{t().friends.offline.body}</p>
     </section>
   );
 }
 
-const MISSING_PROFILE =
-  'Your profile hasn’t reached this phone yet. Give it a moment and try again.';
+const missingProfile = (): string => t().friends.name.missingProfile;
 
 /**
  * The name friends will see, asked for once, before anything else.
@@ -181,10 +178,8 @@ export function NamePrompt() {
 
   return (
     <section className="rounded-sheet border border-subtle bg-surface p-5">
-      <h2 className="text-lg font-semibold text-primary">What should friends call you?</h2>
-      <p className="mt-1 text-sm text-secondary">
-        Friends see your name next to your training. You can change it later on Your profile.
-      </p>
+      <h2 className="text-lg font-semibold text-primary">{t().friends.name.title}</h2>
+      <p className="mt-1 text-sm text-secondary">{t().friends.name.body}</p>
       <form
         className="mt-4 flex flex-col gap-3"
         onSubmit={(event) => {
@@ -198,7 +193,7 @@ export function NamePrompt() {
         }}
       >
         <TextField
-          label="Your name"
+          label={t().friends.name.label}
           value={name}
           autoComplete="given-name"
           maxLength={40}
@@ -207,11 +202,11 @@ export function NamePrompt() {
           }}
         />
         <Button type="submit" fullWidth disabled={trimmed === '' || busy}>
-          {busy ? 'Saving…' : 'Continue'}
+          {busy ? t().common.saving : t().common.continue}
         </Button>
-        {(error ?? (missing ? MISSING_PROFILE : null)) !== null && (
+        {(error ?? (missing ? missingProfile() : null)) !== null && (
           <p role="alert" className="text-sm text-destructive">
-            {error ?? MISSING_PROFILE}
+            {error ?? missingProfile()}
           </p>
         )}
       </form>

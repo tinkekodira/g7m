@@ -1,3 +1,4 @@
+import { live, t } from '@g7m/i18n';
 import { useId, useRef, useState } from 'react';
 import { stopAt, thumbOffset, trackFraction } from './slider-track.js';
 
@@ -39,11 +40,7 @@ export type KitPosition = 'bodyweight' | 'both' | 'gym';
 
 const POSITIONS: readonly KitPosition[] = ['bodyweight', 'both', 'gym'];
 
-const LABELS: Record<KitPosition, string> = {
-  bodyweight: 'Bodyweight',
-  both: 'Everything',
-  gym: 'Gym',
-};
+const LABELS: Readonly<Record<KitPosition, string>> = live(() => t().library.kit);
 
 /** Long enough to be seen settling, short enough not to be waited for. */
 const SETTLE = 'transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1)';
@@ -117,7 +114,7 @@ export function KitSlider({ value, onChange, disabled = false }: KitSliderProps)
       }}
     >
       <label htmlFor={id} className="sr-only">
-        What you are training with
+        {t().library.kit.label}
       </label>
 
       <div ref={trackRef} className="relative flex">

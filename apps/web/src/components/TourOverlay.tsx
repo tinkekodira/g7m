@@ -1,39 +1,16 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Button } from '@g7m/ui';
 import { useTourStore } from '../lib/app-tour.js';
 
+/** Where each stop is. What it says is `t().tour.stops`, in the same order. */
 const STOPS = [
-  {
-    route: '/',
-    target: 'workout',
-    title: 'Start a workout',
-    text: 'Ready to train? Start your workout here, or return to a session already in progress.',
-  },
-  {
-    route: '/',
-    target: 'progress',
-    title: 'Progress & history',
-    text: 'Open Progress from Home to review your training and revisit past workouts.',
-  },
-  {
-    route: '/',
-    target: 'exercises',
-    title: 'Exercise library',
-    text: 'Browse exercises from Home to search the full library and find coaching for each movement.',
-  },
-  {
-    route: '/learn',
-    target: 'body',
-    title: 'Your interactive 3D body',
-    text: 'Find the 3D body in Learn. Tap a muscle to discover exercises that train it.',
-  },
-  {
-    route: '/friends',
-    target: 'friends',
-    title: 'Train with friends',
-    text: 'Add friends here, compare your training, and challenge each other.',
-  },
+  { route: '/', target: 'workout' },
+  { route: '/', target: 'progress' },
+  { route: '/', target: 'exercises' },
+  { route: '/learn', target: 'body' },
+  { route: '/friends', target: 'friends' },
 ] as const;
 
 interface Placement {
@@ -200,10 +177,10 @@ export default function TourOverlay() {
       >
         <div className="flex items-center justify-between gap-3">
           <p className="numeric text-sm text-secondary" aria-live="polite">
-            {index + 1} of {STOPS.length}
+            {t().tour.position(index + 1, STOPS.length)}
           </p>
           <Button variant="ghost" onClick={onClose}>
-            Skip tour
+            {t().tour.skip}
           </Button>
         </div>
         <h2
@@ -212,22 +189,22 @@ export default function TourOverlay() {
           id="tour-heading"
           className="mt-1 text-xl font-semibold focus-visible:outline-2 focus-visible:outline-accent"
         >
-          {stop.title}
+          {t().tour.stops[index]?.title}
         </h2>
         <p id="tour-description" className="mt-2 text-sm leading-relaxed text-secondary">
-          {stop.text}
+          {t().tour.stops[index]?.text}
         </p>
         {placement === null && (
           <p role="status" className="mt-2 text-sm text-muted">
-            Opening this stop… You can continue or skip.
+            {t().tour.opening}
           </p>
         )}
         <div className="mt-4 flex justify-between gap-3">
           <Button variant="secondary" disabled={index === 0} onClick={() => move(index - 1)}>
-            Back
+            {t().common.back}
           </Button>
           <Button onClick={() => (index === STOPS.length - 1 ? onClose() : move(index + 1))}>
-            {index === STOPS.length - 1 ? 'Finish tour' : 'Next'}
+            {index === STOPS.length - 1 ? t().tour.finish : t().common.next}
           </Button>
         </div>
       </div>

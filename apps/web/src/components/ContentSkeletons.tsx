@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { Skeleton } from '@g7m/ui';
 import { LoadingRegion } from './LoadingRegion.js';
 
@@ -27,7 +28,7 @@ export function TextSkeleton({
 
 export function ExerciseRowsSkeleton({ charts = false }: { readonly charts?: boolean }) {
   return (
-    <LoadingRegion label="Loading exercises…">
+    <LoadingRegion label={t().app.loadingStates.exerciseList}>
       <div className="flex flex-col gap-2">
         {Array.from({ length: 4 }, (_, index) => (
           <div key={index} className="flex items-center gap-3 rounded-card bg-surface px-4 py-3">
@@ -43,7 +44,7 @@ export function ExerciseRowsSkeleton({ charts = false }: { readonly charts?: boo
 
 export function BodySkeleton({ className = 'h-80' }: { readonly className?: string }) {
   return (
-    <LoadingRegion label="Loading body view…">
+    <LoadingRegion label={t().app.loadingStates.bodyView}>
       <div className={className} />
     </LoadingRegion>
   );
@@ -55,10 +56,10 @@ export function FriendsSkeleton({ tab = 'friends' }: { readonly tab?: string }) 
     <LoadingRegion
       label={
         tab === 'leaderboard'
-          ? 'Loading leaderboard…'
+          ? t().app.loadingStates.leaderboard
           : tab === 'requests'
-            ? 'Loading requests…'
-            : 'Loading friends…'
+            ? t().app.loadingStates.requests
+            : t().app.loadingStates.friends
       }
     >
       <div className="flex flex-col gap-3">
@@ -87,7 +88,7 @@ export function FriendsSkeleton({ tab = 'friends' }: { readonly tab?: string }) 
 
 export function NumbersSkeleton() {
   return (
-    <LoadingRegion label="Loading your numbers…">
+    <LoadingRegion label={t().app.loadingStates.numbers}>
       <div className="grid grid-cols-2">
         {Array.from({ length: 6 }, (_, index) => (
           <div key={index} className="space-y-2 py-3">

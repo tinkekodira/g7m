@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { BoardWorkout } from '@g7m/core';
 import type { Challenge } from '../lib/friends/api.js';
 import {
-  CHALLENGE_STAT_OPTIONS,
+  challengeStatOptions,
   challengeCard,
   challengeCards,
   challengeTimeLeft,
@@ -208,7 +208,7 @@ describe('the list', () => {
 
 describe('what a challenge can be on', () => {
   it('offers workouts and weight, and nothing else', () => {
-    expect(CHALLENGE_STAT_OPTIONS.map((option) => option.value)).toEqual(['workouts', 'lifted']);
+    expect(challengeStatOptions().map((option) => option.value)).toEqual(['workouts', 'lifted']);
   });
 
   it('still counts one made on time before that', () => {

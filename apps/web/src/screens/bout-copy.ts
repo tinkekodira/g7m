@@ -5,6 +5,7 @@
  * Pure, so the wording is tested without a screen. The numbers themselves are
  * @g7m/core's (`cardio.ts`).
  */
+import { formatNumber, t } from '@g7m/i18n';
 import {
   boutCalories,
   boutPace,
@@ -24,17 +25,17 @@ import {
 export function fieldLabel(field: BoutField, kind: CardioKind, unitSystem: UnitSystem): string {
   switch (field) {
     case 'distance':
-      return `Distance (${distanceUnitFor(kind, unitSystem)})`;
+      return t().workout.cardio.fields.distance(distanceUnitFor(kind, unitSystem));
     case 'speed':
-      return `Speed (${speedUnitFor(unitSystem)})`;
+      return t().workout.cardio.fields.speed(speedUnitFor(unitSystem));
     case 'incline':
-      return 'Incline (%)';
+      return t().workout.cardio.fields.incline;
     case 'level':
-      return 'Level';
+      return t().workout.cardio.fields.level;
     case 'watts':
-      return 'Avg watts';
+      return t().workout.cardio.fields.watts;
     case 'floors':
-      return 'Floors';
+      return t().workout.cardio.fields.floors;
   }
 }
 
@@ -47,27 +48,19 @@ export function fieldLabel(field: BoutField, kind: CardioKind, unitSystem: UnitS
 export function describeCalorieSource(method: CalorieMethod, kind: CardioKind): string {
   switch (method) {
     case 'machine':
-      return 'From the machine.';
+      return t().workout.cardio.sources.machine;
     case 'treadmill':
-      return 'Estimated from the speed and incline.';
+      return t().workout.cardio.sources.treadmill;
     case 'power':
-      return 'Estimated from the watts.';
+      return t().workout.cardio.sources.power;
     case 'pace':
-      return 'Estimated from your pace.';
+      return t().workout.cardio.sources.pace;
     case 'stairs':
-      return 'Estimated from the floors climbed.';
+      return t().workout.cardio.sources.stairs;
     case 'met':
-      return `A rough estimate from the time alone. ${BETTER_WITH[kind]}`;
+      return t().workout.cardio.sources.met(t().workout.cardio.better[kind]);
   }
 }
-
-const BETTER_WITH: Readonly<Record<CardioKind, string>> = {
-  treadmill: 'Add the speed for a better one.',
-  bike: 'Add the watts for a better one.',
-  rower: 'Add the distance or watts for a better one.',
-  ski_erg: 'Add the distance or watts for a better one.',
-  stair_climber: 'Add the floors for a better one.',
-};
 
 /**
  * One bout in one line: "25:00 · 5.2 km · 5:00 /km · ≈ 320 kcal".
@@ -86,17 +79,17 @@ export function boutSummary(
   if (bout.distanceM !== null) {
     parts.push(formatDistance(bout.distanceM, distanceUnitFor(kind, unitSystem)));
   }
-  if (bout.floors !== null) parts.push(`${String(bout.floors)} floors`);
+  if (bout.floors !== null) parts.push(t().workout.cardio.floors(bout.floors));
   const pace = boutPace(kind, bout, unitSystem);
   if (pace !== null) parts.push(pace);
   const calories = boutCalories(kind, bout, bodyweightKg);
   if (calories !== null) parts.push(caloriesText(calories));
-  return parts.length === 0 ? 'Nothing recorded' : parts.join(' · ');
+  return parts.length === 0 ? t().workout.cardio.nothing : parts.join(' · ');
 }
 
 /** "≈ 320 kcal" for an estimate, "320 kcal" for the machine's own figure. */
 export function caloriesText(calories: Calories): string {
-  const figure = `${calories.kcal.toLocaleString('en-GB')} kcal`;
+  const figure = `${formatNumber(calories.kcal)} kcal`;
   return calories.method === 'machine' ? figure : `≈ ${figure}`;
 }
 

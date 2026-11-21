@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import {
   GOAL_LABELS,
   GOAL_SUMMARIES,
@@ -18,7 +19,7 @@ export function TrainingGoalChoices({
 }) {
   return (
     <fieldset disabled={disabled} className="flex flex-col gap-3">
-      <legend className="mb-3 text-sm text-secondary">Select all that apply.</legend>
+      <legend className="mb-3 text-sm text-secondary">{t().profile.goalChoicesHint}</legend>
       {TRAINING_GOALS.filter((goal) => goal !== 'recomp').map((goal) => (
         <label
           key={goal}

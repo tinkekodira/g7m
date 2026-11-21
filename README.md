@@ -305,6 +305,9 @@ packages/
                   handling, and the PGlite harness that runs the real migrations.
   ui/             Design tokens (light and dark) and shared primitives.
   anatomy/        The 3D viewer, self-contained, and the tools that build the model.
+  i18n/           Every word the app shows, in English, German, Spanish, French,
+                  Portuguese and Italian, plus the exercise catalogue in the five
+                  non-English languages (ADR-0181).
 e2e/              Playwright tests and the fake backend they run against.
 supabase/
   migrations/     Every schema change, and the exercise, muscle and equipment data.
@@ -321,6 +324,11 @@ Two rules that are enforced rather than merely stated:
   logic stays portable and testable in bare Node.
 - **Every database write goes through the repository layer in `packages/db`.**
   No component talks to the database directly.
+- **No user-visible English in components.** Words go in
+  `packages/i18n/src/messages/en` and are read with `t()`. Every other language
+  must have the same keys or it does not compile, and a new exercise needs all
+  five translations in `packages/i18n/src/catalogue` or
+  `catalogue-translations.test.ts` fails.
 
 ---
 

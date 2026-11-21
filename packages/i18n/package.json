@@ -1,0 +1,13 @@
+{
+  "name": "@g7m/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The app's words in every language it speaks, and which one is speaking now. Pure: no UI, no platform.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

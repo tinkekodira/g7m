@@ -6,6 +6,7 @@
  * PowerSync — then it is one JSON document, indented so it can be read in a
  * text editor as well as by a program. See ADR-0064.
  */
+import { t } from '@g7m/i18n';
 import type { User } from '@supabase/supabase-js';
 import { buildAccountExport } from '@g7m/db';
 import { getRepositories } from './db/repositories.js';
@@ -54,9 +55,7 @@ export async function prepareExport(user: User): Promise<PreparedExport> {
       syncConfigured: isSyncConfigured(),
       hasSynced: database.currentStatus.hasSynced === true,
     }),
-    friends === null
-      ? 'Your friend code and friends list need a connection, so they were left out.'
-      : null,
+    friends === null ? t().settings.data.noFriends : null,
   ].filter((caveat): caveat is string => caveat !== null);
 
   return {

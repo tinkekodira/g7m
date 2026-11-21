@@ -1,3 +1,4 @@
+import { formatNumber, muscleGroupName, t } from '@g7m/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
@@ -134,13 +135,13 @@ export function ProfileScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-center justify-between gap-3 pt-6">
-        <h1 className="text-2xl font-semibold text-primary">Your profile</h1>
+        <h1 className="text-2xl font-semibold text-primary">{t().profile.title}</h1>
         <Link
           to="/you"
           className="inline-flex min-h-tap items-center gap-2 rounded-full border border-subtle bg-elevated px-4 text-sm font-medium text-primary active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <PencilIcon className="size-4" />
-          Edit
+          {t().profile.edit}
         </Link>
       </header>
 
@@ -153,9 +154,9 @@ export function ProfileScreen() {
       {/* Who, and what for, in one card: the screen's hero, the way the month
           is Home's (ADR-0126). The goal is a block inside it rather than a
           card of its own, so the two read as one person. */}
-      <Panel tone="hero" label="You">
+      <Panel tone="hero" label={t().profile.you}>
         {identityLoading ? (
-          <LoadingRegion label="Loading your profile…">
+          <LoadingRegion label={t().profile.loading}>
             <div className="flex items-center gap-4">
               <Skeleton className="size-16 shrink-0 rounded-full" />
               <Skeleton className="h-8 w-1/2" />
@@ -166,7 +167,7 @@ export function ProfileScreen() {
             <Avatar name={name} size="lg" />
             <div className="flex min-w-0 items-center gap-2">
               <p className="truncate text-2xl leading-8 font-bold text-primary">
-                {fullName ?? 'Add your name'}
+                {fullName ?? t().profile.addName}
               </p>
               {profile.data?.country != null && (
                 <>
@@ -188,7 +189,7 @@ export function ProfileScreen() {
 
       {/* One card of figures on a hairline grid, as Home's activity card, rather
           than six boxes of their own. */}
-      <Panel title="Your numbers">
+      <Panel title={t().profile.numbers}>
         {numbersLoading ? (
           <NumbersSkeleton />
         ) : (
@@ -224,8 +225,8 @@ export function ProfileScreen() {
                         aria-haspopup="dialog"
                         aria-label={
                           tile.value === null
-                            ? 'Add your weight'
-                            : `Weight ${tile.value}. Log today’s weight`
+                            ? t().profile.addWeight
+                            : t().profile.logWeight(tile.value)
                         }
                         onClick={() => {
                           setWeighing(true);
@@ -235,13 +236,13 @@ export function ProfileScreen() {
                     )}
                     <span className={cx('block', text)}>
                       {tile.value === null && weighable ? (
-                        <span className="text-sm text-secondary">Not set — add it</span>
+                        <span className="text-sm text-secondary">{t().profile.notSet}</span>
                       ) : tile.value === null ? (
                         <Link
                           to="/you"
                           className="text-sm text-secondary underline-offset-4 hover:underline"
                         >
-                          Not set — add it
+                          {t().profile.notSet}
                         </Link>
                       ) : /\d/.test(tile.value) ? (
                         <StatValue text={tile.value} size="text-xl leading-7" />
@@ -291,14 +292,12 @@ export function ProfileScreen() {
         lifts={bests.data}
         loading={bests.loading}
         unitSystem={unitSystem}
-        description="The heaviest you have moved on each exercise. Bodyweight lifts count your bodyweight too."
+        description={t().profile.bestLiftsDescription}
         linkTo={(lift) => `/progress/exercise/${lift.exerciseId}`}
         arrived={toBests}
       />
 
-      <p className="py-4 text-xs text-muted">
-        Educational content, not medical advice. These numbers shape a training plan, nothing more.
-      </p>
+      <p className="py-4 text-xs text-muted">{t().profile.disclaimer}</p>
     </main>
   );
 }
@@ -319,10 +318,10 @@ function AchievementsLink() {
       list={list}
       line={
         state.data === null
-          ? 'Milestones from your training'
+          ? t().profile.achievementsLine
           : latest === null
-            ? `${String(total)} to earn. Your first workout is the first.`
-            : `${String(earned)} of ${String(total)} earned`
+            ? t().profile.toEarn(total)
+            : t().profile.earnedOf(earned, total)
       }
     />
   );
@@ -339,16 +338,18 @@ function AchievementsLink() {
 function LevelLine() {
   const state = useAchievements();
   if (state.data?.ready !== true)
-    return state.loading ? <TextSkeleton label="Loading your level…" className="mt-5" /> : null;
+    return state.loading ? (
+      <TextSkeleton label={t().profile.loadingLevel} className="mt-5" />
+    ) : null;
   const { level, xpIntoLevel, xpForLevel, progress } = levelFor(state.data.xp);
-  const xp = (value: number) => value.toLocaleString('en-GB');
+  const xp = (value: number) => formatNumber(value);
 
   return (
     <div className="rise mt-5">
       <div className="flex items-baseline justify-between gap-3">
         <p className="flex items-baseline gap-2">
           <span className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-            Level
+            {t().profile.level}
           </span>
           <span className="numeric text-lg leading-6 font-semibold text-primary">{level}</span>
         </p>
@@ -358,7 +359,7 @@ function LevelLine() {
       </div>
       <div
         role="progressbar"
-        aria-label={`Level ${String(level)}: ${xp(xpIntoLevel)} of ${xp(xpForLevel)} XP to level ${String(level + 1)}`}
+        aria-label={t().profile.levelLabel(level, xp(xpIntoLevel), xp(xpForLevel))}
         aria-valuemin={0}
         aria-valuemax={xpForLevel}
         aria-valuenow={xpIntoLevel}
@@ -399,12 +400,12 @@ function RoutinesLink() {
         <ClipboardIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-medium text-primary">Your routines</span>
+        <span className="block text-base font-medium text-primary">{t().profile.routines}</span>
         <span className="block truncate text-xs text-muted">
           {state.data === null
-            ? 'Workouts you have saved'
+            ? t().profile.routinesEmpty
             : routines.length === 0
-              ? 'Save a workout and it becomes one'
+              ? t().profile.routinesNone
               : names}
         </span>
       </span>
@@ -437,7 +438,9 @@ function GoalCard({
   // Nothing rather than "choose a goal" while the row is still being read:
   // flashing the invitation at somebody who has a goal reads as a lost goal.
   if (loading && goal === null)
-    return <TextSkeleton label="Loading your goal…" className="mt-4 rounded-card bg-base/70 p-3" />;
+    return (
+      <TextSkeleton label={t().profile.loadingGoal} className="mt-4 rounded-card bg-base/70 p-3" />
+    );
   const line = goal === null ? null : goalCardLine(goal, now);
 
   return (
@@ -455,17 +458,15 @@ function GoalCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-          Your goal
+          {t().profile.yourGoal}
         </span>
         <span className="block text-base leading-6 font-semibold text-primary">
-          {line?.title ?? 'Choose what you are training for'}
+          {line?.title ?? t().profile.chooseGoal}
         </span>
-        <span className="block text-xs text-muted">
-          {line?.detail ?? 'It decides the workout Home writes for you.'}
-        </span>
+        <span className="block text-xs text-muted">{line?.detail ?? t().profile.goalDecides}</span>
       </span>
       <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-on-accent">
-        {goal === null ? 'Choose' : 'Change'}
+        {goal === null ? t().profile.choose : t().profile.change}
       </span>
     </Link>
   );
@@ -482,27 +483,27 @@ function TrainingBody({ now }: { readonly now: Date }) {
 
   return (
     <TrainingBodyCard
-      title="Your training"
-      subtitle={`The last ${String(HEATMAP_WEEKS)} weeks, on your body.`}
+      title={t().profile.training}
+      subtitle={t().profile.trainingSubtitle(HEATMAP_WEEKS)}
       // The body that matches the profile, and nothing until the profile has said.
       body={useProfileBody()}
       heat={heat.data}
       heatLoading={heat.loading}
-      loadingText="Working out what you have trained…"
-      emptyText={`Nothing logged in the last ${String(HEATMAP_WEEKS)} weeks yet. Finish a workout and it shows up here.`}
+      loadingText={t().profile.workingOut}
+      emptyText={t().profile.trainingEmpty(HEATMAP_WEEKS)}
     >
       <div>
         <h3 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-          Worth adding
+          {t().profile.worthAdding}
         </h3>
         {neglected.loading && neglected.data === null ? (
-          <TextSkeleton label="Looking at your week…" />
+          <TextSkeleton label={t().profile.lookingAtWeek} />
         ) : neglected.data === null ? (
           <p className="text-sm text-secondary">
-            {`After ${String(SESSIONS_BEFORE_ADVICE)} workouts this names what is falling behind, and one exercise for each.`}
+            {t().profile.afterWorkouts(SESSIONS_BEFORE_ADVICE)}
           </p>
         ) : neglected.data.length === 0 ? (
-          <p className="text-sm text-secondary">Nothing is behind its weekly target right now.</p>
+          <p className="text-sm text-secondary">{t().profile.nothingBehind}</p>
         ) : (
           <ul className="flex flex-col">
             {neglected.data.map((suggestion) => (
@@ -512,7 +513,10 @@ function TrainingBody({ now }: { readonly now: Date }) {
               >
                 <span className="min-w-0 text-sm text-primary">{suggestion.name}</span>
                 <span className="numeric shrink-0 text-xs text-muted">
-                  {suggestion.group} · {suggestion.setsBehind} sets behind
+                  {t().profile.behind(
+                    muscleGroupName(suggestion.group) ?? suggestion.group,
+                    suggestion.setsBehind,
+                  )}
                 </span>
               </li>
             ))}

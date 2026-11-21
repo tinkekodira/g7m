@@ -24,6 +24,7 @@
  * a colour-blind reader. The palette was validated in that order, so do not
  * re-sort it.
  */
+import { live, t } from '@g7m/i18n';
 import { liftKey } from './lift-key.js';
 import { countsAsSet, countsTowardVolume, effectiveLoadKg, setVolumeKg } from './load.js';
 import { startOfMonth, type SessionTimes, type Span } from './periods.js';
@@ -32,14 +33,8 @@ import { trainingMinutes, type HistoricalSet } from './progress.js';
 export const BODY_REGIONS = ['legs', 'arms', 'shoulders', 'back', 'chest', 'core'] as const;
 export type BodyRegion = (typeof BODY_REGIONS)[number];
 
-export const REGION_LABELS: Record<BodyRegion, string> = {
-  legs: 'Legs',
-  arms: 'Arms',
-  shoulders: 'Shoulders',
-  back: 'Back',
-  chest: 'Chest',
-  core: 'Core',
-};
+/** In the language speaking now (`live`): read it at render, not at import. */
+export const REGION_LABELS: Readonly<Record<BodyRegion, string>> = live(() => t().core.regions);
 
 /**
  * Which region each muscle group belongs to.

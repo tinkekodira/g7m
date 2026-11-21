@@ -1,3 +1,4 @@
+import { formatDate, t } from '@g7m/i18n';
 import type { ReactNode } from 'react';
 import {
   describePreviousSet,
@@ -39,58 +40,60 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
     <RecapCarousel
       cards={[
         {
-          title: 'Your session',
+          title: t().history.recap.session,
           content: () => (
             <Panel
-              title="Your session"
+              title={t().history.recap.session}
               tone="hero"
               className="recap-card recap-session"
               aside={
                 records > 0 ? (
                   <span className="text-sm font-semibold text-accent">
-                    {records} {records === 1 ? 'PR' : 'PRs'}
+                    {t().history.recap.prs(records)}
                   </span>
                 ) : undefined
               }
             >
               <p className="mt-1 text-sm break-words text-secondary">{data.title}</p>
               <p className="mt-1 text-xs text-muted">
-                {data.session.startedAt.toLocaleDateString(undefined, {
+                {formatDate(data.session.startedAt, {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
                 })}
-                {data.session.source === 'past' ? ' · Logged afterwards' : ''}
+                {data.session.source === 'past' ? t().history.recap.loggedAfterwards : ''}
               </p>
               <dl className="recap-totals numeric grid grid-cols-2">
                 <Fact
-                  label="Workout time"
+                  label={t().history.recap.workoutTime}
                   value={
                     recap.elapsedSeconds === null
-                      ? 'Not recorded'
+                      ? t().history.recap.notRecorded
                       : formatDuration(recap.elapsedSeconds)
                   }
                 />
-                <Fact label="Exercises" value={String(recap.exercises)} />
-                <Fact label="Working sets" value={String(recap.sets)} />
+                <Fact label={t().history.recap.exercises} value={String(recap.exercises)} />
+                <Fact label={t().history.recap.workingSets} value={String(recap.sets)} />
                 <Fact
-                  label="Lifted volume"
+                  label={t().history.recap.liftedVolume}
                   value={formatWeightTotal(recap.volume.volumeKg, units)}
                 />
                 {recap.cardioSeconds > 0 && (
-                  <Fact label="Cardio time" value={formatDuration(recap.cardioSeconds)} />
+                  <Fact
+                    label={t().history.recap.cardioTime}
+                    value={formatDuration(recap.cardioSeconds)}
+                  />
                 )}
                 {recap.cardioKcal > 0 && (
                   <Fact
-                    label="Est. cardio calories"
+                    label={t().history.recap.cardioCalories}
                     value={`${String(Math.round(recap.cardioKcal))} kcal`}
                   />
                 )}
               </dl>
               {recap.volume.unknownSets > 0 && (
                 <p className="recap-volume-note text-xs text-muted">
-                  Volume excludes {recap.volume.unknownSets}{' '}
-                  {recap.volume.unknownSets === 1 ? 'set' : 'sets'} without a recorded bodyweight.
+                  {t().history.recap.excludes(recap.volume.unknownSets)}
                 </p>
               )}
               <RecapRewards rewards={rewards} />
@@ -98,18 +101,20 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
           ),
         },
         {
-          title: 'Muscles trained',
+          title: t().history.recap.muscles,
           content: (active) => (
-            <Panel title="Muscles trained" className="recap-card recap-muscles">
+            <Panel title={t().history.recap.muscles} className="recap-card recap-muscles">
               {active && (
                 <WorkoutMuscleBody sex={data.profile?.sex ?? null} muscles={data.trainedMuscles} />
               )}
               {recap.muscles.length === 0 && (
-                <p className="mt-4 text-sm text-secondary">
-                  No primary muscle distribution recorded for this session.
-                </p>
+                <p className="mt-4 text-sm text-secondary">{t().history.recap.noMuscles}</p>
               )}
-              <ul className="recap-muscle-shares" aria-label="Muscle percentages" tabIndex={0}>
+              <ul
+                className="recap-muscle-shares"
+                aria-label={t().history.recap.percentages}
+                tabIndex={0}
+              >
                 {recap.muscles.map((muscle) => (
                   <li key={muscle.group} style={muscleColorStyle(muscle.group)}>
                     <div className="mb-1 flex justify-between gap-3 text-sm">
@@ -134,13 +139,11 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
           ),
         },
         {
-          title: 'Compared with last time',
+          title: t().history.recap.compared,
           content: () => (
-            <Panel title="Compared with last time" className="recap-card">
+            <Panel title={t().history.recap.compared} className="recap-card">
               {!strength && (
-                <p className="mt-4 text-sm text-secondary">
-                  No working strength sets to compare in this session.
-                </p>
+                <p className="mt-4 text-sm text-secondary">{t().history.recap.noCompare}</p>
               )}
               <ul className="recap-comparisons mt-3 space-y-3">
                 {recap.comparisons.map((comparison) => {
@@ -164,17 +167,17 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                           <ExerciseIcon slug={exercise?.slug ?? ''} />
                           <div className="min-w-0">
                             <h3 className="text-sm font-semibold break-words text-primary">
-                              {exercise?.name ?? 'Exercise'}
+                              {exercise?.name ?? t().history.recap.exercise}
                             </h3>
                             <p className="mt-0.5 flex items-center gap-2 text-xs text-secondary">
-                              {sets} {sets === 1 ? 'set' : 'sets'}
+                              {t().history.recap.sets(sets)}
                               {comparison.records.length > 0 && (
                                 <span className="text-accent">
                                   <TrophyIcon className="size-3.5" />
                                   <span className="sr-only">
                                     {comparison.records.some((r) => r.kind === 'heaviest')
-                                      ? 'Heaviest yet'
-                                      : 'Best estimated 1RM'}
+                                      ? t().history.recap.heaviestYet
+                                      : t().history.recap.bestEstimate}
                                   </span>
                                 </span>
                               )}
@@ -184,7 +187,9 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                           <span className="recap-change numeric" data-direction={change.direction}>
                             {change.direction !== 0 && (
                               <span className="sr-only">
-                                {change.direction > 0 ? 'Up ' : 'Down '}
+                                {change.direction > 0
+                                  ? t().history.recap.up
+                                  : t().history.recap.down}
                               </span>
                             )}
                             {change.direction !== 0 && (
@@ -203,7 +208,7 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                         >
                           <dl className="recap-best-sets">
                             <div>
-                              <dt>Best set</dt>
+                              <dt>{t().history.recap.bestSet}</dt>
                               <dd className="font-semibold text-primary">
                                 {comparison.current === null
                                   ? '—'
@@ -211,10 +216,10 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                               </dd>
                             </div>
                             <div>
-                              <dt>Previous</dt>
+                              <dt>{t().history.recap.previous}</dt>
                               <dd className="text-secondary">
                                 {comparison.previous === null
-                                  ? 'First session'
+                                  ? t().history.recap.firstSession
                                   : showSet(comparison.previous, comparison.timed, units)}
                               </dd>
                             </div>
@@ -239,29 +244,37 @@ export function WorkoutRecap({ data }: { readonly data: RecapData }) {
                 <dl className="recap-comparison-totals numeric mt-3 grid grid-cols-4 rounded-control border border-subtle py-3">
                   <SummaryFact
                     icon={<DumbbellIcon />}
-                    label="Exercises"
+                    label={t().history.recap.exercises}
                     value={String(recap.exercises)}
                   />
-                  <SummaryFact icon={<ClipboardIcon />} label="Sets" value={String(recap.sets)} />
+                  <SummaryFact
+                    icon={<ClipboardIcon />}
+                    label={t().history.recap.sets2}
+                    value={String(recap.sets)}
+                  />
                   <SummaryFact
                     icon={<ClockIcon />}
-                    label="Minutes"
+                    label={t().history.recap.minutes}
                     value={
                       recap.elapsedSeconds === null
                         ? '—'
                         : String(Math.round(recap.elapsedSeconds / 60))
                     }
                   />
-                  <SummaryFact icon={<TrophyIcon />} label="PRs" value={String(records)} />
+                  <SummaryFact
+                    icon={<TrophyIcon />}
+                    label={t().history.recap.prsLabel}
+                    value={String(records)}
+                  />
                 </dl>
               )}
             </Panel>
           ),
         },
         {
-          title: 'Exercise log',
+          title: t().history.recap.log,
           content: () => (
-            <Panel title="Exercise log" className="recap-card">
+            <Panel title={t().history.recap.log} className="recap-card">
               <SessionBody
                 showSummary={false}
                 startedAt={data.session.startedAt}
@@ -310,6 +323,6 @@ function SummaryFact({
   );
 }
 function showSet(mark: LiftMark, timed: boolean, units: UnitSystem): string {
-  if (timed) return `${String(mark.reps)} sec`;
+  if (timed) return t().history.recap.seconds(mark.reps);
   return describePreviousSet(mark, (kg) => formatRecapWeight(kg, units));
 }

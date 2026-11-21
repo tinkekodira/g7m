@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { t } from '@g7m/i18n';
 import { Button } from '@g7m/ui';
 import { useAuthStore } from '../auth/auth-store.js';
 import { claimChallengeResults, type Challenge } from '../lib/friends/api.js';
@@ -137,7 +138,7 @@ function ResultWatcher() {
           id="challenge-result-description"
           className="mt-2 text-center text-secondary break-words"
         >
-          {card.title} against {card.name}
+          {t().friends.challenge.resultAgainst(card.title, card.name)}
         </p>
         {card.sides && (
           <dl className="mt-6 grid grid-cols-2 gap-4 border-y border-subtle py-5">
@@ -155,17 +156,15 @@ function ResultWatcher() {
         )}
         {card.outcome === 'unavailable' && (
           <p className="mt-4 text-center text-sm text-secondary">
-            Training was unavailable when the scores locked. Your record is unchanged.
+            {t().friends.challenge.resultUnchanged}
           </p>
         )}
         {card.recovered && (
-          <p className="mt-3 text-center text-xs text-muted">
-            Recovered result · based on available training
-          </p>
+          <p className="mt-3 text-center text-xs text-muted">{t().friends.challenge.recovered}</p>
         )}
         {queue.length > 1 && (
           <p aria-live="polite" className="mt-4 text-center text-sm text-muted">
-            Result {index + 1} of {queue.length}
+            {t().friends.challenge.resultOf(index + 1, queue.length)}
           </p>
         )}
         <div className="mt-6 flex flex-col gap-2">
@@ -174,15 +173,15 @@ function ResultWatcher() {
             onClick={close}
             className="inline-flex min-h-tap items-center justify-center rounded-control bg-accent px-4 py-2 font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            View challenge
+            {t().friends.challenge.view}
           </Link>
           {index + 1 < queue.length && (
             <Button variant="secondary" fullWidth onClick={() => setIndex((n) => n + 1)}>
-              Next result
+              {t().friends.challenge.nextResult}
             </Button>
           )}
           <Button variant="secondary" fullWidth onClick={close}>
-            Later
+            {t().friends.challenge.later}
           </Button>
         </div>
       </div>

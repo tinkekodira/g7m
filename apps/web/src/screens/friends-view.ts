@@ -7,6 +7,7 @@
  * be tested: the friend with no name, the lift only one of you has done, the
  * workout logged after the fact that has no duration worth stating.
  */
+import { t } from '@g7m/i18n';
 import {
   cardLiftName,
   cardLifts,
@@ -46,10 +47,12 @@ export type Movers = ReadonlyMap<
 >;
 
 /** A friend who never set a name. Rare — the welcome questions ask for one. */
-export const NAMELESS = 'Your friend';
+export function nameless(): string {
+  return t().friends.nameless;
+}
 
 export function friendName(name: string | null): string {
-  return name ?? NAMELESS;
+  return name ?? nameless();
 }
 
 /**
@@ -120,14 +123,14 @@ export function liftCell(
       delta: null,
       description:
         theirsKg === null
-          ? `${label}: ${who} has not logged it`
-          : `${label}: ${who} ${theirs}; you have not logged it`,
+          ? t().friends.card.notLogged(label, who)
+          : t().friends.card.youNotLogged(label, who, theirs),
     };
   }
   const gap = `${String(comparison.gap.value)} ${comparison.gap.unit}`;
   const text =
     comparison.standing === 'level'
-      ? 'Level'
+      ? t().friends.page.level
       : `${comparison.standing === 'ahead' ? '+' : '−'}${String(comparison.gap.value)}`;
   return {
     label,
@@ -135,8 +138,10 @@ export function liftCell(
     delta: { text, standing: comparison.standing },
     description:
       comparison.standing === 'level'
-        ? `${label}: ${who} ${theirs}, level with you`
-        : `${label}: ${who} ${theirs}, you are ${gap} ${comparison.standing}`,
+        ? t().friends.card.levelWithYou(label, who, theirs)
+        : comparison.standing === 'ahead'
+          ? t().friends.card.youAhead(label, who, theirs, gap)
+          : t().friends.card.youBehind(label, who, theirs, gap),
   };
 }
 
@@ -198,7 +203,7 @@ function cardLiftCells(
     ...liftCell(
       cardLiftName(
         context.slugs.get(exerciseId),
-        context.names.get(exerciseId) ?? 'Unknown exercise',
+        context.names.get(exerciseId) ?? t().friends.unknownExercise,
       ),
       theirs.get(exerciseId) ?? null,
       context.myBests.get(exerciseId)?.bestKg ?? null,
@@ -268,9 +273,9 @@ export function sortFriends(friends: readonly Friend[]): Friend[] {
 /** "Just now", "12 min ago", "3h ago", "Yesterday", "Mon 5 Oct". */
 export function sentWhen(at: Date, now: Date): string {
   const minutes = Math.floor((now.getTime() - at.getTime()) / 60_000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${String(minutes)} min ago`;
-  if (minutes < 12 * 60) return `${String(Math.floor(minutes / 60))}h ago`;
+  if (minutes < 1) return t().friends.when.justNow;
+  if (minutes < 60) return t().friends.when.minutesAgo(minutes);
+  if (minutes < 12 * 60) return t().friends.when.hoursAgo(Math.floor(minutes / 60));
   return describeWorkoutDay(at, now);
 }
 
@@ -302,14 +307,11 @@ export function describeCodeProblem(check: FriendCodeCheck): Message | null {
   if (check.ok) return null;
   switch (check.reason) {
     case 'empty':
-      return { tone: 'error', text: 'Type your friend’s code first.' };
+      return { tone: 'error', text: t().friends.code.typeFirst };
     case 'length':
-      return { tone: 'error', text: 'A friend code is six letters and numbers.' };
+      return { tone: 'error', text: t().friends.code.shape };
     case 'characters':
-      return {
-        tone: 'error',
-        text: 'Friend codes never use 0, O, 1, I or L. Check the code and try again.',
-      };
+      return { tone: 'error', text: t().friends.code.characters };
   }
 }
 
@@ -325,15 +327,15 @@ export function describeReference(
   isTimeBased: boolean,
 ): string {
   const reps = String(reference.reps);
-  if (isTimeBased) return `${who}: ${reps} s`;
+  if (isTimeBased) return t().friends.reference.seconds(who, reps);
   const weight = weightText(reference.weightKg, unitSystem);
   switch (reference.loadType) {
     case 'bodyweight':
-      return `${who}: ${reps} reps`;
+      return t().friends.reference.reps(who, reps);
     case 'bodyweight_plus':
       return `${who}: ${reps} × +${weight}`;
     case 'assisted':
-      return `${who}: ${reps} × ${weight} assisted`;
+      return t().friends.reference.assisted(who, reps, weight);
     default:
       return `${who}: ${reps} × ${weight}`;
   }
@@ -344,23 +346,23 @@ export function describeSendResult(result: SendResult): Message {
   const who = result.name;
   switch (result.outcome) {
     case 'sent':
-      return { tone: 'success', text: who === null ? 'Request sent.' : `Request sent to ${who}.` };
-    case 'now_friends':
       return {
         tone: 'success',
-        text: `${who ?? 'They'} had already asked you, so you’re now friends.`,
+        text: who === null ? t().friends.code.sent : t().friends.code.sentTo(who),
       };
+    case 'now_friends':
+      return { tone: 'success', text: t().friends.code.nowFriends(who) };
     case 'own_code':
-      return { tone: 'info', text: 'That’s your own code.' };
+      return { tone: 'info', text: t().friends.code.ownCode };
     case 'unknown':
-      return { tone: 'error', text: 'No one has that code. Check it and try again.' };
+      return { tone: 'error', text: t().friends.code.unknown };
     case 'invalid':
-      return { tone: 'error', text: 'A friend code is six letters and numbers.' };
+      return { tone: 'error', text: t().friends.code.shape };
     case 'already_friends':
-      return { tone: 'info', text: `You’re already friends with ${who ?? 'them'}.` };
+      return { tone: 'info', text: t().friends.code.alreadyFriends(who) };
     case 'already_requested':
-      return { tone: 'info', text: `You’ve already sent ${who ?? 'them'} a request.` };
+      return { tone: 'info', text: t().friends.code.alreadyRequested(who) };
     case 'too_many':
-      return { tone: 'error', text: 'That’s a lot of requests in an hour. Try again later.' };
+      return { tone: 'error', text: t().friends.code.tooMany };
   }
 }

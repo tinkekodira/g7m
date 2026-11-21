@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 /**
@@ -105,22 +106,22 @@ export function friendlyAuthError(message: string): string {
     // out who has one. That is right and stays. But it means the app cannot
     // tell the user which mistake they made — so it names both, rather than
     // implying the password is the only possibility.
-    return 'That email and password do not match. Check both — or create an account if you have not made one yet.';
+    return t().auth.errors.credentials;
   }
   if (normalised.includes('user already registered')) {
-    return 'That email already has an account. Sign in instead.';
+    return t().auth.errors.registered;
   }
   if (normalised.includes('password should be at least')) {
-    return 'Passwords need at least 8 characters.';
+    return t().auth.errors.short;
   }
   if (normalised.includes('email rate limit') || normalised.includes('over_email_send_rate')) {
-    return 'Too many attempts. Wait a minute and try again.';
+    return t().auth.errors.rateLimit;
   }
   if (normalised.includes('failed to fetch') || normalised.includes('network')) {
-    return 'Cannot reach the server. Check your connection.';
+    return t().auth.errors.network;
   }
   if (normalised.includes('new password should be different')) {
-    return 'That is the password you already have. Choose a different one.';
+    return t().auth.errors.samePassword;
   }
   if (
     normalised.includes('code verifier') ||
@@ -135,7 +136,7 @@ export function friendlyAuthError(message: string): string {
      * a different phone — cannot complete the exchange. The user sees the
      * sign-in screen again and reasonably concludes the link did nothing.
      */
-    return 'Open that link in the same browser you asked for the reset from, then try again.';
+    return t().auth.errors.otherBrowser;
   }
   return message;
 }

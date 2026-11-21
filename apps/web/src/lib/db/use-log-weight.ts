@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import type { UnitSystem } from '@g7m/core';
 import { readWeight } from '../../screens/edit-profile.js';
 import { useWrite } from './use-catalogue.js';
@@ -20,7 +21,7 @@ export function useLogWeight(unitSystem: UnitSystem) {
       await r.profile.update({ bodyweightKg: read.value });
       return true;
     });
-    return saved === null ? 'That did not save. Try again.' : null;
+    return saved === null ? t().profile.data.saveFailedShort : null;
   }
 
   return { log, busy };

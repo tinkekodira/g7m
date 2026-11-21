@@ -1,11 +1,12 @@
 /**
  * Saying hello in the user's own language.
  *
- * One word on the home screen, and the only place in the app that is
- * translated at all. That is deliberate: this is a greeting, not a locale
- * setting, and it must not quietly become one. Everything else stays in
- * English until there is a real decision to translate the app, which is a much
- * larger commitment than a map of forty greetings.
+ * One word on the home screen, in the language of the country the lifter gave
+ * — which is not always the app's language. That is deliberate: this is a
+ * greeting, not a locale setting, and it must not quietly become one. The app
+ * itself speaks the language picked in onboarding or Settings (ADR-0181);
+ * somebody in Zagreb using the app in English is still greeted in Croatian.
+ * Without a country, the greeting is in the app's language.
  *
  * ## A country is not a language
  *
@@ -197,12 +198,22 @@ export interface LocalisedGreeting {
 /**
  * "Welcome", in the language of the country the user gave.
  *
- * Falls back to English for an unknown country, a missing one, or a country
+ * Without a country, in `appLanguage` — the language the app is speaking.
+ * Falls back to English for an unknown country, or a country
  * whose language has somehow lost its greeting — the last being a bug, but one
  * that should show up as an English word rather than as an empty heading.
  */
-export function greetingFor(country: string | null, sex: Sex | null): LocalisedGreeting {
-  const language = country === null ? 'en' : (COUNTRY_LANGUAGE[country.toUpperCase()] ?? 'en');
+export function greetingFor(
+  country: string | null,
+  sex: Sex | null,
+  appLanguage = 'en',
+): LocalisedGreeting {
+  const language =
+    country === null
+      ? GREETINGS[appLanguage] === undefined
+        ? 'en'
+        : appLanguage
+      : (COUNTRY_LANGUAGE[country.toUpperCase()] ?? 'en');
   const greeting = GREETINGS[language] ?? GREETINGS.en;
 
   const text =
