@@ -1,3 +1,4 @@
+import { currentLocale, muscleGroupName, t } from '@g7m/i18n';
 import {
   Suspense,
   lazy,
@@ -94,7 +95,11 @@ export function HomeScreen() {
       />
     ) : null;
 
-  const greeting = greetingFor(profile.data?.country ?? null, profile.data?.sex ?? null);
+  const greeting = greetingFor(
+    profile.data?.country ?? null,
+    profile.data?.sex ?? null,
+    currentLocale(),
+  );
   const name = firstName(profile.data?.displayName ?? null);
 
   return (
@@ -136,7 +141,7 @@ export function HomeScreen() {
         </h1>
         <Link
           to="/profile"
-          aria-label="Your profile"
+          aria-label={t().home.yourProfile}
           className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Avatar name={name} />
@@ -151,7 +156,7 @@ export function HomeScreen() {
 
       <Suspense
         fallback={
-          <section aria-label="This month">
+          <section aria-label={t().home.thisMonth}>
             <StatSkeleton />
           </section>
         }
@@ -161,7 +166,7 @@ export function HomeScreen() {
 
       <section aria-labelledby="quick-access">
         <h2 id="quick-access" className="mb-3 text-lg font-semibold text-primary">
-          Quick access
+          {t().home.quickAccess}
         </h2>
         <ul className="grid grid-cols-2 gap-3">
           {tilesFor(open !== null, today.recommendationsEnabled).map((tile, index) => (
@@ -195,7 +200,7 @@ export function HomeScreen() {
       )}
 
       <footer className="mt-1 border-t border-subtle/60 pt-4 pb-4 text-xs leading-relaxed text-muted">
-        Educational content, not medical advice. Consult a professional before starting a program.
+        {t().settings.disclaimer}
       </footer>
     </main>
   );
@@ -227,7 +232,7 @@ function InProgress({ open }: { readonly open: OpenSessionSummary }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-on-accent uppercase">
-          {open.stale ? 'Still open' : 'In progress'}
+          {open.stale ? t().home.stillOpen : t().home.inProgress}
         </span>
         <span className="block truncate text-base leading-6 font-semibold text-on-accent">
           {open.headline}
@@ -237,7 +242,7 @@ function InProgress({ open }: { readonly open: OpenSessionSummary }) {
         </span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium text-on-accent">
-        {open.stale ? 'Open it' : 'Continue'}
+        {open.stale ? t().home.openIt : t().common.continue}
         <ChevronRightIcon aria-hidden className="size-4" />
       </span>
     </Link>
@@ -287,13 +292,10 @@ function TodayCard({
 
   if (today.noGoal) {
     return (
-      <PlanCard label="Today’s workout" title="Get a plan built for you">
-        <p className="mt-1 text-sm text-secondary">
-          Pick a goal and how many days you train. It takes about ten seconds, and every session
-          after that is built from what you log.
-        </p>
+      <PlanCard label={t().home.today.label} title={t().home.today.noGoalTitle}>
+        <p className="mt-1 text-sm text-secondary">{t().home.today.noGoalBody}</p>
         <Actions>
-          <PrimaryLink to="/goal">Choose a goal</PrimaryLink>
+          <PrimaryLink to="/goal">{t().home.today.chooseGoal}</PrimaryLink>
         </Actions>
       </PlanCard>
     );
@@ -301,7 +303,7 @@ function TodayCard({
 
   if (today.error !== null) {
     return (
-      <PlanCard label="Today’s workout">
+      <PlanCard label={t().home.today.label}>
         <p role="alert" className="mt-2 text-sm text-destructive">
           {today.error}
         </p>
@@ -312,8 +314,8 @@ function TodayCard({
   const plan = today.plan;
   if (!today.ready || plan === null) {
     return (
-      <PlanCard label="Today’s workout">
-        <LoadingRegion label="Working out today’s session…" className="mt-2">
+      <PlanCard label={t().home.today.label}>
+        <LoadingRegion label={t().home.today.working} className="mt-2">
           <Skeleton className="h-7 w-40" />
           <Skeleton className="mt-2 h-4 w-2/3" />
           <Skeleton className="mt-4 h-12 w-40 rounded-full" />
@@ -324,15 +326,15 @@ function TodayCard({
 
   if (trainedToday !== null) {
     const parts = [
-      trainedToday.minutes === null ? null : `${String(trainedToday.minutes)} min`,
-      `${String(trainedToday.sets)} ${trainedToday.sets === 1 ? 'set' : 'sets'}`,
+      trainedToday.minutes === null ? null : t().home.today.minutes(trainedToday.minutes),
+      t().home.today.sets(trainedToday.sets),
     ].filter((part) => part !== null);
     return (
-      <PlanCard label="Today’s workout" title="Done for today">
-        <p className="numeric mt-1 text-sm text-secondary">Trained today · {parts.join(' · ')}</p>
-        <p className="mt-2 text-sm text-secondary">
-          Rest is where today’s work turns into progress. Tomorrow’s session is built from it.
+      <PlanCard label={t().home.today.label} title={t().home.today.doneTitle}>
+        <p className="numeric mt-1 text-sm text-secondary">
+          {t().home.today.trainedToday(parts.join(' · '))}
         </p>
+        <p className="mt-2 text-sm text-secondary">{t().home.today.doneBody}</p>
         <Actions>
           {plan.exercises.length > 0 && (
             <button
@@ -343,7 +345,7 @@ function TodayCard({
               }}
               className={cx(ACTION, QUIET)}
             >
-              {busy ? 'Setting it up…' : 'Train again'}
+              {busy ? t().home.today.settingUp : t().home.today.trainAgain}
             </button>
           )}
           <SeePlan />
@@ -355,15 +357,12 @@ function TodayCard({
 
   if (plan.exercises.length === 0) {
     return (
-      <PlanCard label="Today’s workout" title="You have done the week">
-        <p className="mt-1 text-sm text-secondary">
-          Everything today’s session would train has had its sets in the last seven days. Another
-          session now costs more recovery than it buys.
-        </p>
+      <PlanCard label={t().home.today.label} title={t().home.today.weekTitle}>
+        <p className="mt-1 text-sm text-secondary">{t().home.today.weekBody}</p>
         <Actions>
           {/* Not a lock. Somebody who wants to train anyway is allowed to. */}
           <Link to="/workout" className={cx(ACTION, QUIET)}>
-            Train anyway
+            {t().home.today.trainAnyway}
           </Link>
         </Actions>
       </PlanCard>
@@ -374,13 +373,13 @@ function TodayCard({
   const groups = [...new Set(plan.exercises.map((exercise) => exercise.groupSlug))];
 
   return (
-    <PlanCard label="Today’s workout" title={FOCUS_LABELS[plan.focus]}>
+    <PlanCard label={t().home.today.label} title={FOCUS_LABELS[plan.focus]}>
       <p className="numeric mt-1 text-sm text-secondary">
-        {plan.exercises.length} exercises · {plan.totalSets} sets
-        {minutes !== null && ` · about ${String(minutes)} min`}
+        {t().home.today.summary(plan.exercises.length, plan.totalSets)}
+        {minutes !== null && t().home.today.about(minutes)}
       </p>
 
-      <ul aria-label="Muscle groups" className="mt-3 flex flex-wrap gap-1.5">
+      <ul aria-label={t().home.today.muscleGroups} className="mt-3 flex flex-wrap gap-1.5">
         {groups.map((group) => {
           const region = regionOf(group);
           return (
@@ -396,7 +395,7 @@ function TodayCard({
                   region === null ? 'bg-muted' : REGION_DOT[region],
                 )}
               />
-              {group}
+              {muscleGroupName(group) ?? group}
             </li>
           );
         })}
@@ -412,7 +411,7 @@ function TodayCard({
           className={cx(ACTION, QUIET, 'disabled:cursor-not-allowed')}
         >
           <PlayIcon className="size-4" />
-          {busy ? 'Setting it up…' : 'Start workout'}
+          {busy ? t().home.today.settingUp : t().home.today.start}
         </button>
         <SeePlan />
       </Actions>
@@ -491,7 +490,7 @@ function SeePlan() {
       to="/plan"
       className="inline-flex min-h-tap items-center gap-0.5 px-1 text-sm font-medium text-secondary underline-offset-4 hover:text-primary hover:underline"
     >
-      See the plan
+      {t().home.today.seePlan}
       <ChevronRightIcon aria-hidden className="size-4" />
     </Link>
   );
@@ -537,36 +536,36 @@ function tilesFor(workoutOpen: boolean, recommendationsEnabled: boolean): readon
     workoutOpen && recommendationsEnabled
       ? {
           to: '/plan',
-          title: 'Today’s plan',
-          detail: 'What the app suggests',
+          title: t().home.tiles.plan,
+          detail: t().home.tiles.planDetail,
           icon: ClipboardIcon,
           tone: 'neutral',
         }
       : {
           to: '/workout',
-          title: workoutOpen ? 'Continue your workout' : 'Start a workout',
-          detail: workoutOpen ? 'Back to your session' : 'Choose a routine or start blank',
+          title: workoutOpen ? t().home.tiles.continue : t().home.tiles.start,
+          detail: workoutOpen ? t().home.tiles.continueDetail : t().home.tiles.startDetail,
           icon: DumbbellIcon,
           tone: workoutOpen ? 'neutral' : 'accent',
         },
     {
       to: '/calendar',
-      title: 'Calendar',
-      detail: 'The days you trained',
+      title: t().home.tiles.calendar,
+      detail: t().home.tiles.calendarDetail,
       icon: CalendarIcon,
       tone: 'neutral',
     },
     {
       to: '/exercises',
-      title: 'Browse exercises',
-      detail: 'The whole library',
+      title: t().home.tiles.browse,
+      detail: t().home.tiles.browseDetail,
       icon: SearchIcon,
       tone: 'neutral',
     },
     {
       to: '/progress',
-      title: 'Progress',
-      detail: 'How your training is going',
+      title: t().home.tiles.progress,
+      detail: t().home.tiles.progressDetail,
       icon: ProgressIcon,
       tone: 'neutral',
     },
@@ -646,18 +645,16 @@ function SyncWarning({ lost }: { readonly lost: boolean }) {
         <AlertIcon className="mt-0.5 size-5 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-primary">
-            {lost ? 'Some changes did not reach the server' : 'Sync has stopped'}
+            {lost ? t().home.sync.lost : t().home.sync.stopped}
           </p>
           <p className="mt-0.5 text-sm text-secondary">
-            {lost
-              ? 'They are on this phone but will not sync.'
-              : 'Everything is still saved on this phone.'}
+            {lost ? t().home.sync.lostDetail : t().home.sync.stoppedDetail}
           </p>
           <Link
             to="/settings"
             className="mt-1 inline-flex min-h-tap items-center text-sm font-medium text-primary underline underline-offset-4"
           >
-            See what happened
+            {t().home.sync.see}
           </Link>
         </div>
       </div>

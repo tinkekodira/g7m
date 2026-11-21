@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Button } from '@g7m/ui';
 import { useNavigate } from 'react-router';
@@ -54,7 +55,7 @@ export function TourReplay() {
   const start = useStartTour();
   return (
     <Button variant="secondary" onClick={start}>
-      Take app tour
+      {t().tour.replay}
     </Button>
   );
 }
@@ -75,14 +76,12 @@ function AccountInvitation({ user }: { readonly user: string }) {
       className="rounded-sheet border border-subtle bg-surface p-4"
     >
       <h2 id="tour-invitation" className="text-lg font-semibold text-primary">
-        Find your way around
+        {t().tour.invitationTitle}
       </h2>
-      <p className="mt-1 text-sm text-secondary">
-        Five quick stops to discover your training tools.
-      </p>
+      <p className="mt-1 text-sm text-secondary">{t().tour.invitationBody}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={onStart}>
-          Take a quick tour
+          {t().tour.take}
         </Button>
         <Button
           variant="ghost"
@@ -90,9 +89,9 @@ function AccountInvitation({ user }: { readonly user: string }) {
             rememberTour(user);
             setHandled(true);
           }}
-          aria-label="Dismiss app tour invitation"
+          aria-label={t().tour.dismissLabel}
         >
-          Dismiss
+          {t().tour.dismiss}
         </Button>
       </div>
     </section>

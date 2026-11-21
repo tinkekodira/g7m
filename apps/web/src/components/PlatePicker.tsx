@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { PLATE_SLOTS, PLATE_SLOT_LOOK, slotValue, type CalculatorUnit } from '@g7m/core';
 import { usePlateSettingsStore } from '../lib/use-plate-settings.js';
 
@@ -60,7 +61,7 @@ export function PlatePicker({ unit }: { readonly unit: CalculatorUnit }) {
       </ul>
       {atMinimum && (
         <p role="status" className="mt-3 text-sm text-warning">
-          Keep at least one plate selected.
+          {t().settings.plates.keepOne}
         </p>
       )}
     </>

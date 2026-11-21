@@ -13,6 +13,7 @@
  *
  * See DECISIONS.md ADR-0026.
  */
+import { t } from '@g7m/i18n';
 
 export type PersistenceState =
   /** The browser guarantees the data until the user clears it explicitly. */
@@ -105,7 +106,7 @@ export async function ensurePersistentStorage(
 const MEGABYTE = 1024 * 1024;
 
 export function formatBytes(bytes: number | null): string {
-  if (bytes === null) return 'unknown';
+  if (bytes === null) return t().settings.storage.unknownSize;
   if (bytes < MEGABYTE) return `${String(Math.round(bytes / 1024))} KB`;
   if (bytes < 1024 * MEGABYTE) return `${String(Math.round(bytes / MEGABYTE))} MB`;
   return `${(bytes / (1024 * MEGABYTE)).toFixed(1)} GB`;
@@ -115,17 +116,13 @@ export function formatBytes(bytes: number | null): string {
 export function describePersistence(state: PersistenceState): string {
   switch (state) {
     case 'granted':
-      return 'Your workouts are stored permanently on this device.';
+      return t().settings.storage.grantedDetail;
     case 'denied':
-      return (
-        'This device may clear your offline data if storage runs low or ' +
-        'you do not open the app for a while. Sign in stays available, so ' +
-        'nothing already synced is lost.'
-      );
+      return t().settings.storage.deniedDetail;
     case 'unsupported':
-      return 'This browser cannot guarantee offline storage.';
+      return t().settings.storage.unsupportedDetail;
     case 'error':
-      return 'Could not check offline storage on this device.';
+      return t().settings.storage.errorDetail;
   }
 }
 

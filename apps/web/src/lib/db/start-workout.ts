@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import type { Repositories } from './repositories.js';
 import { startRoutineWorkout } from './use-routines.js';
 
@@ -16,7 +17,7 @@ export async function startWorkout(r: Repositories, routineId: string | null, gy
   if (routineId !== null) {
     const routine = await r.routines.byId(routineId);
     if (routine === null || routine.exercises.length === 0)
-      throw new Error('This routine is no longer available or has no exercises.');
+      throw new Error(t().profile.data.routineGone);
     return {
       session: await startRoutineWorkout(r, { routine, bodyweightKg, ...at }),
       blank: false,

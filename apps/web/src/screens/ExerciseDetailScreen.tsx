@@ -1,3 +1,4 @@
+import { formatNumber, live, t } from '@g7m/i18n';
 import { useMemo, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { heatColour } from '@g7m/anatomy';
@@ -56,7 +57,7 @@ export function ExerciseDetailScreen() {
       muscles: involvement.map((entry): Involvement => {
         const muscle = muscleById.get(entry.muscleId);
         return {
-          name: muscle?.commonName ?? 'Unknown muscle',
+          name: muscle?.commonName ?? t().library.detail.unknownMuscle,
           slug: muscle?.slug ?? '',
           role: entry.role,
           share: entry.recruitmentWeight,
@@ -78,13 +79,10 @@ export function ExerciseDetailScreen() {
         </p>
       ) : detail.loading ? (
         <p role="status" className="text-sm text-muted">
-          Loading…
+          {t().common.loading}
         </p>
       ) : data === null ? (
-        <p className="max-w-prose text-sm text-secondary">
-          There is no exercise called <span className="text-primary">{slug}</span> on this device.
-          It may have been renamed, or it may not have synced yet.
-        </p>
+        <p className="max-w-prose text-sm text-secondary">{t().library.detail.missing(slug)}</p>
       ) : (
         <ExerciseDetail
           exercise={data.exercise}
@@ -116,11 +114,7 @@ interface Involvement {
   readonly share: number;
 }
 
-const ROLE_LABELS: Record<MuscleRole, string> = {
-  primary: 'Prime mover',
-  secondary: 'Assists',
-  stabilizer: 'Stabilises',
-};
+const ROLE_LABELS: Readonly<Record<MuscleRole, string>> = live(() => t().library.detail.roles);
 
 function ExerciseDetail({
   exercise,
@@ -147,19 +141,27 @@ function ExerciseDetail({
         <h1 className="exercise-title">{exercise.name}</h1>
         <div className="mt-3">{favourite}</div>
         {exercise.aliases.length > 0 && (
-          <p className="mt-2 text-sm text-secondary">Also called {exercise.aliases.join(', ')}</p>
+          <p className="mt-2 text-sm text-secondary">
+            {t().library.detail.alsoCalled(exercise.aliases.join(', '))}
+          </p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           <span className="exercise-badge exercise-badge-primary">
             {exercise.cardioKind !== null
-              ? 'Cardio'
+              ? t().library.cardio
               : exercise.mechanic === 'compound'
-                ? 'Compound'
-                : 'Isolation'}
+                ? t().library.compound
+                : t().library.isolation}
           </span>
-          <span className="exercise-badge">{capitalise(exercise.difficulty)}</span>
-          {exercise.isUnilateral && <span className="exercise-badge">One side at a time</span>}
-          {exercise.isTimeBased && <span className="exercise-badge">Held for time</span>}
+          <span className="exercise-badge">
+            {t().library.detail.difficulty[exercise.difficulty]}
+          </span>
+          {exercise.isUnilateral && (
+            <span className="exercise-badge">{t().library.detail.oneSide}</span>
+          )}
+          {exercise.isTimeBased && (
+            <span className="exercise-badge">{t().library.detail.timed}</span>
+          )}
         </div>
         <ExerciseHero slug={exercise.slug} name={exercise.name} />
       </div>
@@ -167,15 +169,19 @@ function ExerciseDetail({
       {exercise.cardioKind === null && (
         <section aria-labelledby="exercise-starting-point" className="exercise-starting-point">
           <h2 id="exercise-starting-point" className="sr-only">
-            Starting point
+            {t().library.detail.startingPoint}
           </h2>
           <div>
             <p className="numeric exercise-starting-value">
               {exercise.defaultRepLow}–{exercise.defaultRepHigh}
-              {exercise.isTimeBased && <span className="text-lg"> s</span>}
+              {exercise.isTimeBased && (
+                <span className="text-lg">{t().library.detail.seconds}</span>
+              )}
             </p>
             <p className="text-sm text-secondary">
-              {exercise.isTimeBased ? 'Suggested hold' : 'Suggested reps'}
+              {exercise.isTimeBased
+                ? t().library.detail.suggestedHold
+                : t().library.detail.suggestedReps}
             </p>
           </div>
           <div>
@@ -184,7 +190,7 @@ function ExerciseDetail({
             >
               {restLabel(exercise)}
             </p>
-            <p className="text-sm text-secondary">Rest between sets</p>
+            <p className="text-sm text-secondary">{t().library.detail.rest}</p>
           </div>
         </section>
       )}
@@ -195,7 +201,7 @@ function ExerciseDetail({
 
       {exercise.cues.length > 0 && (
         <section className="exercise-cues">
-          <h2 className="exercise-section-title">Cues</h2>
+          <h2 className="exercise-section-title">{t().library.detail.cues}</h2>
           <ul className="divide-y divide-strong/50">
             {exercise.cues.map((cue, index) => (
               <li
@@ -210,14 +216,11 @@ function ExerciseDetail({
         </section>
       )}
 
-      <Section title="Muscles worked">
+      <Section title={t().library.detail.muscles}>
         {exercise.cardioKind !== null ? (
-          <p className="max-w-prose text-sm text-secondary">
-            Cardio works the heart and lungs more than any one muscle, so it is not counted on the
-            body map — twenty minutes on a machine is not twenty sets of anything.
-          </p>
+          <p className="max-w-prose text-sm text-secondary">{t().library.detail.cardioMuscles}</p>
         ) : muscles.length === 0 ? (
-          <p className="text-sm text-muted">Not recorded for this exercise.</p>
+          <p className="text-sm text-muted">{t().library.detail.notRecorded}</p>
         ) : (
           <div className="exercise-muscles">
             <ExerciseMuscleBody sex={sex} muscles={muscles} />
@@ -261,7 +264,7 @@ function ExerciseDetail({
 
       {(exercise.instructions.length > 0 || exerciseDemo(exercise.slug) !== null) && (
         <section className="exercise-how-to">
-          <h2 className="exercise-section-title">How to do it</h2>
+          <h2 className="exercise-section-title">{t().library.detail.howTo}</h2>
           <ExerciseDemo slug={exercise.slug} name={exercise.name} />
           <ol className="flex min-w-0 flex-col gap-4">
             {exercise.instructions.map((step, index) => (
@@ -278,7 +281,7 @@ function ExerciseDetail({
 
       {exercise.commonMistakes.length > 0 && (
         <section className="exercise-mistakes">
-          <h2 className="exercise-section-title">Common mistakes</h2>
+          <h2 className="exercise-section-title">{t().library.detail.mistakes}</h2>
           <ul className="flex flex-col gap-2">
             {exercise.commonMistakes.map((mistake) => (
               <li key={mistake} className="flex gap-2 text-sm text-secondary">
@@ -295,32 +298,27 @@ function ExerciseDetail({
       <section className="border-t border-subtle pt-4">
         <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-primary">
           <DumbbellIcon className="size-5 text-muted" />
-          Equipment
+          {t().library.detail.equipment}
         </h2>
         <p className="text-sm text-secondary">
           {equipment.length === 0
-            ? 'Nothing at all.'
+            ? t().library.detail.noEquipment
             : equipment.map((item) => item.name).join(', ')}
         </p>
       </section>
       {exercise.cardioKind !== null && (
-        <Section title="What you log">
+        <Section title={t().library.detail.whatYouLog}>
           <p className="max-w-prose text-sm text-secondary">
-            {loggedFields(exercise.cardioKind, unitSystem)} Calories are estimated from those and
-            your bodyweight, or you can type the machine’s own figure.
+            {t().library.detail.logged(loggedFields(exercise.cardioKind, unitSystem))}
           </p>
         </Section>
       )}
       {exercise.videoProvider !== 'none' && exercise.videoRef !== null && (
-        <Section title="Video">
-          <p className="text-sm text-secondary">
-            Needs a connection. Everything above this line does not.
-          </p>
+        <Section title={t().library.detail.video}>
+          <p className="text-sm text-secondary">{t().library.detail.videoNeedsConnection}</p>
         </Section>
       )}
-      <footer className="pt-2 pb-6 text-xs text-muted">
-        Educational content, not medical advice. Consult a professional before starting a program.
-      </footer>
+      <footer className="pt-2 pb-6 text-xs text-muted">{t().settings.disclaimer}</footer>
     </>
   );
 }
@@ -329,9 +327,11 @@ function restLabel(exercise: Exercise): string {
   const seconds = exercise.defaultRestSeconds;
   if (seconds === null)
     return exercise.mechanic === 'compound'
-      ? 'Longer — it is a compound'
-      : 'Shorter — it is an isolation';
-  return seconds % 60 === 0 ? `${String(seconds / 60)} min` : `${String(seconds)} s`;
+      ? t().library.detail.restCompound
+      : t().library.detail.restIsolation;
+  return seconds % 60 === 0
+    ? t().library.detail.restMinutes(seconds / 60)
+    : t().library.detail.restSeconds(seconds);
 }
 
 /**
@@ -359,17 +359,17 @@ function OneRepMax({
   const { current, best } = strength;
   const show = (kg: number): string => {
     const display = toDisplayWeight(Math.abs(kg), unitSystem);
-    return `${String(display.value)} ${display.unit}`;
+    return `${formatNumber(display.value)} ${display.unit}`;
   };
   // An estimate does not get hundredths: to the half kilo, or the whole pound.
   const estimate = (kg: number): string => {
     const display = toDisplayWeight(kg, unitSystem);
     const rounded =
       display.unit === 'kg' ? Math.round(display.value * 2) / 2 : Math.round(display.value);
-    return `${String(rounded)} ${display.unit}`;
+    return `${formatNumber(rounded)} ${display.unit}`;
   };
   const source = (reading: OneRepMaxReading): string =>
-    `${describeMark(reading, false, show)} on ${shortDate(reading.at, now)}`;
+    t().library.detail.on(describeMark(reading, false, show), shortDate(reading.at, now));
   const shown = current ?? best;
   // Worth a second line only when the best ever is actually higher.
   const olderBest =
@@ -382,30 +382,27 @@ function OneRepMax({
   return (
     <section className="exercise-strength">
       <TrendIcon className="exercise-strength-icon size-7 text-accent" />
-      <h2 className="text-sm font-medium text-secondary">Your estimated one-rep max</h2>
+      <h2 className="text-sm font-medium text-secondary">{t().library.detail.oneRepMax}</h2>
       <p className="numeric mt-1 text-2xl font-bold text-primary">
         {estimate(shown.estimate.valueKg)}
       </p>
       <p className="mt-1 text-sm text-secondary">
         {current === null
-          ? `Nothing in the last ${String(CURRENT_STRENGTH_WEEKS)} weeks, so this is your best ever, from ${source(shown)}.`
-          : `From ${source(shown)}.`}
-        {shown.loadType === 'bodyweight_plus' && ' Your bodyweight is included.'}
+          ? t().library.detail.nothingRecent(CURRENT_STRENGTH_WEEKS, source(shown))
+          : t().library.detail.from(source(shown))}
+        {shown.loadType === 'bodyweight_plus' && t().library.detail.bodyweightIncluded}
       </p>
       {olderBest !== null && (
         <p className="mt-1 text-sm text-muted">
-          Best ever: {estimate(olderBest.estimate.valueKg)}, from {source(olderBest)}.
+          {t().library.detail.bestEver(estimate(olderBest.estimate.valueKg), source(olderBest))}
         </p>
       )}
-      <p className="mt-3 text-xs text-muted">
-        Worked out with the Epley formula from your best set of 12 reps or fewer. An estimate to
-        pick working weights from, not a number to go and test.
-      </p>
+      <p className="mt-3 text-xs text-muted">{t().library.detail.epley}</p>
       <Link
         to={`/progress/exercise/${exerciseId}`}
         className="exercise-trend-link inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
       >
-        See the trend
+        {t().library.detail.seeTrend}
         <ChevronRightIcon className="size-4" />
       </Link>
     </section>
@@ -414,7 +411,7 @@ function OneRepMax({
 
 /** "3 September", with the year when it is not this one. */
 function shortDate(date: Date, now: Date): string {
-  const day = `${String(date.getDate())} ${monthName(date)}`;
+  const day = t().common.dates.dayMonth(date.getDate(), monthName(date));
   return date.getFullYear() === now.getFullYear() ? day : `${day} ${String(date.getFullYear())}`;
 }
 
@@ -425,10 +422,6 @@ function Section({ title, children }: { readonly title: string; readonly childre
       {children}
     </section>
   );
-}
-
-function capitalise(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 /** Recruitment weight is meant to be 0–1, and nothing enforces that locally. */
@@ -443,8 +436,5 @@ function loggedFields(kind: CardioKind, unitSystem: UnitSystem): string {
       .replace(/\s*\(.*\)$/, '')
       .toLowerCase(),
   );
-  const list = ['its time', ...names];
-  const spoken =
-    list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list.at(-1) ?? ''}`;
-  return `Each bout records ${spoken ?? ''}.`;
+  return t().library.detail.eachBout([t().library.detail.itsTime, ...names]);
 }

@@ -6,6 +6,7 @@
  * of the component so the edges can be tested — the friend with no name, the
  * friend not sharing, the week where nobody has trained yet.
  */
+import { formatNumber, intlLocale, t } from '@g7m/i18n';
 import {
   boardGap,
   boardScore,
@@ -29,38 +30,33 @@ import {
   type WeekStart,
 } from '@g7m/core';
 import type { BoardFriend } from '../lib/friends/api.js';
-import { NAMELESS, friendName } from './friends-view.js';
+import { friendName, nameless } from './friends-view.js';
 
-export const STAT_OPTIONS: readonly { readonly value: LeaderboardStat; readonly label: string }[] =
-  [
-    { value: 'workouts', label: 'Workouts' },
-    { value: 'lifted', label: 'Weight' },
-    { value: 'sets', label: 'Sets' },
-    { value: 'minutes', label: 'Time' },
-  ];
-
-export const RANKING_OPTIONS: readonly {
-  readonly value: LeaderboardRanking;
+interface Option<T> {
+  readonly value: T;
   readonly label: string;
-}[] = [
-  { value: 'most', label: 'Most' },
-  { value: 'improved', label: 'Most improved' },
-];
+}
 
-export const PERIOD_OPTIONS: readonly {
-  readonly value: LeaderboardPeriod;
-  readonly label: string;
-}[] = [
-  { value: 'week', label: 'This week' },
-  { value: 'month', label: 'This month' },
-];
+const STATS: readonly LeaderboardStat[] = ['workouts', 'lifted', 'sets', 'minutes'];
 
-const STAT_NOUNS: Record<LeaderboardStat, string> = {
-  workouts: 'workouts',
-  lifted: 'weight',
-  sets: 'sets',
-  minutes: 'time',
-};
+/** The four stats, in the language speaking now. Called at render. */
+export function statOptions(): readonly Option<LeaderboardStat>[] {
+  return STATS.map((value) => ({ value, label: t().friends.board.stats[value] }));
+}
+
+export function rankingOptions(): readonly Option<LeaderboardRanking>[] {
+  return (['most', 'improved'] as const).map((value) => ({
+    value,
+    label: t().friends.board.rankings[value],
+  }));
+}
+
+export function periodOptions(): readonly Option<LeaderboardPeriod>[] {
+  return (['week', 'month'] as const).map((value) => ({
+    value,
+    label: t().friends.board.periods[value],
+  }));
+}
 
 /**
  * The three choices as one line, for the filter bar while it is shut: "Most
@@ -72,10 +68,7 @@ export function boardSummary(
   stat: LeaderboardStat,
   period: LeaderboardPeriod,
 ): string {
-  const when = period === 'week' ? 'this week' : 'this month';
-  return ranking === 'most'
-    ? `Most ${STAT_NOUNS[stat]} ${when}`
-    : `Most improved: ${STAT_NOUNS[stat]} ${when}`;
+  return t().friends.board.summary[ranking][period][stat];
 }
 
 /** The score as the row shows it: `5`, `12,450 kg`, `3h 5m`. */
@@ -83,11 +76,11 @@ export function scoreText(score: number, stat: LeaderboardStat, unitSystem: Unit
   switch (stat) {
     case 'workouts':
     case 'sets':
-      return score.toLocaleString('en');
+      return formatNumber(score);
     case 'minutes':
       return formatMinutes(score);
     case 'lifted':
-      return `${score.toLocaleString('en')} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
+      return `${formatNumber(score)} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
   }
 }
 
@@ -95,13 +88,13 @@ export function scoreText(score: number, stat: LeaderboardStat, unitSystem: Unit
 export function scoreWords(score: number, stat: LeaderboardStat, unitSystem: UnitSystem): string {
   switch (stat) {
     case 'workouts':
-      return score === 1 ? '1 workout' : `${score.toLocaleString('en')} workouts`;
+      return t().friends.board.workouts(formatNumber(score), score);
     case 'sets':
-      return score === 1 ? '1 set' : `${score.toLocaleString('en')} sets`;
+      return t().friends.board.sets(formatNumber(score), score);
     case 'minutes':
-      return `${formatMinutes(score)} of training`;
+      return t().friends.board.ofTraining(formatMinutes(score));
     case 'lifted':
-      return `${scoreText(score, stat, unitSystem)} lifted`;
+      return t().friends.board.lifted(scoreText(score, stat, unitSystem));
   }
 }
 
@@ -128,33 +121,18 @@ export function describeGap(
   const who = nameOf(gap.id);
   switch (gap.kind) {
     case 'behind':
-      return `${amountText(gap.by, stat, unitSystem)} behind ${who}`;
+      return t().friends.board.behind(amountText(gap.by, stat, unitSystem), who);
     case 'level':
-      return `Level with ${who}`;
+      return t().friends.board.levelWith(who);
     case 'ahead':
-      return `${amountText(gap.by, stat, unitSystem)} ahead of ${who}`;
-  }
-}
-
-function ordinal(rank: number): string {
-  const tens = rank % 100;
-  if (tens >= 11 && tens <= 13) return `${String(rank)}th`;
-  switch (rank % 10) {
-    case 1:
-      return `${String(rank)}st`;
-    case 2:
-      return `${String(rank)}nd`;
-    case 3:
-      return `${String(rank)}rd`;
-    default:
-      return `${String(rank)}th`;
+      return t().friends.board.ahead(amountText(gap.by, stat, unitSystem), who);
   }
 }
 
 /** How long the period has to run: "Last day", "5 days left". Today counts. */
 export function timeLeft(end: Date, now: Date): string {
   const days = daysBetween(now, end);
-  return days <= 1 ? 'Last day' : `${String(days)} days left`;
+  return days <= 1 ? t().friends.board.lastDay : t().friends.board.daysLeft(days);
 }
 
 export interface BoardRowView {
@@ -234,12 +212,18 @@ export function leaderboard(
   const { ranking, stat, period, now, unitSystem } = context;
   const improved = ranking === 'improved';
   const spans = boardSpans(period, now, context.weekStartsOn);
-  const periodWord = period === 'week' ? 'week' : 'month';
+  const words = t().friends.board;
 
   // In name order going in, so a tie reads alphabetically and does not
   // shuffle between renders; rankBoard keeps that order within a tie.
   const contenders: Contender[] = [
-    { key: 'you', userId: null, name: 'You', avatarName: context.myName, workouts: mine },
+    {
+      key: 'you',
+      userId: null,
+      name: t().friends.you,
+      avatarName: context.myName,
+      workouts: mine,
+    },
     ...friends
       .filter((friend) => friend.sharing)
       .map((friend) => ({
@@ -249,7 +233,7 @@ export function leaderboard(
         avatarName: friend.name,
         workouts: friend.workouts,
       })),
-  ].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+  ].sort((a, b) => a.name.localeCompare(b.name, intlLocale(), { sensitivity: 'base' }));
 
   const byKey = new Map(contenders.map((contender) => [contender.key, contender]));
   const usualOf = (key: string, whole: Span): number =>
@@ -293,7 +277,7 @@ export function leaderboard(
       .filter((entry) => entry.rank === 1)
       .map((entry) => entry.id),
   );
-  const crowned = `${improved ? 'Most improved' : 'Won'} last ${periodWord}`;
+  const crowned = words.crowned(improved, period);
 
   // Ranked by improvement the gap is in percentage points, which nobody can
   // train towards; it is said instead as what the one behind has to do to
@@ -311,17 +295,17 @@ export function leaderboard(
         };
   const note =
     gap !== null
-      ? describeGap(inUnits(gap), (id) => byKey.get(id)?.name ?? NAMELESS, stat, unitSystem)
+      ? describeGap(inUnits(gap), (id) => byKey.get(id)?.name ?? nameless(), stat, unitSystem)
       : placed.has('you')
         ? null
-        : 'Nothing to measure against yet';
+        : words.nothingYetToMeasure;
 
   const top = ranked.find((entry) => entry.rank !== null)?.score ?? 0;
 
   const shown = (score: number) =>
     improved ? `${String(score)}%` : scoreText(score, stat, unitSystem);
   const said = (score: number) =>
-    improved ? `${String(score)}% of usual` : scoreWords(score, stat, unitSystem);
+    improved ? words.ofUsual(score) : scoreWords(score, stat, unitSystem);
 
   const row = (
     key: string,
@@ -331,20 +315,19 @@ export function leaderboard(
     measured: boolean,
   ): BoardRowView => {
     const contender = byKey.get(key);
-    const name = contender?.name ?? 'You';
+    const name = contender?.name ?? t().friends.you;
     const isYou = key === 'you';
     const champion = champions.has(key);
     // Your own row says why under your name, so its description does not say it twice.
     const where = !measured
       ? isYou
-        ? `${name}: new`
-        : `${name}: new, nothing in the four weeks before this ${periodWord} to measure against`
+        ? words.rowNew(name)
+        : words.rowNewWhy(name, period)
       : rank === null
-        ? `${name}: nothing yet`
-        : `${ordinal(rank)}, ${name}: ${said(score)}`;
-    const moved =
-      move === 0 ? null : `${move > 0 ? 'Up' : 'Down'} ${String(Math.abs(move))} since yesterday`;
-    const words = [where, moved, champion ? crowned : null]
+        ? words.rowNothing(name)
+        : words.rowPlaced(words.ordinal(rank), name, said(score));
+    const moved = move === 0 ? null : words.moved(move > 0, Math.abs(move));
+    const spoken = [where, moved, champion ? crowned : null]
       .filter((part) => part !== null)
       .join('. ');
     const mine = isYou ? note : null;
@@ -357,13 +340,13 @@ export function leaderboard(
       rank,
       rankText: rank === null ? '–' : String(rank),
       score,
-      scoreText: measured ? shown(score) : 'New',
+      scoreText: measured ? shown(score) : words.new,
       share: rank === null || top <= 0 ? null : Math.min(1, score / top),
       champion,
       move,
       moveText: move === 0 ? null : `${move > 0 ? '▲' : '▼'}${String(Math.abs(move))}`,
       note: mine,
-      description: mine !== null ? `${words}. ${mine}` : words,
+      description: mine !== null ? `${spoken}. ${mine}` : spoken,
     };
   };
 
@@ -375,14 +358,8 @@ export function leaderboard(
   ];
 
   const footnotes = [
-    improved
-      ? period === 'week'
-        ? '100% is a usual week: a quarter of what each person did in the four weeks before it.'
-        : '100% is a usual month: what each person did in the four weeks before it, stretched to the month’s length.'
-      : null,
-    stat === 'lifted'
-      ? 'Weight × reps on working sets. Bodyweight moves like pull-ups and dips count only the weight added to them.'
-      : null,
+    improved ? (period === 'week' ? words.usualWeek : words.usualMonth) : null,
+    stat === 'lifted' ? words.weightCounts : null,
   ].filter((line) => line !== null);
 
   const hidden = friends.filter((friend) => !friend.sharing);
@@ -390,8 +367,8 @@ export function leaderboard(
     hidden.length === 0
       ? null
       : hidden.length === 1
-        ? `${friendName(hidden[0]?.name ?? null)} isn’t sharing their training, so isn’t on the board.`
-        : `${String(hidden.length)} friends aren’t sharing their training, so aren’t on the board.`;
+        ? words.oneNotSharing(friendName(hidden[0]?.name ?? null))
+        : words.manyNotSharing(hidden.length);
 
   return {
     rows,
@@ -399,7 +376,7 @@ export function leaderboard(
     standing: {
       place: (() => {
         const rank = rows.find((entry) => entry.isYou)?.rank ?? null;
-        return rank === null ? 'No place yet' : `You’re #${String(rank)}`;
+        return rank === null ? words.noPlace : words.yourPlace(rank);
       })(),
       gap: note,
     },

@@ -5,12 +5,13 @@
  * out of the entry Home is drawn from, ADR-0120) and the month being read.
  * Its own file so the first can show it without loading the second.
  */
+import { t } from '@g7m/i18n';
 import { Skeleton } from '@g7m/ui';
 import { LoadingRegion } from './LoadingRegion.js';
 
 export function StatSkeleton() {
   return (
-    <LoadingRegion label="Loading this month…">
+    <LoadingRegion label={t().app.loadingStates.thisMonth}>
       <div className="skeleton-card flex min-h-[18.5rem] flex-col">
         <div className="flex items-start gap-3">
           <Skeleton className="size-10 rounded-card" />

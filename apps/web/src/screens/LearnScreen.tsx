@@ -1,3 +1,4 @@
+import { muscleGroupName, t } from '@g7m/i18n';
 import { Suspense, lazy, useMemo, useState } from 'react';
 import { BodySkeleton, ExerciseRowsSkeleton } from '../components/ContentSkeletons.js';
 import { LoadingScope } from '../components/LoadingScope.js';
@@ -27,10 +28,14 @@ const AnatomyViewer = lazy(() =>
 );
 
 /** The two ways to look at the body, on Progress's pill (ADR-0128). */
-const MODES = [
-  { value: 'explore', label: 'Explore' },
-  { value: 'heatmap', label: 'What I have trained' },
-] as const satisfies readonly { value: AnatomyMode; label: string }[];
+const MODES: readonly { readonly value: AnatomyMode; readonly label: string }[] = (
+  ['explore', 'heatmap'] as const
+).map((value) => ({
+  value,
+  get label() {
+    return t().library.learn.modes[value];
+  },
+}));
 
 interface MuscleDetail {
   readonly muscle: Muscle;
@@ -139,16 +144,16 @@ export function LearnScreen() {
           about anatomy — but tucked away at the bottom nobody would find it. */}
       <header className="learn-header">
         <div className="min-w-0">
-          <h1 className="learn-title">Learn</h1>
+          <h1 className="learn-title">{t().library.learn.title}</h1>
           <p className="mt-1 text-sm text-secondary">
             {mode === 'heatmap'
-              ? `What you have trained, over ${String(HEATMAP_WEEKS)} weeks.`
-              : 'Tap a muscle to see what trains it.'}
+              ? t().library.learn.heatmapIntro(HEATMAP_WEEKS)
+              : t().library.learn.exploreIntro}
           </p>
         </div>
         <Link to="/learn/plates" viewTransition className="learn-plates">
           <DumbbellIcon className="size-4" />
-          Plates
+          {t().library.learn.plates}
         </Link>
       </header>
 
@@ -175,8 +180,7 @@ export function LearnScreen() {
       */}
       {!taxonomy.loading && taxonomy.error === null && selectableSlugs.length === 0 && (
         <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
-          No muscles on this device yet, so nothing on the model can be tapped. They arrive with the
-          first sync — open the app once with a connection and they stay for good.
+          {t().library.learn.noMuscles}
         </p>
       )}
 
@@ -203,7 +207,7 @@ export function LearnScreen() {
           Progress and Friends switch with, so the main switch on every tab
           looks the same (ADR-0128). */}
       <SegmentedControl
-        label="Body view"
+        label={t().library.learn.bodyView}
         options={MODES}
         value={mode}
         onChange={(next) => {
@@ -238,14 +242,14 @@ export function LearnScreen() {
               </Suspense>
             )}
           </div>
-          <p className="learn-body-hint">Drag to turn. Tap a muscle.</p>
+          <p className="learn-body-hint">{t().library.learn.hint}</p>
           <select
-            aria-label="Choose a muscle"
+            aria-label={t().library.learn.chooseMuscle}
             className="learn-muscle-select"
             value={selected ?? ''}
             onChange={(event) => setSelected(event.target.value || null)}
           >
-            <option value="">Choose a muscle</option>
+            <option value="">{t().library.learn.chooseMuscle}</option>
             {taxonomy.data?.selectable.map((muscle) => (
               <option key={muscle.slug} value={muscle.slug}>
                 {muscle.commonName}
@@ -254,7 +258,7 @@ export function LearnScreen() {
           </select>
         </div>
 
-        <section className="learn-results" aria-label="Muscle exercises">
+        <section className="learn-results" aria-label={t().library.learn.muscleExercises}>
           {/* Answers follow the full-width body in the document's normal scroll. */}
           {selected !== null && (
             <LoadingScope key={selected}>
@@ -276,10 +280,10 @@ export function LearnScreen() {
 
           {selected === null && mode === 'explore' && (
             <div className="learn-empty">
-              <h2 className="learn-section-title">Explore muscles</h2>
-              <p>Tap the body or choose a muscle to find exercises.</p>
+              <h2 className="learn-section-title">{t().library.learn.explore}</h2>
+              <p>{t().library.learn.exploreHint}</p>
               <Link to="/exercises" className="learn-browse-link">
-                Browse all exercises
+                {t().library.learn.browseAll}
               </Link>
             </div>
           )}
@@ -287,19 +291,22 @@ export function LearnScreen() {
           {mode === 'heatmap' && todo.data !== null && todo.data.length > 0 && (
             <section aria-labelledby="learn-worth-adding" className="learn-suggestions">
               <h2 id="learn-worth-adding" className="learn-section-title">
-                Worth adding
+                {t().library.learn.worthAdding}
               </h2>
-              <p className="mb-2 text-xs text-muted">Last {HEATMAP_WEEKS} weeks</p>
-              <p className="mb-3 text-sm text-secondary">
-                The groups furthest behind their weekly target, and one thing that trains each.
+              <p className="mb-2 text-xs text-muted">
+                {t().library.learn.lastWeeks(HEATMAP_WEEKS)}
               </p>
+              <p className="mb-3 text-sm text-secondary">{t().library.learn.worthAddingHint}</p>
               <ul className="flex flex-col">
                 {todo.data.map((suggestion) => (
                   <li key={suggestion.exerciseId}>
                     <ExerciseRow
                       slug={suggestionSlugs.data?.get(suggestion.exerciseId) ?? null}
                       name={suggestion.name}
-                      note={`${suggestion.group} · ${String(suggestion.setsBehind)} sets behind`}
+                      note={t().library.learn.behind(
+                        muscleGroupName(suggestion.group) ?? suggestion.group,
+                        suggestion.setsBehind,
+                      )}
                     />
                   </li>
                 ))}
@@ -313,10 +320,10 @@ export function LearnScreen() {
                 todo.error ??
                 suggestionSlugs.error ??
                 (heat.loading
-                  ? 'Working out what you have trained…'
+                  ? t().library.learn.working
                   : heat.data?.trained === true
-                    ? 'Colour is volume relative to your hardest-worked muscle — what you trained most, not whether you trained enough.'
-                    : 'Nothing logged in the last four weeks yet. Finish a workout and it shows up here.')}
+                    ? t().library.learn.heatNote
+                    : t().library.learn.heatEmpty)}
             </p>
           )}
         </section>
@@ -328,8 +335,8 @@ export function LearnScreen() {
           the foot: it is worth knowing once and never again. */}
       <p className="learn-model-note">
         {sculpted.parts === null
-          ? 'The figure is generated from origins and insertions — the licensed anatomy model is not in this build. Everything else on this screen is real.'
-          : 'A sculpted body, divided between the muscles that reach the skin.'}
+          ? t().library.learn.placeholderModel
+          : t().library.learn.sculptedModel}
       </p>
     </main>
   );
@@ -355,7 +362,7 @@ function MusclePanel({
   if (detail === null) {
     return (
       <p className="rounded-sheet border border-subtle bg-surface p-4 text-sm text-secondary">
-        That muscle is not in the catalogue on this device yet.
+        {t().library.learn.notInCatalogue}
       </p>
     );
   }
@@ -372,24 +379,32 @@ function MusclePanel({
           <p className="learn-latin-name">{muscle.latinName}</p>
         </div>
         <button type="button" onClick={onClear} className="learn-clear">
-          Clear
+          {t().library.learn.clear}
         </button>
       </header>
 
       {sections.empty ? (
-        <p className="text-sm text-muted">Nothing in the catalogue trains this yet.</p>
+        <p className="text-sm text-muted">{t().library.learn.nothingTrains}</p>
       ) : (
         <>
           {/* Compound first, and split rather than ranked: they are different
               kinds of answer to "what trains this", not better and worse. */}
-          <ExerciseGroup title="Compound" exercises={sections.compound} favourites={favourites} />
-          <ExerciseGroup title="Isolation" exercises={sections.isolation} favourites={favourites} />
+          <ExerciseGroup
+            title={t().library.compound}
+            exercises={sections.compound}
+            favourites={favourites}
+          />
+          <ExerciseGroup
+            title={t().library.isolation}
+            exercises={sections.isolation}
+            favourites={favourites}
+          />
           {/* A third section rather than more rows under the first two. These
               work the muscle without being the point of the lift, and merging
               them in would rank a face pull alongside a row for the rhomboids. */}
           <ExerciseGroup
-            title="Also worked"
-            hint="Worked here as a supporting muscle rather than the main one."
+            title={t().library.learn.alsoWorked}
+            hint={t().library.learn.alsoWorkedHint}
             exercises={sections.also}
             favourites={favourites}
           />

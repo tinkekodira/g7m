@@ -12,6 +12,7 @@
  * that a year of training is a few thousand rows, and the alternative is the
  * same rules written twice in two languages, drifting.
  */
+import { exerciseText } from '@g7m/i18n';
 import {
   isCardioKind,
   type BoardSet,
@@ -472,7 +473,7 @@ export class HistoryRepository {
   > {
     const { userId } = resolveContext(this.context);
     const rows = await this.db.getAll<RawRow>(
-      `SELECT se.exercise_id, e.name, e.is_time_based,
+      `SELECT se.exercise_id, e.slug, e.name, e.is_time_based,
               ${isoText(`MAX(${instant('ws.started_at')})`)} AS last_at
          FROM session_exercises se
          JOIN workout_sessions ws ON ws.id = se.session_id
@@ -485,14 +486,14 @@ export class HistoryRepository {
             SELECT 1 FROM session_sets ss
              WHERE ss.session_exercise_id = se.id AND ss.is_completed = 1
           )
-        GROUP BY se.exercise_id, e.name, e.is_time_based
+        GROUP BY se.exercise_id, e.slug, e.name, e.is_time_based
         ORDER BY last_at DESC, e.name ASC`,
       [userId],
     );
 
     return rows.map((row) => ({
       exerciseId: readString(row, 'exercise_id', ''),
-      name: readString(row, 'name', ''),
+      name: exerciseText(readString(row, 'slug', ''))?.name ?? readString(row, 'name', ''),
       lastAt: new Date(readString(row, 'last_at', '')),
       isTimeBased: readBoolean(row, 'is_time_based'),
     }));

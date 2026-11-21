@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useState } from 'react';
 import {
   BAR_IDS,
@@ -84,17 +85,15 @@ export function PlateCalculatorScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Plate calculator</h1>
-          <p className="mt-1 text-sm text-secondary">
-            What goes on each end, at the sizes you will recognise.
-          </p>
+          <h1 className="text-2xl font-semibold text-primary">{t().library.plates.title}</h1>
+          <p className="mt-1 text-sm text-secondary">{t().library.plates.intro}</p>
         </div>
-        <HeaderLink to="/learn">Learn</HeaderLink>
+        <HeaderLink to="/learn">{t().library.learn.title}</HeaderLink>
       </header>
 
       <section className="rounded-card border border-subtle bg-surface p-4">
         <Stepper
-          label="Weight on the bar"
+          label={t().library.plates.weightOnBar}
           value={target}
           step={smallest * 2}
           min={0}
@@ -114,7 +113,7 @@ export function PlateCalculatorScreen() {
         {bar === 'bar_ez' && (
           <div className="mt-3">
             <Stepper
-              label="This gym's EZ bar weighs"
+              label={t().library.plates.ezWeighs}
               value={unit === 'kg' ? ezBarWeightKg : ezBarWeightLb}
               step={unit === 'kg' ? 0.5 : 1}
               min={1}
@@ -132,10 +131,7 @@ export function PlateCalculatorScreen() {
       <PlateKey availableSlots={availableSlots} unit={unit} />
 
       {hiddenCount > 0 && (
-        <p className="text-sm text-secondary">
-          {hiddenCount === 1 ? 'One plate is' : `${String(hiddenCount)} plates are`} hidden because
-          your gym doesn&rsquo;t have {hiddenCount === 1 ? 'it' : 'them'}.
-        </p>
+        <p className="text-sm text-secondary">{t().library.plates.hidden(hiddenCount)}</p>
       )}
 
       <AvailablePlates unit={unit} />
@@ -156,12 +152,14 @@ function BarPicker({
   readonly onChange: (bar: BarId) => void;
 }) {
   return (
-    <div className="mt-3" role="radiogroup" aria-label="Bar">
+    <div className="mt-3" role="radiogroup" aria-label={t().library.plates.bar}>
       <ul className="flex flex-wrap gap-2">
         {BAR_IDS.map((id) => {
           const selected = id === bar;
           const label =
-            id === 'bar_ez' ? 'EZ bar' : `${trim(barWeight(id, unit, ezBarWeight))} ${unit}`;
+            id === 'bar_ez'
+              ? t().library.plates.ezBar
+              : `${trim(barWeight(id, unit, ezBarWeight))} ${unit}`;
           return (
             <li key={id}>
               <button
@@ -198,27 +196,22 @@ function LoadingSummary({
   readonly fits: boolean;
 }) {
   if (loading.kind === 'plates' && !fits) {
-    return (
-      <p className="mt-3 text-sm text-warning">
-        That&rsquo;s more plate than this bar&rsquo;s sleeve can hold. Try fewer plates, a lighter
-        weight, or a longer bar.
-      </p>
-    );
+    return <p className="mt-3 text-sm text-warning">{t().library.plates.tooMuch}</p>;
   }
 
   if (loading.kind !== 'plates') {
     return (
       <p className="mt-3 text-sm text-secondary">
         {loading.kind === 'bar_only'
-          ? `Just the bar — ${trim(loading.bar)} ${unit}, nothing on it.`
-          : `Lighter than the bar on its own, which is ${trim(loading.bar)} ${unit}.`}
+          ? t().library.plates.justBar(trim(loading.bar), unit)
+          : t().library.plates.lighter(trim(loading.bar), unit)}
       </p>
     );
   }
 
   return (
     <p className="mt-3 flex flex-wrap items-center gap-1.5 text-sm text-secondary">
-      <span className="font-medium text-primary">Each end</span>
+      <span className="font-medium text-primary">{t().library.plates.eachEnd}</span>
       {loading.perSide.map((size, index) => (
         <span
           key={`${String(index)}-${String(size)}`}
@@ -228,9 +221,9 @@ function LoadingSummary({
         </span>
       ))}
       <span className="text-muted">
-        on a {trim(loading.bar)} {unit} bar
+        {t().library.plates.onBar(trim(loading.bar), unit)}
         {loading.short > 0 &&
-          ` — the closest these plates make is ${trim(loading.total)} ${unit}, ${trim(loading.short)} ${unit} short`}
+          t().library.plates.closest(trim(loading.total), trim(loading.short), unit)}
       </span>
     </p>
   );
@@ -257,8 +250,8 @@ function PlateKey({
 
   return (
     <section className="rounded-card border border-subtle bg-surface p-4">
-      <h2 className="text-base font-semibold text-primary">The colours</h2>
-      <p className="mt-0.5 text-sm text-muted">Which disc is which, on the bar and on the rack.</p>
+      <h2 className="text-base font-semibold text-primary">{t().library.plates.colours}</h2>
+      <p className="mt-0.5 text-sm text-muted">{t().library.plates.coloursHint}</p>
       <ul className="mt-3 flex flex-wrap items-center gap-2">
         {slots.map((slot) => {
           const look = PLATE_SLOT_LOOK[slot];
@@ -298,11 +291,8 @@ function AvailablePlates({ unit }: { readonly unit: CalculatorUnit }) {
       id="available-plates"
       className="scroll-mt-4 rounded-card border border-subtle bg-surface p-4"
     >
-      <h2 className="text-base font-semibold text-primary">Available plates</h2>
-      <p className="mt-0.5 text-sm text-muted">
-        Which plates this gym has. A deselected plate is left out of the bar, the maths and the
-        colours above.
-      </p>
+      <h2 className="text-base font-semibold text-primary">{t().library.plates.available}</h2>
+      <p className="mt-0.5 text-sm text-muted">{t().library.plates.availableHint}</p>
       <PlatePicker unit={unit} />
     </section>
   );
@@ -310,5 +300,5 @@ function AvailablePlates({ unit }: { readonly unit: CalculatorUnit }) {
 
 /** 25, 2.5, 1.25 — no trailing zeros on a plate. */
 function trim(size: number): string {
-  return String(Math.round(size * 100) / 100);
+  return formatNumber(Math.round(size * 100) / 100);
 }

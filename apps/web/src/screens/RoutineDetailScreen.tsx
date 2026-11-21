@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { planMove, workoutUnits, type MoveTarget } from '@g7m/core';
@@ -42,7 +43,7 @@ export function RoutineDetailScreen() {
   }
 
   async function remove(): Promise<void> {
-    if (!globalThis.confirm('Delete this routine? The workouts you did with it are kept.')) return;
+    if (!globalThis.confirm(t().profile.routine.confirmDelete)) return;
     await write((r) => r.routines.remove(routineId));
     void navigate('/routines');
   }
@@ -60,7 +61,7 @@ export function RoutineDetailScreen() {
   if (state.loading && view === null) {
     return (
       <Shell>
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       </Shell>
     );
   }
@@ -68,10 +69,7 @@ export function RoutineDetailScreen() {
   if (view === null) {
     return (
       <Shell>
-        <p className="max-w-prose text-sm text-secondary">
-          That routine is not on this device. It may have been deleted, or it may not have synced
-          yet.
-        </p>
+        <p className="max-w-prose text-sm text-secondary">{t().profile.routine.notOnDevice}</p>
       </Shell>
     );
   }
@@ -85,12 +83,10 @@ export function RoutineDetailScreen() {
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold text-primary">{detail.routine.name}</h1>
           <p className="numeric mt-1 text-sm text-secondary">
-            {detail.exercises.length === 1
-              ? '1 exercise'
-              : `${String(detail.exercises.length)} exercises`}
+            {t().profile.routinesScreen.exercises(detail.exercises.length)}
           </p>
         </div>
-        <HeaderLink to="/routines">Routines</HeaderLink>
+        <HeaderLink to="/routines">{t().profile.routine.routines}</HeaderLink>
       </header>
 
       {(state.error ?? error) !== null && (
@@ -102,7 +98,7 @@ export function RoutineDetailScreen() {
       {renaming ? (
         <section className="rounded-card border border-subtle bg-surface p-4">
           <TextField
-            label="Name"
+            label={t().profile.routinesScreen.name}
             value={draft}
             placeholder={detail.routine.name}
             onChange={(event) => {
@@ -116,7 +112,7 @@ export function RoutineDetailScreen() {
                 void rename();
               }}
             >
-              Save
+              {t().common.save}
             </Button>
             <Button
               variant="ghost"
@@ -126,7 +122,7 @@ export function RoutineDetailScreen() {
                 setDraft('');
               }}
             >
-              Cancel
+              {t().common.cancel}
             </Button>
           </div>
         </section>
@@ -139,14 +135,13 @@ export function RoutineDetailScreen() {
           }}
           className="self-start text-sm font-medium text-accent underline-offset-4 hover:underline"
         >
-          Rename
+          {t().profile.routine.rename}
         </button>
       )}
 
       {detail.exercises.length === 0 ? (
         <p className="rounded-card border border-subtle bg-surface p-4 text-sm text-secondary">
-          Nothing in it yet. Add the movements you want and they will be written into every workout
-          you start from it.
+          {t().profile.routine.empty}
         </p>
       ) : (
         <ol className="flex flex-col gap-2">
@@ -156,7 +151,7 @@ export function RoutineDetailScreen() {
             const last = index === units.length - 1;
             if (unit.kind === 'single') {
               const movement = unit.item;
-              const name = names.get(movement.exerciseId) ?? 'Unknown exercise';
+              const name = names.get(movement.exerciseId) ?? t().profile.unknownExercise;
               return (
                 <li key={movement.id}>
                   <MovementRow
@@ -179,12 +174,12 @@ export function RoutineDetailScreen() {
             return (
               <li key={unit.supersetId}>
                 <section
-                  aria-label="Superset"
+                  aria-label={t().profile.routine.superset}
                   className="flex flex-col gap-2 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <div className="flex items-center gap-1 pl-2">
                     <p className="flex-1 text-xs font-semibold tracking-wide text-accent uppercase">
-                      {label} · Superset
+                      {t().profile.routine.supersetLabel(label)}
                     </p>
                     <button
                       type="button"
@@ -194,10 +189,10 @@ export function RoutineDetailScreen() {
                       }}
                       className="min-h-tap px-2 text-xs text-muted underline-offset-4 hover:underline"
                     >
-                      Ungroup
+                      {t().profile.routine.ungroup}
                     </button>
                     <IconButton
-                      label="Move superset up"
+                      label={t().profile.routine.moveSupersetUp}
                       disabled={busy || first}
                       onClick={() => {
                         void move({ unit: index }, -1);
@@ -206,7 +201,7 @@ export function RoutineDetailScreen() {
                       <ArrowUpIcon className="size-5" />
                     </IconButton>
                     <IconButton
-                      label="Move superset down"
+                      label={t().profile.routine.moveSupersetDown}
                       disabled={busy || last}
                       onClick={() => {
                         void move({ unit: index }, 1);
@@ -219,7 +214,7 @@ export function RoutineDetailScreen() {
                     <MovementRow
                       key={movement.id}
                       movement={movement}
-                      name={names.get(movement.exerciseId) ?? 'Unknown exercise'}
+                      name={names.get(movement.exerciseId) ?? t().profile.unknownExercise}
                       label={`${label}${String.fromCharCode(97 + position)}`}
                       upDisabled={busy || position === 0}
                       downDisabled={busy || position === unit.members.length - 1}
@@ -243,7 +238,7 @@ export function RoutineDetailScreen() {
         to={`/exercises?routine=${routineId}`}
         className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
       >
-        + Add an exercise
+        {t().profile.routine.addExercise}
       </Link>
 
       <div className="py-4">
@@ -255,11 +250,9 @@ export function RoutineDetailScreen() {
           }}
         >
           <TrashIcon className="size-5" />
-          Delete this routine
+          {t().profile.routine.delete}
         </Button>
-        <p className="mt-2 text-xs text-muted">
-          The workouts you have already done with it are kept — they happened.
-        </p>
+        <p className="mt-2 text-xs text-muted">{t().profile.routine.deleteHint}</p>
       </div>
     </Shell>
   );
@@ -306,7 +299,7 @@ function MovementRow({
 
       <div className="flex shrink-0 items-center gap-1">
         <IconButton
-          label={`Move ${name} up`}
+          label={t().profile.routine.moveUp(name)}
           disabled={upDisabled}
           onClick={() => {
             onMove(-1);
@@ -315,7 +308,7 @@ function MovementRow({
           <ArrowUpIcon className="size-5" />
         </IconButton>
         <IconButton
-          label={`Move ${name} down`}
+          label={t().profile.routine.moveDown(name)}
           disabled={downDisabled}
           onClick={() => {
             onMove(1);
@@ -323,7 +316,12 @@ function MovementRow({
         >
           <ChevronDownIcon className="size-5" />
         </IconButton>
-        <IconButton label={`Remove ${name}`} danger disabled={busy} onClick={onRemove}>
+        <IconButton
+          label={t().profile.routine.remove(name)}
+          danger
+          disabled={busy}
+          onClick={onRemove}
+        >
           <TrashIcon className="size-5" />
         </IconButton>
       </div>

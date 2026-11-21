@@ -11,6 +11,7 @@
  * online one, so each of these reads its whole answer in one pass and the
  * assembling happens in memory, where a few thousand rows cost nothing.
  */
+import { exerciseText } from '@g7m/i18n';
 import {
   naturalLoadType,
   rpeToRir,
@@ -79,7 +80,7 @@ export class PlannerRepository {
     const { userId } = resolveContext(this.context);
 
     const rows = await this.db.getAll<RawRow>(
-      `SELECT e.id, e.name, e.mechanic, e.is_time_based, e.popularity_rank,
+      `SELECT e.id, e.slug, e.name, e.mechanic, e.is_time_based, e.popularity_rank,
               e.default_rep_low, e.default_rep_high, e.default_rest_seconds,
               group_concat(DISTINCT mg.slug) AS group_slugs,
               -- What provides the load, not what qualifies it: the primary
@@ -261,7 +262,7 @@ function toPlannable(row: RawRow): PlannableExercise {
 
   return {
     id: readString(row, 'id', ''),
-    name: readString(row, 'name', ''),
+    name: exerciseText(readString(row, 'slug', ''))?.name ?? readString(row, 'name', ''),
     mechanic: mechanic === 'compound' || mechanic === 'isolation' ? mechanic : 'unknown',
     isTimeBased: readNumber(row, 'is_time_based', 0) === 1,
     // An exercise whose primary equipment is bodyweight kit is a bodyweight

@@ -5,6 +5,7 @@
  * what the page says about it — which lift it opens on, how long each bar is,
  * and the sentence under them, which is the part somebody actually reads.
  */
+import { t } from '@g7m/i18n';
 import {
   compareLifts,
   describeWorkoutDay,
@@ -62,7 +63,7 @@ export function headToHead(input: {
   const { lifts, defaultId } = sharedLifts(input.mine, theirs, input.preferredId);
   const options = lifts.map((lift) => ({
     exerciseId: lift.exerciseId,
-    name: input.names.get(lift.exerciseId) ?? 'Unknown exercise',
+    name: input.names.get(lift.exerciseId) ?? t().friends.unknownExercise,
   }));
 
   const selectedId =
@@ -92,10 +93,10 @@ export function headToHead(input: {
       standing: comparison.standing,
       verdict:
         comparison.standing === 'ahead'
-          ? `You’re ${gap} ahead`
+          ? t().friends.page.youAhead(gap)
           : comparison.standing === 'behind'
-            ? `${input.friend} is ${gap} ahead`
-            : 'Level',
+            ? t().friends.page.theyAhead(input.friend, gap)
+            : t().friends.page.level,
     },
   };
 }
@@ -154,7 +155,7 @@ export function friendBestLifts(
   return bests
     .map((best) => ({
       exerciseId: best.exerciseId,
-      name: names.get(best.exerciseId) ?? 'Unknown exercise',
+      name: names.get(best.exerciseId) ?? t().friends.unknownExercise,
       valueKg: best.bestKg,
       achievedAt: best.achievedAt,
     }))
@@ -164,10 +165,10 @@ export function friendBestLifts(
 /** "4 exercises · Bench Press, Incline Press, Fly" for a routine's row. */
 export function routineLine(routine: FriendRoutine, names: ReadonlyMap<string, string>): string {
   const count = routine.exercises.length;
-  const total = count === 1 ? '1 exercise' : `${String(count)} exercises`;
+  const total = t().friends.page.exercises(count);
   if (count === 0) return total;
   const listed = routine.exercises
-    .map((movement) => names.get(movement.exerciseId) ?? 'Unknown exercise')
+    .map((movement) => names.get(movement.exerciseId) ?? t().friends.unknownExercise)
     .join(', ');
   return `${total} · ${listed}`;
 }

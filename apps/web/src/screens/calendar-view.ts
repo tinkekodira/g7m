@@ -13,7 +13,8 @@ import {
   type PeriodTotals,
   type WeekStart,
 } from '@g7m/core';
-import { WEEKDAYS_SHORT, monthName, weekdayName } from '../lib/date-words.js';
+import { t } from '@g7m/i18n';
+import { monthName, weekdayName, weekdaysShort } from '../lib/date-words.js';
 
 /**
  * How many months back the calendar always reaches, counting this one.
@@ -26,17 +27,18 @@ export const MONTHS_ALWAYS_REACHABLE = 12;
 
 /** "September 2026". */
 export function monthTitle(date: Date): string {
-  return `${monthName(date)} ${String(date.getFullYear())}`;
+  return t().progress.calendar.monthYear(monthName(date), date.getFullYear());
 }
 
 /** The row of weekday names across the top, in the lifter's own week. */
 export function weekdayHeadings(weekStartsOn: WeekStart): string[] {
-  return Array.from({ length: 7 }, (_, index) => WEEKDAYS_SHORT[(weekStartsOn + index) % 7] ?? '');
+  const names = weekdaysShort();
+  return Array.from({ length: 7 }, (_, index) => names[(weekStartsOn + index) % 7] ?? '');
 }
 
 /** "Thursday 10 September". */
 export function dayTitle(date: Date): string {
-  return `${weekdayName(date)} ${String(date.getDate())} ${monthName(date)}`;
+  return t().progress.calendar.dayTitle(weekdayName(date), date.getDate(), monthName(date));
 }
 
 /**
@@ -47,9 +49,10 @@ export function dayTitle(date: Date): string {
  */
 export function dayLabel(day: CalendarDay, workouts: number): string {
   const parts = [dayTitle(day.date)];
-  if (workouts > 0) parts.push(`${String(workouts)} ${workouts === 1 ? 'workout' : 'workouts'}`);
-  else if (!day.isFuture) parts.push('no workout');
-  if (day.isToday) parts.push('today');
+  const words = t().progress.calendar;
+  if (workouts > 0) parts.push(words.workouts(workouts));
+  else if (!day.isFuture) parts.push(words.noWorkout);
+  if (day.isToday) parts.push(words.today);
   return parts.join(', ');
 }
 
@@ -111,10 +114,10 @@ export function stepMonth(month: Date, by: number): Date {
 export function monthSummary(totals: PeriodTotals, month: Date, now: Date): string {
   if (totals.workouts === 0) {
     return monthKey(month) === monthKey(now)
-      ? 'No workouts yet this month'
-      : `No workouts in ${monthName(month)}`;
+      ? t().progress.calendar.noneThisMonth
+      : t().progress.calendar.noneIn(monthName(month));
   }
-  const count = `${String(totals.workouts)} ${totals.workouts === 1 ? 'workout' : 'workouts'}`;
+  const count = t().progress.calendar.workouts(totals.workouts);
   return totals.minutes > 0 ? `${count} · ${formatMinutes(totals.minutes)}` : count;
 }
 

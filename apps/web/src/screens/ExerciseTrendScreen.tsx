@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
@@ -52,16 +53,16 @@ export function ExerciseTrendScreen() {
   }, [state.data, scope]);
   const gymOptions = scopes.map((id) => ({
     id,
-    name: state.data?.gyms.find((gym) => gym.id === id)?.name ?? 'Removed gym',
+    name: state.data?.gyms.find((gym) => gym.id === id)?.name ?? t().history.trend.removedGym,
   }));
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <h1 className="text-2xl font-semibold text-primary">
-          {data?.exercise?.name ?? 'Exercise'}
+          {data?.exercise?.name ?? t().history.trend.exercise}
         </h1>
-        <HeaderLink to="/progress">Progress</HeaderLink>
+        <HeaderLink to="/progress">{t().progress.title}</HeaderLink>
       </header>
 
       {state.error !== null ? (
@@ -69,15 +70,20 @@ export function ExerciseTrendScreen() {
           {state.error}
         </p>
       ) : state.loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : data === null || data.points.length === 0 ? (
         <p className="rounded-card bg-surface p-4 text-sm text-secondary">
-          Nothing logged for this exercise yet, or the sessions containing it were never finished.
+          {t().history.trend.nothing}
         </p>
       ) : (
         <>
           {gymOptions.length > 1 && (
-            <GymChips gyms={gymOptions} value={scope} label="Machine at" onChange={setPicked} />
+            <GymChips
+              gyms={gymOptions}
+              value={scope}
+              label={t().history.trend.machineAt}
+              onChange={setPicked}
+            />
           )}
           <Trend
             points={data.points}
@@ -106,7 +112,8 @@ function Trend({
   readonly now: Date;
 }) {
   const unit = unitSystem === 'imperial' ? 'lb' : 'kg';
-  const display = (kg: number): string => String(toDisplayWeight(kg, unitSystem).value);
+  const display = (kg: number): string => formatNumber(toDisplayWeight(kg, unitSystem).value);
+  const value = (kg: number): number => toDisplayWeight(kg, unitSystem).value;
 
   const topSets = points.map((point) => point.topSetKg);
   /**
@@ -123,36 +130,33 @@ function Trend({
   return (
     <>
       <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-1 text-lg font-semibold text-primary">Heaviest set</h2>
-        <p className="mb-2 text-xs text-muted">The top set of each workout, in {unit}.</p>
+        <h2 className="mb-1 text-lg font-semibold text-primary">{t().history.trend.heaviest}</h2>
+        <p className="mb-2 text-xs text-muted">{t().history.trend.heaviestCaption(unit)}</p>
         <TrendChart
-          values={topSets.map((kg) => Number(display(kg)))}
-          summary={`Heaviest set per workout across ${String(points.length)} sessions.`}
+          values={topSets.map(value)}
+          summary={t().history.trend.heaviestSummary(points.length)}
           format={(value) => `${String(Math.round(value))} ${unit}`}
         />
       </section>
 
       <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-1 text-lg font-semibold text-primary">Estimated one-rep max</h2>
+        <h2 className="mb-1 text-lg font-semibold text-primary">{t().history.trend.oneRepMax}</h2>
         <p className="mb-2 text-xs text-muted">
-          Epley, from sets of {String(MAX_REPS_FOR_1RM_ESTIMATE)} reps or fewer. It is an estimate,
-          not a number to attempt.
+          {t().history.trend.oneRepMaxCaption(MAX_REPS_FOR_1RM_ESTIMATE)}
         </p>
         {estimates.length === 0 ? (
-          <p className="text-sm text-muted">
-            No set so far is in the range where the estimate means anything.
-          </p>
+          <p className="text-sm text-muted">{t().history.trend.noEstimate}</p>
         ) : (
           <TrendChart
-            values={estimates.map((kg) => Number(display(kg)))}
-            summary={`Estimated one-rep max across ${String(estimates.length)} sessions.`}
+            values={estimates.map(value)}
+            summary={t().history.trend.oneRepMaxSummary(estimates.length)}
             format={(value) => `${String(Math.round(value))} ${unit}`}
           />
         )}
       </section>
 
       <section className="rounded-card bg-surface p-4">
-        <h2 className="mb-3 text-lg font-semibold text-primary">Every session</h2>
+        <h2 className="mb-3 text-lg font-semibold text-primary">{t().history.trend.every}</h2>
         <ul className="flex flex-col">
           {[...points].reverse().map((point) => (
             <li
@@ -175,7 +179,7 @@ function Trend({
 
       {records.length > 0 && (
         <section className="rounded-card bg-surface p-4">
-          <h2 className="mb-3 text-lg font-semibold text-primary">Bests</h2>
+          <h2 className="mb-3 text-lg font-semibold text-primary">{t().history.trend.bests}</h2>
           <ul className="flex flex-col">
             {records.map((record) => (
               <li
@@ -199,7 +203,7 @@ function Trend({
             to={`/exercises/${exerciseSlug}`}
             className="text-accent underline-offset-4 hover:underline"
           >
-            How to do this exercise
+            {t().history.trend.howTo}
           </Link>
         </p>
       )}
@@ -208,7 +212,8 @@ function Trend({
 }
 
 function describeRecord(recordType: string): string {
-  if (recordType === 'max_weight') return 'Heaviest set';
-  if (recordType === 'estimated_1rm') return 'Best estimated 1RM';
-  return 'Most volume in one session';
+  const records = t().history.trend.records;
+  if (recordType === 'max_weight') return records.max_weight;
+  if (recordType === 'estimated_1rm') return records.estimated_1rm;
+  return records.volume;
 }

@@ -1,0 +1,66 @@
+import type { Messages } from '../en/index.js';
+
+export const onboarding: Messages['onboarding'] = {
+  startsHere: 'Ton entraînement commence ici',
+  progress: (position: number, total: number) => `${String(position)} sur ${String(total)}`,
+  progressLabel: 'Progression de l’inscription',
+  titles: {
+    language: 'Choisis ta langue',
+    name: 'Comment devons-nous t’appeler ?',
+    dob: 'Quand es-tu né(e) ?',
+    sex: 'Ton sexe',
+    height: 'Quelle est ta taille ?',
+    weight: 'Combien pèses-tu ?',
+    activity: 'Ta semaine est-elle active ?',
+    country: 'D’où viens-tu ?',
+    goal: 'Pour quoi t’entraînes-tu ?',
+    guidance: 'Qui planifie tes séances ?',
+  },
+  blurbs: {
+    language:
+      'Toute l’app s’affiche dans cette langue. Tu peux la changer à tout moment dans les réglages.',
+    name: 'Seulement pour te dire bonjour.',
+    dob: 'Sert à choisir des charges de départ raisonnables.',
+    sex: 'Sert à indiquer des rythmes réalistes de prise et de perte. Cela ne change jamais la quantité d’entraînement proposée, et c’est la seule réponse que tu ne pourras pas modifier ensuite.',
+    height: 'Utilisée avec ton poids pour suivre ce qui change.',
+    weight:
+      'Les tractions et les dips sont mesurés par rapport à lui, et ta pesée hebdomadaire part d’ici. Personne d’autre ne le voit.',
+    activity:
+      'Tout ce qui se passe hors de la salle. Cela change ce autour de quoi ton entraînement doit s’organiser.',
+    country:
+      'Change seulement la langue de l’accueil. Si tu passes, l’accueil est dans la langue de l’app.',
+    goal: 'Aide à adapter ton entraînement et les retours sur ta progression. Tu peux le changer quand il change.',
+    guidance: 'Tu peux modifier les recommandations de séances à tout moment dans les réglages.',
+  },
+  problems: {
+    guidance: 'Choisis comment tu veux planifier ton entraînement.',
+    name: 'Comment devons-nous t’appeler ?',
+    dob: (min: number, max: number) =>
+      `Saisis ta date de naissance. Entre ${String(min)} et ${String(max)}.`,
+    sex: 'Choisis une option pour continuer.',
+    height: (unit: string) => `Saisis ta taille en ${unit}.`,
+    weight: (unit: string) => `Saisis ton poids en ${unit}.`,
+    activity: 'Choisis l’option qui ressemble le plus à ta semaine.',
+    goal: 'Choisis pour quoi tu t’entraînes.',
+  },
+  yourName: 'Ton prénom',
+  dateOfBirth: 'Date de naissance',
+  height: (unit: string) => `Taille (${unit})`,
+  heightUnit: 'Unité de taille',
+  centimetres: 'Centimètres',
+  inches: 'Pouces',
+  weight: (unit: string) => `Poids (${unit})`,
+  weightUnit: 'Unité de poids',
+  kilograms: 'Kilogrammes',
+  pounds: 'Livres',
+  whereFrom: 'D’où tu viens',
+  countryHint: 'Change seulement la langue du message d’accueil.',
+  workoutRecommendations: 'Recommandations de séances',
+  ownTraining: 'Je choisis mon propre entraînement',
+  ownTrainingDetail: 'Planifie tes séances sans suggestions.',
+  suggest: 'Propose-moi des séances',
+  suggestDetail: 'Reçois la séance du jour et des suggestions d’exercices.',
+  settingUp: 'Configuration de ton compte…',
+  finish: 'Terminer',
+  preparing: 'Configuration de ton compte…',
+};

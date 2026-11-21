@@ -1,3 +1,4 @@
+import { currentLocale, t } from '@g7m/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
 import {
@@ -22,6 +23,8 @@ import {
 } from '@g7m/core';
 import { Button, SegmentedControl, TextField } from '@g7m/ui';
 import { CountryPicker } from '../components/CountryPicker.js';
+import { LanguageChoices } from '../components/LanguagePicker.js';
+import { switchLanguage } from '../lib/language.js';
 import { TrainingGoalChoices } from '../components/TrainingGoalChoices.js';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
 import {
@@ -34,7 +37,6 @@ import {
   progressOf,
   readStep,
   type OnboardingAnswers,
-  type OnboardingStep,
 } from './onboarding-steps.js';
 
 /**
@@ -77,6 +79,7 @@ export function WelcomeScreen() {
   const weightUnit = unitSystem === 'imperial' ? 'lb' : 'kg';
 
   const answers: OnboardingAnswers = {
+    language: profile.data?.language ?? null,
     displayName: profile.data?.displayName ?? null,
     birthDate: profile.data?.birthDate ?? null,
     sex: profile.data?.sex ?? null,
@@ -120,7 +123,7 @@ export function WelcomeScreen() {
    */
   if (raw === undefined) {
     if (loading) return <Preparing />;
-    return <Navigate to={`/welcome/${firstUnanswered(answers) ?? 'name'}`} replace />;
+    return <Navigate to={`/welcome/${firstUnanswered(answers) ?? 'language'}`} replace />;
   }
 
   const step = readStep(raw);
@@ -144,10 +147,16 @@ export function WelcomeScreen() {
 
   async function save(): Promise<boolean> {
     switch (step) {
+      case 'language': {
+        // Whatever is on screen is the answer: tapping a language switches
+        // the app at once, and the phone's own is preselected.
+        const chosen = currentLocale();
+        return (await write((r) => r.profile.update({ language: chosen }))) !== null;
+      }
       case 'guidance': {
         const selected = recommendations ?? answers.workoutRecommendations;
         if (selected === null) {
-          setProblem('Choose how you want to plan your training.');
+          setProblem(t().onboarding.problems.guidance);
           firstGuidanceOption.current?.focus();
           return false;
         }
@@ -157,7 +166,7 @@ export function WelcomeScreen() {
       }
       case 'name': {
         if (enteredName.trim() === '') {
-          setProblem('What should we call you?');
+          setProblem(t().onboarding.problems.name);
           return false;
         }
         return (await write((r) => r.profile.update({ displayName: enteredName }))) !== null;
@@ -165,9 +174,7 @@ export function WelcomeScreen() {
       case 'dob': {
         const born = parseBirthDate(enteredDob);
         if (!isUsableBirthDate(born, now)) {
-          setProblem(
-            `Enter the day you were born. Between ${String(MIN_AGE)} and ${String(MAX_AGE)}.`,
-          );
+          setProblem(t().onboarding.problems.dob(MIN_AGE, MAX_AGE));
           return false;
         }
         return (await write((r) => r.profile.update({ birthDate: born }))) !== null;
@@ -175,7 +182,7 @@ export function WelcomeScreen() {
       case 'sex': {
         const selected = sex ?? answers.sex;
         if (selected === null) {
-          setProblem('Pick one to carry on.');
+          setProblem(t().onboarding.problems.sex);
           return false;
         }
         return (await write((r) => r.profile.update({ sex: selected }))) !== null;
@@ -184,7 +191,7 @@ export function WelcomeScreen() {
         const typed = Number(enteredHeight.replace(',', '.'));
         const cm = Number.isFinite(typed) ? fromDisplayHeight(typed, unitSystem) : Number.NaN;
         if (!Number.isFinite(cm) || cm <= 50 || cm >= 300) {
-          setProblem(`Enter your height in ${heightUnit}.`);
+          setProblem(t().onboarding.problems.height(heightUnit));
           return false;
         }
         return (await write((r) => r.bodyMetrics.record({ heightCm: cm }))) !== null;
@@ -193,7 +200,7 @@ export function WelcomeScreen() {
         const typed = Number(enteredWeight.replace(',', '.'));
         const kg = Number.isFinite(typed) ? fromDisplayWeight(typed, unitSystem) : Number.NaN;
         if (!isUsableBodyweight(kg)) {
-          setProblem(`Enter your weight in ${weightUnit}.`);
+          setProblem(t().onboarding.problems.weight(weightUnit));
           return false;
         }
         return (
@@ -208,7 +215,7 @@ export function WelcomeScreen() {
       }
       case 'activity': {
         if (chosenActivity === null) {
-          setProblem('Pick the one that sounds most like your week.');
+          setProblem(t().onboarding.problems.activity);
           return false;
         }
         return (
@@ -222,7 +229,7 @@ export function WelcomeScreen() {
       }
       case 'goal': {
         if (selectedGoals.length === 0) {
-          setProblem('Pick what you are training for.');
+          setProblem(t().onboarding.problems.goal);
           return false;
         }
         if (
@@ -294,14 +301,12 @@ export function WelcomeScreen() {
     <main className="mx-auto flex min-h-svh max-w-xl flex-col px-5 pt-safe-top pb-safe-bottom sm:px-8">
       <header className="pt-6 sm:pt-12">
         <div className="mb-3 flex items-center justify-between text-sm text-secondary">
-          <span className="font-semibold text-primary">Your training starts here</span>
-          <span className="numeric">
-            {position} of {total}
-          </span>
+          <span className="font-semibold text-primary">{t().onboarding.startsHere}</span>
+          <span className="numeric">{t().onboarding.progress(position, total)}</span>
         </div>
         <div
           role="progressbar"
-          aria-label="Signup progress"
+          aria-label={t().onboarding.progressLabel}
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={position}
@@ -318,10 +323,10 @@ export function WelcomeScreen() {
           tabIndex={-1}
           className="mt-10 text-3xl leading-tight font-semibold text-balance text-primary outline-none sm:text-4xl"
         >
-          {TITLES[step]}
+          {t().onboarding.titles[step]}
         </h1>
         <p id="question-hint" className="mt-3 text-base leading-relaxed text-secondary">
-          {BLURBS[step]}
+          {t().onboarding.blurbs[step]}
         </p>
       </header>
 
@@ -336,10 +341,21 @@ export function WelcomeScreen() {
         }}
       >
         <fieldset disabled={busy || (loading && step !== 'name')} className="mt-7 mb-6 min-w-0">
-          <legend className="sr-only">{TITLES[step]}</legend>
+          <legend className="sr-only">{t().onboarding.titles[step]}</legend>
+          {step === 'language' && (
+            <LanguageChoices
+              selected={currentLocale()}
+              disabled={busy}
+              onPick={(locale) => {
+                setProblem(null);
+                void switchLanguage(locale);
+              }}
+            />
+          )}
+
           {step === 'name' && (
             <TextField
-              label="Your name"
+              label={t().onboarding.yourName}
               name="name"
               autoComplete="given-name"
               value={enteredName}
@@ -353,7 +369,7 @@ export function WelcomeScreen() {
             than a keyboard and three separators to get wrong. */}
           {step === 'dob' && (
             <TextField
-              label="Date of birth"
+              label={t().onboarding.dateOfBirth}
               type="date"
               name="birth-date"
               autoComplete="bday"
@@ -379,7 +395,7 @@ export function WelcomeScreen() {
           {step === 'height' && (
             <>
               <TextField
-                label={`Height (${heightUnit})`}
+                label={t().onboarding.height(heightUnit)}
                 inputMode="decimal"
                 name="height"
                 autoComplete="off"
@@ -389,10 +405,10 @@ export function WelcomeScreen() {
                 }}
               />
               <UnitToggle
-                label="Height unit"
+                label={t().onboarding.heightUnit}
                 options={[
-                  { value: 'metric', label: 'Centimetres' },
-                  { value: 'imperial', label: 'Inches' },
+                  { value: 'metric', label: t().onboarding.centimetres },
+                  { value: 'imperial', label: t().onboarding.inches },
                 ]}
                 value={unitSystem}
                 disabled={busy}
@@ -404,7 +420,7 @@ export function WelcomeScreen() {
           {step === 'weight' && (
             <>
               <TextField
-                label={`Weight (${weightUnit})`}
+                label={t().onboarding.weight(weightUnit)}
                 inputMode="decimal"
                 name="weight"
                 autoComplete="off"
@@ -414,10 +430,10 @@ export function WelcomeScreen() {
                 }}
               />
               <UnitToggle
-                label="Weight unit"
+                label={t().onboarding.weightUnit}
                 options={[
-                  { value: 'metric', label: 'Kilograms' },
-                  { value: 'imperial', label: 'Pounds' },
+                  { value: 'metric', label: t().onboarding.kilograms },
+                  { value: 'imperial', label: t().onboarding.pounds },
                 ]}
                 value={unitSystem}
                 disabled={busy}
@@ -442,25 +458,25 @@ export function WelcomeScreen() {
             <CountryPicker
               value={chosenCountry}
               disabled={busy}
-              label="Where you are from"
-              hint="Only changes the language of the greeting on the home screen."
+              label={t().onboarding.whereFrom}
+              hint={t().onboarding.countryHint}
               onChange={setCountry}
             />
           )}
 
           {step === 'guidance' && (
             <fieldset className="flex flex-col gap-3" disabled={busy}>
-              <legend className="sr-only">Workout recommendations</legend>
+              <legend className="sr-only">{t().onboarding.workoutRecommendations}</legend>
               {[
                 {
                   value: false,
-                  label: 'I’ll choose my own training',
-                  detail: 'Plan your sessions without suggestions.',
+                  label: t().onboarding.ownTraining,
+                  detail: t().onboarding.ownTrainingDetail,
                 },
                 {
                   value: true,
-                  label: 'Suggest workouts for me',
-                  detail: 'Get today’s workout and exercise suggestions.',
+                  label: t().onboarding.suggest,
+                  detail: t().onboarding.suggestDetail,
                 },
               ].map((option) => (
                 <label
@@ -497,7 +513,7 @@ export function WelcomeScreen() {
 
         {loading && (
           <p role="status" className="mb-4 text-sm text-secondary">
-            Setting up your account…
+            {t().onboarding.settingUp}
           </p>
         )}
 
@@ -511,11 +527,15 @@ export function WelcomeScreen() {
                 void navigate(`/welcome/${back}`);
               }}
             >
-              Back
+              {t().common.back}
             </Button>
           )}
           <Button className="flex-1" type="submit" disabled={busy || loading}>
-            {busy ? 'Saving…' : nextStep(step) === null ? 'Finish' : 'Continue'}
+            {busy
+              ? t().common.saving
+              : nextStep(step) === null
+                ? t().onboarding.finish
+                : t().common.continue}
           </Button>
 
           {/* Skipping writes nothing and moves on, which is what makes the
@@ -530,7 +550,7 @@ export function WelcomeScreen() {
               }}
               className="min-h-tap w-full text-sm text-secondary underline-offset-4 hover:underline"
             >
-              Skip
+              {t().common.skip}
             </button>
           )}
         </div>
@@ -538,39 +558,6 @@ export function WelcomeScreen() {
     </main>
   );
 }
-
-/** The heading for each question. */
-const TITLES: Record<OnboardingStep, string> = {
-  name: 'What should we call you?',
-  dob: 'When were you born?',
-  sex: 'Your sex',
-  height: 'How tall are you?',
-  weight: 'What do you weigh?',
-  activity: 'How active is your week?',
-  country: 'Where are you from?',
-  goal: 'What are you training for?',
-  guidance: 'Who plans your workouts?',
-};
-
-/**
- * Why each one is being asked.
- *
- * Said at the point of asking, not in a privacy page nobody opens. Two of
- * these — sex and activity — are questions people are right to want a reason
- * for, and the reason is short.
- */
-const BLURBS: Record<OnboardingStep, string> = {
-  name: 'Only used to say hello.',
-  dob: 'Used to pick sensible starting weights.',
-  sex: 'Used to quote realistic rates of gain and loss. It never changes how much training you are given, and it is the one answer you cannot change later.',
-  height: 'Used with your weight to track what is changing.',
-  weight:
-    'Pull-ups and dips are measured against it, and your weekly weigh-in starts from here. Nobody else sees it.',
-  activity: 'Everything outside the gym. It changes what your training has to fit around.',
-  country: 'Only changes the language of the greeting. Skip it and you get English.',
-  goal: 'Helps tailor your training and progress feedback. You can change it whenever it changes.',
-  guidance: 'You can change workout recommendations in Settings anytime.',
-};
 
 function Choices<T extends string>({
   options,
@@ -653,7 +640,7 @@ function UnitToggle({
 function Preparing() {
   return (
     <main className="flex min-h-full items-center justify-center px-4">
-      <p className="text-sm text-muted">Setting your account up…</p>
+      <p className="text-sm text-muted">{t().onboarding.preparing}</p>
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import { intlLocale, t } from '@g7m/i18n';
 import { useId, useMemo } from 'react';
 import { GREETABLE_COUNTRIES, countryName } from '@g7m/core';
 import { flagEmoji, supportsFlagEmoji } from '../lib/flags.js';
@@ -22,7 +23,7 @@ export function CountryPicker({
   value,
   onChange,
   disabled = false,
-  label = 'Where are you from?',
+  label = t().profile.country.label,
   hint,
 }: {
   readonly value: string | null;
@@ -35,9 +36,9 @@ export function CountryPicker({
 
   const flags = useMemo(() => supportsFlagEmoji(), []);
   const countries = useMemo(() => {
-    const locale = typeof navigator === 'undefined' ? undefined : navigator.language;
+    const locale = intlLocale();
     return GREETABLE_COUNTRIES.map((code) => ({ code, name: countryName(code, locale) })).sort(
-      (a, b) => a.name.localeCompare(b.name),
+      (a, b) => a.name.localeCompare(b.name, locale),
     );
   }, []);
 
@@ -58,7 +59,7 @@ export function CountryPicker({
       >
         {/* Skippable, and shown as skippable. Nobody should be stuck on an
             optional question that only changes a greeting. */}
-        <option value="">Rather not say</option>
+        <option value="">{t().profile.country.ratherNot}</option>
         {countries.map((country) => (
           <option key={country.code} value={country.code}>
             {/* Plain text is all a native option can hold, and a flag emoji is

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useId } from 'react';
 import { Chip } from '@g7m/ui';
 import { PinIcon } from './icons.js';
@@ -14,7 +15,7 @@ export function GymChips({
   value,
   onChange,
   disabled = false,
-  label = 'Which gym',
+  label = t().workout.gym.which,
 }: {
   readonly gyms: readonly { readonly id: string; readonly name: string }[];
   readonly value: string | null;

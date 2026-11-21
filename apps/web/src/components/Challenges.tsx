@@ -1,3 +1,4 @@
+import { formatDate, t } from '@g7m/i18n';
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { LeaderboardRanking, LeaderboardStat } from '@g7m/core';
 import { Button, SegmentedControl, cx } from '@g7m/ui';
@@ -11,11 +12,11 @@ import {
   acknowledgeChallenge,
 } from '../lib/friends/api.js';
 import {
-  CHALLENGE_STAT_OPTIONS,
+  challengeStatOptions,
   describeChallengeProblem,
   type ChallengeCardView,
 } from '../screens/challenges-view.js';
-import { RANKING_OPTIONS } from '../screens/leaderboard-view.js';
+import { rankingOptions } from '../screens/leaderboard-view.js';
 
 /**
  * One-to-one challenges (ADR-0110): the cards, and the form that sends one.
@@ -53,7 +54,7 @@ export function ChallengeCard({
       },
       (cause: unknown) => {
         setBusy(false);
-        setProblem(cause instanceof FriendsError ? cause.message : 'That did not go through.');
+        setProblem(cause instanceof FriendsError ? cause.message : t().friends.didNotGoThrough);
       },
     );
   };
@@ -144,30 +145,21 @@ export function ChallengeCard({
         <p className="mt-3 text-base font-medium text-primary">{card.verdict}</p>
       )}
       {card.phase === 'finalizing' && (
-        <p className="mt-1 text-sm text-secondary">
-          Allowing 24 hours for offline workouts to sync. Then the scores are final.
-        </p>
+        <p className="mt-1 text-sm text-secondary">{t().friends.challenge.finalizingNote}</p>
       )}
       {card.phase === 'finished' && (
         <>
           <p className="mt-3 text-sm text-muted">
             {card.metric} ·{' '}
-            {card.endedAt?.toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })}
+            {card.endedAt === null
+              ? null
+              : formatDate(card.endedAt, { year: 'numeric', month: 'short', day: 'numeric' })}
           </p>
           {card.recovered && (
-            <p className="mt-1 text-xs text-muted">
-              Recovered result · based on available training
-            </p>
+            <p className="mt-1 text-xs text-muted">{t().friends.challenge.recovered}</p>
           )}
           {card.outcome === 'unavailable' && (
-            <p className="mt-1 text-sm text-secondary">
-              Training was unavailable when the scores locked. This result is excluded from your
-              record.
-            </p>
+            <p className="mt-1 text-sm text-secondary">{t().friends.challenge.excluded}</p>
           )}
           <div className="mt-4 flex justify-end border-t border-subtle/70 pt-3">
             <Button
@@ -180,7 +172,7 @@ export function ChallengeCard({
                 });
               }}
             >
-              Got it
+              {t().friends.challenge.gotIt}
             </Button>
           </div>
         </>
@@ -190,22 +182,22 @@ export function ChallengeCard({
         <div className="mt-3 grid grid-cols-2 gap-3">
           <Button
             disabled={busy}
-            aria-label={`Accept ${card.name}’s challenge`}
+            aria-label={t().friends.challenge.acceptLabel(card.name)}
             onClick={() => {
               answer(true);
             }}
           >
-            Accept
+            {t().friends.challenge.accept}
           </Button>
           <Button
             variant="secondary"
             disabled={busy}
-            aria-label={`Decline ${card.name}’s challenge`}
+            aria-label={t().friends.challenge.declineLabel(card.name)}
             onClick={() => {
               answer(false);
             }}
           >
-            Decline
+            {t().friends.challenge.decline}
           </Button>
         </div>
       )}
@@ -216,7 +208,7 @@ export function ChallengeCard({
             variant="secondary"
             fullWidth
             disabled={busy}
-            aria-label={`Take back your challenge to ${card.name}`}
+            aria-label={t().friends.challenge.takeBackLabel(card.name)}
             onClick={() => {
               act(async () => {
                 await withdrawChallenge(card.id);
@@ -224,7 +216,7 @@ export function ChallengeCard({
               });
             }}
           >
-            Take it back
+            {t().friends.challenge.takeBack}
           </Button>
         </div>
       )}
@@ -297,10 +289,10 @@ export function SendChallenge({
           <DuelBadge />
           <span className="min-w-0 flex-1">
             <span id={titleId} className="block truncate text-lg font-semibold text-primary">
-              Challenge {name}
+              {t().friends.challenge.challenge(name)}
             </span>
             <span id={detailId} className="mt-0.5 block text-sm text-muted">
-              Seven days, from when {name} accepts.
+              {t().friends.challenge.fromAccept(name)}
             </span>
           </span>
           <ChevronRightIcon className="size-5 shrink-0 text-muted" />
@@ -372,7 +364,7 @@ function ChallengeSheet({
       },
       (cause: unknown) => {
         setBusy(false);
-        setProblem(cause instanceof FriendsError ? cause.message : 'That did not go through.');
+        setProblem(cause instanceof FriendsError ? cause.message : t().friends.didNotGoThrough);
       },
     );
   };
@@ -381,7 +373,7 @@ function ChallengeSheet({
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t().common.close}
         tabIndex={-1}
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
@@ -395,7 +387,7 @@ function ChallengeSheet({
         <div className="flex items-center gap-3">
           <DuelBadge />
           <h2 id={headingId} className="min-w-0 flex-1 truncate text-xl font-semibold text-primary">
-            Challenge {name}
+            {t().friends.challenge.challenge(name)}
           </h2>
           <button
             ref={doneRef}
@@ -403,29 +395,29 @@ function ChallengeSheet({
             onClick={onClose}
             className="inline-flex min-h-tap shrink-0 items-center rounded-control px-3 text-sm font-medium text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
           >
-            Done
+            {t().common.done}
           </button>
         </div>
         <p className="-mt-3 text-sm text-muted">
           {ranking === 'improved'
-            ? 'Seven days, each of you against your own last four weeks, so it’s fair whoever trains more.'
-            : 'Seven days. Whoever does the most wins.'}
+            ? t().friends.challenge.explainImproved
+            : t().friends.challenge.explainMost}
         </p>
         <div className="flex flex-col gap-4">
-          <ChallengeChoice label="Rank by">
+          <ChallengeChoice label={t().friends.board.rankBy}>
             <SegmentedControl
               variant="quiet"
-              label="Rank by"
-              options={RANKING_OPTIONS}
+              label={t().friends.board.rankBy}
+              options={rankingOptions()}
               value={ranking}
               onChange={setRanking}
             />
           </ChallengeChoice>
-          <ChallengeChoice label="Stat">
+          <ChallengeChoice label={t().friends.board.stat}>
             <SegmentedControl
               variant="quiet"
-              label="Stat"
-              options={CHALLENGE_STAT_OPTIONS}
+              label={t().friends.board.stat}
+              options={challengeStatOptions()}
               value={stat}
               onChange={setStat}
             />
@@ -433,9 +425,9 @@ function ChallengeSheet({
         </div>
         <div className="flex flex-col gap-2 pb-5">
           <Button fullWidth disabled={busy} onClick={send}>
-            Send challenge
+            {t().friends.challenge.send}
           </Button>
-          <p className="text-center text-xs text-muted">Starts when {name} accepts.</p>
+          <p className="text-center text-xs text-muted">{t().friends.challenge.startsWhen(name)}</p>
           {problem !== null && (
             <p role="alert" className="text-sm text-destructive">
               {problem}

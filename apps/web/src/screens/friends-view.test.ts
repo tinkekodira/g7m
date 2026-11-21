@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { checkFriendCode } from '@g7m/core';
 import type { Friend, FriendTraining, WorkoutSummary } from '../lib/friends/api.js';
 import {
-  NAMELESS,
+  nameless,
   describeCodeProblem,
   describeReference,
   describeSendResult,
@@ -239,7 +239,7 @@ describe('friendCard', () => {
       friend({ name: null, training: training({ trainedAt: [], lastWorkout: null }) }),
       CONTEXT,
     );
-    expect(card.name).toBe(NAMELESS);
+    expect(card.name).toBe(nameless());
     expect(card.avatarName).toBeNull();
     expect(card.streak).toBeNull();
     expect(card.lastWorkout).toBeNull();
@@ -268,7 +268,7 @@ describe('requests', () => {
   it('names a request from somebody nameless gently', () => {
     expect(
       requestRow({ id: 'r', userId: 'u', name: null, requestedAt: local(2026, 10, 5) }, NOW),
-    ).toEqual({ id: 'r', name: NAMELESS, avatarName: null, when: 'Mon 5 Oct' });
+    ).toEqual({ id: 'r', name: nameless(), avatarName: null, when: 'Mon 5 Oct' });
   });
 });
 

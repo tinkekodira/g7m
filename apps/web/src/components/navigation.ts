@@ -11,13 +11,44 @@
  * it decides what the bar says about where you are, and a bar that lights the
  * wrong tab is worse than none.
  */
+import { t } from '@g7m/i18n';
 
 export const TABS = [
-  { id: 'learn', path: '/learn', label: 'Learn' },
-  { id: 'friends', path: '/friends', label: 'Friends' },
-  { id: 'home', path: '/', label: 'Home' },
-  { id: 'profile', path: '/profile', label: 'Profile' },
-  { id: 'settings', path: '/settings', label: 'Settings' },
+  {
+    id: 'learn',
+    path: '/learn',
+    get label() {
+      return t().app.tabs.learn;
+    },
+  },
+  {
+    id: 'friends',
+    path: '/friends',
+    get label() {
+      return t().app.tabs.friends;
+    },
+  },
+  {
+    id: 'home',
+    path: '/',
+    get label() {
+      return t().app.tabs.home;
+    },
+  },
+  {
+    id: 'profile',
+    path: '/profile',
+    get label() {
+      return t().app.tabs.profile;
+    },
+  },
+  {
+    id: 'settings',
+    path: '/settings',
+    get label() {
+      return t().app.tabs.settings;
+    },
+  },
 ] as const;
 
 export type Tab = (typeof TABS)[number];

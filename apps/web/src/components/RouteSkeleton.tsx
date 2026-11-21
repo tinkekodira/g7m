@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { Skeleton } from '@g7m/ui';
 import { Link } from 'react-router';
 import {
@@ -13,7 +14,7 @@ import { LoadingRegion } from './LoadingRegion.js';
 export function StartupSkeleton() {
   return (
     <main className="account-screen">
-      <TextSkeleton label="Loading your account…" />
+      <TextSkeleton label={t().app.loadingStates.account} />
     </main>
   );
 }
@@ -22,7 +23,7 @@ export function WorkoutSkeleton() {
   return (
     <main className="skeleton-screen pb-32">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Train</h1>
+        <h1 className="text-2xl font-semibold text-primary">{t().app.loadingStates.train}</h1>
         <Link
           to="/"
           className="inline-flex min-h-tap items-center text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent"
@@ -30,7 +31,7 @@ export function WorkoutSkeleton() {
           Home
         </Link>
       </header>
-      <LoadingRegion label="Loading workout…">
+      <LoadingRegion label={t().app.loadingStates.workout}>
         <div className="space-y-4">
           {[0, 1].map((index) => (
             <div key={index} className="skeleton-card space-y-4">
@@ -57,12 +58,12 @@ export function RouteSkeleton({
 }) {
   const title =
     pathname === '/learn'
-      ? 'Learn'
+      ? t().app.tabs.learn
       : pathname === '/friends'
-        ? 'Friends'
+        ? t().app.tabs.friends
         : pathname === '/profile'
-          ? 'Your profile'
-          : 'Exercises';
+          ? t().app.loadingStates.yourProfile
+          : t().app.loadingStates.exercises;
   return (
     <main className={`skeleton-screen pb-safe-bottom skeleton-${pathname.slice(1)}`}>
       <header className="pt-6">
@@ -74,7 +75,7 @@ export function RouteSkeleton({
         <FriendsSkeleton tab={tab ?? 'friends'} />
       ) : pathname === '/profile' ? (
         <>
-          <TextSkeleton label="Loading your profile…" className="skeleton-card" />
+          <TextSkeleton label={t().app.loadingStates.profile} className="skeleton-card" />
           <NumbersSkeleton />
           <BodySkeleton />
         </>

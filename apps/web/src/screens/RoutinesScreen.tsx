@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { describeWhen } from '@g7m/core';
@@ -50,8 +51,8 @@ export function RoutinesScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Your routines</h1>
-        <HeaderLink to="/">Home</HeaderLink>
+        <h1 className="text-2xl font-semibold text-primary">{t().profile.routinesScreen.title}</h1>
+        <HeaderLink to="/">{t().common.home}</HeaderLink>
       </header>
 
       {(state.error ?? error) !== null && (
@@ -61,7 +62,7 @@ export function RoutinesScreen() {
       )}
 
       {state.loading && state.data === null ? (
-        <p className="rounded-card bg-surface p-4 text-sm text-muted">Loading…</p>
+        <p className="rounded-card bg-surface p-4 text-sm text-muted">{t().common.loading}</p>
       ) : routines.length === 0 ? (
         <Empty />
       ) : (
@@ -85,23 +86,25 @@ export function RoutinesScreen() {
           is said once here rather than on every row. */}
       {hasOpenWorkout && routines.length > 0 && (
         <p className="text-sm text-muted">
-          Finish the workout you have open before starting a routine.{' '}
+          {t().profile.routinesScreen.finishOpen}{' '}
           <Link
             to="/workout"
             className="font-medium text-accent underline-offset-4 hover:underline"
           >
-            Open it
+            {t().profile.routinesScreen.openIt}
           </Link>
         </p>
       )}
 
       {naming ? (
         <section className="rounded-card border border-subtle bg-surface p-4">
-          <h2 className="mb-2 text-base font-semibold text-primary">Name the routine</h2>
+          <h2 className="mb-2 text-base font-semibold text-primary">
+            {t().profile.routinesScreen.nameRoutine}
+          </h2>
           <TextField
-            label="Name"
+            label={t().profile.routinesScreen.name}
             value={name}
-            placeholder="Push Day"
+            placeholder={t().profile.routinesScreen.placeholder}
             onChange={(event) => {
               setName(event.target.value);
             }}
@@ -113,7 +116,7 @@ export function RoutinesScreen() {
                 void createEmpty();
               }}
             >
-              Create
+              {t().profile.routinesScreen.create}
             </Button>
             <Button
               variant="ghost"
@@ -123,7 +126,7 @@ export function RoutinesScreen() {
                 setName('');
               }}
             >
-              Cancel
+              {t().common.cancel}
             </Button>
           </div>
         </section>
@@ -135,14 +138,11 @@ export function RoutinesScreen() {
           }}
           className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
         >
-          + Build a routine from scratch
+          {t().profile.routinesScreen.build}
         </button>
       )}
 
-      <p className="py-4 text-xs text-muted">
-        A routine remembers the movements and the rep ranges, not the weights. Those come from what
-        you lifted last time, so a routine never goes stale.
-      </p>
+      <p className="py-4 text-xs text-muted">{t().profile.routinesScreen.remembers}</p>
     </main>
   );
 }
@@ -173,9 +173,7 @@ function RoutineRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-base font-medium text-primary">{routine.name}</span>
           <span className="numeric block text-xs text-muted">
-            {routine.exerciseCount === 1
-              ? '1 exercise'
-              : `${String(routine.exerciseCount)} exercises`}
+            {t().profile.routinesScreen.exercises(routine.exerciseCount)}
             {routine.lastPerformedAt !== null &&
               ` · ${describeWhen(routine.lastPerformedAt, new Date()).toLowerCase()}`}
           </span>
@@ -185,7 +183,7 @@ function RoutineRow({
 
       <button
         type="button"
-        aria-label={`Start ${routine.name}`}
+        aria-label={t().profile.routinesScreen.start(routine.name)}
         disabled={busy || blocked || routine.exerciseCount === 0}
         onClick={onStart}
         className="flex w-16 shrink-0 items-center justify-center rounded-r-card border-l border-subtle text-accent active:bg-elevated focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent disabled:text-muted"
@@ -199,11 +197,11 @@ function RoutineRow({
 function Empty() {
   return (
     <section className="rounded-card border border-subtle bg-surface p-4">
-      <h2 className="text-lg font-semibold text-primary">Nothing saved yet</h2>
+      <h2 className="text-lg font-semibold text-primary">
+        {t().profile.routinesScreen.nothingSaved}
+      </h2>
       <p className="mt-1 max-w-prose text-sm text-secondary">
-        Finish a workout and you will be offered the chance to keep it as a routine — that is the
-        easiest way to make one, because you have just built it. You can also start from an empty
-        one below, or save any past workout from its page in Progress.
+        {t().profile.routinesScreen.nothingSavedBody}
       </p>
     </section>
   );

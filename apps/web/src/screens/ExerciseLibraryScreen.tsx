@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button, Chip, KitSlider, Switch, TextField, type KitPosition } from '@g7m/ui';
@@ -275,13 +276,13 @@ export function ExerciseLibraryScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
         <h1 className="text-2xl font-semibold text-primary">
-          {picking ? 'Add an exercise' : 'Exercises'}
+          {picking ? t().library.addExercise : t().library.exercises}
         </h1>
         <HeaderLink
           to={adding ? workoutPath : routineId !== null ? `/routines/${routineId}` : '/'}
           state={adding ? backFromAddingState() : undefined}
         >
-          {picking ? 'Back' : 'Home'}
+          {picking ? t().common.back : t().common.home}
         </HeaderLink>
       </header>
 
@@ -292,8 +293,8 @@ export function ExerciseLibraryScreen() {
               so the card does not change height when it is flipped. */}
           <Switch
             className="rounded-card p-4"
-            label="Superset"
-            description={superset ? 'Pick in workout order.' : 'Back to back, then rest.'}
+            label={t().library.superset}
+            description={superset ? t().library.supersetOn : t().library.supersetOff}
             checked={superset}
             onChange={(on) => {
               setSuperset(on);
@@ -304,12 +305,12 @@ export function ExerciseLibraryScreen() {
       )}
 
       <TextField
-        label="Search"
+        label={t().library.search}
         type="search"
         inputMode="search"
         autoCapitalize="none"
         autoCorrect="off"
-        placeholder="Squat, bench, row…"
+        placeholder={t().library.searchPlaceholder}
         value={filters.query}
         onChange={(event) => {
           update({ ...filters, query: event.target.value });
@@ -344,9 +345,11 @@ export function ExerciseLibraryScreen() {
           }}
         >
           <span className="text-sm font-medium text-primary">
-            Equipment
+            {t().library.equipment}
             {filters.equipment.length > 0 && (
-              <span className="text-secondary"> · {filters.equipment.length} selected</span>
+              <span className="text-secondary">
+                {t().library.selected(filters.equipment.length)}
+              </span>
             )}
           </span>
           <span aria-hidden className="text-muted">
@@ -370,10 +373,7 @@ export function ExerciseLibraryScreen() {
             {/* Says what selecting nothing means, because the alternative
                 reading — "show me exercises needing no equipment" — is a real
                 one, and the list would look broken to anyone holding it. */}
-            <p className="mt-1 w-full text-xs text-muted">
-              Nothing selected shows everything. Selecting some shows only what you could do with
-              exactly those — every piece an exercise needs has to be ticked.
-            </p>
+            <p className="mt-1 w-full text-xs text-muted">{t().library.equipmentHint}</p>
           </div>
         )}
       </section>
@@ -387,20 +387,15 @@ export function ExerciseLibraryScreen() {
       ) : (
         <>
           <p className="text-sm text-secondary" aria-live="polite">
-            {exercises.length === 1 ? '1 exercise' : `${String(exercises.length)} exercises`}
+            {t().library.count(exercises.length)}
           </p>
           {adding && (filters.query.trim() !== '' || (usage.data?.size ?? 0) > 0) && (
             <p className="-mt-2 text-xs text-muted">
-              {filters.query.trim() !== ''
-                ? 'Best matches first'
-                : 'Most used first · Last 90 days'}
+              {filters.query.trim() !== '' ? t().library.bestMatches : t().library.mostUsed}
             </p>
           )}
           {!picking && exercises.length > 0 && (
-            <p className="-mt-2 text-xs text-muted">
-              Weight per workout · Last 6 sessions. Best working set; + added, − assistance, BW
-              bodyweight.
-            </p>
+            <p className="-mt-2 text-xs text-muted">{t().library.chartKey}</p>
           )}
 
           {exercises.length === 0 ? (
@@ -457,7 +452,7 @@ export function ExerciseLibraryScreen() {
               {picked.map((exercise) => exercise.name).join(' + ')}
             </p>
             <Button disabled={busy} onClick={addSuperset} className="shrink-0">
-              Confirm ({String(picked.length)})
+              {t().library.confirm(picked.length)}
             </Button>
           </div>
         </div>
@@ -495,8 +490,11 @@ function ExerciseRow({
 }) {
   const detail = (
     exercise.cardioKind !== null
-      ? ['Cardio']
-      : [muscle?.name ?? null, exercise.mechanic === 'compound' ? 'Compound' : 'Isolation']
+      ? [t().library.cardio]
+      : [
+          muscle?.name ?? null,
+          exercise.mechanic === 'compound' ? t().library.compound : t().library.isolation,
+        ]
   )
     .filter((part): part is string => part !== null)
     .join(' · ');
@@ -515,7 +513,9 @@ function ExerciseRow({
           {exercise.name}
           {favourite && <FavouriteMark />}
           {recommended && (
-            <span className="ml-2 inline-block text-xs font-normal text-muted">Recommended</span>
+            <span className="ml-2 inline-block text-xs font-normal text-muted">
+              {t().library.recommended}
+            </span>
           )}
         </span>
         <span className="text-sm text-secondary">{detail}</span>
@@ -583,22 +583,17 @@ function EmptyLibrary({
   readonly onClear: () => void;
 }) {
   if (!filtered) {
-    return (
-      <p className="max-w-prose py-6 text-sm text-secondary">
-        No exercises on this device yet. They arrive with the first sync — open the app once with a
-        connection and they stay for good.
-      </p>
-    );
+    return <p className="max-w-prose py-6 text-sm text-secondary">{t().library.noneOnDevice}</p>;
   }
   return (
     <div className="flex flex-col items-start gap-3 py-6">
-      <p className="max-w-prose text-sm text-secondary">Nothing matches all of those filters.</p>
+      <p className="max-w-prose text-sm text-secondary">{t().library.noMatch}</p>
       <button
         type="button"
         onClick={onClear}
         className="min-h-tap text-sm text-accent underline-offset-4 hover:underline"
       >
-        Clear filters
+        {t().library.clearFilters}
       </button>
     </div>
   );

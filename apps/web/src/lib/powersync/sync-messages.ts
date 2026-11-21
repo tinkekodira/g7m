@@ -15,6 +15,7 @@
  * The first two are fine. The third is data the lifter believes they have and
  * does not. Telling them apart in plain language is the whole job.
  */
+import { formatTime, t } from '@g7m/i18n';
 import type { DiscardedWrite } from '@g7m/db';
 
 export type SyncPhase =
@@ -39,17 +40,17 @@ export type SyncPhase =
 export function describeSyncPhase(phase: SyncPhase, lastSyncedAt: Date | null): string {
   switch (phase) {
     case 'unconfigured':
-      return 'Sync is not set up. Your workouts are saved on this device only.';
+      return t().settings.sync.phase.unconfigured;
     case 'idle':
-      return 'Not started.';
+      return t().settings.sync.phase.idle;
     case 'connecting':
-      return 'Connecting…';
+      return t().settings.sync.phase.connecting;
     case 'synced':
-      return 'Up to date with the server.';
+      return t().settings.sync.phase.synced;
     case 'offline':
       return lastSyncedAt === null
-        ? 'Working offline. Your workouts are saved here and will sync when you reconnect.'
-        : `Working offline since ${lastSyncedAt.toLocaleTimeString()}. Everything is saved here and will sync when you reconnect.`;
+        ? t().settings.sync.phase.offline
+        : t().settings.sync.phase.offlineSince(formatTime(lastSyncedAt));
   }
 }
 
@@ -69,14 +70,9 @@ export function describeDiscarded(discarded: readonly DiscardedWrite[]): string 
   // wrong with their workout.
   const permissions = lost.filter((entry) => entry.permissionDenied).length;
   const detail =
-    permissions === lost.length
-      ? 'The server refused them. This is a bug — please report it.'
-      : 'They were rejected as invalid and will not be retried.';
+    permissions === lost.length ? t().settings.sync.refusedBug : t().settings.sync.rejected;
 
-  return (
-    `${String(lost.length)} change${lost.length === 1 ? '' : 's'} on this device could not be ` +
-    `saved to the server. ${detail}`
-  );
+  return t().settings.sync.lost(lost.length, detail);
 }
 
 /**
@@ -106,14 +102,11 @@ export function describeSyncError(error: Error | undefined): string | null {
     message.includes('signature') ||
     message.includes('kid')
   ) {
-    return (
-      'The sync service rejected this device’s login. Its Client Auth needs the ' +
-      'Supabase JWKS URL so it can verify the token. Everything is still saved here.'
-    );
+    return t().settings.sync.jwks;
   }
 
   if (message.includes('403') || message.includes('forbidden')) {
-    return 'The sync service refused this account. Everything is still saved on this device.';
+    return t().settings.sync.refusedAccount;
   }
 
   if (
@@ -125,14 +118,14 @@ export function describeSyncError(error: Error | undefined): string | null {
   }
 
   if (message.includes('404') || message.includes('not found')) {
-    return 'The sync service could not be found at the configured address.';
+    return t().settings.sync.notFound;
   }
 
   if (message.includes('sync rules') || message.includes('bucket')) {
-    return 'The sync service has no usable sync rules deployed.';
+    return t().settings.sync.noRules;
   }
 
   // Unknown: show it rather than hide it. A raw message beats a bare "Offline",
   // and the alternative is another hour of guessing.
-  return `Sync could not connect: ${error.message}`;
+  return t().settings.sync.couldNotConnect(error.message);
 }

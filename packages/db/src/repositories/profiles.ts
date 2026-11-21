@@ -12,6 +12,7 @@
  * append-only history when the coaching loop lands; until then it is a single
  * mutable number and this is the only place that writes it.
  */
+import { isLocale, type Locale } from '@g7m/i18n';
 import {
   EXPERIENCE_LEVELS,
   SEXES,
@@ -79,6 +80,11 @@ export interface Profile {
   readonly favouriteExercises: readonly string[];
   /** Whether workouts say which gym they were at. ADR-0178. */
   readonly multipleGyms: boolean;
+  /**
+   * The language picked for this account, or null to follow each device's own.
+   * Anything the app has no words for reads as null. ADR-0181.
+   */
+  readonly language: Locale | null;
 }
 
 /**
@@ -107,6 +113,7 @@ export interface ProfileChanges {
   readonly onboardedAt?: Date | null;
   readonly workoutRecommendations?: boolean;
   readonly multipleGyms?: boolean;
+  readonly language?: Locale | null;
 }
 
 function toProfile(row: RawRow): Profile {
@@ -128,7 +135,13 @@ function toProfile(row: RawRow): Profile {
     achievementsSeen: parseKeys(readOptionalString(row, 'achievements_seen')),
     favouriteExercises: parseKeys(readOptionalString(row, 'favourite_exercises')),
     multipleGyms: readBoolean(row, 'multiple_gyms'),
+    language: readLanguage(row),
   };
+}
+
+function readLanguage(row: RawRow): Locale | null {
+  const raw = readOptionalString(row, 'language');
+  return isLocale(raw) ? raw : null;
 }
 
 /**
@@ -193,6 +206,7 @@ export class ProfileRepository {
     if (changes.workoutRecommendations !== undefined)
       set('workout_recommendations', changes.workoutRecommendations ? 1 : 0);
     if (changes.multipleGyms !== undefined) set('multiple_gyms', changes.multipleGyms ? 1 : 0);
+    if (changes.language !== undefined) set('language', changes.language);
     if (changes.birthDate !== undefined) {
       // Stored as the date the column is, not as an instant. A timestamp here
       // would be read back a day earlier anywhere west of Greenwich.

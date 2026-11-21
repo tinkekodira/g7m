@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useId, useState } from 'react';
 import { Link } from 'react-router';
 import { cx } from '@g7m/ui';
@@ -30,14 +31,14 @@ export function GymSwitcher({
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={`${current?.name ?? 'No gym chosen'}, change gym`}
+        aria-label={t().workout.gym.change(current?.name ?? null)}
         onClick={() => {
           setOpen(true);
         }}
         className="-ml-2 inline-flex min-h-tap max-w-full items-center gap-1.5 rounded-control px-2 text-sm font-medium text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
       >
         <PinIcon className="size-4 shrink-0 text-accent" />
-        <span className="truncate">{current?.name ?? 'Choose a gym'}</span>
+        <span className="truncate">{current?.name ?? t().workout.gym.choose}</span>
         <ChevronDownIcon className="size-4 shrink-0 text-muted" />
       </button>
       {open && (
@@ -97,7 +98,7 @@ function GymSheet({
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t().common.close}
         tabIndex={-1}
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
@@ -110,14 +111,14 @@ function GymSheet({
       >
         <div className="flex items-center justify-between gap-3">
           <h2 id={heading} className="text-xl leading-7 font-semibold text-primary">
-            Where are you training?
+            {t().workout.gym.where}
           </h2>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex min-h-tap shrink-0 items-center rounded-control px-3 text-sm font-medium text-secondary active:bg-elevated focus-visible:outline-2 focus-visible:outline-accent"
           >
-            Cancel
+            {t().common.cancel}
           </button>
         </div>
         <ul className="flex flex-col gap-2">
@@ -158,13 +159,12 @@ function GymSheet({
           </p>
         )}
         <p className="pb-4 text-sm text-muted">
-          Machines and cables are compared with their own history at each gym. Sets you haven’t done
-          yet switch to the new gym’s numbers.{' '}
+          {t().workout.gym.compared}{' '}
           <Link
             to="/settings"
             className="font-medium text-accent underline-offset-4 hover:underline"
           >
-            Manage gyms
+            {t().workout.gym.manage}
           </Link>
         </p>
       </section>

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import {
@@ -88,22 +89,30 @@ interface CardEntry {
 const CARDS: readonly CardEntry[] = [
   {
     key: 'records',
-    name: 'Personal records',
+    get name() {
+      return t().home.cards.records;
+    },
     render: (home, motion) => <RecordsCard home={home} motion={motion} />,
   },
   {
     key: 'workouts',
-    name: 'Workouts',
+    get name() {
+      return t().home.cards.workouts;
+    },
     render: (home, motion) => <WorkoutsCard stats={home.stats} motion={motion} />,
   },
   {
     key: 'muscles',
-    name: 'Muscle groups',
+    get name() {
+      return t().home.cards.muscles;
+    },
     render: (home, motion) => <MusclesCard stats={home.stats} motion={motion} />,
   },
   {
     key: 'activity',
-    name: 'Strength and activity',
+    get name() {
+      return t().home.cards.activity;
+    },
     render: (home, motion) => (
       <ActivityCard stats={home.stats} unitSystem={home.unitSystem} motion={motion} />
     ),
@@ -126,7 +135,7 @@ export function StatsHero({ month }: { readonly month: QueryState<HomeStats> }) 
     // numbers are on Progress, which says so properly.
     if (month.error !== null) return null;
     return (
-      <section aria-label="This month">
+      <section aria-label={t().home.thisMonth}>
         <StatSkeleton />
       </section>
     );
@@ -134,14 +143,14 @@ export function StatsHero({ month }: { readonly month: QueryState<HomeStats> }) 
 
   if (!home.hasHistory) {
     return (
-      <section aria-label="This month">
+      <section aria-label={t().home.thisMonth}>
         <FirstWorkoutCard stats={home.stats} />
       </section>
     );
   }
 
   return (
-    <section aria-label="This month" className="flex flex-col">
+    <section aria-label={t().home.thisMonth} className="flex flex-col">
       <Carousel cards={CARDS} home={home} />
     </section>
   );
@@ -187,7 +196,7 @@ function Carousel({
         ref={scroller}
         onScroll={onScroll}
         aria-roledescription="carousel"
-        aria-label="This month"
+        aria-label={t().home.thisMonth}
         className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-pl-4 gap-3 overflow-x-auto overscroll-x-contain pl-4"
       >
         {cards.map((card, index) => (
@@ -195,7 +204,7 @@ function Carousel({
             key={card.key}
             role="group"
             aria-roledescription="slide"
-            aria-label={`${card.name}, ${String(index + 1)} of ${String(cards.length)}`}
+            aria-label={t().home.cards.slide(card.name, index + 1, cards.length)}
             // Narrower than the screen by enough to show the next card's
             // edge: the only hint a swipe needs.
             className="flex w-[calc(100%-1.75rem)] shrink-0 snap-start"
@@ -311,11 +320,11 @@ function WorkoutsCard({ stats, motion }: { readonly stats: MonthStats; readonly 
   return (
     <StatCard
       to={DESTINATIONS.workouts}
-      label={`Workouts this month: ${String(total)} completed. ${insight.heading}. ${insight.detail}`}
+      label={t().home.cards.workoutsLabel(total, insight.heading, insight.detail)}
       icon={TrendIcon}
-      eyebrow="Your workouts"
-      title="This month"
-      figure={<Figure value={String(shown)} caption="completed" />}
+      eyebrow={t().home.cards.yourWorkouts}
+      title={t().home.thisMonth}
+      figure={<Figure value={String(shown)} caption={t().home.cards.completed} />}
       insight={insight}
     >
       <MonthLine
@@ -326,7 +335,7 @@ function WorkoutsCard({ stats, motion }: { readonly stats: MonthStats; readonly 
         currentName={current}
         previousName={previous}
         showPrevious={stats.previousTotal > 0}
-        summary={`${String(total)} workouts in ${current} so far, against ${String(stats.workouts.previous)} by this day in ${previous}.`}
+        summary={t().home.cards.workoutsSummary(total, current, stats.workouts.previous, previous)}
         motion={motion}
       />
     </StatCard>
@@ -348,11 +357,16 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
   return (
     <StatCard
       to={DESTINATIONS.muscles}
-      label={`Muscle groups this month: ${String(stats.regionSets)} ${stats.regionSets === 1 ? 'set' : 'sets'} across ${String(trained)} ${trained === 1 ? 'group' : 'groups'}. ${insight.heading}. ${insight.detail}`}
+      label={t().home.cards.musclesLabel(
+        stats.regionSets,
+        trained,
+        insight.heading,
+        insight.detail,
+      )}
       icon={BodyIcon}
-      eyebrow="Muscle groups"
-      title="This month"
-      figure={<Figure value={String(trained)} caption={trained === 1 ? 'group' : 'groups'} />}
+      eyebrow={t().home.cards.muscles}
+      title={t().home.thisMonth}
+      figure={<Figure value={String(trained)} caption={t().home.cards.groups(trained)} />}
       insight={insight}
     >
       <div className="flex flex-1 items-center gap-5">
@@ -364,7 +378,7 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
           }))}
           summary={
             trained === 0
-              ? 'No sets this month yet.'
+              ? t().home.cards.noSets
               : stats.regions
                   .map((share) => `${REGION_LABELS[share.region]} ${percent(share.share)}`)
                   .join(', ')
@@ -372,7 +386,9 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
           center={
             <>
               <span className="numeric text-2xl leading-7 font-bold text-primary">{sets}</span>
-              <span className="text-xs text-muted">{stats.regionSets === 1 ? 'set' : 'sets'}</span>
+              <span className="text-xs text-muted">
+                {t().home.cards.setsWord(stats.regionSets)}
+              </span>
             </>
           }
           motion={motion}
@@ -421,7 +437,7 @@ function ActivityCard({
   const perWeek = useCountUp(stats.perWeek.current, motion);
   const volume = useCountUp(stats.volumeKg.current, motion);
   const through = Math.min(stats.day, stats.daysInPreviousMonth);
-  const range = `${monthShort(stats.previousMonth.start)} 1–${String(through)}`;
+  const range = t().home.cards.range(monthShort(stats.previousMonth.start), through);
 
   // Nothing last month to measure against: every cell would say "none then".
   const first = stats.previousTotal === 0 && stats.workouts.previous === 0;
@@ -431,16 +447,28 @@ function ActivityCard({
   return (
     <StatCard
       to={DESTINATIONS.activity}
-      label={`Strength and activity this month: ${String(stats.workouts.current)} ${stats.workouts.current === 1 ? 'workout' : 'workouts'}, ${time} training, ${formatPerWeek(stats.perWeek.current)} a week, ${lifted} lifted. Compared with ${range}. ${insight.heading}. ${insight.detail}`}
+      label={t().home.cards.activityLabel(
+        stats.workouts.current,
+        time,
+        formatPerWeek(stats.perWeek.current),
+        lifted,
+        range,
+        insight.heading,
+        insight.detail,
+      )}
       icon={FlameIcon}
-      eyebrow="Strength & activity"
-      title="This month"
+      eyebrow={t().home.cards.strengthActivity}
+      title={t().home.thisMonth}
       figure={
         first ? (
-          <span className="block text-xs leading-4 font-medium text-secondary">First month</span>
+          <span className="block text-xs leading-4 font-medium text-secondary">
+            {t().home.cards.firstMonth}
+          </span>
         ) : (
           <>
-            <span className="block text-[11px] leading-4 text-muted">Compared with</span>
+            <span className="block text-[11px] leading-4 text-muted">
+              {t().home.cards.comparedWith}
+            </span>
             <span className="numeric block text-xs leading-4 font-medium text-secondary">
               {range}
             </span>
@@ -450,19 +478,19 @@ function ActivityCard({
       insight={insight}
     >
       <dl className="grid flex-1 grid-cols-2 content-center">
-        <Stat label="Workouts" corner="top-left">
+        <Stat label={t().home.cards.statWorkouts} corner="top-left">
           <StatValue text={String(workouts)} />
           <Delta figure={stats.workouts} as="count" first={first} />
         </Stat>
-        <Stat label="Training time" corner="top-right">
+        <Stat label={t().home.cards.trainingTime} corner="top-right">
           <StatValue text={formatMinutes(minutes)} />
           <Delta figure={stats.minutes} as="percent" first={first} />
         </Stat>
-        <Stat label="Per week" corner="bottom-left">
+        <Stat label={t().home.cards.perWeek} corner="bottom-left">
           <StatValue text={formatPerWeek(Math.round(perWeek * 10) / 10)} />
           <Delta figure={stats.perWeek} as="decimal" first={first} />
         </Stat>
-        <Stat label="Volume lifted" corner="bottom-right">
+        <Stat label={t().home.cards.volumeLifted} corner="bottom-right">
           <StatValue text={formatWeightTotal(volume, unitSystem)} />
           <Delta figure={stats.volumeKg} as="percent" first={first} />
         </Stat>
@@ -487,13 +515,11 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
   return (
     <StatCard
       to={DESTINATIONS.records}
-      label={`Personal records this month: ${String(records.newBests)} new ${records.newBests === 1 ? 'best' : 'bests'}. ${insight.heading}. ${insight.detail}`}
+      label={t().home.cards.recordsLabel(records.newBests, insight.heading, insight.detail)}
       icon={TrophyIcon}
-      eyebrow="Personal records"
-      title="This month"
-      figure={
-        <Figure value={String(count)} caption={records.newBests === 1 ? 'new best' : 'new bests'} />
-      }
+      eyebrow={t().home.cards.records}
+      title={t().home.thisMonth}
+      figure={<Figure value={String(count)} caption={t().home.cards.newBests(records.newBests)} />}
       insight={insight}
     >
       <ul aria-hidden className="grid flex-1 grid-cols-2 content-center gap-2">
@@ -517,7 +543,7 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
                   )}
                 >
                   <span className="block truncate text-xs leading-4 text-muted">
-                    {names.get(lift.exerciseId) ?? 'Exercise'}
+                    {names.get(lift.exerciseId) ?? t().home.cards.exercise}
                     {/* Which gym's machine: the two are separate records (ADR-0179). */}
                     {lift.gymScope != null &&
                       gymNames?.get(lift.gymScope) !== undefined &&
@@ -545,19 +571,21 @@ function LiftNote({
   readonly weight: (kg: number) => string;
 }) {
   if (lift.previousKg === null) {
-    return <span className="block text-[11px] leading-4 text-muted">First time</span>;
+    return (
+      <span className="block text-[11px] leading-4 text-muted">{t().home.cards.firstTime}</span>
+    );
   }
   if (lift.isRecord) {
     return (
       <span className="numeric flex items-center gap-0.5 text-[11px] leading-4 font-medium text-success">
         <ArrowUpIcon aria-hidden className="size-3" strokeWidth={2.4} />
-        {weight(lift.bestKg - lift.previousKg)} on your best
+        {t().home.cards.onYourBest(weight(lift.bestKg - lift.previousKg))}
       </span>
     );
   }
   return (
     <span className="numeric block truncate text-[11px] leading-4 text-muted">
-      Best {weight(lift.previousKg)}
+      {t().home.cards.best(weight(lift.previousKg))}
     </span>
   );
 }
@@ -608,8 +636,9 @@ function Delta({
 
   // Said once, in the card's corner, rather than under every number.
   if (first) return null;
-  if (current === previous) return <span className={quiet}>Same as last month</span>;
-  if (as === 'percent' && previous === 0) return <span className={quiet}>None last month</span>;
+  if (current === previous) return <span className={quiet}>{t().home.cards.sameAsLast}</span>;
+  if (as === 'percent' && previous === 0)
+    return <span className={quiet}>{t().home.cards.noneLast}</span>;
 
   const up = current > previous;
   const difference = Math.abs(current - previous);
@@ -628,7 +657,7 @@ function Delta({
       )}
     >
       <ArrowUpIcon aria-hidden className={cx('size-3', !up && 'rotate-180')} strokeWidth={2.4} />
-      <span className="sr-only">{up ? 'up' : 'down'}</span>
+      <span className="sr-only">{up ? t().home.cards.up : t().home.cards.down}</span>
       {amount}
     </span>
   );
@@ -660,7 +689,7 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
         </span>
         <div className="min-w-0 flex-1 pt-0.5">
           <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-            Your month
+            {t().home.cards.yourMonth}
           </p>
           <p className="text-lg leading-6 font-semibold text-primary">
             {monthName(stats.month.start)}
@@ -675,7 +704,7 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
           <span className="absolute size-7 -translate-1/2 rounded-full bg-accent/15" />
           <span className="absolute size-2.5 -translate-1/2 rounded-full bg-accent ring-2 ring-surface" />
           <span className="absolute bottom-3 -translate-x-1/2 text-[10px] font-medium whitespace-nowrap text-secondary">
-            Today
+            {t().home.cards.today}
           </span>
         </span>
       </div>
@@ -693,18 +722,13 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
             )}
             style={{ left: at(day) }}
           >
-            {index === 0 ? `${monthShort(stats.month.start)} 1` : day}
+            {index === 0 ? t().home.cards.monthStart(monthShort(stats.month.start)) : day}
           </span>
         ))}
       </div>
 
-      <h2 className="mt-5 text-xl leading-7 font-bold text-primary">
-        Your first workout starts the chart
-      </h2>
-      <p className="mt-1 text-sm text-secondary">
-        Log one and this fills in: how often you train, which muscles you work and how much you
-        lift, month by month.
-      </p>
+      <h2 className="mt-5 text-xl leading-7 font-bold text-primary">{t().home.cards.firstTitle}</h2>
+      <p className="mt-1 text-sm text-secondary">{t().home.cards.firstBody}</p>
       <Link
         to="/workout"
         onClick={() => {
@@ -717,7 +741,7 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
         )}
       >
         <PlayIcon className="size-4" />
-        Log a workout
+        {t().home.cards.logWorkout}
       </Link>
     </div>
   );

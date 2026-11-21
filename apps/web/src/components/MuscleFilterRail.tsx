@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { MuscleGroup } from '@g7m/db';
 import { muscleColorStyle } from './muscle-colors.js';
@@ -61,13 +62,13 @@ export function MuscleFilterRail({
   }, [groups, selected]);
 
   const options = [
-    { slug: 'all', name: 'All', group: null },
-    { slug: 'cardio', name: 'Cardio', group: null },
+    { slug: 'all', name: t().library.all, group: null },
+    { slug: 'cardio', name: t().library.cardio, group: null },
     ...groups.map((group) => ({ slug: group.slug, name: group.name, group: group.slug })),
   ];
 
   return (
-    <div className="muscle-filter-rail" role="group" aria-label="Muscle filters">
+    <div className="muscle-filter-rail" role="group" aria-label={t().library.muscleFilters}>
       <div ref={track} className="muscle-filter-track no-scrollbar">
         {options.map((option) => (
           <button

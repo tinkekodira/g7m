@@ -17,6 +17,7 @@
  *
  * `isFirstWorking` marks the row whose weight the warm-up button ramps to.
  */
+import { t } from '@g7m/i18n';
 export function numberSets<T extends { readonly setType: string }>(
   sets: readonly T[],
 ): { set: T; number: number; parent: number; drop: boolean; isFirstWorking: boolean }[] {
@@ -51,7 +52,7 @@ export function isDropRow(entry: { readonly drop: boolean }): boolean {
 
 /** "Warm-up 2" or "Set 1": the name a numbered set is read out by. */
 export function setTitle(setType: string, number: number): string {
-  return setType === 'warmup' ? `Warm-up ${String(number)}` : `Set ${String(number)}`;
+  return setType === 'warmup' ? t().workout.rows.warmup(number) : t().workout.rows.set(number);
 }
 
 /** As `setTitle`, and "Drop", "Drop 2" for the drops hanging from a set. */
@@ -60,7 +61,9 @@ export function rowTitle(entry: {
   readonly number: number;
   readonly drop: boolean;
 }): string {
-  if (isDropRow(entry)) return entry.number <= 1 ? 'Drop' : `Drop ${String(entry.number)}`;
+  if (isDropRow(entry)) {
+    return entry.number <= 1 ? t().workout.rows.drop : t().workout.rows.dropNumbered(entry.number);
+  }
   return setTitle(entry.set.setType, entry.number);
 }
 
@@ -75,10 +78,9 @@ export function tickLabel(entry: {
   readonly parent: number;
   readonly drop: boolean;
 }): string {
-  const verb = entry.set.isCompleted ? 'Undo' : 'Complete';
-  if (entry.set.setType === 'warmup') return `${verb} warm-up ${String(entry.number)}`;
-  if (isDropRow(entry)) {
-    return `${verb} drop ${String(entry.number)} of set ${String(entry.parent)}`;
-  }
-  return `${verb} set ${String(entry.number)}`;
+  const rows = t().workout.rows;
+  const done = entry.set.isCompleted;
+  if (entry.set.setType === 'warmup') return rows.tickWarmup(done, entry.number);
+  if (isDropRow(entry)) return rows.tickDrop(done, entry.number, entry.parent);
+  return rows.tickSet(done, entry.number);
 }

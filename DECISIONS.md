@@ -9927,3 +9927,61 @@ When the suite outgrows this, add a shard; do not raise the deadline.
 Validation: the three shards list 67, 68 and 63 tests. A CI run shows each
 shard's duration and the combined check. No database migration,
 `npx supabase db push` or PowerSync sync-rule deployment is required.
+
+## ADR-0181 — The app speaks six languages, exercise catalogue included
+
+**Status:** accepted · **Date:** 2026-11-21
+
+Somebody who reads no English should be able to use the whole app: the
+screens, the coach's explanations, the badges, and every exercise's name,
+instructions, cues and common mistakes. The first batch is English, German,
+Spanish (Spain), French, Brazilian Portuguese and Italian. They all read left
+to right in the Latin alphabet, so no screen is mirrored and no font is added.
+Right-to-left and CJK languages wait for demand.
+
+**Where the words live.** A new package, `@g7m/i18n`, holds every sentence.
+English (`messages/en`) is the source, and its type `Messages` is what every
+other language must match, so a missing or misspelled key does not compile.
+Words that depend on numbers or grammar are functions (`sets(3)`,
+`removeTitle(name)`), so each language handles plurals, gender and word order
+itself instead of being forced into English sentence order. `t()` returns the
+active language's words. It is module state, not a React context, because
+`@g7m/core`, `@g7m/db` and plain view-model files need the words too and
+cannot reach a context. Label maps that core exports as constants go through
+`live()`, so they keep their shape and still follow the active language.
+
+**The catalogue.** Exercises, muscles, muscle groups and equipment stay
+English in Postgres. Their translations ship with the app as
+`catalogue/<lang>`, keyed by slug, and the repositories lay them over each row
+as they read it (`toExercise`, `toMuscle`, `toGroup`, `toEquipment` and the
+few queries that read a name directly). Syncing six copies of every
+instruction to every phone would make each phone carry five languages it
+never reads, and the words belong to the app release that shows them. Search
+matches the translated name and aliases, the English name and aliases, and
+ignores accents, so "bankdrucken" finds Bankdrücken and "bench" still finds it.
+`catalogue-translations.test.ts` fails if an exercise added in a migration
+lacks any language, or if a translation names a slug that does not exist.
+Every new exercise therefore needs all five translations in the same PR.
+
+**Choosing.** On first launch the app follows the phone's preferred languages
+and takes the first one it speaks, so `de-AT` and `pt-PT` find German and
+Portuguese and anything else falls back to English. Onboarding opens with a
+language step, and Settings and the sign-in screen have a picker. A choice is
+saved on the device (so the app opens in it before sign-in) and in
+`profiles.language`, so it follows the account to other devices. Null means
+"follow the phone". Switching re-mounts everything under the auth gate. Each
+non-English language is its own lazily loaded chunk, precached like every
+other chunk, so it works offline.
+
+**Numbers and dates** format with the language's `Intl` tag (`en-GB`,
+`de-DE`, `es-ES`, `fr-FR`, `pt-BR`, `it-IT`). Day and month names come from
+the messages rather than `Intl`, so they never mix the phone's language into
+an app set to another one. The home greeting still follows the country
+(ADR-0123). Without a country it greets in the app's language.
+
+The translations were written for this change and have not been checked by
+native speakers. Treat corrections from native speakers as ordinary copy fixes.
+
+Rollout: apply `20261121120000_profile_language.sql` with `npx supabase db
+push`, then deploy `powersync/sync-rules.yaml` (it now syncs
+`profiles.language`), then release the app.

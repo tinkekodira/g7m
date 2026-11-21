@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useState, type FormEvent } from 'react';
 import { Button, TextField } from '@g7m/ui';
 import { useAuthStore } from './auth-store.js';
@@ -39,16 +40,18 @@ export function ResetPasswordScreen() {
   return (
     <main className="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center gap-6 px-4 pt-safe-top pb-safe-bottom">
       <header>
-        <h1 className="text-2xl font-semibold text-primary">Choose a new password</h1>
+        <h1 className="text-2xl font-semibold text-primary">{t().auth.newPassword.title}</h1>
         <p className="mt-1 text-sm text-secondary">
-          {email === null ? 'Your account is open.' : `Signed in as ${email}.`} This link opened
-          your account — set a password now and it is the one you will use from here on.
+          {email === null
+            ? t().auth.newPassword.accountOpen
+            : t().auth.newPassword.signedInAs(email)}{' '}
+          {t().auth.newPassword.explain}
         </p>
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <TextField
-          label="New password"
+          label={t().auth.newPassword.label}
           type="password"
           autoComplete="new-password"
           value={password}
@@ -58,15 +61,15 @@ export function ResetPasswordScreen() {
           }}
           disabled={busy}
           {...(tooShort
-            ? { error: `At least ${String(MIN_PASSWORD_LENGTH)} characters.` }
-            : { hint: `At least ${String(MIN_PASSWORD_LENGTH)} characters.` })}
+            ? { error: t().auth.newPassword.minimum(MIN_PASSWORD_LENGTH) }
+            : { hint: t().auth.newPassword.minimum(MIN_PASSWORD_LENGTH) })}
         />
 
         {/* Typed twice because there is no way back if it is wrong: the field
             is masked, and the next sign-in is the first time anyone would find
             out. Another email is the only remedy. */}
         <TextField
-          label="Type it again"
+          label={t().auth.newPassword.again}
           type="password"
           autoComplete="new-password"
           value={confirmation}
@@ -75,7 +78,7 @@ export function ResetPasswordScreen() {
             clearError();
           }}
           disabled={busy}
-          {...(mismatch ? { error: 'These do not match.' } : {})}
+          {...(mismatch ? { error: t().auth.newPassword.mismatch } : {})}
         />
 
         {error !== null && (
@@ -88,7 +91,7 @@ export function ResetPasswordScreen() {
         )}
 
         <Button type="submit" size="lg" fullWidth disabled={!canSubmit}>
-          {busy ? 'Saving…' : 'Set password'}
+          {busy ? t().common.saving : t().auth.newPassword.set}
         </Button>
       </form>
 
@@ -99,7 +102,7 @@ export function ResetPasswordScreen() {
           disabled={busy}
           onClick={dismissRecovery}
         >
-          Skip — keep my current password
+          {t().auth.newPassword.keep}
         </button>
       </p>
     </main>

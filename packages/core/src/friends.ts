@@ -8,6 +8,7 @@
  * that workout" depends on the viewer's timezone and week start, which the
  * server does not know, and the rules are the part worth testing.
  */
+import { t } from '@g7m/i18n';
 import { countsAsSet, countsTowardVolume, isTopSet, type LoadType, type SetType } from './load.js';
 import { workoutUnits } from './superset.js';
 import { daysBetween, startOfDay, startOfWeek, weekKey, dateKey, type WeekStart } from './week.js';
@@ -56,16 +57,6 @@ export function checkFriendCode(input: string): FriendCodeCheck {
 // The week's dots
 // ---------------------------------------------------------------------------
 
-const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-] as const;
-
 export interface WeekDot {
   readonly date: Date;
   /** `M`, `T`, … — the label under the dot. */
@@ -98,7 +89,7 @@ export function weekDots(
     const date = new Date(first);
     date.setDate(first.getDate() + offset);
     const key = dateKey(date);
-    const name = DAY_NAMES[date.getDay()] ?? '';
+    const name = t().common.dates.weekdays[date.getDay()] ?? '';
     dots.push({
       date,
       initial: name.charAt(0),
@@ -113,7 +104,7 @@ export function weekDots(
 
 /** "Tuesday: trained", so the dot is not colour alone. */
 export function describeDot(dot: WeekDot): string {
-  return `${dot.dayName}: ${dot.trained ? 'trained' : 'no workout'}`;
+  return t().core.friends.dot(dot.dayName, dot.trained);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,43 +321,10 @@ export function cardLifts(
  * the catalogue. Anything not here is shown in full and wraps — "Lat Pulldown"
  * has no shorter name anybody would recognise.
  */
-const CARD_LIFT_NAMES: Readonly<Record<string, string>> = {
-  'barbell-back-squat': 'Squat',
-  'barbell-bench-press': 'Bench',
-  'conventional-deadlift': 'Deadlift',
-  'romanian-deadlift': 'RDL',
-  'overhead-press': 'OHP',
-  'barbell-hip-thrust': 'Hip Thrust',
-  'trap-bar-deadlift': 'Trap Bar DL',
-  'incline-barbell-press': 'Incline Bench',
-  'close-grip-bench-press': 'CG Bench',
-  'dumbbell-bench-press': 'DB Bench',
-  'incline-dumbbell-press': 'Incline DB Press',
-  'dumbbell-shoulder-press': 'Shoulder Press',
-  'machine-chest-press': 'Chest Press',
-  'incline-machine-chest-press': 'Incline Machine Press',
-  'bulgarian-split-squat': 'Split Squat',
-  'single-arm-dumbbell-row': 'DB Row',
-  'chest-supported-dumbbell-row': 'Supported DB Row',
-  'seated-cable-row': 'Cable Row',
-  'seated-row-machine': 'Machine Row',
-  'standing-calf-raise': 'Calf Raise',
-  'seated-calf-raise': 'Seated Calf',
-  'barbell-shrug': 'Shrug',
-  'preacher-curl': 'Preacher Curl',
-  'barbell-preacher-curl': 'Preacher Curl',
-  'dumbbell-preacher-curl': 'Preacher Curl',
-  'preacher-curl-machine': 'Preacher Curl',
-  'kettlebell-swing': 'KB Swing',
-  'kettlebell-deadlift': 'KB Deadlift',
-  'kettlebell-press': 'KB Press',
-  'kettlebell-clean': 'KB Clean',
-  'kettlebell-snatch': 'KB Snatch',
-};
 
 /** What a card column calls a lift: the gym's short name, or the catalogue's. */
 export function cardLiftName(slug: string | undefined, name: string): string {
-  return (slug === undefined ? undefined : CARD_LIFT_NAMES[slug]) ?? name;
+  return (slug === undefined ? undefined : t().core.friends.shortLiftNames[slug]) ?? name;
 }
 
 // ---------------------------------------------------------------------------
@@ -466,49 +424,39 @@ export interface Presence {
  * 23:30 is "Last seen 1h ago" at half past midnight rather than "yesterday".
  */
 export function describePresence(lastActiveAt: Date | null, now: Date): Presence {
-  if (lastActiveAt === null) return { online: false, label: 'Not seen yet' };
+  const words = t().core.friends;
+  if (lastActiveAt === null) return { online: false, label: words.notSeen };
 
   const elapsed = now.getTime() - lastActiveAt.getTime();
-  if (elapsed < ONLINE_WINDOW_MS) return { online: true, label: 'Online now' };
+  if (elapsed < ONLINE_WINDOW_MS) return { online: true, label: words.online };
 
   const minutes = Math.floor(elapsed / 60_000);
-  if (minutes < 60) return { online: false, label: `Last seen ${String(minutes)} min ago` };
+  if (minutes < 60) return { online: false, label: words.minutesAgo(minutes) };
 
   const hours = Math.floor(minutes / 60);
   const days = daysBetween(lastActiveAt, now);
-  if (hours < 12 || days === 0) return { online: false, label: `Last seen ${String(hours)}h ago` };
-  if (days === 1) return { online: false, label: 'Last seen yesterday' };
-  if (days < 7) return { online: false, label: `Last seen ${String(days)} days ago` };
-  return { online: false, label: `Last seen ${shortDate(lastActiveAt, now)}` };
+  if (hours < 12 || days === 0) return { online: false, label: words.hoursAgo(hours) };
+  if (days === 1) return { online: false, label: words.yesterday };
+  if (days < 7) return { online: false, label: words.daysAgo(days) };
+  return { online: false, label: words.on(shortDate(lastActiveAt, now)) };
 }
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-] as const;
 
 /** "Mon 6 Oct", with the year only when it is not this one. */
 function shortDate(date: Date, now: Date): string {
-  const base = `${WEEKDAYS[date.getDay()] ?? ''} ${String(date.getDate())} ${MONTHS[date.getMonth()] ?? ''}`;
+  const dates = t().common.dates;
+  const base = t().core.friends.shortDate(
+    dates.weekdaysShort[date.getDay()] ?? '',
+    date.getDate(),
+    dates.monthsShort[date.getMonth()] ?? '',
+  );
   return date.getFullYear() === now.getFullYear() ? base : `${base} ${String(date.getFullYear())}`;
 }
 
 /** When a workout was: "Today", "Yesterday", or "Mon 6 Oct". */
 export function describeWorkoutDay(date: Date, now: Date): string {
   const days = daysBetween(date, now);
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
+  if (days <= 0) return t().core.when.today;
+  if (days === 1) return t().core.when.yesterday;
   return shortDate(date, now);
 }
 

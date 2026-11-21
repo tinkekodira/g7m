@@ -1,4 +1,5 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { t } from '@g7m/i18n';
+import { Fragment, Suspense, lazy, useEffect, useState } from 'react';
 import { Button } from '@g7m/ui';
 import { HashRouter, Navigate, Route, Routes } from 'react-router';
 import { useAuthStore } from './auth/auth-store.js';
@@ -16,6 +17,7 @@ import { RouteBoundary } from './components/ErrorBoundary.js';
 import { useNativeShell } from './lib/native/use-native-shell.js';
 import { lazyScreen, preloadWhenIdle } from './lib/lazy-screen.js';
 import { usePresence } from './lib/friends/use-presence.js';
+import { switchLanguage, useLanguageStore } from './lib/language.js';
 import { useWorkoutPresence } from './lib/friends/use-workout-presence.js';
 
 /**
@@ -146,6 +148,10 @@ function AppContent() {
   const initialize = useAuthStore((s) => s.initialize);
   const startSync = useSyncStore((s) => s.start);
   const stopSync = useSyncStore((s) => s.stop);
+  // Everything below is re-mounted when the language changes, so every screen
+  // reads its words — and the catalogue its translations — afresh. Sync and
+  // the session sit above this line and carry on undisturbed. ADR-0181.
+  const locale = useLanguageStore((s) => s.locale);
 
   // Returning the unsubscribe matters: StrictMode runs this twice in
   // development, and a leaked listener means every auth event handled twice.
@@ -201,7 +207,7 @@ function AppContent() {
   }
 
   return (
-    <>
+    <Fragment key={locale}>
       {/* Recovery sits between the two, not inside either. It is a live
           session that must not reach the app, and not a signed-out state that
           could show the form the user has just proved they cannot get past. */}
@@ -217,7 +223,7 @@ function AppContent() {
           stuck on when it does — and an update prompt that depended on a route
           matching would vanish on exactly the URL that needed fixing. */}
       <UpdateBanner />
-    </>
+    </Fragment>
   );
 }
 
@@ -265,6 +271,15 @@ function Gate() {
   );
   const signOut = useAuthStore((s) => s.signOut);
   const busy = useAuthStore((s) => s.busy);
+  const language = profile.data?.language ?? null;
+
+  // The account's language wins over this device's. A choice made on the phone
+  // arrives here on the tablet with the profile, and the app switches to it.
+  useEffect(() => {
+    if (language !== null && language !== useLanguageStore.getState().locale) {
+      void switchLanguage(language);
+    }
+  }, [language]);
 
   if (profile.data !== null) {
     return profile.data.onboardedAt === null ? <WelcomeRoutes /> : <AppRoutes />;
@@ -274,16 +289,15 @@ function Gate() {
 
   return (
     <main className="account-screen">
-      <h1 className="text-2xl font-semibold text-primary">Getting your account ready</h1>
+      <h1 className="text-2xl font-semibold text-primary">{t().app.accountReady.title}</h1>
       <p role="status" className="text-sm text-secondary">
-        {profile.error ??
-          'Your profile has not arrived on this device yet. Check your connection and try again.'}
+        {profile.error ?? t().app.accountReady.notArrived}
       </p>
       <Button disabled={busy} onClick={() => setAttempt((value) => value + 1)}>
-        Try again
+        {t().common.tryAgain}
       </Button>
       <Button variant="secondary" disabled={busy} onClick={() => void signOut()}>
-        Sign out
+        {t().common.signOut}
       </Button>
     </main>
   );
@@ -302,7 +316,7 @@ function WelcomeRoutes({ startAtName = false }: { readonly startAtName?: boolean
         <Route path="/welcome/:step" element={<WelcomeScreen />} />
         <Route
           path="*"
-          element={startAtName ? <Navigate to="/welcome/name" replace /> : <WelcomeScreen />}
+          element={startAtName ? <Navigate to="/welcome/language" replace /> : <WelcomeScreen />}
         />
       </Routes>
     </Suspense>

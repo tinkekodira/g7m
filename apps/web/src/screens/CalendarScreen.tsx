@@ -1,3 +1,4 @@
+import { formatNumber, formatTime, t } from '@g7m/i18n';
 import { describeWork } from './progress-view.js';
 import { useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -144,15 +145,15 @@ export function CalendarScreen() {
    * gone from the calendar on the very next render.
    */
   async function deleteWorkout(sessionId: string): Promise<void> {
-    if (!globalThis.confirm("Delete this workout? This can't be undone.")) return;
+    if (!globalThis.confirm(t().history.confirmDelete)) return;
     await write((r) => r.sessions.discard(sessionId));
   }
 
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Calendar</h1>
-        <HeaderLink to="/">Home</HeaderLink>
+        <h1 className="text-2xl font-semibold text-primary">{t().history.calendar.title}</h1>
+        <HeaderLink to="/">{t().common.home}</HeaderLink>
       </header>
 
       {(state.error ?? writeError) !== null && (
@@ -167,7 +168,7 @@ export function CalendarScreen() {
       >
         <div className="flex items-center gap-1">
           <StepArrow
-            label="Previous month"
+            label={t().history.calendar.previousMonth}
             disabled={!canGoBack}
             onClick={() => {
               showMonth(stepMonth(month, -1));
@@ -182,7 +183,7 @@ export function CalendarScreen() {
             <p className="numeric text-xs text-muted">{monthSummary(inMonth.totals, month, now)}</p>
           </div>
           <StepArrow
-            label="Next month"
+            label={t().history.calendar.nextMonth}
             disabled={!canGoForward}
             onClick={() => {
               showMonth(stepMonth(month, 1));
@@ -217,11 +218,11 @@ export function CalendarScreen() {
         <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-2 text-xs text-muted">
           <span className="flex items-center gap-1.5">
             <span aria-hidden className="size-3 rounded-full bg-accent" />
-            Workout
+            {t().history.calendar.legendWorkout}
           </span>
           <span className="flex items-center gap-1.5">
             <span aria-hidden className="size-3 rounded-full ring-2 ring-accent ring-inset" />
-            Today
+            {t().history.calendar.legendToday}
           </span>
           <span className="flex items-center gap-1.5">
             <span
@@ -230,13 +231,13 @@ export function CalendarScreen() {
             >
               2
             </span>
-            Two workouts that day
+            {t().history.calendar.legendTwo}
           </span>
         </div>
       </section>
 
       {selected === undefined ? (
-        <p className="px-1 text-sm text-muted">Tap a day to see what you did.</p>
+        <p className="px-1 text-sm text-muted">{t().history.calendar.tapDay}</p>
       ) : (
         <DayWorkouts
           day={selected}
@@ -403,7 +404,7 @@ function DayWorkouts({
               ]);
               return {
                 entryId: entry.id,
-                name: exercise?.name ?? 'Unknown exercise',
+                name: exercise?.name ?? t().workout.unknownExercise,
                 timed: exercise?.isTimeBased ?? false,
                 sets: sets
                   .filter((set) => set.isCompleted)
@@ -425,43 +426,40 @@ function DayWorkouts({
 
   const show = (kg: number): string => {
     const display = toDisplayWeight(Math.abs(kg), unitSystem);
-    return `${String(display.value)} ${display.unit}`;
+    return `${formatNumber(display.value)} ${display.unit}`;
   };
 
   return (
     <section aria-labelledby="calendar-day" className="flex flex-col gap-3">
       <h2 id="calendar-day" className="text-lg font-semibold text-primary">
-        {day.isToday ? `Today · ${dayTitle(day.date)}` : dayTitle(day.date)}
+        {day.isToday ? t().history.calendar.today(dayTitle(day.date)) : dayTitle(day.date)}
       </h2>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : workouts.length === 0 ? (
         <div className="rounded-card border border-subtle bg-surface p-4">
           <p className="text-sm text-secondary">
-            {day.isToday ? 'Nothing logged today yet.' : 'Nothing logged on this day.'}
+            {day.isToday ? t().history.calendar.nothingToday : t().history.calendar.nothingDay}
           </p>
           {!day.isToday && !day.isFuture && (
             <div className="mt-3">
               {openWorkout ? (
                 <p className="text-sm text-muted">
-                  Finish the workout you have open before logging one here.{' '}
+                  {t().history.calendar.finishOpen}{' '}
                   <Link
                     to="/workout"
                     className="font-medium text-accent underline-offset-4 hover:underline"
                   >
-                    Open it
+                    {t().history.calendar.openIt}
                   </Link>
                 </p>
               ) : (
                 <>
                   <Button variant="secondary" disabled={busy} onClick={onLogPast}>
-                    + Log a workout for this day
+                    {t().history.calendar.logPast}
                   </Button>
-                  <p className="mt-2 text-xs text-muted">
-                    For a workout you did and did not record. It is logged on this day, with no
-                    timer running.
-                  </p>
+                  <p className="mt-2 text-xs text-muted">{t().history.calendar.logPastHint}</p>
                 </>
               )}
             </div>
@@ -486,15 +484,15 @@ function DayWorkouts({
                     {/* A workout logged afterwards has a day and no time of
                         day; its noon start is a placeholder, not a fact. */}
                     {workout.source === 'past'
-                      ? 'Logged afterwards'
-                      : workout.startedAt.toLocaleTimeString([], {
+                      ? t().history.calendar.loggedAfterwards
+                      : formatTime(workout.startedAt, {
                           hour: 'numeric',
                           minute: '2-digit',
                         })}
                   </span>
                   <button
                     type="button"
-                    aria-label="Delete this workout"
+                    aria-label={t().history.calendar.deleteWorkout}
                     disabled={busy}
                     onClick={() => {
                       onDelete(workout.sessionId);
@@ -507,12 +505,12 @@ function DayWorkouts({
               </div>
               <p className="numeric mt-0.5 text-xs text-muted">
                 {describeWork(workout.setCount, workout.boutCount)}
-                {minutes !== null && ` · ${String(minutes)} min`}
+                {minutes !== null && ` · ${t().progress.minutes(minutes)}`}
                 {workout.gymName !== null && ` · ${workout.gymName}`}
               </p>
 
               {detail === undefined ? (
-                <p className="mt-3 text-sm text-muted">Loading…</p>
+                <p className="mt-3 text-sm text-muted">{t().common.loading}</p>
               ) : (
                 <ul className="mt-3 flex flex-col gap-3">
                   {detail.blocks.map((block) => (
@@ -527,8 +525,8 @@ function DayWorkouts({
                               set.warmup ? 'text-muted' : 'text-secondary',
                             )}
                           >
-                            {set.warmup && 'Warm-up · '}
-                            {set.drop && 'Drop · '}
+                            {set.warmup && t().history.calendar.warmup}
+                            {set.drop && t().history.calendar.drop}
                             {describeMark(set, block.timed, show)}
                           </li>
                         ))}
@@ -542,7 +540,7 @@ function DayWorkouts({
                 to={`/progress/session/${workout.sessionId}/details`}
                 className="mt-3 inline-flex min-h-tap items-center gap-1 text-sm font-medium text-accent"
               >
-                Open the workout
+                {t().history.calendar.open}
                 <ChevronRightIcon className="size-4" />
               </Link>
             </article>

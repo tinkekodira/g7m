@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { TrashIcon } from './icons.js';
 
 /**
@@ -25,7 +26,7 @@ export function RemoveExerciseButton({
       className="inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-control border border-danger/60 bg-elevated px-3 text-sm font-medium text-destructive select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
     >
       <TrashIcon className="size-4" />
-      Remove
+      {t().common.remove}
     </button>
   );
 }

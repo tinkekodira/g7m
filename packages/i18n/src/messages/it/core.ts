@@ -1,0 +1,182 @@
+import type { Messages } from '../en/index.js';
+
+export const core: Messages['core'] = {
+  regions: {
+    legs: 'Gambe',
+    arms: 'Braccia',
+    shoulders: 'Spalle',
+    back: 'Schiena',
+    chest: 'Petto',
+    core: 'Core',
+  },
+  focus: {
+    full_body: 'Total body',
+    upper: 'Parte superiore',
+    lower: 'Parte inferiore',
+    push: 'Spinta',
+    pull: 'Tirata',
+    legs: 'Gambe',
+  },
+  activity: {
+    sedentary: 'Sedentario',
+    light: 'Poco attivo',
+    moderate: 'Moderatamente attivo',
+    active: 'Attivo',
+    very_active: 'Molto attivo',
+  },
+  activityDescriptions: {
+    sedentary: 'Lavoro d’ufficio, auto, poche camminate',
+    light: 'In piedi per parte della giornata',
+    moderate: 'A camminare o in piedi per gran parte della giornata',
+    active: 'Lavoro fisico, o molte camminate',
+    very_active: 'Lavoro manuale pesante, o un secondo sport',
+  },
+  sex: { male: 'Maschio', female: 'Femmina' },
+  goals: {
+    chooseOne: 'Scegli almeno un obiettivo di allenamento.',
+    labels: {
+      lose_fat: 'Perdere grasso',
+      build_muscle: 'Mettere massa',
+      recomp: 'Entrambe le cose',
+      get_stronger: 'Diventare più forte',
+    },
+    summaries: {
+      lose_fat: 'Peso giù, forza mantenuta.',
+      build_muscle: 'Più massa, nelle ripetizioni che la costruiscono.',
+      recomp: 'Entrambe le cose, più lentamente di ciascuna da sola.',
+      get_stronger: 'Bilanciere più pesante, meno ripetizioni.',
+    },
+    descriptions: {
+      lose_fat:
+        'Mantieni la forza che hai mentre il peso scende. I carichi restano pesanti e il lavoro totale cala un po’.',
+      build_muscle:
+        'Più serie per muscolo e ripetizioni più moderate, con abbastanza recupero tra le sessioni per sfruttarle davvero.',
+      recomp:
+        'Più muscolo e meno grasso insieme. Più lento di ciascuna cosa da sola, e funziona meglio se sei agli inizi con i pesi o se riprendi dopo una pausa.',
+      get_stronger:
+        'Carichi più pesanti, meno ripetizioni, recuperi più lunghi. Meno serie che contano, e ognuna conta di più.',
+    },
+    expectations: {
+      lose_fat:
+        'Aspettati lo 0,5–1% del tuo peso corporeo a settimana. Molto più veloce di così e di solito se ne va anche la forza.',
+      build_muscle:
+        'Aspettati 0,1–0,3 kg a settimana per gli uomini, circa la metà per le donne. Più veloce è soprattutto grasso.',
+      recomp:
+        'Aspettati che la bilancia si muova a malapena. I progressi si vedono nel registro settimane prima che sulla bilancia.',
+      get_stronger:
+        'Aspettati che si muovano prima i numeri sul bilanciere. Il peso corporeo può andare in entrambe le direzioni, e nessuna è un problema.',
+    },
+    muscleGainBySex: {
+      male: 'Aspettati 0,1–0,3 kg a settimana. Più veloce è soprattutto grasso.',
+      female:
+        'Aspettati 0,05–0,15 kg a settimana. Il muscolo si guadagna a circa metà del ritmo assoluto: è biologia, non mancanza d’impegno.',
+    },
+    comingDown: (size: string) =>
+      `Il tuo peso sta scendendo di circa ${size} kg a settimana. Se è voluto, questo è l’obiettivo giusto.`,
+    goingUp: (size: string) =>
+      `Il tuo peso sta salendo di circa ${size} kg a settimana. Se è voluto, questo è l’obiettivo giusto.`,
+    beginner:
+      'Nel primo anno con i pesi, mettere muscolo e perdere grasso insieme è davvero possibile. Più avanti smette di essere l’opzione facile.',
+  },
+  weightField: {
+    external: 'Peso',
+    bodyweight_plus: 'Zavorra',
+    assisted: 'Assistenza',
+  },
+  bars: {
+    bar_20: 'Bilanciere da 20 kg',
+    bar_15: 'Bilanciere da 15 kg',
+    bar_ez: 'Bilanciere EZ',
+  },
+  when: {
+    today: 'Oggi',
+    yesterday: 'Ieri',
+    daysAgo: (days: number) => `${String(days)} giorni fa`,
+    lastWeek: 'La settimana scorsa',
+  },
+  workoutTitle: {
+    cardio: 'Cardio',
+    workout: 'Allenamento',
+    core: (focus: string) => `Giorno core ${focus}`,
+    leg: (focus: string) => `Giorno gambe ${focus}`,
+    arm: (focus: string) => `Giorno braccia ${focus}`,
+    push: (focus: string) => `Giorno spinta ${focus}`,
+    pull: (focus: string) => `Giorno tirata ${focus}`,
+    upper: (focus: string) => `Parte superiore ${focus}`,
+    full: (focus: string) => `Total body ${focus}`,
+    focused: (what: string) => `(focus ${what})`,
+    allRound: '(completo)',
+    focus: {
+      lat: 'dorsali',
+      'upper back': 'parte alta della schiena',
+      'lower back': 'zona lombare',
+      'rear delt': 'deltoidi posteriori',
+      ab: 'addominali',
+      oblique: 'obliqui',
+      chest: 'petto',
+      shoulder: 'spalle',
+      triceps: 'tricipiti',
+      biceps: 'bicipiti',
+      forearm: 'avambracci',
+      trap: 'trapezi',
+      back: 'schiena',
+      quad: 'quadricipiti',
+      hamstring: 'femorali',
+      glute: 'glutei',
+      calf: 'polpacci',
+      adductor: 'adduttori',
+      core: 'core',
+      push: 'spinta',
+      pull: 'tirata',
+      leg: 'gambe',
+      'upper body': 'parte superiore',
+    },
+  },
+  friends: {
+    dot: (day: string, trained: boolean) =>
+      `${day}: ${trained ? 'allenamento' : 'nessun allenamento'}`,
+    notSeen: 'Non ancora visto',
+    online: 'Online ora',
+    minutesAgo: (minutes: number) => `Visto ${String(minutes)} min fa`,
+    hoursAgo: (hours: number) => `Visto ${String(hours)} h fa`,
+    yesterday: 'Visto ieri',
+    daysAgo: (days: number) => `Visto ${String(days)} giorni fa`,
+    on: (date: string) => `Visto il ${date}`,
+    shortDate: (weekday: string, day: number, month: string) =>
+      `${weekday} ${String(day)} ${month}`,
+    shortLiftNames: {
+      'barbell-back-squat': 'Squat',
+      'barbell-bench-press': 'Panca',
+      'conventional-deadlift': 'Stacco',
+      'romanian-deadlift': 'Stacco rumeno',
+      'overhead-press': 'Lento avanti',
+      'barbell-hip-thrust': 'Hip thrust',
+      'trap-bar-deadlift': 'Stacco trap bar',
+      'incline-barbell-press': 'Panca inclinata',
+      'close-grip-bench-press': 'Panca stretta',
+      'dumbbell-bench-press': 'Panca manubri',
+      'incline-dumbbell-press': 'Inclinata manubri',
+      'dumbbell-shoulder-press': 'Spinte manubri',
+      'machine-chest-press': 'Chest press',
+      'incline-machine-chest-press': 'Chest press inclinata',
+      'bulgarian-split-squat': 'Affondo bulgaro',
+      'single-arm-dumbbell-row': 'Rematore manubrio',
+      'chest-supported-dumbbell-row': 'Rematore su panca',
+      'seated-cable-row': 'Pulley basso',
+      'seated-row-machine': 'Rematore macchina',
+      'standing-calf-raise': 'Polpacci',
+      'seated-calf-raise': 'Polpacci seduto',
+      'barbell-shrug': 'Scrollate',
+      'preacher-curl': 'Curl Scott',
+      'barbell-preacher-curl': 'Curl Scott',
+      'dumbbell-preacher-curl': 'Curl Scott',
+      'preacher-curl-machine': 'Curl Scott',
+      'kettlebell-swing': 'Swing KB',
+      'kettlebell-deadlift': 'Stacco KB',
+      'kettlebell-press': 'Distensione KB',
+      'kettlebell-clean': 'Girata KB',
+      'kettlebell-snatch': 'Strappo KB',
+    },
+  },
+  review: { thatLift: 'quell’esercizio' },
+};

@@ -5,6 +5,7 @@
  * screens share, and the one function that turns a routine into a workout in
  * progress.
  */
+import { t } from '@g7m/i18n';
 import { loadTypeForEquipment, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
 import type { Routine, RoutineDetail, RoutineExercise, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
@@ -30,7 +31,7 @@ export function useRoutine(routineId: string) {
     const names = new Map<string, string>();
     for (const movement of detail.exercises) {
       const exercise = await r.exercises.byId(movement.exerciseId);
-      names.set(movement.exerciseId, exercise?.name ?? 'Unknown exercise');
+      names.set(movement.exerciseId, exercise?.name ?? t().profile.unknownExercise);
     }
     return { detail, names };
   });

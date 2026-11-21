@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { describeWhen, toDisplayWeight, type UnitSystem } from '@g7m/core';
 import { Button, TextField, cx } from '@g7m/ui';
@@ -69,7 +70,7 @@ export function WeighInSheet({
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t().common.close}
         tabIndex={-1}
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
@@ -92,12 +93,15 @@ export function WeighInSheet({
           </span>
           <div className="min-w-0 flex-1">
             <h2 id={headingId} className="text-xl leading-7 font-semibold text-primary">
-              Log your weight
+              {t().profile.weighIn.title}
             </h2>
             <p className="text-sm text-muted">
               {shown === null || weightAt === null
-                ? 'The first point on your trend.'
-                : `Last ${String(shown.value)} ${shown.unit} · ${describeWhen(weightAt, now)}`}
+                ? t().profile.weighIn.first
+                : t().profile.weighIn.last(
+                    `${formatNumber(shown.value)} ${shown.unit}`,
+                    describeWhen(weightAt, now),
+                  )}
             </p>
           </div>
           <button
@@ -117,7 +121,7 @@ export function WeighInSheet({
           }}
         >
           <TextField
-            label={`Today’s weight (${unit})`}
+            label={t().profile.weighIn.today(unit)}
             inputMode="decimal"
             enterKeyHint="done"
             autoComplete="off"
@@ -134,7 +138,7 @@ export function WeighInSheet({
             className="numeric text-xl"
           />
           <Button type="submit" size="lg" fullWidth disabled={busy || draft.trim() === ''}>
-            Save weight
+            {t().profile.weighIn.save}
           </Button>
         </form>
       </section>

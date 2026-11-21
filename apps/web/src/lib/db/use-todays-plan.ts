@@ -10,6 +10,7 @@
  * The generator itself is pure (`planSession` in core). This is the wiring:
  * which goal, which week, which history, read from this device.
  */
+import { t } from '@g7m/i18n';
 import { useMemo } from 'react';
 import {
   chooseFocus,
@@ -158,7 +159,7 @@ export async function startPlannedWorkout(
 ): Promise<WorkoutSession> {
   const profile = await repositories.profile.current();
   if (profile === null || profile.workoutRecommendations === false) {
-    throw new Error('Workout recommendations are turned off.');
+    throw new Error(t().profile.data.recommendationsOff);
   }
   const session = await repositories.sessions.start({
     source: 'generated',

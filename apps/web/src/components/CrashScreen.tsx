@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useMemo, useState } from 'react';
 import { Button } from '@g7m/ui';
 import { crashCopy, crashKind, crashReport } from '../lib/crash.js';
@@ -65,16 +66,16 @@ export function CrashScreen({ error, inWorkout = false, onRetry, onHome }: Crash
         <div className="mt-5 flex flex-col gap-2">
           {kind === 'stale-build' || onRetry === undefined ? (
             <Button fullWidth onClick={reload}>
-              Reload
+              {t().common.reload}
             </Button>
           ) : (
             <Button fullWidth onClick={onRetry}>
-              Try again
+              {t().common.tryAgain}
             </Button>
           )}
           {onHome !== undefined && (
             <Button variant="secondary" fullWidth onClick={onHome}>
-              Go to Home
+              {t().app.crash.goToHome}
             </Button>
           )}
           {/* Reload is still worth offering for a bug: it is the one reset that
@@ -82,7 +83,7 @@ export function CrashScreen({ error, inWorkout = false, onRetry, onHome }: Crash
               retry is cheaper and usually enough. */}
           {kind === 'bug' && onRetry !== undefined && (
             <Button variant="ghost" fullWidth onClick={reload}>
-              Reload the app
+              {t().app.crash.reloadApp}
             </Button>
           )}
         </div>
@@ -91,11 +92,9 @@ export function CrashScreen({ error, inWorkout = false, onRetry, onHome }: Crash
       {kind === 'bug' && (
         <details className="rounded-card border border-subtle bg-surface p-4">
           <summary className="min-h-tap cursor-pointer content-center text-sm font-medium text-secondary">
-            Details for a bug report
+            {t().app.crash.reportDetails}
           </summary>
-          <p className="mt-2 text-sm text-muted">
-            Nothing here identifies you, so it is safe to paste into a message.
-          </p>
+          <p className="mt-2 text-sm text-muted">{t().app.crash.reportSafe}</p>
           <pre className="mt-3 max-h-64 overflow-auto rounded-control bg-input p-3 text-xs whitespace-pre-wrap text-secondary select-text">
             {report}
           </pre>
@@ -108,12 +107,10 @@ export function CrashScreen({ error, inWorkout = false, onRetry, onHome }: Crash
               });
             }}
           >
-            {copied === 'yes' ? 'Copied' : 'Copy details'}
+            {copied === 'yes' ? t().app.crash.copied : t().app.crash.copyDetails}
           </Button>
           {copied === 'failed' && (
-            <p className="mt-2 text-sm text-muted">
-              This browser would not copy it. Press and hold the text above to select it instead.
-            </p>
+            <p className="mt-2 text-sm text-muted">{t().app.crash.copyFailed}</p>
           )}
         </details>
       )}

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useId, type ReactNode } from 'react';
 import {
   fractionOf,
@@ -226,7 +227,7 @@ export function TrendChart({
   summary,
   format = formatVolume,
   baseline = 'zero',
-  empty = 'Not enough sessions yet to draw a line.',
+  empty = t().progress.notEnoughForLine,
 }: {
   readonly values: readonly number[];
   readonly summary: string;

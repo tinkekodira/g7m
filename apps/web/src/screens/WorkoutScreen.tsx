@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Button, SegmentedControl, Stepper, TextField } from '@g7m/ui';
@@ -472,8 +473,8 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
     if (editing)
       return (
         <Shell>
-          <p className="text-secondary">That workout is not on this device.</p>
-          <HeaderLink to="/progress">Progress</HeaderLink>
+          <p className="text-secondary">{t().workout.notOnDevice}</p>
+          <HeaderLink to="/progress">{t().workout.progress}</HeaderLink>
         </Shell>
       );
     return (
@@ -493,9 +494,11 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
   if (editing && !canEditWorkout(session.endedAt, now)) {
     return (
       <Shell>
-        <h1 className="text-2xl font-semibold text-primary">Editing closed</h1>
-        <p className="text-secondary">Workouts can be edited for 2 hours after completion.</p>
-        <HeaderLink to={`/progress/session/${session.id}/details`}>Workout details</HeaderLink>
+        <h1 className="text-2xl font-semibold text-primary">{t().workout.editingClosed}</h1>
+        <p className="text-secondary">{t().workout.editWindow}</p>
+        <HeaderLink to={`/progress/session/${session.id}/details`}>
+          {t().workout.details}
+        </HeaderLink>
       </Shell>
     );
   }
@@ -654,7 +657,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
             if (removed === null) return;
             setUndo({
               token: ++undoToken.current,
-              message: 'Bout removed.',
+              message: t().workout.boutRemoved,
               restore: () => {
                 void write((r) => r.sessions.restoreSet(removed));
               },
@@ -758,7 +761,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
             really does not fit beside Home. */}
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-primary">
-            {editing ? 'Edit workout' : past ? 'Past workout' : 'Workout'}
+            {editing ? t().workout.titleEdit : past ? t().workout.titlePast : t().workout.title}
           </h1>
           <p
             className={
@@ -773,26 +776,26 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
               <span ref={headerTimer} className="workout-header-timer">
                 <StopwatchIcon className="size-4 shrink-0 text-accent" />
                 <span>
-                  <ElapsedTime startedAt={session.startedAt} now={now} /> elapsed
+                  <ElapsedTime startedAt={session.startedAt} now={now} /> {t().workout.elapsed}
                 </span>
               </span>
             )}
             {volume.countedSets > 0 && (
               <span className="whitespace-nowrap">
                 {past && ' · '}
-                {formatWeightExact(volume.volumeKg, unitSystem)} lifted
+                {t().workout.lifted(formatWeightExact(volume.volumeKg, unitSystem))}
               </span>
             )}
           </p>
           <GymSwitcher sessionId={session.id} gymId={session.gymId} />
         </div>
         {editing ? (
-          <HeaderLink to={`/progress/session/${session.id}/details`}>Done</HeaderLink>
+          <HeaderLink to={`/progress/session/${session.id}/details`}>{t().common.done}</HeaderLink>
         ) : past ? (
-          <HeaderLink to={afterwards}>Calendar</HeaderLink>
+          <HeaderLink to={afterwards}>{t().workout.calendar}</HeaderLink>
         ) : (
           <div ref={headerHome}>
-            <HeaderLink to="/">Home</HeaderLink>
+            <HeaderLink to="/">{t().common.home}</HeaderLink>
           </div>
         )}
       </header>
@@ -815,7 +818,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
 
       {editing && (
         <p className="text-sm text-secondary" role="status">
-          Save each changed set with Save or the tick. Editing closes 2 hours after completion.
+          {t().workout.editingHint}
         </p>
       )}
 
@@ -845,10 +848,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
       )}
 
       {volume.unknownSets > 0 && !needsBodyweight && (
-        <p className="text-sm text-muted">
-          {volume.unknownSets === 1 ? 'One set is' : `${String(volume.unknownSets)} sets are`} not
-          counted in the total — they need a bodyweight to measure against.
-        </p>
+        <p className="text-sm text-muted">{t().workout.uncounted(volume.unknownSets)}</p>
       )}
 
       {units.map((unit) =>
@@ -893,12 +893,12 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
           to={editing ? `/exercises?add=1&session=${session.id}` : '/exercises?add=1'}
           className="flex min-h-tap items-center justify-center rounded-card border border-dashed border-strong text-sm text-secondary active:bg-surface"
         >
-          + Add an exercise
+          {t().workout.addExercise}
         </Link>
 
         <div className="flex gap-3 py-4">
           <Button disabled={busy} onClick={finishWorkout}>
-            {editing ? 'Done editing' : 'Finish workout'}
+            {editing ? t().workout.doneEditing : t().workout.finish}
           </Button>
           {!editing && (
             <Button
@@ -907,14 +907,13 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
               onClick={() => {
                 // Confirmed, because it is the one destructive action on the
                 // screen and it sits next to the one people mean to press.
-                if (!globalThis.confirm('Discard this workout and everything logged in it?'))
-                  return;
+                if (!globalThis.confirm(t().workout.confirmDiscard)) return;
                 void write((r) => r.sessions.discard(session.id)).then(() => {
                   void navigate(afterwards);
                 });
               }}
             >
-              Discard
+              {t().workout.discard}
             </Button>
           )}
         </div>
@@ -922,9 +921,9 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
 
       {removing !== null && (
         <ConfirmDialog
-          title={`Remove ${removing.exercise?.name ?? 'this exercise'}?`}
+          title={t().workout.removeTitle(removing.exercise?.name ?? null)}
           detail={removalDetail(removing)}
-          confirmLabel="Remove"
+          confirmLabel={t().common.remove}
           onCancel={() => {
             setRemoving(null);
           }}
@@ -938,7 +937,10 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
                 token: ++undoToken.current,
                 // The count is the part worth a second look: an exercise takes
                 // every set logged under it with it.
-                message: removedMessage(block.exercise?.name ?? 'Exercise', removed.sets.length),
+                message: removedMessage(
+                  block.exercise?.name ?? t().workout.exercise,
+                  removed.sets.length,
+                ),
                 restore: () => {
                   void write((r) => r.sessions.restoreExercise(removed));
                 },
@@ -1017,17 +1019,19 @@ interface Undoable {
 /** What goes with an exercise, said before it goes. */
 function removalDetail(block: ExerciseBlock): string {
   const done = block.sets.filter((set) => set.isCompleted).length;
-  if (done === 0) return 'Nothing is logged on it yet.';
-  const word = block.exercise?.cardioKind != null ? 'bout' : 'set';
-  if (done === 1) return `The ${word} you logged on it goes with it.`;
-  return `The ${String(done)} ${word}s you logged on it go with it.`;
+  const words = t().workout.removal;
+  if (done === 0) return words.nothing;
+  const bout = block.exercise?.cardioKind != null;
+  if (done === 1) return words.one(bout);
+  return words.many(done, bout);
 }
 
 /** "Set removed, with 2 drops.": a set takes its drops with it, and says so. */
 function setRemovedMessage(isDrop: boolean, drops: number): string {
-  if (isDrop) return 'Drop removed.';
-  if (drops === 0) return 'Set removed.';
-  return `Set removed, with ${String(drops)} ${drops === 1 ? 'drop' : 'drops'}.`;
+  const words = t().workout.removed;
+  if (isDrop) return words.drop;
+  if (drops === 0) return words.set;
+  return words.setWithDrops(drops);
 }
 
 /**
@@ -1066,12 +1070,12 @@ function SupersetFrame({
 }) {
   return (
     <section
-      aria-label="Superset"
+      aria-label={t().workout.superset.label}
       className="flex flex-col gap-3 rounded-card border-l-4 border-subtle pl-2"
     >
       <div className="flex items-center justify-between gap-3 px-2">
         <p className="text-xs font-semibold tracking-wide text-accent uppercase">
-          Superset · {String(count)} exercises
+          {t().workout.superset.heading(count)}
         </p>
         <button
           type="button"
@@ -1079,20 +1083,20 @@ function SupersetFrame({
           onClick={onUngroup}
           className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
         >
-          Ungroup
+          {t().workout.superset.ungroup}
         </button>
       </div>
       {children}
       <Button variant="secondary" fullWidth disabled={busy} onClick={onAddRound}>
-        Add round
+        {t().workout.superset.addRound}
       </Button>
     </section>
   );
 }
 
 function removedMessage(name: string, sets: number): string {
-  if (sets === 0) return `${name} removed.`;
-  return `${name} removed, with ${String(sets)} ${sets === 1 ? 'set' : 'sets'}.`;
+  if (sets === 0) return t().workout.removed.exercise(name);
+  return t().workout.removed.exerciseWithSets(name, sets);
 }
 
 /** The header hands its clock to this pill only after it leaves the top edge. */
@@ -1148,7 +1152,11 @@ function FloatingWorkoutSummary({
 
   const seconds = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 1000));
   const hours = Math.floor(seconds / 3600);
-  const elapsedLabel = `${String(hours)} ${hours === 1 ? 'hour' : 'hours'} ${String(Math.floor((seconds % 3600) / 60))} minutes ${String(seconds % 60)} seconds elapsed`;
+  const elapsedLabel = t().workout.summary.elapsed(
+    hours,
+    Math.floor((seconds % 3600) / 60),
+    seconds % 60,
+  );
 
   return (
     <div
@@ -1157,15 +1165,15 @@ function FloatingWorkoutSummary({
       data-visible={visible}
       aria-hidden={!visible}
     >
-      <div className="workout-summary numeric" role="group" aria-label="Workout summary">
+      <div className="workout-summary numeric" role="group" aria-label={t().workout.summary.label}>
         <StopwatchIcon className="size-5 shrink-0 text-accent" />
         <span role="timer" aria-label={elapsedLabel} className="text-lg font-semibold text-primary">
           <ElapsedTime startedAt={startedAt} now={now} />
         </span>
         {completedSets !== null && (
           <span className="workout-summary-sets text-sm text-secondary">
-            <span className="sr-only">Completed working sets: </span>
-            {completedSets} {completedSets === 1 ? 'set' : 'sets'}
+            <span className="sr-only">{t().workout.summary.completedSets}</span>
+            {t().workout.summary.sets(completedSets)}
           </span>
         )}
       </div>
@@ -1193,16 +1201,13 @@ function StartWorkout({ busy, onStart }: { readonly busy: boolean; readonly onSt
   return (
     <>
       <header className="flex items-baseline justify-between gap-4 pt-6 pb-2">
-        <h1 className="text-2xl font-semibold text-primary">Train</h1>
-        <HeaderLink to="/">Home</HeaderLink>
+        <h1 className="text-2xl font-semibold text-primary">{t().workout.start.title}</h1>
+        <HeaderLink to="/">{t().common.home}</HeaderLink>
       </header>
       <section className="rounded-card bg-surface p-4">
-        <p className="mb-4 max-w-prose text-sm text-secondary">
-          Nothing in progress. Start a workout and add exercises to it as you go — everything is
-          saved on this phone the moment you tap, whether or not there is any signal.
-        </p>
+        <p className="mb-4 max-w-prose text-sm text-secondary">{t().workout.start.nothing}</p>
         <Button disabled={busy} onClick={onStart}>
-          Start a workout
+          {t().workout.start.button}
         </Button>
       </section>
     </>
@@ -1226,15 +1231,12 @@ function BodyweightPrompt({
 
   return (
     <section className="rounded-card bg-surface p-4">
-      <h2 className="mb-2 text-lg font-semibold text-primary">What do you weigh?</h2>
-      <p className="mb-3 max-w-prose text-sm text-secondary">
-        A pull-up is you moving your own bodyweight. Without this number those sets can be logged
-        but not measured, so they would not count toward anything.
-      </p>
+      <h2 className="mb-2 text-lg font-semibold text-primary">{t().workout.bodyweight.title}</h2>
+      <p className="mb-3 max-w-prose text-sm text-secondary">{t().workout.bodyweight.body}</p>
       <div className="flex items-end gap-3">
         <div className="flex-1">
           <TextField
-            label={`Bodyweight (${unit})`}
+            label={t().workout.bodyweight.label(unit)}
             inputMode="decimal"
             value={entered}
             onChange={(event) => {
@@ -1248,7 +1250,7 @@ function BodyweightPrompt({
             onSave(fromDisplayWeight(parsed, unitSystem));
           }}
         >
-          Save
+          {t().common.save}
         </Button>
       </div>
     </section>
@@ -1290,7 +1292,7 @@ function ExerciseCard({
   /** Take a drop off this ticked set: a lighter row under it, no rest. */
   readonly onDrop: (set: SessionSet) => void;
 }) {
-  const name = block.exercise?.name ?? 'Unknown exercise';
+  const name = block.exercise?.name ?? t().workout.unknownExercise;
   const kit = { barbell: block.barbell, dumbbell: block.dumbbell, unitSystem };
   const [skipped, setSkipped] = useState(false);
 
@@ -1333,13 +1335,14 @@ function ExerciseCard({
   const elsewhereNote =
     block.elsewhere === null || elsewhereTop === null
       ? null
-      : `First time on this machine here. Last time ${
-          block.elsewhere.gymName === null ? 'elsewhere' : `at ${block.elsewhere.gymName}`
-        }: ${describePreviousSet(
-          elsewhereTop,
-          (kg) => showWeight(kg, unitSystem),
-          block.exercise?.isTimeBased === true,
-        )}.`;
+      : t().workout.elsewhere(
+          block.elsewhere.gymName,
+          describePreviousSet(
+            elsewhereTop,
+            (kg) => showWeight(kg, unitSystem),
+            block.exercise?.isTimeBased === true,
+          ),
+        );
 
   // Asked once, at the end, about the last set only. Once per set would be
   // four questions for one exercise, which is three too many with a bar in
@@ -1390,7 +1393,7 @@ function ExerciseCard({
       )}
 
       {block.sets.length === 0 ? (
-        <p className="mb-3 text-sm text-muted">No sets yet.</p>
+        <p className="mb-3 text-sm text-muted">{t().workout.noSets}</p>
       ) : (
         <ul className="mb-3 flex flex-col gap-3">
           {numbered.map((entry, index) => {
@@ -1472,8 +1475,11 @@ function ExerciseCard({
         <p className="advice mb-3 flex items-center gap-2 rounded-control border border-accent/50 bg-accent-subtle px-3 py-2 text-sm font-semibold text-accent">
           <ArrowUpIcon aria-hidden className="size-5 shrink-0" />
           <span className="numeric">
-            {String(advice.reps)} reps at {showWeight(advice.weightKg, unitSystem)} — try{' '}
-            {showWeight(advice.nextKg, unitSystem)} next time
+            {t().workout.advice(
+              advice.reps,
+              showWeight(advice.weightKg, unitSystem),
+              showWeight(advice.nextKg, unitSystem),
+            )}
           </span>
         </p>
       )}
@@ -1503,11 +1509,11 @@ function ExerciseCard({
               onWarmUp(ramp);
             }}
           >
-            Warm-up
+            {t().workout.warmUp}
           </Button>
         )}
         <Button variant="secondary" fullWidth disabled={busy} onClick={onAddSet}>
-          Add set
+          {t().workout.addSet}
         </Button>
       </div>
 
@@ -1517,9 +1523,11 @@ function ExerciseCard({
           and where it climbs to is the part worth reading. */}
       {offersWarmup && (
         <p className="numeric mt-2 text-xs text-muted">
-          Adds {ramp.length} {ramp.length === 1 ? 'set' : 'sets'} from{' '}
-          {showWeight(ramp[0]?.weightKg ?? 0, unitSystem)} up to{' '}
-          {showWeight(ramp[ramp.length - 1]?.weightKg ?? 0, unitSystem)}
+          {t().workout.ramp(
+            ramp.length,
+            showWeight(ramp[0]?.weightKg ?? 0, unitSystem),
+            showWeight(ramp[ramp.length - 1]?.weightKg ?? 0, unitSystem),
+          )}
         </p>
       )}
     </section>
@@ -1535,7 +1543,7 @@ function laterOf(a: Date | null, b: Date | null): Date | null {
 
 /** `16 kg`, `35 lb`: a weight with its unit, for a sentence rather than a field. */
 function showWeight(kg: number, unitSystem: UnitSystem): string {
-  return `${String(toDisplayWeight(kg, unitSystem).value)} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
+  return `${formatNumber(toDisplayWeight(kg, unitSystem).value)} ${unitSystem === 'imperial' ? 'lb' : 'kg'}`;
 }
 
 /**
@@ -1563,9 +1571,7 @@ function EffortPrompt({
 }) {
   return (
     <div className="mb-3 rounded-control border border-subtle bg-elevated p-3">
-      <p className="text-sm font-medium text-primary">
-        On that last set — how many more could you have done?
-      </p>
+      <p className="text-sm font-medium text-primary">{t().workout.effort.question}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {EFFORT_ANSWERS.map((answer) => (
           <Button
@@ -1576,7 +1582,7 @@ function EffortPrompt({
               onAnswer(answer.repsInReserve);
             }}
           >
-            {answer.label}
+            {answer.label === 'None' ? t().workout.effort.none : answer.label}
           </Button>
         ))}
         <button
@@ -1584,7 +1590,7 @@ function EffortPrompt({
           onClick={onSkip}
           className="min-h-tap px-2 text-sm text-muted underline-offset-4 hover:underline"
         >
-          Skip
+          {t().common.skip}
         </button>
       </div>
     </div>
@@ -1753,23 +1759,23 @@ function SetRow({
             {set.setType === 'warmup' && !set.isCompleted && (
               <button
                 type="button"
-                aria-label={`Delete ${title.toLowerCase()}`}
+                aria-label={t().workout.set.deleteRow(title)}
                 disabled={busy}
                 onClick={onRemove}
                 className="min-h-tap shrink-0 px-1 text-xs text-destructive underline-offset-4 hover:underline"
               >
-                Delete
+                {t().common.delete}
               </button>
             )}
             {onDrop !== undefined && (
               <button
                 type="button"
-                aria-label={`Drop after ${title.toLowerCase()}`}
+                aria-label={t().workout.set.dropAfter(title)}
                 disabled={busy}
                 onClick={onDrop}
                 className="min-h-tap shrink-0 px-2 text-sm font-semibold text-accent underline-offset-4 hover:underline"
               >
-                Drop
+                {t().workout.set.drop}
               </button>
             )}
             <button
@@ -1809,26 +1815,28 @@ function SetRow({
             looking like a label for it. */}
             {previous !== null && (
               <span className="numeric rounded-control border border-subtle bg-elevated px-2 py-1 text-sm font-semibold text-primary">
-                {`Last: ${describePreviousSet(
-                  previous,
-                  (kg) => {
-                    const shown = toDisplayWeight(kg, unitSystem);
-                    return `${String(shown.value)}${shown.unit}`;
-                  },
-                  isTimeBased,
-                )}`}
+                {t().workout.set.last(
+                  describePreviousSet(
+                    previous,
+                    (kg) => {
+                      const shown = toDisplayWeight(kg, unitSystem);
+                      return `${formatNumber(shown.value)}${shown.unit}`;
+                    },
+                    isTimeBased,
+                  ),
+                )}
               </span>
             )}
           </div>
 
           {canAddWeight(loadType) && (
             <SegmentedControl
-              label={`${title} load`}
+              label={t().workout.set.load(title)}
               variant="quiet"
               className="mb-3"
               options={[
-                { value: 'bodyweight', label: 'Bodyweight' },
-                { value: 'bodyweight_plus', label: 'Added weight' },
+                { value: 'bodyweight', label: t().workout.set.bodyweight },
+                { value: 'bodyweight_plus', label: t().workout.set.addedWeight },
               ]}
               value={loadType}
               disabled={busy}
@@ -1841,12 +1849,12 @@ function SetRow({
 
           {isTimeBased && (
             <SegmentedControl
-              label={`${title} duration format`}
+              label={t().workout.set.durationFormat(title)}
               variant="quiet"
               className="mb-3"
               options={[
-                { value: 'seconds', label: 'Seconds' },
-                { value: 'minutes', label: 'Min + sec' },
+                { value: 'seconds', label: t().workout.set.seconds },
+                { value: 'minutes', label: t().workout.set.minSec },
               ]}
               value={durationUnit}
               disabled={busy}
@@ -1887,7 +1895,7 @@ function SetRow({
                 {isTimeBased && durationUnit === 'minutes' ? (
                   <div className="flex flex-col gap-2">
                     <Stepper
-                      label="Minutes"
+                      label={t().workout.set.minutes}
                       value={Math.floor(reps / 60)}
                       step={1}
                       min={0}
@@ -1897,7 +1905,7 @@ function SetRow({
                       }}
                     />
                     <Stepper
-                      label="Seconds"
+                      label={t().workout.set.seconds}
                       value={reps % 60}
                       step={1}
                       min={0}
@@ -1911,7 +1919,7 @@ function SetRow({
                 ) : (
                   <Stepper
                     key={durationUnit}
-                    label={isTimeBased ? 'Seconds' : 'Reps'}
+                    label={isTimeBased ? t().workout.set.seconds : t().workout.set.reps}
                     value={reps}
                     step={1}
                     min={0}
@@ -1924,7 +1932,7 @@ function SetRow({
 
             <button
               type="button"
-              aria-label={editing && set.isCompleted ? `Save ${title.toLowerCase()}` : tick}
+              aria-label={editing && set.isCompleted ? t().workout.set.saveRow(title) : tick}
               aria-pressed={set.isCompleted}
               disabled={busy}
               onClick={() => {
@@ -1951,7 +1959,7 @@ function SetRow({
                 onClick={onUncomplete}
                 className="min-h-tap text-xs text-secondary underline-offset-4 hover:underline"
               >
-                Mark as skipped
+                {t().workout.set.markSkipped}
               </button>
             )}
             <span className="flex-1" />
@@ -1965,7 +1973,7 @@ function SetRow({
               }}
               className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
             >
-              Save
+              {t().common.save}
             </button>
             <button
               type="button"
@@ -1973,7 +1981,7 @@ function SetRow({
               onClick={onRemove}
               className="min-h-tap text-xs text-destructive underline-offset-4 hover:underline"
             >
-              Delete
+              {t().common.delete}
             </button>
           </div>
         </div>
@@ -2042,17 +2050,15 @@ function StillTrainingBar({
     <div role="status" className="border-t border-subtle bg-elevated">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-primary">Still training?</p>
-          <p className="text-xs text-muted">
-            Nothing ticked for {String(minutes)} {minutes === 1 ? 'minute' : 'minutes'}.
-          </p>
+          <p className="text-sm font-semibold text-primary">{t().workout.stillTraining.title}</p>
+          <p className="text-xs text-muted">{t().workout.stillTraining.idle(minutes)}</p>
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="ghost" disabled={busy} onClick={onKeepGoing}>
-            Keep going
+            {t().workout.stillTraining.keepGoing}
           </Button>
           <Button variant="secondary" disabled={busy} onClick={onFinish}>
-            Finish
+            {t().workout.stillTraining.finish}
           </Button>
         </div>
       </div>
@@ -2086,7 +2092,9 @@ function RestBar({
     <div className="border-t border-subtle bg-elevated">
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
         <div>
-          <p className="text-xs text-muted">{done ? 'Rest over' : 'Resting'}</p>
+          <p className="text-xs text-muted">
+            {done ? t().workout.rest.over : t().workout.rest.resting}
+          </p>
           <p className={`numeric text-2xl ${done ? 'text-accent' : 'text-primary'}`}>
             {formatRest(remaining)}
           </p>
@@ -2094,7 +2102,7 @@ function RestBar({
         <div className="flex gap-1">
           <Button
             variant="ghost"
-            aria-label={`${label} less rest`}
+            aria-label={t().workout.rest.less(label)}
             disabled={done || remaining <= step}
             onClick={() => {
               onAdjust(-step);
@@ -2104,7 +2112,7 @@ function RestBar({
           </Button>
           <Button
             variant="ghost"
-            aria-label={`${label} more rest`}
+            aria-label={t().workout.rest.more(label)}
             onClick={() => {
               onAdjust(step);
             }}
@@ -2112,7 +2120,7 @@ function RestBar({
             +{label}
           </Button>
           <Button variant="secondary" onClick={onSkip}>
-            {done ? 'Dismiss' : 'Skip'}
+            {done ? t().workout.rest.dismiss : t().common.skip}
           </Button>
         </div>
       </div>
@@ -2167,7 +2175,7 @@ function markRecords(workout: Workout | null): {
       const at = block.sets.find((set) => set.id === record.setId)?.completedAt ?? null;
       if (at === null) continue;
       if (latest === null || at.getTime() > latest.at.getTime()) {
-        latest = { record, exerciseName: block.exercise?.name ?? 'that lift', at };
+        latest = { record, exerciseName: block.exercise?.name ?? t().workout.thatLift, at };
       }
     }
   }

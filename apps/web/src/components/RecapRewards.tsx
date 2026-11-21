@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useState } from 'react';
 import type { RecapRewards as Rewards } from '@g7m/core';
 import { useReducedMotion } from '../lib/use-reduced-motion.js';
@@ -21,9 +22,9 @@ export function RecapRewards({ rewards }: { readonly rewards: Rewards }) {
 
   if (rewards.xp <= 0 && rewards.achievements.length === 0) return null;
   return (
-    <section aria-label="Earned this session" className="recap-rewards">
+    <section aria-label={t().history.recap.earned} className="recap-rewards">
       <div className="recap-xp-row flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-primary">Earned this session</h3>
+        <h3 className="text-sm font-medium text-primary">{t().history.recap.earned}</h3>
         <p className="recap-xp numeric font-semibold text-accent">
           <span className="sr-only">+{rewards.xp} XP</span>
           <span
@@ -35,9 +36,9 @@ export function RecapRewards({ rewards }: { readonly rewards: Rewards }) {
         <div className="recap-level flex items-center gap-3 rounded-control border border-accent/30 bg-accent/10">
           <TrophyIcon className="size-6 shrink-0 text-accent" />
           <div className="recap-level-copy">
-            <p className="font-semibold text-primary">Level up!</p>
+            <p className="font-semibold text-primary">{t().history.recap.levelUp}</p>
             <p className="numeric text-sm text-secondary">
-              Level {rewards.levelBefore} → Level {rewards.levelAfter}
+              {t().history.recap.levels(rewards.levelBefore, rewards.levelAfter)}
             </p>
           </div>
         </div>

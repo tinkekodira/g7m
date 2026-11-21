@@ -1,3 +1,4 @@
+import { formatNumber, t } from '@g7m/i18n';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import {
@@ -233,11 +234,16 @@ export function ProgressScreen() {
       {/* A way back, now that Progress is a tile on Home rather than a tab
           of its own (ADR-0105). */}
       <header className="flex items-baseline justify-between gap-4 pt-6">
-        <h1 className="text-2xl font-semibold text-primary">Progress</h1>
-        <HeaderLink to="/">Home</HeaderLink>
+        <h1 className="text-2xl font-semibold text-primary">{t().progress.title}</h1>
+        <HeaderLink to="/">{t().common.home}</HeaderLink>
       </header>
 
-      <SegmentedControl label="Period" options={PERIOD_OPTIONS} value={period} onChange={choose} />
+      <SegmentedControl
+        label={t().progress.period}
+        options={PERIOD_OPTIONS}
+        value={period}
+        onChange={choose}
+      />
 
       {state.error !== null ? (
         <p
@@ -249,11 +255,8 @@ export function ProgressScreen() {
       ) : state.loading || view === null || state.data === null ? (
         <ProgressSkeleton />
       ) : state.data.summaries.length === 0 ? (
-        <Panel eyebrow="Progress" title="Nothing here yet">
-          <p className="mt-1 text-sm text-secondary">
-            Finish a workout and it shows up here. The charts count completed sessions, so the one
-            you are part-way through counts once you tap Finish.
-          </p>
+        <Panel eyebrow={t().progress.title} title={t().progress.empty.title}>
+          <p className="mt-1 text-sm text-secondary">{t().progress.empty.body}</p>
         </Panel>
       ) : (
         <>
@@ -261,16 +264,16 @@ export function ProgressScreen() {
               one card rather than a card each (ADR-0124). */}
           {/* No period in the title: the control above and the chart's own label
               below already say which week, and a third "This week" is noise. */}
-          <Panel tone="hero" title="Your training">
+          <Panel tone="hero" title={t().progress.yourTraining}>
             <div className="mt-4 grid grid-cols-2">
               <Headline
-                label="Total workouts"
+                label={t().progress.totalWorkouts}
                 value={String(view.current.workouts)}
                 side={since ?? describeComparison(view.workouts, period, String)}
                 first
               />
               <Headline
-                label="Active time"
+                label={t().progress.activeTime}
                 value={formatMinutes(view.current.minutes)}
                 side={since ?? describeComparison(view.minutes, period, formatMinutes)}
               />
@@ -279,10 +282,10 @@ export function ProgressScreen() {
 
           <Panel
             tone="hero"
-            label="Chart"
+            label={t().progress.chart}
             header={
               <ViewPicker
-                label="Chart view"
+                label={t().progress.chartView}
                 value={metric}
                 options={VIEW_OPTIONS}
                 onChange={(next) => {
@@ -300,7 +303,7 @@ export function ProgressScreen() {
                     time has no arrows, so it is said here. */}
                 {period === 'all' && (
                   <span className="block text-xs text-muted">
-                    {view.window.clipped ? 'in the last 12 months' : 'all time'}
+                    {view.window.clipped ? t().progress.lastTwelveMonths : t().progress.allTime}
                   </span>
                 )}
               </>
@@ -319,7 +322,7 @@ export function ProgressScreen() {
             )}
             <p className="mt-2 mb-4 text-xs text-muted">
               {metricOption(metric).caption}
-              {period === 'all' ? ' One column a month.' : ' One column a day.'}
+              {period === 'all' ? t().progress.oneColumnMonth : t().progress.oneColumnDay}
             </p>
             <SwipeToStep
               enabled={period !== 'all'}
@@ -407,7 +410,7 @@ function PeriodStepper({
   return (
     <div className="mt-2 flex items-center gap-1">
       <StepArrow
-        label={`Previous ${unit}`}
+        label={t().progress.stepper.previous(unit)}
         disabled={back >= maxBack}
         onClick={() => {
           onStep(back + 1);
@@ -427,12 +430,12 @@ function PeriodStepper({
             }}
             className="text-xs font-medium text-accent underline-offset-2 active:underline"
           >
-            Back to this {unit}
+            {t().progress.stepper.backTo(unit)}
           </button>
         )}
       </div>
       <StepArrow
-        label={`Next ${unit}`}
+        label={t().progress.stepper.next(unit)}
         disabled={back <= 0}
         onClick={() => {
           onStep(back - 1);
@@ -513,18 +516,21 @@ function CardioSection({
   return (
     <Panel
       eyebrow={capitalised(periodPhrase(period))}
-      title="Cardio"
+      title={t().progress.cardio.title}
       aside={comparison === null ? undefined : <Compared line={comparison} />}
     >
       <div className="mt-3 grid grid-cols-3">
-        <CardioFigure label="Time" value={minutes > 0 ? formatMinutes(minutes) : '—'} />
         <CardioFigure
-          label="Distance"
+          label={t().progress.cardio.time}
+          value={minutes > 0 ? formatMinutes(minutes) : '—'}
+        />
+        <CardioFigure
+          label={t().progress.cardio.distance}
           value={distanceM > 0 ? formatDistance(distanceM, unit) : '—'}
         />
         <CardioFigure
-          label="Calories"
-          value={kcal > 0 ? `≈ ${kcal.toLocaleString('en-GB')}` : '—'}
+          label={t().progress.cardio.calories}
+          value={kcal > 0 ? `≈ ${formatNumber(kcal)}` : '—'}
           unit={kcal > 0 ? 'kcal' : undefined}
           last
         />
@@ -612,7 +618,7 @@ function Compared({ line }: { readonly line: ComparisonLine }) {
 /** The screen's own shape while its numbers are read: the two cards to come. */
 function ProgressSkeleton() {
   return (
-    <div aria-busy aria-label="Loading" className="flex flex-col gap-4">
+    <div aria-busy aria-label={t().progress.loading} className="flex flex-col gap-4">
       <div className="h-40 animate-pulse rounded-sheet border border-subtle bg-surface" />
       <div className="h-80 animate-pulse rounded-sheet border border-subtle bg-surface" />
     </div>
@@ -630,7 +636,7 @@ function RecentWorkouts({
   const shown = all ? summaries : summaries.slice(0, RECENT_SHOWN);
 
   return (
-    <Panel title="Recent workouts">
+    <Panel title={t().progress.recent}>
       <ul className="mt-1 flex flex-col">
         {shown.map((summary) => (
           <li key={summary.sessionId} className="border-b border-subtle last:border-b-0">
@@ -646,7 +652,7 @@ function RecentWorkouts({
           }}
           className="mt-2 min-h-tap w-full rounded-control text-sm font-medium text-accent active:bg-elevated"
         >
-          {all ? 'Show fewer' : `Show all ${String(summaries.length)}`}
+          {all ? t().progress.showFewer : t().progress.showAll(summaries.length)}
         </button>
       )}
     </Panel>
@@ -676,7 +682,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
         <span className="numeric block text-xs text-muted">
           {describeWhen(summary.startedAt, now)} ·{' '}
           {describeWork(summary.setCount, summary.boutCount)}
-          {minutes !== null && ` · ${String(minutes)} min`}
+          {minutes !== null && ` · ${t().progress.minutes(minutes)}`}
           {summary.gymName !== null && ` · ${summary.gymName}`}
         </span>
       </span>

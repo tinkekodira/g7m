@@ -1,6 +1,9 @@
+import { currentLocale, t } from '@g7m/i18n';
 import { useState, type FormEvent } from 'react';
 import { Button, TextField, cx } from '@g7m/ui';
 import { useAuthStore } from './auth-store.js';
+import { LanguageSelect } from '../components/LanguagePicker.js';
+import { switchLanguage } from '../lib/language.js';
 
 type Mode = 'sign-in' | 'sign-up' | 'reset';
 
@@ -57,22 +60,32 @@ export function SignInScreen() {
   return (
     <main className="mx-auto flex min-h-full w-full max-w-sm flex-col justify-center gap-6 px-4 pt-safe-top pb-safe-bottom">
       <header>
-        <h1 className="text-2xl font-semibold text-primary">g7m</h1>
-        <p className="mt-1 text-sm text-secondary">
-          Your training history syncs across every device you sign in on.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-primary">g7m</h1>
+          {/* Before an account exists there is no profile to hold a language,
+              and somebody who reads no English still has to get past this
+              form. The phone's own language is already applied. ADR-0181. */}
+          <LanguageSelect
+            compact
+            label={t().auth.language}
+            value={currentLocale()}
+            disabled={busy}
+            onChange={(locale) => {
+              void switchLanguage(locale);
+            }}
+          />
+        </div>
+        <p className="mt-1 text-sm text-secondary">{t().auth.tagline}</p>
       </header>
 
       {mode === 'reset' ? (
-        <p className="text-sm text-secondary">
-          Enter the email you signed up with and we will send a link to set a new password.
-        </p>
+        <p className="text-sm text-secondary">{t().auth.resetIntro}</p>
       ) : (
         /* Two tabs, above the fields, so both options are visible without
            scrolling and neither is hidden behind the other. */
         <div
           role="tablist"
-          aria-label="Sign in or create an account"
+          aria-label={t().auth.modes}
           className="flex rounded-control bg-elevated p-1"
         >
           <ModeTab
@@ -81,7 +94,7 @@ export function SignInScreen() {
               switchTo('sign-in');
             }}
           >
-            Sign in
+            {t().auth.signIn}
           </ModeTab>
           <ModeTab
             selected={mode === 'sign-up'}
@@ -89,14 +102,14 @@ export function SignInScreen() {
               switchTo('sign-up');
             }}
           >
-            Create account
+            {t().auth.createAccount}
           </ModeTab>
         </div>
       )}
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <TextField
-          label="Email"
+          label={t().auth.email}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -112,7 +125,7 @@ export function SignInScreen() {
 
         {needsPassword && (
           <TextField
-            label="Password"
+            label={t().auth.password}
             type="password"
             autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
             value={password}
@@ -121,7 +134,7 @@ export function SignInScreen() {
               clearError();
             }}
             disabled={busy}
-            {...(mode === 'sign-up' ? { hint: 'At least 8 characters.' } : {})}
+            {...(mode === 'sign-up' ? { hint: t().auth.passwordHint } : {})}
           />
         )}
 
@@ -143,7 +156,7 @@ export function SignInScreen() {
                     switchTo('sign-up');
                   }}
                 >
-                  Create an account
+                  {t().auth.createAnAccount}
                 </button>
                 <button
                   type="button"
@@ -152,7 +165,7 @@ export function SignInScreen() {
                     switchTo('reset');
                   }}
                 >
-                  Reset my password
+                  {t().auth.resetMyPassword}
                 </button>
               </div>
             )}
@@ -167,12 +180,12 @@ export function SignInScreen() {
 
         <Button type="submit" size="lg" fullWidth disabled={!canSubmit}>
           {busy
-            ? 'Working…'
+            ? t().auth.working
             : mode === 'sign-in'
-              ? 'Sign in'
+              ? t().auth.signIn
               : mode === 'sign-up'
-                ? 'Create account'
-                : 'Send reset link'}
+                ? t().auth.createAccount
+                : t().auth.sendResetLink}
         </Button>
       </form>
 
@@ -185,14 +198,14 @@ export function SignInScreen() {
               switchTo('sign-in');
             }}
           >
-            Back to sign in
+            {t().auth.backToSignIn}
           </button>
         </p>
       ) : (
         <>
           <div className="flex items-center gap-3" aria-hidden="true">
             <span className="h-px flex-1 bg-subtle" />
-            <span className="text-xs text-muted">or</span>
+            <span className="text-xs text-muted">{t().auth.or}</span>
             <span className="h-px flex-1 bg-subtle" />
           </div>
 
@@ -205,7 +218,7 @@ export function SignInScreen() {
               void signInWithGoogle();
             }}
           >
-            Continue with Google
+            {t().auth.google}
           </Button>
 
           {mode === 'sign-in' && (
@@ -218,7 +231,7 @@ export function SignInScreen() {
                   switchTo('reset');
                 }}
               >
-                Forgot your password?
+                {t().auth.forgot}
               </button>
             </p>
           )}

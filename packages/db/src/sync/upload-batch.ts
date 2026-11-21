@@ -22,6 +22,7 @@
  * an incidental property of `planWrite` — it is the reason it is shaped that
  * way.
  */
+import { t } from '@g7m/i18n';
 import { isMissingOwner, planWrite, type PlannedWrite, type QueuedChange } from './apply-crud.js';
 import {
   classifyUploadError,
@@ -176,12 +177,8 @@ export function describeUploadReport(report: UploadReport): string {
   const lost = report.discarded.filter((entry) => !entry.alreadyApplied);
   if (lost.length > 0) {
     const tables = [...new Set(lost.map((entry) => entry.write.table))].join(', ');
-    return (
-      `${String(lost.length)} change${lost.length === 1 ? '' : 's'} could not be saved to the ` +
-      `server (${tables}) and ${lost.length === 1 ? 'was' : 'were'} skipped. ` +
-      'Everything else synced.'
-    );
+    return t().settings.sync.uploadLost(lost.length, tables);
   }
-  if (report.applied === 0) return 'Nothing to sync.';
-  return `Synced ${String(report.applied)} change${report.applied === 1 ? '' : 's'}.`;
+  if (report.applied === 0) return t().settings.sync.nothingToSync;
+  return t().settings.sync.synced(report.applied);
 }

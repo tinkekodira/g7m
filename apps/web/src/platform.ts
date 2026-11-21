@@ -9,6 +9,7 @@
  * No `@capacitor/core` or `@tauri-apps/api` import here on purpose: this file
  * has to work in a plain browser tab where neither package exists.
  */
+import { t } from '@g7m/i18n';
 
 export type Platform = 'web' | 'ios' | 'android' | 'windows' | 'macos';
 
@@ -72,8 +73,7 @@ export function detectPlatform(): PlatformInfo {
   return { shell: 'browser', platform: 'web', hasFinePointer, prefersReducedMotion };
 }
 
-const PLATFORM_LABELS: Record<Platform, string> = {
-  web: 'Web browser',
+const PLATFORM_LABELS: Record<Exclude<Platform, 'web'>, string> = {
   ios: 'iOS',
   android: 'Android',
   windows: 'Windows',
@@ -81,5 +81,5 @@ const PLATFORM_LABELS: Record<Platform, string> = {
 };
 
 export function platformLabel(platform: Platform): string {
-  return PLATFORM_LABELS[platform];
+  return platform === 'web' ? t().settings.device.web : PLATFORM_LABELS[platform];
 }

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect } from 'react';
 import { Button } from '@g7m/ui';
 
@@ -55,7 +56,7 @@ export function UndoToast({
       <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-3">
         <p className="min-w-0 text-sm text-secondary">{message}</p>
         <Button variant="secondary" onClick={onUndo}>
-          Undo
+          {t().common.undo}
         </Button>
       </div>
     </div>

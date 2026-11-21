@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { lazy, Suspense, useMemo } from 'react';
 import { placeholderBodyParts } from '@g7m/anatomy';
 import type { Sex } from '@g7m/core';
@@ -25,7 +26,7 @@ export function WorkoutMuscleBody({
   return (
     <div
       role="img"
-      aria-label={`Muscles worked this session: ${muscles.map((m) => m.commonName).join(', ') || 'none recorded'}. Front and back views.`}
+      aria-label={t().history.muscleBody.label(muscles.map((m) => m.commonName).join(', '))}
       className="recap-muscle-model grid grid-cols-2 overflow-hidden rounded-card bg-stage"
     >
       {(['front', 'back'] as const).map((view) => (
@@ -51,7 +52,7 @@ export function WorkoutMuscleBody({
             </Suspense>
           )}
           <figcaption className="pb-2 text-center text-xs text-muted">
-            {view === 'front' ? 'Front' : 'Back'}
+            {view === 'front' ? t().history.muscleBody.front : t().history.muscleBody.back}
           </figcaption>
         </figure>
       ))}

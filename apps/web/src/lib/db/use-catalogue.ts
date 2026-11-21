@@ -10,6 +10,7 @@
  * exists at all — a logger where the set you just saved does not appear until
  * you navigate away and back is not a logger.
  */
+import { t } from '@g7m/i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { useAuthStore } from '../../auth/auth-store.js';
@@ -99,7 +100,7 @@ export function useCatalogue<T>(
           // not the explanation here and should not be told they are.
           setState({
             data: null,
-            error: 'Could not read this device’s copy of your data.',
+            error: t().profile.data.readFailed,
             loading: false,
           });
         },
@@ -147,7 +148,7 @@ export function useWrite(): WriteState {
         console.error('Could not save to this device', cause);
         // Worth saying plainly. A failed local write means the set is gone,
         // which is the one thing this app promises will not happen.
-        setError('That did not save. Try again — nothing has been sent anywhere yet.');
+        setError(t().profile.data.saveFailed);
         return null;
       } finally {
         setBusy(false);

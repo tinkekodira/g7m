@@ -1,0 +1,687 @@
+import { exercise as e } from '../entry.js';
+import type { ExerciseText } from '../types.js';
+
+export const exercises3: Readonly<Record<string, ExerciseText>> = {
+  'pistol-squat': e(
+    'Sentadilla pistol',
+    ['sentadilla a una pierna', 'pistol squat'],
+    [
+      'De pie sobre una pierna con la otra estirada al frente y los brazos hacia delante. El pie de apoyo bien plantado.',
+      'Flexiona rodilla y cadera de la pierna de apoyo y baja despacio con la pierna libre sin tocar el suelo. Baja solo hasta donde controles con el talón apoyado.',
+      'Empuja con el pie de apoyo para subir sin rebotar. Haz los dos lados y registra repeticiones por pierna. Practica con un apoyo estable para las manos hasta tener equilibrio y recorrido fiables.',
+    ],
+    ['Todo el pie de apoyo plantado', 'La rodilla sigue la línea del pie', 'Recorrido controlado'],
+    [
+      'Dejar que la rodilla se meta hacia dentro',
+      'Caer rápido y rebotar abajo',
+      'Forzar la profundidad levantando el talón',
+    ],
+  ),
+  plank: e(
+    'Plancha',
+    ['plancha abdominal', 'plancha frontal', 'plank'],
+    [
+      'Apoya los antebrazos en el suelo bajo los hombros.',
+      'Aprieta para que el cuerpo forme una línea recta.',
+      'Mantén respirando con calma.',
+    ],
+    ['Aprieta los glúteos', 'Costillas abajo, sin hundirte'],
+    ['Aguantar tiempo con la zona lumbar hundida'],
+  ),
+  'preacher-curl': e(
+    'Curl predicador (barra Z)',
+    ['curl predicador con barra Z', 'curl scott', 'curl predicador'],
+    [
+      'Ajusta el soporte para que las axilas descansen en el borde superior.',
+      'Coge la barra Z por los agarres inclinados y súbela parando antes de la vertical para mantener la tensión.',
+      'Baja despacio hasta que los brazos estén casi estirados.',
+    ],
+    ['Los codos no se despegan del soporte', 'Controla el estiramiento abajo'],
+    ['Dejar caer el peso abajo, lo que carga el codo'],
+  ),
+  'preacher-curl-machine': e(
+    'Curl predicador (máquina)',
+    ['máquina de curl predicador', 'máquina de bíceps', 'curl en máquina'],
+    [
+      'Ajusta el asiento para que la parte posterior de los brazos quede plana sobre el soporte y las axilas toquen el borde superior.',
+      'Coge los agarres con las palmas hacia arriba y súbelos hacia los hombros.',
+      'Baja despacio hasta que los brazos estén casi estirados, sin dejar que el peso toque abajo.',
+    ],
+    ['Los brazos se quedan en el soporte', 'Aprieta arriba', 'Lento al bajar'],
+    [
+      'Despegar los codos para terminar la repetición',
+      'Dejar caer el peso abajo, lo que carga el codo',
+    ],
+  ),
+  'pull-up': e(
+    'Dominada',
+    ['dominadas', 'dominada prona', 'dominada agarre ancho'],
+    [
+      'Cuélgate de la barra con agarre prono, manos más abiertas que los hombros.',
+      'Lleva el pecho hacia la barra guiando con los codos.',
+      'Baja hasta estirar del todo los brazos.',
+    ],
+    ['Pecho a la barra', 'Hombros abajo, lejos de las orejas'],
+    ['Hacer kipping cuando el objetivo es la fuerza', 'Parar a mitad de la bajada'],
+  ),
+  'push-up': e(
+    'Flexión',
+    ['flexiones', 'lagartijas', 'push up'],
+    [
+      'Apoya las manos algo más abiertas que los hombros.',
+      'Aprieta el tronco para que el cuerpo forme una línea recta.',
+      'Baja el pecho hasta casi rozar el suelo y empuja de nuevo.',
+    ],
+    ['Aprieta los glúteos', 'Codos hacia atrás, no abiertos'],
+    ['Dejar caer la cadera', 'Quedarse corto antes del suelo'],
+  ),
+  'rear-delt-fly': e(
+    'Pájaros',
+    ['aperturas invertidas', 'elevaciones posteriores', 'pájaro con mancuernas'],
+    [
+      'Inclínate desde la cadera con la espalda recta.',
+      'Deja colgar las mancuernas con los codos un poco flexionados.',
+      'Sube hacia los lados guiando con los codos.',
+    ],
+    ['Pulgares un poco hacia abajo', 'No juntes con fuerza las escápulas'],
+    ['Usar el trapecio superior y convertirlo en un encogimiento'],
+  ),
+  'rear-delt-fly-machine': e(
+    'Pájaros en máquina',
+    ['contractor invertido', 'pec deck invertido', 'máquina de deltoides posterior'],
+    [
+      'Siéntate de cara a la máquina con el pecho contra el respaldo y ajusta el asiento para que los agarres queden a la altura de los hombros.',
+      'Coge los agarres con los codos un poco flexionados y llévalos hacia fuera y atrás hasta que los brazos queden en línea con el cuerpo.',
+      'Vuelve despacio hasta que los agarres casi se toquen, sin dejar que el peso toque abajo.',
+    ],
+    ['Guía con los codos', 'El pecho se queda en el respaldo', 'Lento al volver'],
+    [
+      'Encoger los hombros, lo que pasa el trabajo al trapecio superior',
+      'Separarse del respaldo para balancear el peso',
+    ],
+  ),
+  'recumbent-bike': e(
+    'Bicicleta reclinada',
+    ['bici reclinada', 'bicicleta recumbente'],
+    [
+      'Desliza el asiento para que la pierna quede casi estirada al final de la pedalada.',
+      'Apóyate en el respaldo y mantén un ritmo constante.',
+      'Sube el nivel en vez de la velocidad cuando empiece a resultar fácil.',
+    ],
+    ['Espalda contra el respaldo', 'Círculos suaves, sin pisotones'],
+    ['Sentarse tan cerca que las rodillas quedan encogidas arriba'],
+  ),
+  'romanian-deadlift': e(
+    'Peso muerto rumano',
+    ['rdl', 'peso muerto piernas rígidas', 'peso muerto rumano con barra'],
+    [
+      'De pie, erguido, con la barra a la altura de la cadera.',
+      'Lleva la cadera atrás dejando que la barra baje rozando los muslos.',
+      'Para cuando los isquiotibiales estén bien estirados y empuja la cadera al frente.',
+    ],
+    [
+      'Bisagra de cadera, no sentadilla',
+      'Rodillas sueltas, no bloqueadas',
+      'La barra pegada a las piernas',
+    ],
+    ['Doblar tanto las rodillas que se convierte en peso muerto', 'Redondear la espalda alta'],
+  ),
+  'rowing-machine': e(
+    'Remo ergómetro',
+    ['máquina de remo', 'remo indoor', 'concept2'],
+    [
+      'Sujeta los pies con la correa sobre la parte más ancha del pie.',
+      'Empuja con las piernas, inclínate un poco atrás y tira del mango hacia las costillas.',
+      'Vuelve en orden inverso: brazos, tronco y luego piernas.',
+    ],
+    ['Piernas, tronco, brazos, y vuelta', 'El doble de tiempo al volver que al tirar'],
+    [
+      'Tirar con los brazos antes de que acaben las piernas',
+      'Poner el regulador en 10 porque parece más duro',
+    ],
+  ),
+  'russian-twists': e(
+    'Giros rusos',
+    ['russian twist', 'rotación de tronco sentado'],
+    [
+      'Siéntate con las rodillas flexionadas y los talones apoyados suavemente. Inclínate un poco hacia atrás con la columna larga y junta las manos delante del pecho.',
+      'Gira el pecho y los hombros hacia un lado manteniendo la cadera y las rodillas al frente.',
+      'Vuelve por el centro y gira al otro lado. Recorrido cómodo; cada lado cuenta como una repetición. Empieza sin peso.',
+    ],
+    ['Gira el pecho con las manos', 'Columna larga', 'Cadera al frente'],
+    ['Balancear solo los brazos', 'Redondear la zona lumbar o forzar el giro'],
+  ),
+  'scissor-kicks': e(
+    'Tijeras',
+    ['patadas de tijera', 'tijeras abdominales'],
+    [
+      'Túmbate boca arriba con los brazos a los lados. Aprieta el abdomen y sube las piernas a una altura que te permita mantener la zona lumbar estable.',
+      'Con las rodillas casi estiradas, alterna una pierna arriba mientras la otra baja, en un pequeño movimiento vertical de tijera.',
+      'Respira con calma y termina la serie antes de que la espalda se arquee. Cada cambio de pierna cuenta como una repetición.',
+    ],
+    [
+      'Zona lumbar estable',
+      'Tijera pequeña y controlada',
+      'Sube las piernas si la espalda se arquea',
+    ],
+    [
+      'Bajar demasiado las piernas y perder el control del tronco',
+      'Aguantar la respiración o balancear las piernas rápido',
+    ],
+  ),
+  'seated-cable-row': e(
+    'Remo sentado en polea',
+    ['remo en polea baja', 'remo bajo', 'remo con cable'],
+    [
+      'Siéntate en la polea baja con los pies en la plataforma y las rodillas un poco flexionadas.',
+      'Tira del agarre hacia el ombligo con los codos pegados al cuerpo.',
+      'Vuelve al estiramiento completo sin redondear la espalda.',
+    ],
+    ['Pecho alto', 'Aprieta en las costillas'],
+    ['Balancear el torso adelante y atrás para mover el peso'],
+  ),
+  'seated-calf-raise': e(
+    'Gemelos sentado',
+    ['elevación de talones sentado', 'sóleo sentado'],
+    [
+      'Siéntate con la almohadilla sobre la parte baja de los muslos y la parte delantera de los pies en la plataforma.',
+      'Baja los talones para estirar.',
+      'Sube de puntillas y aprieta.',
+    ],
+    ['Con las rodillas flexionadas trabaja más el sóleo', 'Lento y con recorrido completo'],
+    ['Usar un recorrido de dos centímetros'],
+  ),
+  'seated-dip-machine': e(
+    'Máquina de fondos sentado',
+    ['fondos en máquina', 'máquina de fondos de tríceps'],
+    [
+      'Ajusta el asiento para coger los agarres junto a la cadera con los codos flexionados y las muñecas rectas. Espalda contra el respaldo y pies firmes.',
+      'Codos pegados al cuerpo, empuja los agarres hacia abajo hasta casi estirar los brazos.',
+      'Vuelve despacio a una flexión de codo cómoda sin encoger los hombros ni dejar que la pila choque.',
+    ],
+    ['Espalda contra el respaldo', 'Empuja con los codos', 'Hombros abajo'],
+    [
+      'Inclinarse o levantarse del asiento para mover el peso',
+      'Abrir los codos o bloquearlos de golpe',
+    ],
+  ),
+  'seated-leg-curl': e(
+    'Curl femoral sentado',
+    ['curl de isquiotibiales sentado', 'femoral sentado'],
+    [
+      'Ajusta el rodillo de muslos firme y el de tobillos justo por encima de los talones.',
+      'Lleva las piernas hacia abajo y atrás tanto como puedas.',
+      'Vuelve con control.',
+    ],
+    ['Empuja los muslos contra el rodillo', 'Pausa abajo'],
+    ['Dejar que el peso suba de golpe'],
+  ),
+  'seated-row-machine': e(
+    'Máquina de remo sentado',
+    ['remo en máquina', 'remo sentado', 'remo con apoyo de pecho en máquina'],
+    [
+      'Ajusta el asiento para que los agarres queden a la altura de la parte baja del pecho y apóyate en el respaldo.',
+      'Tira de los agarres hacia atrás llevando los codos más allá de las costillas.',
+      'Déjalos volver al estiramiento completo sin separarte del respaldo.',
+    ],
+    ['El pecho se queda en el respaldo', 'Junta las escápulas'],
+    ['Despegar el pecho para sacar las últimas repeticiones a tirones'],
+  ),
+  'shoulder-press-machine': e(
+    'Press de hombro en máquina',
+    ['máquina de press de hombro', 'press militar en máquina'],
+    [
+      'Elige una carga manejable; en máquinas de discos, carga los dos lados por igual. Ajusta el asiento para que los agarres empiecen más o menos a la altura de los hombros y llegues sin estirarte.',
+      'Siéntate con la cadera y la espalda alta contra los respaldos y los pies planos en el suelo. Aprieta el abdomen con las costillas sobre la cadera.',
+      'Coge los agarres con la mano entera. Muñecas rectas y codos un poco por delante del torso, con los antebrazos siguiendo la dirección de los agarres.',
+      'Suelta el aire mientras empujas los agarres hacia arriba siguiendo el recorrido de la máquina. Espalda contra el respaldo; estira sin bloquear los codos de golpe.',
+      'Coge aire mientras bajas despacio a la posición inicial, o tan abajo como controles con comodidad. Hombros estables y sin rebote abajo.',
+      'Repite con el mismo recorrido y ritmo. Tras la última repetición, devuelve los agarres suavemente a sus topes antes de soltar.',
+    ],
+    [
+      'Espalda en el respaldo, costillas abajo',
+      'Muñecas rectas, codos bajo los agarres',
+      'Empuja suave y controla la bajada',
+      'Recorrido cómodo sin forzar la profundidad',
+    ],
+    [
+      'Poner el asiento demasiado bajo o alto, con los agarres muy por debajo o encima de los hombros',
+      'Arquear la zona lumbar y despegarse para mover una carga demasiado pesada',
+      'Rebotar abajo o bloquear los codos de golpe arriba',
+      'Doblar las muñecas o forzar los agarres por debajo de una posición cómoda del hombro',
+    ],
+  ),
+  'single-arm-dumbbell-row': e(
+    'Remo con mancuerna a una mano',
+    ['remo con mancuerna', 'remo a una mano', 'remo serrucho'],
+    [
+      'Apoya una mano y la rodilla del mismo lado en un banco.',
+      'Deja colgar la mancuerna y llévala hacia la cadera.',
+      'Baja hasta el estiramiento completo.',
+    ],
+    ['Rema hacia la cadera, no hacia el hombro', 'No gires el torso'],
+    ['Girar el cuerpo para subir el peso a tirones'],
+  ),
+  'sissy-squat': e(
+    'Sissy squat',
+    ['sentadilla sissy'],
+    [
+      'De pie, pies a la anchura de la cadera y brazos al frente para equilibrarte. Empieza sin peso y usa un apoyo seguro para las manos mientras aprendes.',
+      'Sube a la parte delantera de los pies y lleva las rodillas hacia delante mientras torso y muslos se inclinan hacia atrás a la vez. La cadera se mantiene extendida en lugar de sentarse atrás.',
+      'Baja solo en un recorrido de rodilla cómodo y controlado y estira las rodillas para volver. Empieza con poca profundidad y para si te duele la rodilla.',
+    ],
+    [
+      'Cadera extendida',
+      'Torso y muslos se mueven juntos',
+      'Primero un recorrido corto y controlado',
+    ],
+    [
+      'Sentar la cadera atrás como en una sentadilla normal',
+      'Rebotar en flexión profunda de rodilla o perder el equilibrio en el antepié',
+    ],
+  ),
+  'ski-erg': e(
+    'SkiErg',
+    ['ski erg', 'ergómetro de esquí', 'máquina de esquí'],
+    [
+      'De pie, erguido, de cara a la máquina con un mango en cada mano.',
+      'Flexiona la cadera y lleva los mangos hacia abajo pasando los muslos.',
+      'Deja que los brazos vuelvan a subir mientras te pones de nuevo erguido.',
+    ],
+    ['Bisagra, no sentadilla', 'Termina con las manos más allá de la cadera'],
+    ['Doblar mucho las rodillas y convertirlo en una sentadilla'],
+  ),
+  'skull-crusher': e(
+    'Press francés',
+    ['rompecráneos', 'extensión de tríceps tumbado', 'skull crusher'],
+    [
+      'Túmbate en un banco plano con una barra Z sobre el pecho.',
+      'Brazos quietos, dobla los codos y baja hacia la frente.',
+      'Estira de nuevo sin dejar que los codos se adelanten.',
+    ],
+    ['Los brazos se quedan donde están', 'Baja por detrás de la cabeza, no a la nariz'],
+    ['Convertirlo en un press balanceando los codos', 'Ir tan pesado que trabajan los hombros'],
+  ),
+  'smith-machine-bench-press': e(
+    'Press de banca en máquina Smith',
+    ['press banca en smith', 'banca en multipower'],
+    [
+      'Centra un banco plano bajo la barra de la Smith para que baje hacia la mitad del pecho. Pon los topes justo por debajo de tu punto más bajo y comprueba el recorrido con la barra vacía.',
+      'Túmbate con los pies firmes, la cadera en el banco y las escápulas suavemente atrás y abajo. Agarra algo más ancho que los hombros con las muñecas rectas.',
+      'Gira la barra para soltar los ganchos. Baja despacio hacia la mitad del pecho con los antebrazos alineados con la barra y los codos por debajo de los hombros.',
+      'Empuja suave por las guías sin rebotar ni levantar la cadera. Estira los brazos sin bloquear los codos de golpe.',
+      'Termina con la barra controlada, gírala sobre los dos ganchos y comprueba que está fija antes de soltar.',
+    ],
+    [
+      'Escápulas atrás y abajo',
+      'Pies firmes, cadera en el banco',
+      'Baja con control',
+      'Comprueba los dos ganchos antes de soltar',
+    ],
+    [
+      'Colocar el banco de modo que el recorrido fijo lleve la barra al cuello',
+      'Abrir los codos o doblar las muñecas hacia atrás',
+      'Rebotar en el pecho o levantar la cadera',
+      'Prescindir de los topes o soltar una barra sin enganchar',
+    ],
+  ),
+  'smith-machine-bulgarian-split-squat': e(
+    'Sentadilla búlgara en máquina Smith',
+    ['búlgara en smith', 'split squat en multipower'],
+    [
+      'Pon un banco estable detrás de la Smith y los topes por debajo de la profundidad prevista. Coloca la barra sobre la espalda alta y prueba la postura con la barra vacía.',
+      'Apoya el empeine de un pie en el banco detrás de ti, con los pies en carriles separados a la anchura de la cadera. Planta el pie delantero lo bastante adelantado para bajar cómodo siguiendo las guías.',
+      'Desengancha la barra, aprieta y flexiona rodilla y cadera delanteras para bajar con control. La mayor parte del peso en la pierna delantera.',
+      'Empuja con el pie delantero para subir. Haz las repeticiones de un lado, engancha con seguridad y cambia de lado. Registra repeticiones por pierna.',
+    ],
+    [
+      'El pie delantero no se mueve',
+      'Pelvis nivelada',
+      'Comprueba el recorrido fijo antes de cargar',
+    ],
+    [
+      'Usar la pierna trasera para empujar',
+      'Colocar el pie delantero de forma que las guías fuercen una posición incómoda de rodilla o cadera',
+      'Prescindir de los topes',
+    ],
+  ),
+  'smith-machine-incline-bench-press': e(
+    'Press inclinado en máquina Smith',
+    ['press inclinado en smith', 'banca inclinada en multipower'],
+    [
+      'Pon un banco regulable con poca inclinación, unos 30 a 45 grados, y céntralo bajo la barra de la Smith para que baje hacia la parte alta del pecho. Pon los topes justo por debajo de tu punto más bajo y comprueba el recorrido con la barra vacía.',
+      'Túmbate con la cabeza, la espalda alta y la cadera apoyadas y los dos pies firmes. Lleva las escápulas suavemente atrás y abajo. Agarre cerrado algo más ancho que los hombros con las muñecas rectas.',
+      'Gira la barra para soltar los ganchos. Baja despacio hacia la parte alta del pecho con los antebrazos alineados con la barra y los codos por debajo de los hombros. Para en una profundidad que controles con comodidad.',
+      'Empuja suave por las guías con hombros y cadera contra el banco. Estira los brazos sin bloquear los codos de golpe.',
+      'Tras la última repetición, gira la barra sobre los dos ganchos y comprueba que está fija antes de soltar.',
+    ],
+    [
+      'Inclinación moderada',
+      'Escápulas atrás y abajo',
+      'Baja con control hacia el pecho alto',
+      'Comprueba los dos ganchos antes de soltar',
+    ],
+    [
+      'Colocar el banco de modo que el recorrido fijo lleve la barra al cuello o la cara',
+      'Abrir los codos o doblar las muñecas hacia atrás',
+      'Despegar la cadera o los hombros del banco o rebotar abajo',
+      'Prescindir de los topes o soltar una barra sin enganchar',
+    ],
+  ),
+  'smith-machine-shrug': e(
+    'Encogimientos en máquina Smith',
+    ['encogimientos en smith', 'encogimientos en multipower'],
+    [
+      'Pon la barra de la Smith más o menos a la mitad del muslo con los topes justo por debajo. Comprueba la dirección de los ganchos y el recorrido antes de cargar.',
+      'De pie de cara a la barra, pies a la anchura de la cadera. Agarre prono justo por fuera de los muslos, ponte erguido y suelta los ganchos.',
+      'Brazos estirados, sube los hombros hacia las orejas sin girarlos, sin adelantar la cabeza ni echarte atrás.',
+      'Pausa breve arriba y baja los hombros despacio hasta un estiramiento cómodo. Barra cerca y torso quieto.',
+      'Tras la última repetición, gira la barra sobre los dos ganchos y comprueba que está fija antes de soltar.',
+    ],
+    [
+      'Hombros arriba y abajo en línea recta',
+      'Brazos estirados',
+      'Pausa arriba',
+      'Cabeza y torso quietos',
+    ],
+    [
+      'Hacer círculos con los hombros',
+      'Doblar los codos o rebotar con las piernas para mover la carga',
+      'Adelantar la cabeza o echarse atrás',
+      'Dejar caer los hombros de golpe o soltar una barra sin enganchar',
+    ],
+  ),
+  'smith-machine-squat': e(
+    'Sentadilla en máquina Smith',
+    ['sentadilla en smith', 'sentadilla en multipower'],
+    [
+      'Pon la barra justo por debajo de la altura de los hombros y los topes justo por debajo de la profundidad prevista. Comprueba la postura y el recorrido con la barra vacía.',
+      'Coloca la barra sobre el trapecio superior, lejos del cuello. Agarra a ambos lados, pies a la anchura de los hombros, y ajusta su posición para que todo el pie quede apoyado durante toda la sentadilla.',
+      'Ponte erguido para soltar los ganchos. Aprieta el abdomen y flexiona rodillas y cadera a la vez, con las rodillas en la línea de los pies.',
+      'Baja con control hasta una profundidad cómoda con la columna estable y los talones abajo. No fuerces más profundidad redondeando la zona lumbar.',
+      'Empuja con todo el pie para subir con las rodillas alineadas. Gira la barra sobre los dos ganchos y comprueba que está fija antes de apartarte.',
+    ],
+    [
+      'Aprieta antes de cada repetición',
+      'Todo el pie apoyado',
+      'Las rodillas siguen los pies',
+      'Controla la bajada y comprueba los ganchos',
+    ],
+    [
+      'Elegir una posición de pies que levanta los talones o fuerza un recorrido incómodo',
+      'Dejar que las rodillas se metan hacia dentro',
+      'Redondear la zona lumbar o rebotar abajo',
+      'Prescindir de los topes o apartarse antes de que enganchen los dos ganchos',
+    ],
+  ),
+  'spider-curl-dumbbell': e(
+    'Curl araña (mancuernas)',
+    ['spider curl con mancuernas', 'curl araña'],
+    [
+      'Túmbate boca abajo en un banco a unos 45 grados con los pies firmes detrás. Sujeta una mancuerna en cada mano con las palmas al frente y los brazos colgando libres junto al respaldo.',
+      'Sube las dos mancuernas hacia los hombros sin mover los brazos ni despegar el pecho.',
+      'Baja con control hasta casi estirar los codos sin que las mancuernas toquen el banco.',
+    ],
+    ['Pecho apoyado', 'Palmas hacia arriba al subir', 'Codos por debajo de los hombros'],
+    ['Mover los brazos para balancear las mancuernas', 'Apoyar los codos en el respaldo'],
+  ),
+  'spider-curl-ez-bar': e(
+    'Curl araña (barra Z)',
+    ['spider curl con barra Z', 'curl araña'],
+    [
+      'Pon un banco a unos 45 grados y túmbate boca abajo con los pies firmes. Coge la barra Z por los agarres inclinados y deja colgar los brazos en vertical, libres del respaldo.',
+      'Sube la barra hacia los hombros con el pecho apoyado y los brazos quietos.',
+      'Baja despacio hasta casi estirar los codos. La barra no toca el banco en ningún momento.',
+    ],
+    ['El pecho se queda en el respaldo', 'Brazos colgando libres', 'Codos quietos'],
+    [
+      'Apoyar los codos en el respaldo como en un curl predicador',
+      'Balancear los hombros o despegar el pecho',
+    ],
+  ),
+  'spin-bike': e(
+    'Bicicleta de spinning',
+    ['spinning', 'ciclo indoor', 'bici de spinning'],
+    [
+      'Ajusta el sillín a la altura de la cadera, de pie junto a la bici.',
+      'Pon el manillar a la altura del sillín o un poco más alto.',
+      'Sube la resistencia con el regulador en vez de pedalear más rápido sin ella.',
+    ],
+    ['Cadera quieta en el sillín', 'Resistencia puesta antes de ponerte de pie'],
+    ['Botar en el sillín a cadencia alta sin resistencia'],
+  ),
+  'stair-climber': e(
+    'Escaladora',
+    ['stairmaster', 'máquina de escaleras', 'escalera mecánica de gimnasio'],
+    [
+      'Súbete mientras los escalones se mueven despacio, sujetando las barandillas.',
+      'Suelta las barandillas cuando tengas el ritmo y ponte erguido.',
+      'Reduce la velocidad antes de bajarte.',
+    ],
+    ['Todo el pie en cada escalón', 'Erguido, sin apoyarte en las barandillas'],
+    ['Apoyarse en las barandillas, lo que quita peso a las piernas'],
+  ),
+  'standing-calf-raise': e(
+    'Gemelos de pie',
+    ['elevación de talones de pie', 'gemelos en máquina de pie'],
+    [
+      'De pie con la parte delantera de los pies en la plataforma.',
+      'Baja los talones hasta el estiramiento completo.',
+      'Sube de puntillas tan alto como puedas.',
+    ],
+    ['Pausa arriba y abajo', 'Recorrido completo, sin rebotes'],
+    ['Rebotar en el estiramiento usando el tendón en vez del músculo'],
+  ),
+  'straight-arm-pulldown': e(
+    'Jalón con brazos rectos',
+    ['pullover en polea de pie', 'jalón brazos estirados'],
+    [
+      'De pie frente a una polea alta con barra recta o cuerda.',
+      'Codos casi bloqueados e inclínate un poco al frente.',
+      'Lleva la barra en arco hasta los muslos y vuelve por encima de la cabeza.',
+    ],
+    ['Los codos no se mueven', 'Siéntelo en la axila, no en el tríceps'],
+    ['Doblar los codos y convertirlo en un empuje de tríceps'],
+  ),
+  'strict-curl': e(
+    'Curl estricto',
+    ['curl contra la pared', 'curl estricto con barra Z'],
+    [
+      'De pie con la espalda alta y la cadera contra una pared o un soporte vertical firme, pies un poco adelantados. Sujeta una barra Z por los agarres inclinados con los brazos estirados y las muñecas rectas.',
+      'Manteniendo espalda y cadera en contacto con el soporte, sube la barra hacia los hombros sin adelantar los codos.',
+      'Baja despacio casi hasta estirar los codos. Cuenta solo las repeticiones hechas sin impulso de cadera ni perder el contacto.',
+    ],
+    [
+      'Espalda y cadera contra el soporte',
+      'Codos junto a las costillas',
+      'Una carga que puedas subir sin balancear',
+    ],
+    [
+      'Impulsarse con las rodillas o separar la cadera del soporte',
+      'Doblar las muñecas para terminar el curl',
+    ],
+  ),
+  'sumo-deadlift': e(
+    'Peso muerto sumo',
+    ['sumo', 'peso muerto con piernas abiertas'],
+    [
+      'Ponte cerca de una barra en el suelo con una postura amplia y las puntas giradas hacia fuera de forma cómoda. Agarre prono doble cerrado por dentro de las rodillas.',
+      'Aprieta, brazos rectos, y acerca las espinillas a la barra con las rodillas siguiendo los pies. Tensa la barra antes de levantar.',
+      'Empuja el suelo y extiende rodillas y cadera a la vez con la barra pegada a las piernas. Termina erguido sin echarte atrás.',
+      'Baja la barra con control llevando la cadera atrás y doblando las rodillas cuando las pase. Recoloca la posición y la tensión antes de la siguiente.',
+    ],
+    ['Manos por dentro de las rodillas', 'Barra pegada', 'Empuja con todo el pie'],
+    [
+      'Arrancar la barra del suelo con los brazos doblados',
+      'Dejar que las rodillas se cierren o echarse atrás al bloquear',
+    ],
+  ),
+  'sumo-squat': e(
+    'Sentadilla sumo',
+    ['sentadilla sumo sin peso', 'sentadilla con piernas abiertas'],
+    [
+      'De pie, más abierto que los hombros y con las puntas hacia fuera en un ángulo cómodo. Junta las manos delante del pecho; esta versión es con peso corporal.',
+      'Flexiona rodillas y cadera para bajar entre las piernas, con los talones apoyados y las rodillas alineadas con los pies.',
+      'Para en una profundidad controlada y empuja con todo el pie para subir sin bloquear las rodillas de golpe.',
+    ],
+    ['Las rodillas siguen los pies', 'Talones apoyados', 'Baja entre las caderas'],
+    ['Forzar una postura o un giro de pies excesivo', 'Meter las rodillas o levantar los talones'],
+  ),
+  't-bar-row': e(
+    'Remo en T',
+    ['remo con barra T', 'remo landmine', 'remo en punta'],
+    [
+      'Colócate a horcajadas sobre la barra con un extremo fijo en una esquina o landmine y agarra cerrado bajo los discos.',
+      'Inclínate con la espalda recta y tira de los discos hacia el pecho.',
+      'Baja con control hasta el estiramiento completo.',
+    ],
+    ['Espalda recta todo el tiempo', 'Tira con los codos, no con las manos'],
+    ['Incorporarse cuando la serie se pone dura', 'Tirar a tirones con la zona lumbar'],
+  ),
+  'trap-bar-deadlift': e(
+    'Peso muerto con barra hexagonal',
+    ['peso muerto trap bar', 'peso muerto barra hexagonal'],
+    [
+      'Ponte dentro de la barra hexagonal con los pies a la anchura de la cadera.',
+      'Bájate flexionando la cadera y coge los agarres.',
+      'Levántate empujando el suelo.',
+    ],
+    ['Pecho arriba antes de tirar', 'Empuja el suelo'],
+    ['Dejar que la cadera suba primero de golpe'],
+  ),
+  'trap-bar-shrug': e(
+    'Encogimientos con barra hexagonal',
+    ['encogimientos trap bar'],
+    [
+      'Ponte dentro de una barra hexagonal cargada, coge los agarres laterales y levántala con la espalda firme y un empuje de piernas controlado.',
+      'Brazos estirados y torso quieto, sube los dos hombros hacia las orejas. Pausa breve arriba.',
+      'Baja los hombros despacio hasta un estiramiento cómodo. Tras la serie, flexiona cadera y rodillas para dejar la barra en el suelo con control.',
+    ],
+    [
+      'Sube los hombros en línea recta',
+      'Codos estirados',
+      'Aprieta el tronco mientras sujetas la barra',
+    ],
+    [
+      'Girar los hombros o doblar los codos',
+      'Arrancar la barra del suelo o redondear la espalda al dejarla',
+    ],
+  ),
+  treadmill: e(
+    'Cinta de correr',
+    ['cinta', 'correr en cinta', 'caminar en cinta inclinada'],
+    [
+      'Ponte con un pie a cada lado de la cinta, arráncala despacio y luego súbete.',
+      'Ve subiendo velocidad e inclinación durante el primer minuto.',
+      'Reduce la velocidad antes de bajarte a los laterales.',
+    ],
+    ['Pisa bajo la cadera, no muy adelante', 'Suelta las barandillas cuando ya vayas en marcha'],
+    [
+      'Agarrarse a las barandillas en inclinación, lo que quita casi todo el trabajo',
+      'Bajarse de una cinta en movimiento',
+    ],
+  ),
+  'triceps-dip': e(
+    'Fondos (énfasis tríceps)',
+    ['fondos de tríceps', 'fondos', 'fondos en paralelas erguido'],
+    [
+      'Sujétate en las barras con los brazos bloqueados.',
+      'Torso erguido y codos hacia atrás, pegados al cuerpo.',
+      'Baja hasta que los codos lleguen a unos 90 grados y empuja hasta bloquear.',
+    ],
+    ['Pecho alto, cuerpo vertical', 'Codos apuntando atrás', 'Bloquea arriba'],
+    ['Inclinarse, lo que lo convierte en fondos de pecho', 'Abrir los codos hacia los lados'],
+  ),
+  'triceps-pushdown': e(
+    'Extensión de tríceps en polea',
+    ['jalón de tríceps', 'tríceps en polea con cuerda', 'pushdown'],
+    [
+      'Ponte en una polea alta con cuerda o barra.',
+      'Codos pegados a los lados, estira los brazos hacia abajo.',
+      'Vuelve hasta que los antebrazos pasen la horizontal.',
+    ],
+    ['Codos fijos', 'Aprieta al estirar del todo'],
+    ['Echarse sobre el peso y convertirlo en un press'],
+  ),
+  'turkish-get-up': e(
+    'Levantamiento turco',
+    ['turkish get up', 'TGU', 'get up con kettlebell'],
+    [
+      'Túmbate boca arriba con la kettlebell recta sobre el hombro y la rodilla del mismo lado flexionada.',
+      'Gira sobre el codo contrario, luego la mano, eleva la cadera y pasa la pierna por debajo hasta quedar de rodillas.',
+      'Ponte de pie y deshaz cada paso hasta el suelo, con la vista en la kettlebell. Cambia de lado.',
+    ],
+    [
+      'Brazo bloqueado y vertical todo el tiempo',
+      'Mirada en la kettlebell',
+      'Despacio, paso a paso',
+    ],
+    ['Dejar que el brazo se desvíe o se doble', 'Hacer las transiciones con prisa'],
+  ),
+  'upright-bike': e(
+    'Bicicleta estática',
+    ['bici estática', 'cicloergómetro', 'bicicleta'],
+    [
+      'Ajusta el sillín para que la rodilla quede un poco flexionada abajo del todo.',
+      'Elige un nivel que puedas mantener todo el bloque.',
+      'Afloja en el último minuto en vez de parar en seco.',
+    ],
+    ['Rodillas sobre los pies', 'Empuja con todo el pie'],
+    ['Un sillín tan bajo que las rodillas suben por encima de la cadera'],
+  ),
+  'viking-press': e(
+    'Viking press',
+    ['press vikingo', 'máquina viking press'],
+    [
+      'Usa una máquina viking press específica. Ajusta los soportes de inicio para que los agarres neutros queden a la altura de los hombros, carga las dos fundas por igual y comprueba los topes antes de levantar.',
+      'De pie con los pies firmes, coge los dos agarres con las palmas enfrentadas y aprieta el tronco. Separa la carga de los soportes.',
+      'Empuja los dos agarres hacia arriba siguiendo el arco de la palanca con las piernas quietas y las costillas controladas. Termina con los brazos rectos sin echarte atrás.',
+      'Baja despacio hacia los hombros y devuelve las palancas con seguridad a sus soportes tras la serie. Esta versión es un press estricto sin impulso de piernas; registra siempre el peso de discos añadido de la misma forma.',
+    ],
+    ['Piernas quietas', 'Muñecas sobre los antebrazos', 'Devuelve las dos palancas con seguridad'],
+    [
+      'Impulsarse con las rodillas o arquear la zona lumbar',
+      'Cargar las fundas de forma desigual o no acertar con los soportes',
+    ],
+  ),
+  'walking-lunge': e(
+    'Zancadas caminando',
+    ['zancadas', 'zancada caminando', 'estocadas'],
+    [
+      'Da un paso al frente en zancada hasta que la rodilla trasera casi toque el suelo.',
+      'Empuja con el pie delantero para levantarte y sigue avanzando.',
+      'Alterna las piernas durante la serie.',
+    ],
+    ['Torso erguido', 'Paso largo para glúteos, corto para cuádriceps'],
+    ['Dejar que la rodilla delantera se meta hacia dentro'],
+  ),
+  'wall-sit': e(
+    'Sentadilla isométrica en pared',
+    ['silla en la pared', 'wall sit', 'sentadilla en pared'],
+    [
+      'De pie con la espalda plana contra una pared, adelanta los pies.',
+      'Deslízate hacia abajo hasta que los muslos queden más o menos paralelos al suelo, rodillas sobre los tobillos.',
+      'Mantén respirando con calma.',
+    ],
+    ['Espalda plana contra la pared', 'Rodillas sobre los tobillos, no más allá de los pies'],
+    ['Apoyar las manos en los muslos para quitar peso'],
+  ),
+  'wrist-curl-dumbbell': e(
+    'Curl de muñeca (mancuerna)',
+    ['curl de muñeca', 'flexión de muñeca con mancuerna'],
+    [
+      'Siéntate en un banco con mancuernas ligeras y las palmas hacia arriba. Apoya los antebrazos sobre los muslos con las muñecas justo más allá de las rodillas.',
+      'Antebrazos apoyados, sube las manos doblando las muñecas sin doblar los codos.',
+      'Baja despacio en un recorrido de muñeca cómodo sin soltar el agarre.',
+    ],
+    [
+      'Antebrazos sobre los muslos',
+      'Muévete solo desde las muñecas',
+      'Movimientos pequeños y controlados',
+    ],
+    [
+      'Levantar los antebrazos o convertirlo en un curl de bíceps',
+      'Usar mancuernas pesadas o forzar el recorrido de la muñeca',
+    ],
+  ),
+};

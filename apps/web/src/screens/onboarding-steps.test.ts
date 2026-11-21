@@ -17,6 +17,7 @@ import {
 } from './onboarding-steps.js';
 
 const EVERYTHING: OnboardingAnswers = {
+  language: 'de',
   displayName: 'Tin',
   birthDate: new Date(Date.UTC(2000, 5, 15)),
   sex: 'male',
@@ -29,8 +30,10 @@ const EVERYTHING: OnboardingAnswers = {
 };
 
 describe('the order of the flow', () => {
-  it('asks for a name before it asks for a body', () => {
-    expect(ONBOARDING_STEPS[0]).toBe('name');
+  /** Every other question is asked in it. ADR-0181. */
+  it('asks for the language first, then a name before it asks for a body', () => {
+    expect(ONBOARDING_STEPS[0]).toBe('language');
+    expect(ONBOARDING_STEPS[1]).toBe('name');
   });
 
   it('finishes with the choice of workout recommendations, after the goal', () => {
@@ -39,7 +42,9 @@ describe('the order of the flow', () => {
   });
 
   it('walks forwards and back without falling off either end', () => {
-    expect(previousStep('name')).toBeNull();
+    expect(previousStep('language')).toBeNull();
+    expect(nextStep('language')).toBe('name');
+    expect(previousStep('name')).toBe('language');
     expect(nextStep('name')).toBe('dob');
     expect(previousStep('dob')).toBe('name');
     expect(nextStep('guidance')).toBeNull();
@@ -49,11 +54,11 @@ describe('the order of the flow', () => {
   it('asks for a weight, after the height', () => {
     expect(nextStep('height')).toBe('weight');
     expect(nextStep('weight')).toBe('activity');
-    expect(ONBOARDING_STEPS).toHaveLength(9);
+    expect(ONBOARDING_STEPS).toHaveLength(10);
   });
 
-  it('counts from one, so "1 of 9" is the first question', () => {
-    expect(progressOf('name')).toEqual({ position: 1, total: ONBOARDING_STEPS.length });
+  it('counts from one, so "1 of 10" is the first question', () => {
+    expect(progressOf('language')).toEqual({ position: 1, total: ONBOARDING_STEPS.length });
     expect(progressOf('guidance').position).toBe(ONBOARDING_STEPS.length);
   });
 });
@@ -69,9 +74,9 @@ describe('readStep', () => {
    * anyway.
    */
   it('starts at the beginning for anything it does not recognise', () => {
-    expect(readStep(undefined)).toBe('name');
-    expect(readStep('')).toBe('name');
-    expect(readStep('favourite-colour')).toBe('name');
+    expect(readStep(undefined)).toBe('language');
+    expect(readStep('')).toBe('language');
+    expect(readStep('favourite-colour')).toBe('language');
   });
 });
 
@@ -101,10 +106,12 @@ describe('isAnswered', () => {
 
 describe('firstUnanswered', () => {
   it('is where somebody who closed the app halfway through picks up', () => {
-    expect(firstUnanswered({ ...NO_ANSWERS, displayName: 'Tin' })).toBe('dob');
+    expect(firstUnanswered(NO_ANSWERS)).toBe('language');
+    expect(firstUnanswered({ ...NO_ANSWERS, language: 'en', displayName: 'Tin' })).toBe('dob');
     expect(
       firstUnanswered({
         ...NO_ANSWERS,
+        language: 'en',
         displayName: 'Tin',
         birthDate: new Date(Date.UTC(2000, 5, 15)),
       }),

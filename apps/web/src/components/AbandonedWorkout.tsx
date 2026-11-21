@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { trainingMinutes } from '@g7m/core';
@@ -175,14 +176,14 @@ function AutoFinishDialog({
         </p>
         <div className="mt-5 flex items-center gap-3">
           <Button fullWidth onClick={onDismiss}>
-            Okay
+            {t().workout.autoFinish.okay}
           </Button>
           <Link
             to={`/progress/session/${summary.sessionId}`}
             onClick={onDismiss}
             className="inline-flex min-h-tap shrink-0 items-center rounded-control border border-subtle bg-elevated px-4 text-sm font-medium text-primary select-none active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            See it
+            {t().workout.autoFinish.see}
           </Link>
         </div>
       </div>

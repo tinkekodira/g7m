@@ -15,27 +15,22 @@ import {
   type AchievementProgress,
   type UnitSystem,
 } from '@g7m/core';
-import { MONTHS_SHORT, weekdayName } from '../lib/date-words.js';
+import { formatNumber, live, t } from '@g7m/i18n';
+import { dayMonth, weekdayName } from '../lib/date-words.js';
 
 export const CATEGORY_TITLES: Readonly<
   Record<AchievementCategory, { readonly title: string; readonly detail: string }>
-> = {
-  milestones: { title: 'Milestones', detail: 'Workouts, records and tonnes' },
-  strength: { title: 'Strength clubs', detail: 'Plates on the bar, and your own bodyweight' },
-  consistency: { title: 'Consistency', detail: 'Showing up, week after week' },
-  cardio: { title: 'Cardio & variety', detail: 'Machines, distance and new ground' },
-  secret: { title: 'Secret', detail: 'There is one. It finds you.' },
-};
+> = live(() => t().progress.achievements.categories);
 
 const FEET_PER_METRE = 1 / 0.3048;
 
 function whole(value: number): string {
-  return Math.round(value).toLocaleString('en-GB');
+  return formatNumber(Math.round(value));
 }
 
 /** One decimal while it matters, none once the number is big. */
 function tenths(value: number): string {
-  return value.toLocaleString('en-GB', { maximumFractionDigits: value < 100 ? 1 : 0 });
+  return formatNumber(value, { maximumFractionDigits: value < 100 ? 1 : 0 });
 }
 
 /**
@@ -48,26 +43,22 @@ function tenths(value: number): string {
 export function progressWords(progress: AchievementProgress, unitSystem: UnitSystem): string {
   const { current, target } = progress;
   const imperial = unitSystem === 'imperial';
-  const count = (singular: string, plural: string) =>
-    `${whole(current)} / ${whole(target)} ${target === 1 ? singular : plural}`;
+  const words = t().progress.achievements;
+  const count = (unit: string) => {
+    const [singular, plural] = words.units[unit] ?? [unit, unit];
+    return `${whole(current)} / ${whole(target)} ${target === 1 ? singular : plural}`;
+  };
 
   switch (progress.unit) {
     case 'workouts':
-      return count('workout', 'workouts');
     case 'records':
-      return count('record', 'records');
     case 'reps':
-      return count('rep', 'reps');
     case 'weeks':
-      return count('week', 'weeks');
     case 'days':
-      return count('day', 'days');
     case 'machines':
-      return count('machine', 'machines');
     case 'exercises':
-      return count('exercise', 'exercises');
     case 'groups':
-      return count('muscle group', 'muscle groups');
+      return count(progress.unit);
     case 'kcal':
       return `${whole(current)} / ${whole(target)} kcal`;
     case 'weight': {
@@ -77,7 +68,7 @@ export function progressWords(progress: AchievementProgress, unitSystem: UnitSys
     case 'volume': {
       // Tonnes, or US tons of 2,000 lb: the unit the badge is written in.
       const tons = (kg: number) => (imperial ? kgToLb(kg) / 2000 : kg / 1000);
-      return `${tenths(tons(current))} / ${whole(tons(target))} ${imperial ? 'tons' : 't'}`;
+      return `${tenths(tons(current))} / ${whole(tons(target))} ${imperial ? words.tons : 't'}`;
     }
     case 'distance': {
       // A rower speaks metres, whatever else the lifter uses.
@@ -102,21 +93,22 @@ export function progressFraction(progress: AchievementProgress): number {
 
 /** `3 Sep`, or `3 Sep 2025` when it was another year. */
 export function shortDate(date: Date, now: Date): string {
-  const base = `${String(date.getDate())} ${MONTHS_SHORT[date.getMonth()] ?? ''}`;
+  const base = dayMonth(date);
   return date.getFullYear() === now.getFullYear() ? base : `${base} ${String(date.getFullYear())}`;
 }
 
 export function earnedWords(date: Date, now: Date): string {
-  return `Earned ${shortDate(date, now)}`;
+  return t().progress.achievements.earned(shortDate(date, now));
 }
 
 /** `today`, `tomorrow`, `Saturday`, `25 Dec`, `29 Feb 2028`: short enough for one line. */
 export function nextChanceWords(date: Date, now: Date): string {
   const days = daysBetween(now, date);
-  if (days <= 0) return 'Next chance: today';
-  if (days === 1) return 'Next chance: tomorrow';
-  if (days < 7) return `Next chance: ${weekdayName(date)}`;
-  return `Next chance: ${shortDate(date, now)}`;
+  const words = t().progress.achievements;
+  if (days <= 0) return words.nextToday;
+  if (days === 1) return words.nextTomorrow;
+  if (days < 7) return words.next(weekdayName(date));
+  return words.next(shortDate(date, now));
 }
 
 /**
@@ -213,10 +205,13 @@ export function quietSummary(
 ): { title: string; detail: string } {
   const [only] = quiet;
   if (quiet.length === 1 && only?.earnedAt != null) {
-    return { title: only.name, detail: `${earnedWords(only.earnedAt, now)} · tap to see it` };
+    return {
+      title: only.name,
+      detail: t().progress.achievements.quietOne(earnedWords(only.earnedAt, now)),
+    };
   }
   return {
-    title: `${String(quiet.length)} achievements earned`,
-    detail: 'From workouts you logged before · tap to see them',
+    title: t().progress.achievements.quietMany(quiet.length),
+    detail: t().progress.achievements.quietManyDetail,
   };
 }

@@ -19,6 +19,7 @@
  * holding this back" is why it was worth surfacing. Without that a review is a
  * dashboard, and dashboards do not change what anybody does on Tuesday.
  */
+import { formatNumber, t } from '@g7m/i18n';
 import {
   GOAL_LABELS,
   toDisplayWeight,
@@ -45,45 +46,14 @@ export interface Line {
   readonly detail: string;
 }
 
-/** Muscle group slugs read as words in a sentence, not as identifiers. */
-const GROUP_WORDS: Record<string, string> = {
-  chest: 'chest',
-  back: 'back',
-  shoulders: 'shoulders',
-  biceps: 'biceps',
-  triceps: 'triceps',
-  quads: 'quads',
-  hamstrings: 'hamstrings',
-  glutes: 'glutes',
-  calves: 'calves',
-  core: 'core',
-};
-
 /**
- * "Your glutes are", "your chest is".
- *
- * Most group names are plural — glutes, quads, hamstrings, calves, and biceps
- * and triceps too, as the words are used — and the heading said "your glutes
- * is behind" to everybody whose glutes were. A trailing "s" is the rule that
- * holds for every group the app has, and for the fallback slugs as well.
- */
-export function groupIs(word: string): string {
-  return `${word} ${word.endsWith('s') ? 'are' : 'is'}`;
-}
-
-/**
- * A set the way a lifter says it: "100 kg × 5", "12 reps", "+10 kg × 6",
- * "8 reps with 20 kg of help", "60 s".
- *
- * The weight in a sentence is the one on the bar, the belt or the machine —
- * never the lifter's bodyweight. "Still 82 kg" about a pull-up was a sentence
- * about the scale, and the progress on a pull-up is in the reps.
+ * A lift's best set in words: "100 kg × 5", "+20 kg × 8", "12 reps with
+ * 15 kg of help", "60 s".
  */
 export function describeMark(mark: LiftMark, timed: boolean, show: (kg: number) => string): string {
-  const count = timed
-    ? `${String(mark.reps)} s`
-    : `${String(mark.reps)} ${mark.reps === 1 ? 'rep' : 'reps'}`;
-  const done = timed ? ` for ${String(mark.reps)} s` : ` × ${String(mark.reps)}`;
+  const words = t().review.mark;
+  const count = timed ? words.seconds(mark.reps) : words.reps(mark.reps);
+  const done = timed ? words.forSeconds(mark.reps) : words.times(mark.reps);
 
   switch (mark.loadType) {
     case 'external':
@@ -91,36 +61,30 @@ export function describeMark(mark: LiftMark, timed: boolean, show: (kg: number) 
     case 'bodyweight_plus':
       return mark.weightKg > 0 ? `+${show(mark.weightKg)}${done}` : count;
     case 'assisted':
-      return mark.weightKg > 0 ? `${count} with ${show(mark.weightKg)} of help` : count;
+      return mark.weightKg > 0 ? words.help(count, show(mark.weightKg)) : count;
     case 'bodyweight':
       return count;
   }
 }
 
-/** "3 weeks ago", for how long a best has stood. Days below a fortnight. */
-function ago(days: number): string {
-  if (days < 14) return `${String(days)} ${days === 1 ? 'day' : 'days'} ago`;
-  return `${String(Math.round(days / 7))} weeks ago`;
-}
-
 /**
- * The plan backs off a stuck barbell or machine lift by itself — three
- * sessions short of the range and the weight comes down ten percent. It never
- * touches a bodyweight movement or a timed hold: there is no load it
- * prescribes for them. So the advice for a plateau depends on which it is, and
- * telling somebody the plan will fix their pull-ups would be a promise nothing
- * keeps.
+ * Whether the plan itself breaks this plateau: it backs a loaded lift off and
+ * builds it back, but leaves holds and bodyweight movements to the lifter.
  */
 function planBacksOff(mark: LiftMark, timed: boolean): boolean {
   return mark.loadType === 'external' && !timed;
 }
 
-export function describeObservation(observation: Observation, unitSystem: UnitSystem): Line {
-  const show = (kg: number): string => {
+function weightShower(unitSystem: UnitSystem): (kg: number) => string {
+  return (kg: number): string => {
     const display = toDisplayWeight(Math.abs(kg), unitSystem);
-    return `${String(display.value)} ${display.unit}`;
+    return `${formatNumber(display.value)} ${display.unit}`;
   };
-  const group = (slug: string): string => GROUP_WORDS[slug] ?? slug;
+}
+
+export function describeObservation(observation: Observation, unitSystem: UnitSystem): Line {
+  const show = weightShower(unitSystem);
+  const words = t().review;
 
   switch (observation.kind) {
     case 'too_soon':
@@ -128,46 +92,48 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
 
     case 'consistency':
       return {
-        heading: 'You are training less than you planned for',
-        // Not "you should train more". The plan was built to fit the number
-        // they gave, so the honest framing is that the two disagree — and
-        // changing the plan is as valid an answer as changing the week.
-        detail: `About ${String(observation.perWeek)} sessions a week over the last ${String(observation.weeks)}, against the ${String(observation.target)} you set. The plan is built to fit ${String(observation.target)}; if that is not the week you have, it is worth changing the number.`,
+        heading: words.consistency.heading,
+        detail: words.consistency.detail(
+          observation.perWeek,
+          observation.weeks,
+          observation.target,
+        ),
       };
 
     case 'group_short':
       return {
-        heading: `Your ${groupIs(group(observation.group))} behind`,
-        detail: `${String(observation.perWeek)} sets a week against a target of ${String(observation.target)}. It is the furthest behind of anything you train, which makes it the one thing worth adding first.`,
+        heading: words.groupShort.heading(observation.group),
+        detail: words.groupShort.detail(observation.perWeek, observation.target),
       };
 
     case 'group_over':
       return {
-        heading: `A lot of ${group(observation.group)}`,
-        detail: `${String(observation.perWeek)} sets a week against a target of ${String(observation.target)}. Not harmful, but past a point the extra sets stop paying for the recovery they cost.`,
+        heading: words.groupOver.heading(observation.group),
+        detail: words.groupOver.detail(observation.perWeek, observation.target),
       };
 
     case 'lift_climbing': {
       const mark = (set: LiftMark): string => describeMark(set, observation.timed, show);
       return {
-        heading: `Your ${observation.name.toLowerCase()} is going up`,
-        detail: `${mark(observation.from)} to ${mark(observation.to)} across ${String(observation.sessions)} sessions. That is the thing working.`,
+        heading: words.climbing.heading(observation.name),
+        detail: words.climbing.detail(
+          mark(observation.from),
+          mark(observation.to),
+          observation.sessions,
+        ),
       };
     }
 
     case 'lift_stalled': {
       const { best, timed, sessionsSince, daysSince } = observation;
-      const since =
-        sessionsSince === 1
-          ? 'the session since has not'
-          : `the ${String(sessionsSince)} sessions since have not`;
       return {
-        heading: `Your ${observation.name.toLowerCase()} has not moved`,
-        detail: `Your best lately is still ${describeMark(best, timed, show)}, from ${ago(daysSince)}, and ${since} beaten it. ${
-          planBacksOff(best, timed)
-            ? 'A plateau usually breaks by backing off about ten percent and running at it again, which the plan will do for you after three short sessions in a row.'
-            : `${timed ? 'A hold' : 'A bodyweight movement'} usually moves again with an extra set or a slower, harder version of each rep. The plan does not change ${timed ? 'holds' : 'these'} for you, so this one is yours to adjust.`
-        }`,
+        heading: words.stalled.heading(observation.name),
+        detail: words.stalled.detail(
+          describeMark(best, timed, show),
+          words.ago(daysSince),
+          sessionsSince,
+          planBacksOff(best, timed) ? words.stalled.backOff : words.stalled.yours(timed),
+        ),
       };
     }
 
@@ -176,28 +142,21 @@ export function describeObservation(observation: Observation, unitSystem: UnitSy
   }
 }
 
-/**
- * Which of the two thresholds is short, said as that one.
- *
- * Sessions first when both are: it is the one somebody can do something about
- * today, and "log a few more" is a clearer instruction than a date.
- */
 function describeTooSoon(observation: Extract<Observation, { kind: 'too_soon' }>): Line {
   const { sessions, needed, days, neededDays } = observation;
+  const words = t().review;
 
   if (sessions < needed) {
     return {
-      heading: 'Not enough to go on yet',
-      detail: `${String(sessions)} of ${String(needed)} sessions logged. Once there are a few, this is where you will find out how it is actually going.`,
+      heading: words.tooSoon.heading,
+      detail: words.tooSoon.detail(sessions, needed),
     };
   }
 
-  // Enough sessions, not enough calendar. Ten sessions in five days is a
-  // weekly rate of fourteen, which is arithmetic rather than a finding.
   const wait = Math.max(1, neededDays - days);
   return {
-    heading: 'Enough sessions, not enough weeks',
-    detail: `${String(sessions)} sessions over ${String(days)} ${days === 1 ? 'day' : 'days'}. A weekly pattern needs about two weeks to mean anything, so check back ${wait === 1 ? 'tomorrow' : `in ${String(wait)} days`}.`,
+    heading: words.notEnoughWeeks.heading,
+    detail: words.notEnoughWeeks.detail(sessions, days, wait),
   };
 }
 
@@ -206,88 +165,70 @@ function describePace(
   show: (kg: number) => string,
 ): Line {
   const rate = show(observation.perWeekKg);
-  const goal = GOAL_LABELS[observation.goal].toLowerCase();
-  const direction = observation.perWeekKg < 0 ? 'down' : 'up';
+  const goal = GOAL_LABELS[observation.goal];
+  const words = t().review.pace;
 
   switch (observation.verdict) {
     case 'on_track':
-      return {
-        heading: 'Your weight is doing what you asked it to',
-        detail: `${rate} a week, which is inside the range for ${goal}. Nothing to change.`,
-      };
+      return { heading: words.onTrack.heading, detail: words.onTrack.detail(rate, goal) };
     case 'fast':
-      return {
-        heading: 'Your weight is moving faster than the goal wants',
-        // Named as a cost, not a scolding. Somebody cutting hard usually knows
-        // they are; what they may not know is what it costs.
-        detail: `${rate} a week. Faster than the range for ${goal} — which usually means giving up strength on the way, and the training here is meant to keep it.`,
-      };
+      return { heading: words.fast.heading, detail: words.fast.detail(rate, goal) };
     case 'slow':
-      return {
-        heading: 'Your weight is barely moving',
-        detail: `${rate} a week, which is short of the range for ${goal}. The training is not what changes this one.`,
-      };
+      return { heading: words.slow.heading, detail: words.slow.detail(rate, goal) };
     case 'wrong_way':
       return {
-        heading: 'Your weight is going the other way',
-        detail: `${rate} a week ${direction}, and you asked for ${goal}. Either the goal has changed or the week has; both are worth a look.`,
+        heading: words.wrongWay.heading,
+        detail: words.wrongWay.detail(rate, observation.perWeekKg < 0, goal),
       };
   }
 }
 
-/**
- * How a joined-up observation is worded.
- *
- * The register shifts here, and deliberately. Every line above is a statement
- * about one thing that happened. A link is a statement about *two* — and the
- * only reason to print it is to say what they mean together, so these are the
- * lines that are allowed to draw a conclusion.
- *
- * They still do not diagnose. "Usually", "most of", "worth" — a stalled lift
- * beside a fast cut is very probably the cut and is not certainly the cut, and
- * a sentence that pretends otherwise is one the reader catches out eventually.
- */
 export function describeLink(link: Link, unitSystem: UnitSystem): Line {
-  const show = (kg: number): string => {
-    const display = toDisplayWeight(Math.abs(kg), unitSystem);
-    return `${String(display.value)} ${display.unit}`;
-  };
-  const group = (slug: string): string => GROUP_WORDS[slug] ?? slug;
-  const rate = (perWeek: number): string => `${String(Math.round(perWeek * 10) / 10)} a week`;
+  const show = weightShower(unitSystem);
+  const words = t().review.links;
+  const rate = (perWeek: number): string => words.rate(formatNumber(Math.round(perWeek * 10) / 10));
 
   switch (link.kind) {
     case 'stall_needs_attendance':
       return {
-        heading: `Your ${link.name.toLowerCase()} is stuck, and the sessions are why`,
-        detail: `You have trained ${rate(link.perWeek)} against the ${String(link.target)} you set. A lift needs to come round often enough to be pushed — this one is not a programming problem yet.`,
+        heading: words.attendance.heading(link.name),
+        detail: words.attendance.detail(rate(link.perWeek), link.target),
       };
 
     case 'stall_from_deficit':
       return {
-        heading: `Your ${link.name.toLowerCase()} is stuck, and your weight explains it`,
-        detail: `Your best lately is still ${describeMark(link.best, link.timed, show)}, while you are losing ${show(link.perWeekKg)} a week. Strength usually flattens in a deficit — holding it is the win here, so this is worth leaving alone rather than rebuilding the plan around.`,
+        heading: words.deficit.heading(link.name),
+        detail: words.deficit.detail(
+          describeMark(link.best, link.timed, show),
+          show(link.perWeekKg),
+        ),
       };
 
     case 'stall_is_programming':
       return {
-        heading: `Your ${link.name.toLowerCase()} is stuck, and nothing else explains it`,
-        detail: `Your best lately is still ${describeMark(link.best, link.timed, show)} after ${String(link.sessionsSince)} more ${link.sessionsSince === 1 ? 'session' : 'sessions'}, with the sessions happening and your weight where you asked it to be. That leaves the training: ${
-          planBacksOff(link.best, link.timed)
-            ? 'back off about ten percent and run at it again, which the plan does for you after three short sessions.'
-            : 'add a set, or slow each rep down. The plan does not change these for you, so the change is yours to make.'
-        }`,
+        heading: words.programming.heading(link.name),
+        detail: words.programming.detail(
+          describeMark(link.best, link.timed, show),
+          link.sessionsSince,
+          planBacksOff(link.best, link.timed) ? words.programming.backOff : words.programming.yours,
+        ),
       };
 
     case 'shortfall_is_attendance':
       return {
-        heading: `Your ${groupIs(group(link.group))} behind because the sessions are`,
-        detail: `Training ${rate(link.perWeek)} against the ${String(link.target)} you set. Adding volume to a plan you are not getting to will not fix this one — the attendance comes first.`,
+        heading: words.shortfall.heading(link.group),
+        detail: words.shortfall.detail(rate(link.perWeek), link.target),
       };
 
     case 'progress_confirmed':
       return {
-        heading: 'This is working',
-        detail: `Your ${link.name.toLowerCase()} went ${describeMark(link.from, link.timed, show)} to ${describeMark(link.to, link.timed, show)}, and your weight is moving at ${show(link.perWeekKg)} a week, which is where you asked for it. Nothing here needs changing.`,
+        heading: words.confirmed.heading,
+        detail: words.confirmed.detail(
+          link.name,
+          describeMark(link.from, link.timed, show),
+          describeMark(link.to, link.timed, show),
+          show(link.perWeekKg),
+        ),
       };
   }
 }

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { levelFor, type RecapRewards } from '@g7m/core';
 import { Button } from '@g7m/ui';
@@ -44,7 +45,7 @@ export function LevelUpCelebration({
     >
       <div className="level-up-content">
         <h2 id="level-up-title" className="level-up-title">
-          Level up
+          {t().history.levelUp.title}
         </h2>
         <div className="level-up-stage" aria-hidden="true">
           <div className="level-up-confetti">
@@ -72,7 +73,7 @@ export function LevelUpCelebration({
         <div
           className="level-up-rule"
           role="progressbar"
-          aria-label={`XP toward level ${String(after.level + 1)}`}
+          aria-label={t().history.levelUp.toward(after.level + 1)}
           aria-valuemin={0}
           aria-valuemax={after.xpForLevel}
           aria-valuenow={after.xpIntoLevel}
@@ -91,17 +92,17 @@ export function LevelUpCelebration({
           </span>
         </p>
         <p id="level-up-description" className="level-up-description">
-          <span className="level-up-from">Level {rewards.levelBefore}</span>
+          <span className="level-up-from">{t().history.levelUp.level(rewards.levelBefore)}</span>
           <span className="level-up-arrow" aria-hidden="true">
             →
           </span>
-          <span className="sr-only"> to </span>
-          <span>Level {rewards.levelAfter}</span>
+          <span className="sr-only">{t().history.levelUp.to}</span>
+          <span>{t().history.levelUp.level(rewards.levelAfter)}</span>
         </p>
       </div>
       <div className="level-up-footer">
         <Button fullWidth onClick={onComplete}>
-          Let’s go
+          {t().history.levelUp.go}
         </Button>
       </div>
     </dialog>

@@ -7,6 +7,9 @@ async function welcome(page: Page, user: TestUser) {
   await page.getByLabel('Email').fill(user.email);
   await page.getByLabel('Password').fill(user.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  // The first question is the language, already set to the phone's (ADR-0181).
+  await expect(page.getByRole('heading', { name: 'Choose your language' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByRole('heading', { name: 'What should we call you?' })).toBeVisible();
 }
 
@@ -21,6 +24,7 @@ test('all signup questions fit both themes on phones and desktop', async ({ page
         document.documentElement.dataset['theme'] = value;
       }, theme);
       for (const [index, step] of [
+        'language',
         'name',
         'dob',
         'sex',

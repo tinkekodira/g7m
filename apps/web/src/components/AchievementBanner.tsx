@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router';
 import type { Achievement } from '@g7m/core';
@@ -134,10 +135,10 @@ function AchievementBanner({
   const title = loud ? celebration.achievement.name : (summary?.title ?? '');
   const detail = loud ? celebration.achievement.description : (summary?.detail ?? '');
   const eyebrow = secret
-    ? 'Secret achievement unlocked'
+    ? t().history.achievements.unlockedSecret
     : loud
-      ? 'Achievement unlocked'
-      : 'From your past training';
+      ? t().history.achievements.unlocked
+      : t().history.achievements.past;
 
   return (
     <div

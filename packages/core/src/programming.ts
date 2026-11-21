@@ -11,6 +11,7 @@
  * across this file too — the plan is shaped by the goal, the training history
  * and how many days somebody has, never by an opinion about their body.
  */
+import { live, t } from '@g7m/i18n';
 import { DEFAULT_INCREMENT_KG } from './units.js';
 import type { ExperienceLevel, TrainingGoal } from './goals.js';
 
@@ -123,14 +124,7 @@ export function prescriptionFor(
 export const SESSION_FOCUSES = ['full_body', 'upper', 'lower', 'push', 'pull', 'legs'] as const;
 export type SessionFocus = (typeof SESSION_FOCUSES)[number];
 
-export const FOCUS_LABELS: Record<SessionFocus, string> = {
-  full_body: 'Full body',
-  upper: 'Upper body',
-  lower: 'Lower body',
-  push: 'Push',
-  pull: 'Pull',
-  legs: 'Legs',
-};
+export const FOCUS_LABELS: Readonly<Record<SessionFocus, string>> = live(() => t().core.focus);
 
 /**
  * The muscle groups each focus is responsible for, in priority order.

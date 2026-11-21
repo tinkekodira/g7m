@@ -10,6 +10,7 @@
  * the line under it is two numbers and no adjectives. A record that has to be
  * described as huge is not one.
  */
+import { formatNumber, t } from '@g7m/i18n';
 import { toDisplayWeight, type SetRecord, type UnitSystem } from '@g7m/core';
 
 export interface RecordLine {
@@ -37,24 +38,24 @@ export function describeRecord(
   const before = toDisplayWeight(record.previous, unitSystem);
   const gain = roundTo(now.value - before.value, unitSystem === 'imperial' ? 1 : 2);
 
-  const name = exerciseName.toLocaleLowerCase();
+  const words = t().workout.record;
 
   if (record.kind === 'heaviest') {
     return {
-      badge: 'PR',
-      short: 'Heaviest yet',
-      headline: `Heaviest ${name} yet`,
-      detail: `${format(now.value)} ${now.unit} — ${format(gain)} ${now.unit} over your old best.`,
+      badge: words.badge,
+      short: words.heaviestShort,
+      headline: words.heaviest(exerciseName),
+      detail: words.heaviestDetail(format(now.value), format(gain), now.unit),
     };
   }
 
   return {
-    badge: 'PR',
-    short: 'Best set yet',
-    headline: `Best ${name} set yet`,
+    badge: words.badge,
+    short: words.bestShort,
+    headline: words.best(exerciseName),
     // Named as an estimate, because it is one. A number presented as measured
     // when it was calculated is the kind of thing people build a plan on.
-    detail: `Estimated max ${format(now.value)} ${now.unit}, up from ${format(before.value)} ${before.unit}.`,
+    detail: words.bestDetail(format(now.value), format(before.value), now.unit, before.unit),
   };
 }
 
@@ -65,5 +66,5 @@ function roundTo(value: number, places: number): number {
 
 /** No trailing zeroes: "5" rather than "5.00", "2.5" rather than "2.50". */
 function format(value: number): string {
-  return String(Number(value.toFixed(2)));
+  return formatNumber(Number(value.toFixed(2)));
 }

@@ -29,6 +29,7 @@
  * ordered by how much it matters, so a screen can show two and be showing the
  * two that count.
  */
+import { t } from '@g7m/i18n';
 import { exerciseOfLiftKey, liftKey } from './lift-key.js';
 import { daysBetween } from './week.js';
 import { paceTarget, type ExperienceLevel, type TrainingGoal } from './goals.js';
@@ -323,7 +324,7 @@ function lifts(
   for (const [key, own] of byExercise) {
     const exerciseId = exerciseOfLiftKey(key);
     const verdict = judgeLift(own, now);
-    const name = names.get(exerciseId) ?? 'that lift';
+    const name = names.get(exerciseId) ?? t().core.review.thatLift;
 
     if (verdict.kind === 'climbing') {
       const score = liftImprovement(verdict.from, verdict.to, bodyweight);

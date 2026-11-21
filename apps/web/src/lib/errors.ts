@@ -6,6 +6,7 @@
  * standing in a gym precisely nothing — least of all that the fix is in their
  * phone's date settings.
  */
+import { t } from '@g7m/i18n';
 
 /** Whether the message describes a clock-skew rejection. */
 export function isClockSkewError(message: string): boolean {
@@ -34,27 +35,23 @@ export function describeDataError(message: string): string {
   const m = message.toLowerCase();
 
   if (isClockSkewError(message)) {
-    return (
-      'This device’s clock is ahead of the server, so the sign-in token looks ' +
-      'like it came from the future. Turn on Settings → General → Date & Time ' +
-      '→ Set Automatically, then reopen the app.'
-    );
+    return t().app.serverErrors.clockSkew;
   }
 
   if (m.includes('jwt expired') || m.includes('pgrst301')) {
-    return 'Your session expired. Sign out and back in.';
+    return t().app.serverErrors.sessionExpired;
   }
 
   if (m.includes('failed to fetch') || m.includes('networkerror')) {
-    return 'Cannot reach the server. Your workouts are saved on this device and will sync when you are back online.';
+    return t().app.serverErrors.offline;
   }
 
   if (m.includes('permission denied') || m.includes('row-level security')) {
-    return 'You do not have access to that. If you just signed in, try reopening the app.';
+    return t().app.serverErrors.noAccess;
   }
 
   if (m.includes('pgrst116') || m.includes('0 rows')) {
-    return 'That record no longer exists.';
+    return t().app.serverErrors.gone;
   }
 
   return message;

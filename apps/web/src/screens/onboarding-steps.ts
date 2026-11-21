@@ -11,6 +11,7 @@
  * somebody closes the app halfway through is not visibly broken — it just
  * asks them their name again.
  */
+import type { Locale } from '@g7m/i18n';
 import {
   MAX_AGE,
   MIN_AGE,
@@ -23,12 +24,17 @@ import {
 /**
  * In order, and the order is deliberate.
  *
- * Name first because it is the one question that is not about a body, and
+ * Language first, because every other question is asked in it — somebody who
+ * reads no English cannot answer "What should we call you?". It starts on the
+ * phone's own language, so for most people it is one tap on Continue. ADR-0181.
+ *
+ * Name next because it is the one question that is not about a body, and
  * being asked your height by something that does not know your name is a form.
  * Goal then workout recommendations: what they train for, and whether they
  * want the app to suggest what to train.
  */
 export const ONBOARDING_STEPS = [
+  'language',
   'name',
   'dob',
   'sex',
@@ -44,6 +50,8 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 /** What has been answered so far, from the profile and the latest metrics. */
 export interface OnboardingAnswers {
+  /** Null until picked here or in Settings: the device's own is in use. */
+  readonly language: Locale | null;
   readonly displayName: string | null;
   readonly birthDate: Date | null;
   readonly sex: Sex | null;
@@ -56,6 +64,7 @@ export interface OnboardingAnswers {
 }
 
 export const NO_ANSWERS: OnboardingAnswers = {
+  language: null,
   displayName: null,
   birthDate: null,
   sex: null,
@@ -82,6 +91,8 @@ export function isOptional(step: OnboardingStep): boolean {
 /** Whether this step already has an answer. */
 export function isAnswered(step: OnboardingStep, answers: OnboardingAnswers): boolean {
   switch (step) {
+    case 'language':
+      return answers.language !== null;
     case 'name':
       return answers.displayName !== null && answers.displayName.trim() !== '';
     case 'dob':

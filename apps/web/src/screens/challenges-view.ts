@@ -5,6 +5,7 @@
  * The counting is in core (`challenges.ts`), by the leaderboard's rules; this
  * is the phrasing, kept out of the component so the edges can be tested.
  */
+import { t } from '@g7m/i18n';
 import {
   challengeScore,
   challengeSpan,
@@ -71,34 +72,26 @@ export interface ChallengeContext {
  * rest — so they no longer decide one. The board still ranks all four, and a
  * challenge already made on sets or time is still counted and shown.
  */
-export const CHALLENGE_STAT_OPTIONS: readonly {
+export function challengeStatOptions(): readonly {
   readonly value: LeaderboardStat;
   readonly label: string;
-}[] = [
-  { value: 'workouts', label: 'Workouts' },
-  { value: 'lifted', label: 'Weight' },
-];
-
-const NOUNS: Record<LeaderboardStat, string> = {
-  workouts: 'workouts',
-  lifted: 'weight lifted',
-  sets: 'sets',
-  minutes: 'time training',
-};
+}[] {
+  return (['workouts', 'lifted'] as const).map((value) => ({
+    value,
+    label: t().friends.board.stats[value],
+  }));
+}
 
 export function challengeTitle(stat: LeaderboardStat, ranking: LeaderboardRanking): string {
-  return ranking === 'most' ? `Most ${NOUNS[stat]}` : `Most improved: ${NOUNS[stat]}`;
+  return t().friends.challenge.title[ranking][stat];
 }
 
 /** "5 days left", "3 hours left", "Under an hour left". */
 export function challengeTimeLeft(end: Date, now: Date): string {
   const hours = (end.getTime() - now.getTime()) / 3_600_000;
-  if (hours < 1) return 'Under an hour left';
-  if (hours <= 24) {
-    const whole = Math.ceil(hours);
-    return whole === 1 ? '1 hour left' : `${String(whole)} hours left`;
-  }
-  return `${String(Math.ceil(hours / 24))} days left`;
+  if (hours < 1) return t().friends.challenge.underAnHour;
+  if (hours <= 24) return t().friends.challenge.hoursLeft(Math.ceil(hours));
+  return t().friends.challenge.daysLeft(Math.ceil(hours / 24));
 }
 
 function lowerFirst(text: string): string {
@@ -112,7 +105,7 @@ function shown(
   unitSystem: UnitSystem,
 ): string {
   if (ranking === 'most') return scoreText(side.score ?? 0, stat, unitSystem);
-  return side.score === null ? 'New' : `${String(side.score)}%`;
+  return side.score === null ? t().friends.board.new : `${String(side.score)}%`;
 }
 
 export function challengeCard(
@@ -121,6 +114,8 @@ export function challengeCard(
   { now, unitSystem }: ChallengeContext,
 ): ChallengeCardView {
   const name = friendName(challenge.name);
+  const words = t().friends.challenge;
+  const you = t().friends.you;
   const { stat, ranking } = challenge;
   const title = challengeTitle(stat, ranking);
   const base = {
@@ -131,22 +126,20 @@ export function challengeCard(
     title,
     outcome: null,
     recovered: challenge.recovered === true,
-    metric: ranking === 'improved' ? '% of usual' : NOUNS[stat],
+    metric: ranking === 'improved' ? words.ofUsual : words.metric[stat],
     endedAt: challenge.startsAt === null ? null : challengeSpan(challenge.startsAt).end,
   };
   const describe = (when: string, verdict: string, sides: ChallengeCardView['sides']) =>
     [
-      `${title}, against ${name}`,
+      words.against(title, name),
       when,
       ...(sides === null ? [] : sides.map((side) => `${side.name}: ${side.score}`)),
       verdict,
     ].join('. ');
 
   if (challenge.startsAt === null) {
-    const when = `Sent ${lowerFirst(describeWhen(challenge.sentAt, now))}`;
-    const verdict = challenge.sentByMe
-      ? `Waiting for ${name} to accept`
-      : `${name} challenged you. Seven days, from when you accept.`;
+    const when = words.sent(lowerFirst(describeWhen(challenge.sentAt, now)));
+    const verdict = challenge.sentByMe ? words.waiting(name) : words.challengedYou(name);
     return {
       ...base,
       phase: challenge.sentByMe ? 'outgoing' : 'incoming',
@@ -161,7 +154,7 @@ export function challengeCard(
   const over = now.getTime() >= span.end.getTime();
   const phase: ChallengePhase = over ? 'finalizing' : 'running';
   const when = over
-    ? `Ended ${lowerFirst(describeWhen(span.end, now))}`
+    ? words.ended(lowerFirst(describeWhen(span.end, now)))
     : challengeTimeLeft(span.end, now);
 
   if (challenge.result != null) {
@@ -169,7 +162,7 @@ export function challengeCard(
     const format = (side: typeof yours) =>
       ranking === 'improved'
         ? side.score === null
-          ? 'New'
+          ? t().friends.board.new
           : `${String(side.score)}%`
         : scoreText(
             stat === 'lifted'
@@ -182,17 +175,17 @@ export function challengeCard(
       outcome === 'unavailable'
         ? null
         : [
-            { name: 'You', score: format(yours), leading: outcome === 'win' },
+            { name: you, score: format(yours), leading: outcome === 'win' },
             { name, score: format(theirs), leading: outcome === 'loss' },
           ];
     const verdict =
       outcome === 'win'
-        ? 'You won'
+        ? words.youWon
         : outcome === 'loss'
-          ? `${name} won`
+          ? words.theyWon(name)
           : outcome === 'draw'
-            ? 'A draw'
-            : 'Result unavailable';
+            ? words.draw
+            : words.unavailable;
     return {
       ...base,
       outcome,
@@ -205,7 +198,7 @@ export function challengeCard(
   }
 
   if (over) {
-    const verdict = 'Finalizing result';
+    const verdict = words.finalizing;
     return {
       ...base,
       phase,
@@ -217,7 +210,7 @@ export function challengeCard(
   }
 
   if (challenge.workouts === null) {
-    const verdict = 'Training sharing is off, so this challenge can’t be scored.';
+    const verdict = words.sharingOff;
     return {
       ...base,
       phase,
@@ -233,7 +226,7 @@ export function challengeCard(
   const standing = challengeStanding(yours, theirs, ranking);
   const sides: readonly [ChallengeSideView, ChallengeSideView] = [
     {
-      name: 'You',
+      name: you,
       score: shown(yours, stat, ranking, unitSystem),
       leading: standing.kind === 'ahead',
     },
@@ -242,10 +235,10 @@ export function challengeCard(
 
   const verdict =
     standing.kind === 'ahead'
-      ? `${amountText(standing.by, stat, unitSystem)} ahead of ${name}`
+      ? t().friends.board.ahead(amountText(standing.by, stat, unitSystem), name)
       : standing.kind === 'behind'
-        ? `${amountText(standing.by, stat, unitSystem)} behind ${name}`
-        : `Level with ${name}`;
+        ? t().friends.board.behind(amountText(standing.by, stat, unitSystem), name)
+        : t().friends.board.levelWith(name);
 
   return { ...base, phase, when, sides, verdict, description: describe(when, verdict, sides) };
 }
@@ -289,23 +282,7 @@ export function describeChallengeProblem(
     case 'started':
     case 'declined':
       return null;
-    case 'already_live':
-      return `You already have a challenge with ${name}. One at a time.`;
-    case 'not_sharing':
-      return `${name} isn’t sharing their training, so a challenge can’t be scored.`;
-    case 'you_not_sharing':
-      return 'Turn on sharing your training in Settings to take part in challenges.';
-    case 'no_usual':
-      return `${name} has no workouts in the last four weeks to measure against. Try Most instead.`;
-    case 'you_no_usual':
-      return 'You have no workouts in the last four weeks to measure against. Try Most instead.';
-    case 'not_friends':
-      return `${name} is no longer on your friends list.`;
-    case 'not_found':
-      return 'That challenge isn’t there any more.';
-    case 'too_many':
-      return 'Too many challenges sent. Try again later.';
-    case 'invalid':
-      return 'Something was wrong with that challenge. Try again.';
+    default:
+      return t().friends.challenge.problems[outcome](name);
   }
 }

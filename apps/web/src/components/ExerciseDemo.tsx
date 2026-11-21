@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { colorTokens, lightColorTokens } from '@g7m/ui';
 import { useReducedMotion } from '../lib/use-reduced-motion.js';
@@ -149,7 +150,7 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
           onClick={() => setPaused((value) => !value)}
           className="mt-1 min-h-tap w-full rounded-control text-sm font-medium text-accent hover:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          {paused ? 'Play demonstration' : 'Pause demonstration'}
+          {paused ? t().library.detail.playDemo : t().library.detail.pauseDemo}
         </button>
       )}
     </div>

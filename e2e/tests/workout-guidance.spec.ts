@@ -7,8 +7,9 @@ test('self-directed onboarding resumes, saves the opt-out and hides the plan', a
 }, testInfo) => {
   const user = await createUser('self-directed');
   // A returning signup with earlier questions saved, including a training goal.
+  // Language is the first question (ADR-0181), so it is saved too.
   await sql(
-    `update public.profiles set display_name = 'Alex', birth_date = '1994-03-21', sex = 'female' where user_id = $1`,
+    `update public.profiles set language = 'en', display_name = 'Alex', birth_date = '1994-03-21', sex = 'female' where user_id = $1`,
     [user.id],
   );
   await sql(

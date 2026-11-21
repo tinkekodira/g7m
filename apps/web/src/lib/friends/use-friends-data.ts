@@ -10,6 +10,7 @@
  * names and muscles to describe their workouts in. Nothing of yours is sent
  * anywhere to be compared — the comparison happens here.
  */
+import { t } from '@g7m/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_WEEK_START,
@@ -59,7 +60,7 @@ export function useRemote<T>(
         console.error('Could not read from the server', cause);
         setState((previous) => ({
           data: previous.data,
-          error: cause instanceof Error ? cause.message : 'Something went wrong. Try again.',
+          error: cause instanceof Error ? cause.message : t().profile.data.somethingWrong,
           loading: false,
         }));
       },

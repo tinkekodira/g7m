@@ -17,5 +17,8 @@
   "devDependencies": {
     "@types/react": "^19.1.12",
     "react": "^19.1.1"
+  },
+  "dependencies": {
+    "@g7m/i18n": "workspace:*"
   }
 }

@@ -1,3 +1,4 @@
+import { formatList, formatNumber, muscleGroupName, t } from '@g7m/i18n';
 import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import {
@@ -23,7 +24,12 @@ import { useSessionTimeStore } from '../lib/use-session-time.js';
  */
 const TIME_OPTIONS = [
   ...SESSION_MINUTES.map((minutes) => ({ value: String(minutes), label: String(minutes) })),
-  { value: 'none', label: 'No limit' },
+  {
+    value: 'none',
+    get label() {
+      return t().profile.plan.noLimit;
+    },
+  },
 ] as const;
 
 /**
@@ -108,14 +114,14 @@ export function PlanScreen() {
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="flex items-start justify-between gap-3 pt-6 pb-2">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold text-primary">Today’s session</h1>
+          <h1 className="text-2xl font-semibold text-primary">{t().profile.plan.title}</h1>
           {goal !== null && (
             <p className="mt-1 text-sm text-secondary">
-              Built for {GOAL_LABELS[goal.goal].toLowerCase()}, {goal.daysPerWeek} days a week.
+              {t().profile.plan.builtFor(GOAL_LABELS[goal.goal], goal.daysPerWeek)}
             </p>
           )}
         </div>
-        <HeaderLink to="/">Home</HeaderLink>
+        <HeaderLink to="/">{t().common.home}</HeaderLink>
       </header>
 
       {error !== null && (
@@ -127,7 +133,7 @@ export function PlanScreen() {
       {noGoal ? (
         <NoGoal />
       ) : !ready || plan === null ? (
-        <p className="rounded-card bg-surface p-4 text-sm text-muted">Working out your session…</p>
+        <p className="rounded-card bg-surface p-4 text-sm text-muted">{t().profile.plan.working}</p>
       ) : chosen.length === 0 ? (
         <WeekDone rested={plan.restedGroups} />
       ) : (
@@ -135,9 +141,9 @@ export function PlanScreen() {
           {/* How long there is today. The coach pairs exercises into
               supersets only when the plan will not fit it (ADR-0112). */}
           <section className="rounded-card bg-surface p-4">
-            <p className="mb-2 text-sm font-medium text-primary">Time today (minutes)</p>
+            <p className="mb-2 text-sm font-medium text-primary">{t().profile.plan.timeToday}</p>
             <SegmentedControl
-              label="Time today"
+              label={t().profile.plan.timeLabel}
               options={TIME_OPTIONS}
               value={sessionMinutes === null ? 'none' : String(sessionMinutes)}
               onChange={(value) => {
@@ -154,21 +160,21 @@ export function PlanScreen() {
             </p>
             <p className="numeric mt-1 text-sm opacity-90">
               {plan.pairedForTime && sessionMinutes !== null
-                ? `Paired up to fit ${String(sessionMinutes)} min — about ${String(plan.estimatedMinutes)} min`
-                : `About ${String(plan.estimatedMinutes)} min`}
+                ? t().profile.plan.paired(sessionMinutes, plan.estimatedMinutes)
+                : t().profile.plan.about(plan.estimatedMinutes)}
             </p>
             {plan.trimmedForTime.length > 0 && (
               // Said, because a missing exercise with no reason reads as the
               // app forgetting it. Only after pairing could not make room.
               <p className="mt-1 text-sm opacity-90">
-                Left out to fit the time: {listOf(plan.trimmedForTime)}.
+                {t().profile.plan.leftOut(listOf(plan.trimmedForTime))}
               </p>
             )}
             {plan.restedGroups.length > 0 && (
               // The adaptation, said out loud. Somebody who does not know why
               // their chest is missing today assumes the app forgot.
               <p className="mt-1 text-sm opacity-90">
-                Suggest resting {listOf(plan.restedGroups)} — already covered in the last 7 days.
+                {t().profile.plan.resting(listOf(plan.restedGroups.map(groupName)))}
               </p>
             )}
           </section>
@@ -180,11 +186,11 @@ export function PlanScreen() {
               ) : (
                 <li
                   key={unit.supersetId}
-                  aria-label="Superset"
+                  aria-label={t().profile.plan.superset}
                   className="flex flex-col gap-3 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <p className="px-2 text-xs font-semibold tracking-wide text-accent uppercase">
-                    Superset · rest after each round
+                    {t().profile.plan.supersetRest}
                   </p>
                   <ol className="flex flex-col gap-3">{unit.members.map(row)}</ol>
                 </li>
@@ -200,19 +206,14 @@ export function PlanScreen() {
               void start();
             }}
           >
-            {busy ? 'Setting it up…' : 'Start this workout'}
+            {busy ? t().home.today.settingUp : t().profile.plan.start}
           </Button>
 
-          <p className="text-sm text-muted">
-            Every number here is a starting point. Change anything you like once you are in — the
-            logger does not know a generator wrote them.
-          </p>
+          <p className="text-sm text-muted">{t().profile.plan.startingPoint}</p>
         </>
       )}
 
-      <p className="py-6 text-xs text-muted">
-        Educational content, not medical advice. Consult a professional before starting a program.
-      </p>
+      <p className="py-6 text-xs text-muted">{t().settings.disclaimer}</p>
     </main>
   );
 }
@@ -258,14 +259,14 @@ function PlannedRow({
         <button
           type="button"
           onClick={onSwap}
-          aria-label={`Swap to ${next.name}`}
+          aria-label={t().profile.plan.swapTo(next.name)}
           className="mt-3 flex min-h-tap w-full items-center justify-between gap-3 rounded-control border border-subtle px-3 text-left opacity-55 transition-[opacity,transform] duration-200 ease-out select-none active:scale-[0.98] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
         >
           <span className="min-w-0 truncate text-sm text-primary">{next.name}</span>
           <span className="numeric shrink-0 text-xs text-muted">
             {next.suggestedKg === null
-              ? 'swap'
-              : `${String(toDisplayWeight(next.suggestedKg, unitSystem).value)} ${
+              ? t().profile.plan.swap
+              : `${formatNumber(toDisplayWeight(next.suggestedKg, unitSystem).value)} ${
                   toDisplayWeight(next.suggestedKg, unitSystem).unit
                 }`}
           </span>
@@ -301,12 +302,12 @@ function Prescribed({
       </div>
 
       <p className="numeric mt-1 text-lg text-primary">
-        {load === null ? 'Find your weight' : `${String(load.value)} ${load.unit}`}
+        {load === null ? t().profile.plan.findWeight : `${formatNumber(load.value)} ${load.unit}`}
       </p>
 
       <p className="mt-1 text-sm text-secondary">{describeReason(exercise.reason, unitSystem)}</p>
       <p className="mt-2 text-xs text-muted">
-        {exercise.groupSlug} · {formatRest(exercise.restSeconds)} rest
+        {t().profile.plan.rest(groupName(exercise.groupSlug), formatRest(exercise.restSeconds))}
       </p>
     </div>
   );
@@ -332,39 +333,36 @@ function totalSets(exercises: readonly PlannedExercise[]): number {
 function describeReason(reason: LoadReason, unitSystem: UnitSystem): string {
   const show = (kg: number): string => {
     const display = toDisplayWeight(kg, unitSystem);
-    return `${String(display.value)} ${display.unit}`;
+    return `${formatNumber(display.value)} ${display.unit}`;
   };
 
   switch (reason.kind) {
     case 'progress':
-      return `You finished the range at ${show(reason.fromKg)} last time — go up.`;
+      return t().profile.plan.reasons.progress(show(reason.fromKg));
     case 'jump':
       // The one thing counting reps cannot tell you, so it is worth naming.
-      return `You finished the range at ${show(reason.fromKg)} with ${String(reason.repsInReserve)} reps left. That is a bigger step than usual.`;
+      return t().profile.plan.reasons.jump(show(reason.fromKg), reason.repsInReserve);
     case 'deload':
-      return `${String(reason.misses)} sessions short of the range at ${show(reason.fromKg)}. Back off, then run at it again.`;
+      return t().profile.plan.reasons.deload(reason.misses, show(reason.fromKg));
     case 'repeat':
-      return `You did ${String(reason.reps)} at ${show(reason.kg)} last time. Same weight, more reps.`;
+      return t().profile.plan.reasons.repeat(reason.reps, show(reason.kg));
     case 'returning':
-      return `It has been ${String(reason.daysAway)} days. Starting under your ${show(reason.fromKg)} to build back into it.`;
+      return t().profile.plan.reasons.returning(reason.daysAway, show(reason.fromKg));
     case 'first_time':
-      return 'First time here — pick something you could do two or three more reps with.';
+      return t().profile.plan.reasons.firstTime;
   }
 }
 
 function NoGoal() {
   return (
     <section className="rounded-card bg-surface p-4">
-      <h2 className="text-lg font-semibold text-primary">Pick a goal first</h2>
-      <p className="mt-1 text-sm text-secondary">
-        The session is built from what you are training for and how many days a week you have. It
-        takes about ten seconds.
-      </p>
+      <h2 className="text-lg font-semibold text-primary">{t().profile.plan.noGoalTitle}</h2>
+      <p className="mt-1 text-sm text-secondary">{t().profile.plan.noGoalBody}</p>
       <Link
         to="/goal"
         className="mt-3 inline-flex min-h-tap items-center rounded-control bg-accent px-4 text-base font-semibold text-on-accent"
       >
-        Choose a goal
+        {t().profile.plan.chooseGoal}
       </Link>
     </section>
   );
@@ -373,23 +371,26 @@ function NoGoal() {
 function WeekDone({ rested }: { readonly rested: readonly string[] }) {
   return (
     <section className="rounded-card bg-surface p-4">
-      <h2 className="text-lg font-semibold text-primary">You have done the week</h2>
+      <h2 className="text-lg font-semibold text-primary">{t().profile.plan.weekDone}</h2>
       <p className="mt-1 text-sm text-secondary">
-        Everything this session would train has already had its sets: {listOf(rested)}. Another
-        session now would cost more recovery than it buys.
+        {t().profile.plan.weekDoneBody(listOf(rested.map(groupName)))}
       </p>
       {/* Not a lock. Somebody who wants to train anyway is allowed to. */}
       <Link
         to="/workout"
         className="mt-3 inline-flex min-h-tap items-center rounded-control border border-subtle bg-elevated px-4 text-sm font-medium text-primary"
       >
-        Train anyway
+        {t().profile.plan.trainAnyway}
       </Link>
     </section>
   );
 }
 
 function listOf(items: readonly string[]): string {
-  if (items.length <= 1) return items[0] ?? '';
-  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1] ?? ''}`;
+  return formatList(items);
+}
+
+/** A muscle group's name in the language speaking, from its slug. */
+function groupName(slug: string): string {
+  return muscleGroupName(slug) ?? slug;
 }

@@ -34,6 +34,7 @@
  * They are close in difficulty and not identical, and a round number on the
  * badge beats a converted one: nobody chases 102.06 kg.
  */
+import { t } from '@g7m/i18n';
 import { liftKey } from './lift-key.js';
 import {
   CARDIO_KINDS,
@@ -167,8 +168,6 @@ interface Outcome {
 interface Definition {
   readonly key: string;
   readonly category: AchievementCategory;
-  readonly name: string | ((units: UnitSystem) => string);
-  readonly description: string | ((units: UnitSystem) => string);
   readonly evaluate: (facts: Facts) => Outcome;
 }
 
@@ -242,11 +241,6 @@ function counted(dates: readonly Date[], target: number, unit: ProgressUnit): Ou
 /** Kilograms, from a round number in the lifter's own unit. */
 function weightIn(units: UnitSystem, kg: number, lb: number): number {
   return units === 'imperial' ? lb * KG_PER_LB : kg;
-}
-
-/** `100 kg` or `225 lb`: the number as the badge says it. */
-function weightWords(units: UnitSystem, kg: number, lb: number): string {
-  return units === 'imperial' ? `${lb.toLocaleString('en-GB')} lb` : `${String(kg)} kg`;
 }
 
 /**
@@ -379,11 +373,6 @@ function tonnage(tonnes: number) {
     );
     return { earnedAt, progress: progress(total, target, 'volume') };
   };
-}
-
-function tonnageWords(tonnes: number, comparison: string) {
-  return (units: UnitSystem): string =>
-    `Lift ${tonnes.toLocaleString('en-GB')} ${units === 'imperial' ? 'tons' : 'tonnes'} in total, ${comparison}`;
 }
 
 /**
@@ -533,85 +522,61 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'day-one',
     category: 'milestones',
-    name: 'Day One',
-    description: 'Finish your first workout',
     evaluate: workoutCount(1),
   },
   {
     key: 'double-digits',
     category: 'milestones',
-    name: 'Double Digits',
-    description: 'Finish 10 workouts',
     evaluate: workoutCount(10),
   },
   {
     key: 'quarter-century',
     category: 'milestones',
-    name: 'Quarter Century',
-    description: 'Finish 25 workouts',
     evaluate: workoutCount(25),
   },
   {
     key: 'fifty-strong',
     category: 'milestones',
-    name: 'Fifty Strong',
-    description: 'Finish 50 workouts',
     evaluate: workoutCount(50),
   },
   {
     key: 'centurion',
     category: 'milestones',
-    name: 'Centurion',
-    description: 'Finish 100 workouts',
     evaluate: workoutCount(100),
   },
   {
     key: 'iron-veteran',
     category: 'milestones',
-    name: 'Iron Veteran',
-    description: 'Finish 250 workouts',
     evaluate: workoutCount(250),
   },
   {
     key: 'lifer',
     category: 'milestones',
-    name: 'Lifer',
-    description: 'Finish 500 workouts',
     evaluate: workoutCount(500),
   },
   {
     key: 'record-breaker',
     category: 'milestones',
-    name: 'Record Breaker',
-    description: 'Set your first personal record',
     evaluate: recordCount(1),
   },
   {
     key: 'pr-machine',
     category: 'milestones',
-    name: 'PR Machine',
-    description: 'Set 25 personal records',
     evaluate: recordCount(25),
   },
   {
     key: 'heavy-mover',
     category: 'milestones',
-    name: 'Heavy Mover',
-    description: tonnageWords(10, 'about two elephants'),
     evaluate: tonnage(10),
   },
   {
     key: 'whale-of-a-time',
     category: 'milestones',
-    name: 'Whale of a Time',
-    description: tonnageWords(100, 'about a blue whale'),
     evaluate: tonnage(100),
   },
   {
     key: 'mountain-mover',
     category: 'milestones',
-    name: 'Mountain Mover',
-    description: tonnageWords(1000, 'more than two jumbo jets'),
     evaluate: tonnage(1000),
   },
 
@@ -619,79 +584,56 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'plate-club',
     category: 'strength',
-    name: 'Plate Club',
-    description: (units) => `Bench press ${weightWords(units, 60, 135)}`,
     evaluate: plateClub('bench', 60, 135),
   },
   {
     key: 'two-plate-bench',
     category: 'strength',
-    name: 'Two-Plate Bench',
-    description: (units) => `Bench press ${weightWords(units, 100, 225)}`,
     evaluate: plateClub('bench', 100, 225),
   },
   {
     key: 'three-plate-bench',
     category: 'strength',
-    name: 'Three-Plate Bench',
-    description: (units) => `Bench press ${weightWords(units, 140, 315)}`,
     evaluate: plateClub('bench', 140, 315),
   },
   {
     key: 'two-plate-squat',
     category: 'strength',
-    name: 'Two-Plate Squat',
-    description: (units) => `Back squat ${weightWords(units, 100, 225)}`,
     evaluate: plateClub('squat', 100, 225),
   },
   {
     key: 'three-plate-squat',
     category: 'strength',
-    name: 'Three-Plate Squat',
-    description: (units) => `Back squat ${weightWords(units, 140, 315)}`,
     evaluate: plateClub('squat', 140, 315),
   },
   {
     key: 'four-plate-squat',
     category: 'strength',
-    name: 'Four-Plate Squat',
-    description: (units) => `Back squat ${weightWords(units, 180, 405)}`,
     evaluate: plateClub('squat', 180, 405),
   },
   {
     key: 'three-plate-pull',
     category: 'strength',
-    name: 'Three-Plate Pull',
-    description: (units) => `Deadlift ${weightWords(units, 140, 315)}`,
     evaluate: plateClub('deadlift', 140, 315),
   },
   {
     key: 'four-plate-pull',
     category: 'strength',
-    name: 'Four-Plate Pull',
-    description: (units) => `Deadlift ${weightWords(units, 180, 405)}`,
     evaluate: plateClub('deadlift', 180, 405),
   },
   {
     key: 'five-plate-pull',
     category: 'strength',
-    name: 'Five-Plate Pull',
-    description: (units) => `Deadlift ${weightWords(units, 220, 495)}`,
     evaluate: plateClub('deadlift', 220, 495),
   },
   {
     key: 'plate-overhead',
     category: 'strength',
-    name: 'Plate Overhead',
-    description: (units) => `Overhead press ${weightWords(units, 60, 135)}`,
     evaluate: plateClub('overhead', 60, 135),
   },
   {
     key: 'total-club',
     category: 'strength',
-    name: (units) => (units === 'imperial' ? 'The 1,000 lb Club' : 'The 500 Club'),
-    description: (units) =>
-      `Best bench, squat and deadlift add up to ${weightWords(units, 500, 1000)}`,
     evaluate: (facts) => {
       const target = weightIn(facts.units, 500, 1000);
       const best: Partial<Record<ClubLift, number>> = {};
@@ -712,29 +654,21 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'bench-your-body',
     category: 'strength',
-    name: 'Bench Your Body',
-    description: 'Bench press your own bodyweight',
     evaluate: bodyweightClub('bench', 1),
   },
   {
     key: 'squat-and-a-half',
     category: 'strength',
-    name: 'Squat and a Half',
-    description: 'Back squat 1.5× your bodyweight',
     evaluate: bodyweightClub('squat', 1.5),
   },
   {
     key: 'double-trouble',
     category: 'strength',
-    name: 'Double Trouble',
-    description: 'Deadlift twice your bodyweight',
     evaluate: bodyweightClub('deadlift', 2),
   },
   {
     key: 'ten-clean',
     category: 'strength',
-    name: 'Ten Clean',
-    description: '10 pull-ups or chin-ups in one set, unassisted',
     evaluate: (facts) => {
       let best = 0;
       let earnedAt: Date | null = null;
@@ -752,8 +686,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'gym-rat',
     category: 'consistency',
-    name: 'Gym Rat',
-    description: 'Finish 5 workouts in one week',
     evaluate: (facts) => {
       const { weekStartsOn } = facts.input;
       const byWeek = new Map<string, Date[]>();
@@ -771,8 +703,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'no-days-off',
     category: 'consistency',
-    name: 'No Days Off',
-    description: 'Train 7 days in a row',
     evaluate: (facts) => {
       const days = trainingDays(facts);
       let earnedAt: Date | null = null;
@@ -791,36 +721,26 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'on-a-roll',
     category: 'consistency',
-    name: 'On a Roll',
-    description: 'Hit your goal’s days for 4 weeks in a row',
     evaluate: streak(4),
   },
   {
     key: 'habit-formed',
     category: 'consistency',
-    name: 'Habit Formed',
-    description: 'Hit your goal’s days for 12 weeks in a row',
     evaluate: streak(12),
   },
   {
     key: 'half-year-hero',
     category: 'consistency',
-    name: 'Half-Year Hero',
-    description: 'Hit your goal’s days for 26 weeks in a row',
     evaluate: streak(26),
   },
   {
     key: 'year-rounder',
     category: 'consistency',
-    name: 'Year-Rounder',
-    description: 'Hit your goal’s days for 52 weeks in a row',
     evaluate: streak(52),
   },
   {
     key: 'comeback-kid',
     category: 'consistency',
-    name: 'Comeback Kid',
-    description: 'Come back after 30 days or more away',
     evaluate: (facts) => {
       let previous: Date | null = null;
       for (const session of facts.sessions) {
@@ -835,8 +755,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'early-bird',
     category: 'consistency',
-    name: 'Early Bird',
-    description: 'Start training before 6 am',
     evaluate: (facts) => {
       for (const session of facts.sessions) {
         if (!session.clockKnown) continue;
@@ -850,8 +768,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'night-owl',
     category: 'consistency',
-    name: 'Night Owl',
-    description: 'Train between midnight and 4 am',
     evaluate: (facts) => {
       for (const session of facts.sessions) {
         if (!session.clockKnown) continue;
@@ -866,8 +782,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'weekend-warrior',
     category: 'consistency',
-    name: 'Weekend Warrior',
-    description: 'Train on the Saturday and the Sunday of one weekend',
     evaluate: (facts) => {
       const days = trainingDays(facts);
       for (const at of days.values()) {
@@ -883,22 +797,16 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'new-year-same-me',
     category: 'consistency',
-    name: 'New Year, Same Me',
-    description: 'Train on 1 January',
     evaluate: onTheDay(0, 1),
   },
   {
     key: 'jingle-lifts',
     category: 'consistency',
-    name: 'Jingle Lifts',
-    description: 'Train on Christmas Day',
     evaluate: onTheDay(11, 25),
   },
   {
     key: 'leap-lifter',
     category: 'consistency',
-    name: 'Leap Lifter',
-    description: 'Train on 29 February',
     evaluate: onTheDay(1, 29),
   },
 
@@ -906,44 +814,31 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'heart-starter',
     category: 'cardio',
-    name: 'Heart Starter',
-    description: 'Log your first cardio',
     evaluate: (facts) => ({ earnedAt: facts.bouts[0]?.performedAt ?? null }),
   },
   {
     key: 'the-2k',
     category: 'cardio',
-    name: 'The 2K',
-    description: 'Row 2,000 m in one go',
     evaluate: longestBout('rower', 2000),
   },
   {
     key: 'five-k-finisher',
     category: 'cardio',
-    name: '5K Finisher',
-    description: 'Run or walk 5 km on the treadmill in one go',
     evaluate: longestBout('treadmill', 5000),
   },
   {
     key: 'marathoner',
     category: 'cardio',
-    name: 'Marathoner',
-    description: 'Cover 42.2 km of cardio in total, a marathon',
     evaluate: totalDistance(() => 42_195),
   },
   {
     key: 'road-tripper',
     category: 'cardio',
-    name: 'Road Tripper',
-    description: (units) =>
-      `Cover ${units === 'imperial' ? '60 miles' : '100 km'} of cardio in total`,
     evaluate: totalDistance((units) => (units === 'imperial' ? 60 * METRES_PER_MILE : 100_000)),
   },
   {
     key: 'everest',
     category: 'cardio',
-    name: 'Everest',
-    description: 'Climb 8,849 m on the stairs and the treadmill’s incline',
     evaluate: (facts) => {
       const { earnedAt, total } = crossing(
         facts.bouts.map((logged) => ({
@@ -958,8 +853,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'furnace',
     category: 'cardio',
-    name: 'Furnace',
-    description: 'Burn 500 kcal of cardio in one workout',
     evaluate: (facts) => {
       const bySession = new Map<string, number>();
       let best = 0;
@@ -977,8 +870,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'machine-collector',
     category: 'cardio',
-    name: 'Machine Collector',
-    description: 'Use all five cardio machines',
     evaluate: (facts) => {
       const used = new Set<string>();
       let earnedAt: Date | null = null;
@@ -992,8 +883,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'hybrid-athlete',
     category: 'cardio',
-    name: 'Hybrid Athlete',
-    description: 'Lift and do cardio in the same workout',
     evaluate: (facts) => {
       const lifted = new Set(facts.sets.map((set) => set.sessionId));
       const hybrid = facts.bouts.find((logged) => lifted.has(logged.sessionId));
@@ -1003,8 +892,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'explorer',
     category: 'cardio',
-    name: 'Explorer',
-    description: 'Log 25 different exercises',
     evaluate: (facts) => {
       const logged = [
         ...facts.sets.map((set) => ({ id: set.exerciseId, at: set.performedAt })),
@@ -1023,8 +910,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'lit-up',
     category: 'cardio',
-    name: 'Lit Up',
-    description: 'Train every muscle group in one week',
     evaluate: (facts) => {
       // Every group some exercise works as a primary muscle — which leaves
       // out the ones nothing in the catalogue can train on its own.
@@ -1049,8 +934,6 @@ const DEFINITIONS: readonly Definition[] = [
   {
     key: 'birthday-pump',
     category: 'secret',
-    name: 'Birthday Pump',
-    description: 'Train on your birthday',
     evaluate: (facts) => {
       const birth = facts.input.birthDate;
       if (birth === null || Number.isNaN(birth.getTime())) return { earnedAt: null };
@@ -1079,6 +962,22 @@ export const ACHIEVEMENT_KEYS: readonly string[] = DEFINITIONS.map((each) => eac
  * Earned ones carry no progress and no next chance: the bar is full and the
  * date has been. Unearned ones carry whichever of the two they can.
  */
+/**
+ * A badge's name and what earns it, in the language speaking now (ADR-0181).
+ * Kept beside the definitions' logic rather than in them, so the words can
+ * change language without the rules being rebuilt.
+ */
+function badgeWords(
+  key: string,
+  units: UnitSystem,
+): { readonly name: string; readonly description: string } {
+  const words = t().achievements.badges[key];
+  if (words === undefined) return { name: key, description: '' };
+  const say = (value: string | ((units: UnitSystem) => string)): string =>
+    typeof value === 'string' ? value : value(units);
+  return { name: say(words.name), description: say(words.description) };
+}
+
 export function achievements(input: AchievementInput, now: Date): Achievement[] {
   const facts = factsFrom(input, now);
   return DEFINITIONS.map((definition) => {
@@ -1087,12 +986,7 @@ export function achievements(input: AchievementInput, now: Date): Achievement[] 
     return {
       key: definition.key,
       category: definition.category,
-      name:
-        typeof definition.name === 'string' ? definition.name : definition.name(input.unitSystem),
-      description:
-        typeof definition.description === 'string'
-          ? definition.description
-          : definition.description(input.unitSystem),
+      ...badgeWords(definition.key, input.unitSystem),
       secret: definition.category === 'secret',
       earnedAt: outcome.earnedAt,
       progress: earned ? null : (outcome.progress ?? null),
@@ -1138,11 +1032,7 @@ export function publishedAchievements(
   return DEFINITIONS.map((definition) => ({
     key: definition.key,
     category: definition.category,
-    name: typeof definition.name === 'string' ? definition.name : definition.name(unitSystem),
-    description:
-      typeof definition.description === 'string'
-        ? definition.description
-        : definition.description(unitSystem),
+    ...badgeWords(definition.key, unitSystem),
     secret: definition.category === 'secret',
     earnedAt: earned.get(definition.key) ?? null,
     progress: null,

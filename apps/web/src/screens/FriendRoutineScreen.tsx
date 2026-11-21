@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { Link, useNavigate, useParams } from 'react-router';
 import { workoutUnits } from '@g7m/core';
 import { Avatar } from '../components/Avatar.js';
@@ -45,10 +46,10 @@ export function FriendRoutineScreen() {
           {profile.error}
         </p>
       ) : profile.loading || mine.data === null ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t().common.loading}</p>
       ) : routine === null ? (
         <p className="rounded-card border border-subtle bg-surface p-5 text-sm text-secondary">
-          This routine isn’t shared with you any more.
+          {t().friends.routine.gone}
         </p>
       ) : (
         <Routine
@@ -99,18 +100,16 @@ function Routine({
       <section>
         <Link
           to={`/friends/${friendId}`}
-          aria-label={`${name}’s routine, open ${name}’s profile`}
+          aria-label={t().friends.routine.label(name)}
           className="-mx-1 mb-3 flex min-h-tap w-fit max-w-full items-center gap-3 rounded-card px-1 py-1 active:bg-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Avatar name={avatarName} tint />
           <span className="min-w-0 truncate text-base font-medium text-secondary">
-            {name}’s routine
+            {t().friends.routine.whose(name)}
           </span>
         </Link>
         <h1 className="text-2xl font-bold text-primary">{routine.name}</h1>
-        <p className="numeric mt-1 text-sm text-secondary">
-          {count === 1 ? '1 exercise' : `${String(count)} exercises`}
-        </p>
+        <p className="numeric mt-1 text-sm text-secondary">{t().friends.page.exercises(count)}</p>
       </section>
 
       {count > 0 && (
@@ -124,22 +123,20 @@ function Routine({
             className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-accent px-6 text-lg font-medium text-on-accent shadow-floating select-none hover:bg-accent-hover active:bg-accent-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:bg-strong disabled:text-muted disabled:shadow-none"
           >
             <PlayIcon className="size-5" />
-            {busy ? 'Setting it up…' : 'Do this routine'}
+            {busy ? t().friends.session.settingUp : t().friends.routine.doIt}
           </button>
           {hasOpenWorkout ? (
             <p className="mt-3 text-sm text-muted">
-              Finish the workout you have open before starting this one.{' '}
+              {t().friends.session.finishFirst}{' '}
               <Link
                 to="/workout"
                 className="font-medium text-accent underline-offset-4 hover:underline"
               >
-                Open it
+                {t().friends.session.openIt}
               </Link>
             </p>
           ) : (
-            <p className="mt-3 text-sm text-secondary">
-              Their exercises, sets and rep ranges, with your own weights from last time.
-            </p>
+            <p className="mt-3 text-sm text-secondary">{t().friends.routine.explain}</p>
           )}
           {error !== null && (
             <p role="alert" className="mt-2 text-sm text-destructive">
@@ -151,7 +148,7 @@ function Routine({
 
       {count === 0 ? (
         <p className="rounded-card border border-subtle bg-surface p-4 text-sm text-secondary">
-          Nothing in it yet.
+          {t().friends.routine.empty}
         </p>
       ) : (
         <ol className="flex flex-col gap-2">
@@ -167,7 +164,7 @@ function Routine({
             return (
               <li key={unit.supersetId}>
                 <section
-                  aria-label="Superset"
+                  aria-label={t().friends.routine.superset}
                   className="flex flex-col gap-2 rounded-card border-l-4 border-subtle pl-2"
                 >
                   <p className="pl-2 text-xs font-semibold tracking-wide text-accent uppercase">
@@ -201,7 +198,7 @@ function Movement({
   readonly label: string;
   readonly mine: MySide;
 }) {
-  const name = mine.names.get(movement.exerciseId) ?? 'Unknown exercise';
+  const name = mine.names.get(movement.exerciseId) ?? t().friends.unknownExercise;
   const slug = mine.slugs.get(movement.exerciseId);
   const body = (
     <>

@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   PLATE_SLOTS,
@@ -85,8 +86,8 @@ export function PlateStack({
 
   const label =
     loading.kind === 'plates' && fits
-      ? `A bar loaded with ${perSide.map((size) => `${trim(size)} ${unit}`).join(', ')} on each end`
-      : `An empty ${trim(loading.bar)} ${unit} bar`;
+      ? t().workout.plates.loaded(perSide.map((size) => `${trim(size)} ${unit}`).join(', '))
+      : t().workout.plates.empty(trim(loading.bar), unit);
 
   return (
     <svg

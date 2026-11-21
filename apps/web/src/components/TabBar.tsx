@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import type { ComponentType } from 'react';
 import { Link, useLocation } from 'react-router';
 import { cx } from '@g7m/ui';
@@ -42,7 +43,7 @@ export function TabBar({ alert = false }: { readonly alert?: boolean }) {
   return (
     <nav
       data-tab-bar
-      aria-label="Main"
+      aria-label={t().app.tabs.main}
       className="pb-safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-subtle bg-base/90 backdrop-blur-md"
     >
       <div className="relative mx-auto max-w-2xl">
@@ -90,7 +91,7 @@ export function TabBar({ alert = false }: { readonly alert?: boolean }) {
                     )}
                   </span>
                   <span>{tab.label}</span>
-                  {flagged && <span className="sr-only">(needs attention)</span>}
+                  {flagged && <span className="sr-only">{t().app.tabs.needsAttention}</span>}
                 </Link>
               </li>
             );

@@ -20,6 +20,7 @@
  * **Everything else** is a bug in the app. Reloading may or may not help;
  * saying what happened, and that the training is safe, always does.
  */
+import { t } from '@g7m/i18n';
 
 export type CrashKind = 'stale-build' | 'bug';
 
@@ -71,19 +72,13 @@ export interface CrashCopy {
 export function crashCopy(kind: CrashKind, inWorkout: boolean): CrashCopy {
   if (kind === 'stale-build') {
     return {
-      title: 'g7m has been updated',
-      detail:
-        'A new version arrived while this screen was open, and part of it is no longer where ' +
-        'the old one expects. Reload to finish updating. Nothing you logged is lost.',
+      title: t().app.crash.updatedTitle,
+      detail: t().app.crash.updatedDetail,
     };
   }
   return {
-    title: 'Something went wrong on this screen',
-    detail: inWorkout
-      ? 'Your workout is safe. Every set is saved on this device the moment you tick it, so ' +
-        'you can reopen the workout from Home and carry on where you were.'
-      : 'Everything you have logged is saved on this device, so nothing is lost. Try again, or ' +
-        'go back to Home.',
+    title: t().app.crash.bugTitle,
+    detail: inWorkout ? t().app.crash.bugDetailInWorkout : t().app.crash.bugDetail,
   };
 }
 

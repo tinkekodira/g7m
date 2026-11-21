@@ -1,3 +1,4 @@
+import { currentLocale, t } from '@g7m/i18n';
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { formatRest, type UnitSystem } from '@g7m/core';
 import { Button, SegmentedControl, Switch, TextareaField, TextField } from '@g7m/ui';
@@ -34,11 +35,13 @@ import {
 } from '../lib/rest-settings.js';
 import { prepareExport } from '../lib/data-export.js';
 import { saveFile } from '../lib/save-file.js';
-import { DELETE_CONFIRMATION_WORD, confirmsDeletion } from '../lib/account-words.js';
+import { confirmsDeletion, deleteConfirmationWord } from '../lib/account-words.js';
 import { useOnline } from '../lib/use-online.js';
 import { FriendsError, setTrainingSharing } from '../lib/friends/api.js';
 import { PlatePicker } from '../components/PlatePicker.js';
 import { GymSettings } from '../components/GymSettings.js';
+import { LanguageSelect } from '../components/LanguagePicker.js';
+import { switchLanguage } from '../lib/language.js';
 import {
   BellIcon,
   ClockIcon,
@@ -46,6 +49,7 @@ import {
   DownloadIcon,
   DumbbellIcon,
   FriendsIcon,
+  GlobeIcon,
   KettlebellIcon,
   MessageIcon,
   MoonIcon,
@@ -72,10 +76,12 @@ import {
  * a warning.
  */
 
-const UNIT_OPTIONS = [
-  { value: 'metric', label: 'Kilograms' },
-  { value: 'imperial', label: 'Pounds' },
-] as const satisfies readonly { value: UnitSystem; label: string }[];
+function unitOptions(): readonly { value: UnitSystem; label: string }[] {
+  return [
+    { value: 'metric', label: t().settings.units.kilograms },
+    { value: 'imperial', label: t().settings.units.pounds },
+  ];
+}
 
 const TourReplay = lazy(() =>
   import('../components/TourInvitation.js').then((m) => ({ default: m.TourReplay })),
@@ -90,7 +96,7 @@ export function SettingsScreen() {
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="pt-6">
-        <h1 className="text-2xl font-semibold text-primary">Settings</h1>
+        <h1 className="text-2xl font-semibold text-primary">{t().settings.title}</h1>
       </header>
 
       {/* Thirteen cards in one column was a page to scroll through looking
@@ -98,19 +104,20 @@ export function SettingsScreen() {
           (ADR-0129): what changes a workout first, since that is what
           somebody opens Settings mid-session for; then the app; then the
           account and the data, ending on the two ways out. */}
-      <Group id="settings-gym" title="In the gym">
+      <Group id="settings-gym" title={t().settings.groups.gym}>
         <WorkoutRecommendations />
-        <Panel title="Gyms" icon={<PinIcon className="size-5" />}>
+        <Panel title={t().settings.gyms} icon={<PinIcon className="size-5" />}>
           <GymSettings />
         </Panel>
         <Units />
         <AvailablePlates />
         <RestTimes />
       </Group>
-      <Group id="settings-app" title="App">
+      <Group id="settings-app" title={t().settings.groups.app}>
+        <Language />
         <Appearance />
-        <Panel title="Find your way around">
-          <p className="mb-3 text-sm text-secondary">Revisit the five-stop introduction anytime.</p>
+        <Panel title={t().settings.tour.title}>
+          <p className="mb-3 text-sm text-secondary">{t().settings.tour.body}</p>
           <Suspense fallback={null}>
             <TourReplay />
           </Suspense>
@@ -118,7 +125,7 @@ export function SettingsScreen() {
         <FriendsSharing />
         <SendFeedback />
       </Group>
-      <Group id="settings-account" title="Account">
+      <Group id="settings-account" title={t().settings.groups.account}>
         <Account />
         <SyncPanel />
         <OfflineStorage />
@@ -128,10 +135,45 @@ export function SettingsScreen() {
         <DeleteAccount />
       </Group>
 
-      <footer className="py-4 text-xs text-muted">
-        Educational content, not medical advice. Consult a professional before starting a program.
-      </footer>
+      <footer className="py-4 text-xs text-muted">{t().settings.disclaimer}</footer>
     </main>
+  );
+}
+
+/**
+ * Which language the app speaks. ADR-0181.
+ *
+ * Saved to the account before the switch, not after: the switch re-mounts
+ * the app, and the auth gate would otherwise read the old language off the
+ * profile and switch straight back to it.
+ */
+function Language() {
+  const profile = useCatalogue('profile', (r) => r.profile.current());
+  const { write, busy, error } = useWrite();
+
+  return (
+    <Panel title={t().settings.language.title} icon={<GlobeIcon className="size-5" />}>
+      <LanguageSelect
+        label={t().settings.language.label}
+        value={currentLocale()}
+        disabled={busy}
+        onChange={(locale) => {
+          void (async () => {
+            if (profile.data !== null) {
+              const saved = await write((r) => r.profile.update({ language: locale }));
+              if (saved === null) return;
+            }
+            await switchLanguage(locale);
+          })();
+        }}
+      />
+      <p className="mt-2 text-sm text-muted">{t().settings.language.hint}</p>
+      {error !== null && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </Panel>
   );
 }
 
@@ -148,18 +190,16 @@ function Appearance() {
   const setTheme = useThemeStore((state) => state.setTheme);
 
   return (
-    <Panel title="Appearance">
+    <Panel title={t().settings.appearance.title}>
       <Switch
         checked={theme === 'dark'}
         onChange={(dark) => {
           setTheme(dark ? 'dark' : 'light');
         }}
         icon={<IconChip tone="accent" icon={<MoonIcon className="size-5" />} />}
-        label="Dark mode"
+        label={t().settings.appearance.dark}
         description={
-          theme === 'dark'
-            ? 'Turn it off for the light theme, easier to read in daylight.'
-            : 'Off — the app is in its light theme.'
+          theme === 'dark' ? t().settings.appearance.darkOn : t().settings.appearance.darkOff
         }
       />
     </Panel>
@@ -182,15 +222,13 @@ function WorkoutRecommendations() {
   }, [pending, saved]);
 
   return (
-    <Panel title="Training" icon={<DumbbellIcon className="size-5" />}>
+    <Panel title={t().settings.training.title} icon={<DumbbellIcon className="size-5" />}>
       <Switch
-        label="Workout recommendations"
+        label={t().settings.training.recommendations}
         checked={shown}
         disabled={busy || profile.data === null}
         description={
-          shown
-            ? 'Get today’s workout and exercise suggestions.'
-            : 'Off — choose your own exercises, workouts and routines.'
+          shown ? t().settings.training.recommendationsOn : t().settings.training.recommendationsOff
         }
         onChange={(next) => {
           setPending(next);
@@ -201,12 +239,12 @@ function WorkoutRecommendations() {
       />
       <div className="mt-4 border-t border-subtle pt-4">
         <Switch
-          label="Show workout start options"
+          label={t().settings.training.startOptions}
           checked={showStartOptions}
           description={
             showStartOptions
-              ? 'Choose a routine or start blank on this device.'
-              : 'Off: always start blank workouts on this device.'
+              ? t().settings.training.startOptionsOn
+              : t().settings.training.startOptionsOff
           }
           onChange={(show) => saveWorkoutStartOptions(user, show)}
         />
@@ -237,18 +275,18 @@ function Units() {
   }, [pending, saved]);
 
   return (
-    <Panel title="Units">
+    <Panel title={t().settings.units.title}>
       <div className="flex items-center gap-3">
         <IconChip tone="warning" icon={<KettlebellIcon className="size-5" />} />
         <div className="min-w-0 flex-1">
-          <p className="text-base font-medium text-primary">Weight</p>
-          <p className="text-sm text-muted">For every weight in the app.</p>
+          <p className="text-base font-medium text-primary">{t().settings.units.weight}</p>
+          <p className="text-sm text-muted">{t().settings.units.weightDetail}</p>
         </div>
       </div>
       <SegmentedControl
         className="mt-3"
-        label="Weight unit"
-        options={UNIT_OPTIONS}
+        label={t().settings.units.weightUnit}
+        options={unitOptions()}
         value={shown}
         disabled={busy || profile.data === null}
         onChange={(next) => {
@@ -261,10 +299,7 @@ function Units() {
           });
         }}
       />
-      <p className="mt-3 text-sm text-muted">
-        Everything is stored in kilograms and only shown in pounds, so switching back and forth
-        never changes a number you logged.
-      </p>
+      <p className="mt-3 text-sm text-muted">{t().settings.units.note}</p>
       {error !== null && (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -288,14 +323,12 @@ function AvailablePlates() {
   const unit = profile.data?.unitSystem === 'imperial' ? 'lb' : 'kg';
 
   return (
-    <Panel title="Available plates">
+    <Panel title={t().settings.plates.title}>
       <div className="flex items-center gap-3">
         <IconChip tone="accent" icon={<DumbbellIcon className="size-5" />} />
         <div className="min-w-0 flex-1">
-          <p className="text-base font-medium text-primary">Your gym&rsquo;s plates</p>
-          <p className="text-sm text-muted">
-            The same list as Learn &rarr; Plates. A change here shows there too.
-          </p>
+          <p className="text-base font-medium text-primary">{t().settings.plates.yours}</p>
+          <p className="text-sm text-muted">{t().settings.plates.detail}</p>
         </div>
       </div>
       <PlatePicker unit={unit} />
@@ -327,31 +360,27 @@ function RestTimes() {
   const setSound = useRestSettingsStore((state) => state.setSound);
 
   return (
-    <Panel title="Rest timer">
+    <Panel title={t().settings.rest.title}>
       <Switch
         checked={custom}
         onChange={setCustom}
         icon={<IconChip tone="accent" icon={<ClockIcon className="size-5" />} />}
-        label="Set my own rest times"
-        description={
-          custom
-            ? 'One time for compound lifts, another for isolation lifts.'
-            : 'Off — each exercise uses its own suggested rest.'
-        }
+        label={t().settings.rest.own}
+        description={custom ? t().settings.rest.ownOn : t().settings.rest.ownOff}
       />
       {custom && (
         <div className="mt-3 flex flex-col gap-3 border-t border-subtle pt-3">
           <RestStepper
-            label="Compound lifts"
-            hint="Squats, presses, rows, deadlifts, pull-ups."
+            label={t().settings.rest.compound}
+            hint={t().settings.rest.compoundHint}
             seconds={compound}
             onChange={(next) => {
               setSeconds('compound', next);
             }}
           />
           <RestStepper
-            label="Isolation lifts"
-            hint="Curls, raises, extensions, flyes."
+            label={t().settings.rest.isolation}
+            hint={t().settings.rest.isolationHint}
             seconds={isolation}
             onChange={(next) => {
               setSeconds('isolation', next);
@@ -361,11 +390,11 @@ function RestTimes() {
       )}
       <div className="mt-3 border-t border-subtle pt-3">
         <SecondsStepper
-          label="Minus and plus"
-          hint="What the timer's − and + take off and add."
-          groupLabel="Rest timer step"
-          lessLabel="Smaller step"
-          moreLabel="Bigger step"
+          label={t().settings.rest.step}
+          hint={t().settings.rest.stepHint}
+          groupLabel={t().settings.rest.stepGroup}
+          lessLabel={t().settings.rest.smaller}
+          moreLabel={t().settings.rest.bigger}
           seconds={adjust}
           step={REST_ADJUST_STEP_SECONDS}
           min={REST_ADJUST_MIN_SECONDS}
@@ -379,12 +408,8 @@ function RestTimes() {
           checked={sound}
           onChange={setSound}
           icon={<IconChip tone="accent" icon={<BellIcon className="size-5" />} />}
-          label="Sound when rest is over"
-          description={
-            sound
-              ? 'A three-second chime as well as the buzz, while the app is open.'
-              : 'Off — rest ending only buzzes.'
-          }
+          label={t().settings.rest.sound}
+          description={sound ? t().settings.rest.soundOn : t().settings.rest.soundOff}
         />
       </div>
     </Panel>
@@ -413,9 +438,9 @@ function RestStepper({
     <SecondsStepper
       label={label}
       hint={hint}
-      groupLabel={`${label} rest`}
-      lessLabel={`Shorter rest for ${label.toLowerCase()}`}
-      moreLabel={`Longer rest for ${label.toLowerCase()}`}
+      groupLabel={t().settings.rest.group(label)}
+      lessLabel={t().settings.rest.shorter(label)}
+      moreLabel={t().settings.rest.longer(label)}
       seconds={seconds}
       step={REST_STEP_SECONDS}
       min={REST_MIN_SECONDS}
@@ -534,7 +559,7 @@ function FriendsSharing() {
   }, [online]);
 
   return (
-    <Panel title="Friends" icon={<FriendsIcon className="size-5" />}>
+    <Panel title={t().settings.friends.title} icon={<FriendsIcon className="size-5" />}>
       <Switch
         checked={sharing ?? true}
         disabled={!online || sharing === null || busy}
@@ -549,19 +574,19 @@ function FriendsSharing() {
             (cause: unknown) => {
               setBusy(false);
               setSharing(!next);
-              setFailure(cause instanceof FriendsError ? cause.message : 'That did not save.');
+              setFailure(
+                cause instanceof FriendsError ? cause.message : t().settings.friends.didNotSave,
+              );
             },
           );
         }}
-        label="Share my training with friends"
+        label={t().settings.friends.share}
         description={
-          sharing === false
-            ? 'Off: friends see your name, and that you’re not sharing.'
-            : 'Your workouts, best lifts, week and when you were last online.'
+          sharing === false ? t().settings.friends.shareOff : t().settings.friends.shareOn
         }
       />
       {!online && (
-        <p className="mt-2 text-sm text-warning">You need a connection to change this.</p>
+        <p className="mt-2 text-sm text-warning">{t().settings.friends.needConnection}</p>
       )}
       {failure !== null && (
         <p role="alert" className="mt-2 text-sm text-destructive">
@@ -574,11 +599,13 @@ function FriendsSharing() {
 
 type FeedbackCategory = 'bug' | 'idea' | 'other';
 
-const FEEDBACK_CATEGORY_OPTIONS = [
-  { value: 'bug', label: 'Bug' },
-  { value: 'idea', label: 'Idea' },
-  { value: 'other', label: 'Other' },
-] as const satisfies readonly { value: FeedbackCategory; label: string }[];
+function feedbackCategoryOptions(): readonly { value: FeedbackCategory; label: string }[] {
+  return [
+    { value: 'bug', label: t().settings.feedback.bug },
+    { value: 'idea', label: t().settings.feedback.idea },
+    { value: 'other', label: t().settings.feedback.other },
+  ];
+}
 
 const FEEDBACK_MAX_LENGTH = 2000;
 
@@ -628,30 +655,27 @@ function SendFeedback() {
   };
 
   return (
-    <Panel title="Send feedback" icon={<MessageIcon className="size-5" />}>
-      <p className="max-w-prose text-sm text-secondary">
-        Report a bug, suggest something, or just say what&rsquo;s on your mind — it goes straight to
-        the developer.
-      </p>
+    <Panel title={t().settings.feedback.title} icon={<MessageIcon className="size-5" />}>
+      <p className="max-w-prose text-sm text-secondary">{t().settings.feedback.intro}</p>
       <SegmentedControl
         className="mt-3"
-        label="Category"
-        options={FEEDBACK_CATEGORY_OPTIONS}
+        label={t().settings.feedback.category}
+        options={feedbackCategoryOptions()}
         value={category}
         disabled={state.step === 'sending'}
         onChange={setCategory}
       />
       <div className="mt-3">
         <TextareaField
-          label="Message"
+          label={t().settings.feedback.message}
           value={message}
           disabled={state.step === 'sending'}
           error={
-            tooLong
-              ? `${String(trimmed.length)}/${String(FEEDBACK_MAX_LENGTH)} — too long`
-              : undefined
+            tooLong ? t().settings.feedback.tooLong(trimmed.length, FEEDBACK_MAX_LENGTH) : undefined
           }
-          hint={tooLong ? undefined : `${String(trimmed.length)}/${String(FEEDBACK_MAX_LENGTH)}`}
+          hint={
+            tooLong ? undefined : t().settings.feedback.count(trimmed.length, FEEDBACK_MAX_LENGTH)
+          }
           onChange={(event) => {
             setMessage(event.target.value);
             if (state.step === 'sent' || state.step === 'failed') setState({ step: 'idle' });
@@ -659,7 +683,7 @@ function SendFeedback() {
         />
       </div>
       {!online && (
-        <p className="mt-2 text-sm text-warning">You need a connection to send feedback.</p>
+        <p className="mt-2 text-sm text-warning">{t().settings.feedback.needConnection}</p>
       )}
       {state.step === 'failed' && (
         <p role="alert" className="mt-2 text-sm text-destructive">
@@ -668,7 +692,7 @@ function SendFeedback() {
       )}
       {state.step === 'sent' && (
         <p role="status" className="mt-2 text-sm text-success">
-          Thanks — this reached the developer.
+          {t().settings.feedback.thanks}
         </p>
       )}
       <Button
@@ -679,11 +703,9 @@ function SendFeedback() {
           void send();
         }}
       >
-        {state.step === 'sending' ? 'Sending…' : 'Send feedback'}
+        {state.step === 'sending' ? t().settings.feedback.sending : t().settings.feedback.send}
       </Button>
-      <p className="mt-3 text-xs text-muted">
-        Sent with your account email, app version and platform.
-      </p>
+      <p className="mt-3 text-xs text-muted">{t().settings.feedback.sentWith}</p>
     </Panel>
   );
 }
@@ -724,7 +746,7 @@ function Account() {
       if (profile.data === null) {
         // The signup trigger should make this impossible. If it happens, say so
         // plainly rather than rendering a panel full of blanks.
-        setLoadError('No profile row exists for this account.');
+        setLoadError(t().settings.account.noProfile);
         return;
       }
 
@@ -738,20 +760,20 @@ function Account() {
   }, []);
 
   return (
-    <Panel title="Your account" icon={<ProfileIcon className="size-5" />}>
+    <Panel title={t().settings.account.title} icon={<ProfileIcon className="size-5" />}>
       {/* Which account this is. It answers "whose account am I in", which is
           this panel's whole job. */}
-      <Row label="Signed in" value={email} />
+      <Row label={t().settings.account.signedIn} value={email} />
       {loadError !== null ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {loadError}
         </p>
       ) : snapshot === null ? (
-        <p className="mt-2 text-sm text-muted">Loading…</p>
+        <p className="mt-2 text-sm text-muted">{t().common.loading}</p>
       ) : (
         <>
-          <Row label="Exercises available" value={snapshot.exerciseCount} />
-          <Row label="Muscles on the model" value={snapshot.muscleCount} />
+          <Row label={t().settings.account.exercises} value={snapshot.exerciseCount} />
+          <Row label={t().settings.account.muscles} value={snapshot.muscleCount} />
         </>
       )}
     </Panel>
@@ -788,7 +810,10 @@ function SyncPanel() {
   }, [syncPhase, syncBusy]);
 
   return (
-    <Panel title={`Sync${syncBusy ? ' · working…' : ''}`} icon={<SyncIcon className="size-5" />}>
+    <Panel
+      title={`${t().settings.sync.title}${syncBusy ? t().settings.sync.working : ''}`}
+      icon={<SyncIcon className="size-5" />}
+    >
       {/* The one message that is genuinely bad news: rows that exist here and
           never will on the server. Shown above the counts, not below. */}
       {alarm.lost !== null && (
@@ -805,25 +830,25 @@ function SyncPanel() {
         </p>
       )}
       <Row
-        label="Status"
+        label={t().settings.sync.status}
         value={
           syncPhase === 'synced'
-            ? 'Connected'
+            ? t().settings.sync.connected
             : syncPhase === 'connecting'
-              ? 'Connecting'
+              ? t().settings.sync.connecting
               : syncPhase === 'unconfigured'
-                ? 'Not set up'
-                : 'Offline'
+                ? t().settings.sync.notSetUp
+                : t().settings.sync.offline
         }
       />
       {/* These come from SQLite on this device, not from the network. Turning
           the network off and watching them stay is the whole demonstration. */}
-      <Row label="Exercises on device" value={local?.exercises ?? '—'} />
-      <Row label="Muscles on device" value={local?.muscles ?? '—'} />
-      <Row label="Equipment on device" value={local?.equipment ?? '—'} />
-      <Row label="Your profile rows" value={local?.profiles ?? '—'} />
-      <Row label="Workouts logged" value={local?.sessions ?? '—'} />
-      <Row label="Sets logged" value={local?.sets ?? '—'} />
+      <Row label={t().settings.sync.exercises} value={local?.exercises ?? '—'} />
+      <Row label={t().settings.sync.muscles} value={local?.muscles ?? '—'} />
+      <Row label={t().settings.sync.equipment} value={local?.equipment ?? '—'} />
+      <Row label={t().settings.sync.profiles} value={local?.profiles ?? '—'} />
+      <Row label={t().settings.sync.workouts} value={local?.sessions ?? '—'} />
+      <Row label={t().settings.sync.sets} value={local?.sets ?? '—'} />
       <p className="mt-3 max-w-prose text-sm text-secondary">
         {describeSyncPhase(syncPhase, lastSyncedAt)}
       </p>
@@ -846,25 +871,25 @@ function OfflineStorage() {
   }, []);
 
   return (
-    <Panel title="Offline storage" icon={<StorageIcon className="size-5" />}>
+    <Panel title={t().settings.storage.title} icon={<StorageIcon className="size-5" />}>
       {persistence === null ? (
-        <p className="text-sm text-muted">Checking…</p>
+        <p className="text-sm text-muted">{t().settings.storage.checking}</p>
       ) : (
         <>
           <Row
-            label="Persistent"
+            label={t().settings.storage.persistent}
             value={
               persistence.state === 'granted'
-                ? 'Granted'
+                ? t().settings.storage.granted
                 : persistence.state === 'denied'
-                  ? 'Refused'
+                  ? t().settings.storage.refused
                   : persistence.state === 'unsupported'
-                    ? 'Unsupported'
-                    : 'Unknown'
+                    ? t().settings.storage.unsupported
+                    : t().settings.storage.unknown
             }
           />
-          <Row label="Space available" value={formatBytes(persistence.quotaBytes)} />
-          <Row label="Used" value={formatBytes(persistence.usageBytes)} />
+          <Row label={t().settings.storage.space} value={formatBytes(persistence.quotaBytes)} />
+          <Row label={t().settings.storage.used} value={formatBytes(persistence.usageBytes)} />
           <p className="mt-3 max-w-prose text-sm text-secondary">
             {describePersistence(persistence.state)}
           </p>
@@ -878,12 +903,12 @@ function WhereThisIsRunning() {
   const platform = detectPlatform();
 
   return (
-    <Panel title="Where this is running" icon={<DeviceIcon className="size-5" />}>
-      <Row label="Shell" value={platform.shell} />
-      <Row label="Platform" value={platformLabel(platform.platform)} />
+    <Panel title={t().settings.device.title} icon={<DeviceIcon className="size-5" />}>
+      <Row label={t().settings.device.shell} value={platform.shell} />
+      <Row label={t().settings.device.platform} value={platformLabel(platform.platform)} />
       <Row
-        label="Pointer"
-        value={platform.hasFinePointer ? 'Fine — hover available' : 'Coarse — tap only'}
+        label={t().settings.device.pointer}
+        value={platform.hasFinePointer ? t().settings.device.fine : t().settings.device.coarse}
       />
     </Panel>
   );
@@ -921,18 +946,14 @@ function YourData() {
       console.error('Could not export the data.', cause);
       setState({
         step: 'failed',
-        message: 'The file could not be made. Nothing was changed — try again in a moment.',
+        message: t().settings.data.failed,
       });
     }
   };
 
   return (
-    <Panel title="Your data" icon={<DownloadIcon className="size-5" />}>
-      <p className="max-w-prose text-sm text-secondary">
-        Everything you have logged — workouts, sets, records, weigh-ins, goals and your profile — as
-        one file you can keep, or open in another app. It is made on this phone, so it works
-        offline.
-      </p>
+    <Panel title={t().settings.data.title} icon={<DownloadIcon className="size-5" />}>
+      <p className="max-w-prose text-sm text-secondary">{t().settings.data.intro}</p>
       <Button
         variant="secondary"
         fullWidth
@@ -943,7 +964,7 @@ function YourData() {
         }}
       >
         <DownloadIcon className="size-5" />
-        {state.step === 'working' ? 'Preparing your file…' : 'Download your data'}
+        {state.step === 'working' ? t().settings.data.preparing : t().settings.data.download}
       </Button>
       {state.step === 'done' && (
         <div role="status" className="mt-3 flex flex-col gap-2 text-sm">
@@ -974,7 +995,7 @@ function SignOut() {
           void signOut();
         }}
       >
-        Sign out
+        {t().common.signOut}
       </Button>
     </div>
   );
@@ -1011,13 +1032,9 @@ function DeleteAccount() {
         >
           <TrashIcon className="size-4" />
         </span>
-        Delete your account
+        {t().settings.deletion.title}
       </h3>
-      <p className="max-w-prose text-sm text-secondary">
-        Deletes your account and everything in it — every workout, set, record, weigh-in and goal —
-        from the server and from this phone. It cannot be undone. If you want a copy, download your
-        data first.
-      </p>
+      <p className="max-w-prose text-sm text-secondary">{t().settings.deletion.intro}</p>
 
       {!open ? (
         // Not the shared Button: its secondary variant sets its own text
@@ -1030,7 +1047,7 @@ function DeleteAccount() {
             setOpen(true);
           }}
         >
-          Delete my account…
+          {t().settings.deletion.open}
         </button>
       ) : (
         <form
@@ -1048,7 +1065,7 @@ function DeleteAccount() {
           }}
         >
           <TextField
-            label={`Type ${DELETE_CONFIRMATION_WORD} to confirm`}
+            label={t().settings.deletion.typeToConfirm(deleteConfirmationWord())}
             value={typed}
             autoComplete="off"
             autoCapitalize="characters"
@@ -1059,9 +1076,7 @@ function DeleteAccount() {
             }}
           />
           {!online && (
-            <p className="text-sm text-warning">
-              You need a connection. Your account is deleted on the server, not just on this phone.
-            </p>
+            <p className="text-sm text-warning">{t().settings.deletion.needConnection}</p>
           )}
           {failure !== null && (
             <p role="alert" className="text-sm text-destructive">
@@ -1069,7 +1084,7 @@ function DeleteAccount() {
             </p>
           )}
           <Button type="submit" variant="danger" fullWidth disabled={!confirmed || busy || !online}>
-            {busy ? 'Deleting…' : 'Delete my account for good'}
+            {busy ? t().settings.deletion.deleting : t().settings.deletion.confirm}
           </Button>
           <Button
             variant="ghost"
@@ -1081,7 +1096,7 @@ function DeleteAccount() {
               setFailure(null);
             }}
           >
-            Keep my account
+            {t().settings.deletion.keep}
           </Button>
         </form>
       )}
