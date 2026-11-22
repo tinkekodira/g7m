@@ -95,6 +95,19 @@ export const workout = {
     reps: 'Reps',
     saveRow: (title: string) => `Save ${title.toLowerCase()}`,
     markSkipped: 'Mark as skipped',
+    needsReps: 'Enter at least 1 rep to tick this set.',
+    needsTime: 'Enter at least 1 second to tick this set.',
+  },
+  /** Asked before a set that looks mistyped is logged. ADR-0182. */
+  check: {
+    title: 'Is that right?',
+    jump: (weight: string, best: string) =>
+      `${weight} is far above your best of ${best}. Logged, it becomes a personal record.`,
+    heavy: (weight: string) =>
+      `${weight} is more than almost anyone lifts. Logged, it becomes a personal record.`,
+    reps: (reps: number) => `${String(reps)} reps in one set is a lot. Check it before it counts.`,
+    confirm: 'Log it',
+    fix: 'Fix it',
   },
   /** The names a set row is read out by: "Set 2", "Warm-up 1", "Drop 2". */
   rows: {

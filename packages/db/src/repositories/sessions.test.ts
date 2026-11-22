@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SetTemplate } from '@g7m/core';
+import { MAX_SET_REPS, MAX_SET_WEIGHT_KG, type SetTemplate } from '@g7m/core';
 import { SessionRepository } from './sessions.js';
 import type { RepositoryContext } from './database.js';
 import { startSqliteHarness, type SqliteHarness } from './testing/sqlite-harness.js';
@@ -447,6 +447,19 @@ describe('logging sets', () => {
 
     await sessions.updateSet(added.id, { reps: 7.9 });
     expect((await sessions.setById(added.id))?.reps).toBe(7);
+  });
+
+  it('never stores a number the server would refuse (ADR-0182)', async () => {
+    // 10000 kg overflowed the column: saved here, refused there for good, and
+    // the server's older value synced back over the one typed.
+    const added = await sessions.addSet(exerciseId, template({ weightKg: 10_000, reps: 2 ** 40 }));
+    expect(added.weightKg).toBe(MAX_SET_WEIGHT_KG);
+    expect(added.reps).toBe(MAX_SET_REPS);
+
+    await sessions.completeSet(added.id, { weightKg: 9999, reps: 9999 });
+    const set = await sessions.setById(added.id);
+    expect(set?.weightKg).toBe(MAX_SET_WEIGHT_KG);
+    expect(set?.reps).toBe(MAX_SET_REPS);
   });
 
   it('leaves untouched fields alone on an update', async () => {

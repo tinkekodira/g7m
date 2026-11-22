@@ -14,7 +14,10 @@ What it does:
 - **Train.** Log a workout set by set — fast, one-handed, offline. Numbers are
   prefilled from last time, a rest timer runs between sets, a barbell set says
   which plates to load, and a new personal record is celebrated the moment it
-  happens. One tap builds the warm-up ramp up to today's working weight, every
+  happens. A weight far above your best asks "Is that right?" before it
+  counts, and a set needs at least one rep to be ticked
+  ([ADR-0182](./DECISIONS.md#adr-0182--a-set-holds-numbers-a-gym-can-produce-and-a-slipped-digit-is-asked-about)).
+  One tap builds the warm-up ramp up to today's working weight, every
   rung rounded to plates your gym actually has. Cardio machines are logged as
   bouts, with a timer and a calorie estimate
   ([ADR-0069](./DECISIONS.md#adr-0069--cardio-is-gym-machines-logged-as-bouts-inside-workouts)).

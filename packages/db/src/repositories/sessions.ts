@@ -25,6 +25,8 @@
 import {
   EMPTY_BOUT,
   canEditWorkout,
+  clampSetReps,
+  clampSetWeightKg,
   initialOrderKeys,
   isTopSet,
   orderKeyBetween,
@@ -691,7 +693,7 @@ export class SessionRepository {
       setType: template.setType,
       loadType: template.loadType,
       weightKg: weightFor(template.loadType, template.weightKg),
-      reps: Math.max(0, Math.trunc(template.reps)),
+      reps: clampSetReps(template.reps),
       rpe: null,
       isCompleted: false,
       completedAt: null,
@@ -733,7 +735,7 @@ export class SessionRepository {
       setType: template.setType,
       loadType: template.loadType,
       weightKg: weightFor(template.loadType, template.weightKg),
-      reps: Math.max(0, Math.trunc(template.reps)),
+      reps: clampSetReps(template.reps),
       rpe: null,
       isCompleted: false,
       completedAt: null,
@@ -781,7 +783,7 @@ export class SessionRepository {
         setType: template.setType,
         loadType: template.loadType,
         weightKg: weightFor(template.loadType, template.weightKg),
-        reps: Math.max(0, Math.trunc(template.reps)),
+        reps: clampSetReps(template.reps),
         rpe: null,
         isCompleted: false,
         completedAt: null,
@@ -822,7 +824,7 @@ export class SessionRepository {
         changes.setType ?? current.setType,
         loadType,
         weightKg,
-        Math.max(0, Math.trunc(changes.reps ?? current.reps)),
+        clampSetReps(changes.reps ?? current.reps),
         changes.rpe === undefined ? current.rpe : clampRpe(changes.rpe),
         ...boutValues(bout),
         toTimestamp(now()),
@@ -1136,7 +1138,7 @@ function setValues(removed: RemovedSet, userId: string, updatedAt: string): SqlV
     set.setType,
     set.loadType,
     weightFor(set.loadType, set.weightKg),
-    Math.max(0, Math.trunc(set.reps)),
+    clampSetReps(set.reps),
     clampRpe(set.rpe),
     writeBoolean(set.isCompleted),
     // Written from the row it was read from, so the pair cannot drift apart.
@@ -1189,11 +1191,14 @@ function within(value: number | null, min: number, max: number, decimals: number
   return rounded < min || rounded > max ? null : rounded;
 }
 
-/** A pure bodyweight set carries no external load, by definition and by CHECK. */
+/**
+ * A pure bodyweight set carries no external load, by definition and by CHECK.
+ * Anything else is capped at what the server stores (ADR-0182): a weight it
+ * refuses is a set that never syncs and is then overwritten from the server.
+ */
 function weightFor(loadType: LoadType, weightKg: number): number {
   if (loadType === 'bodyweight') return 0;
-  if (!Number.isFinite(weightKg) || weightKg < 0) return 0;
-  return Math.round(weightKg * 100) / 100;
+  return clampSetWeightKg(weightKg);
 }
 
 /** `rpe between 1 and 10` is a CHECK. Out of range means "not recorded". */

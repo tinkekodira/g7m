@@ -98,6 +98,19 @@ export const workout: Messages['workout'] = {
     reps: 'Rép.',
     saveRow: (title: string) => `Enregistrer ${lower(title)}`,
     markSkipped: 'Marquer comme passée',
+    needsReps: 'Saisis au moins 1 répétition pour valider cette série.',
+    needsTime: 'Saisis au moins 1 seconde pour valider cette série.',
+  },
+  check: {
+    title: 'C’est bien ça ?',
+    jump: (weight: string, best: string) =>
+      `${weight}, c’est bien au-dessus de ton record de ${best}. Enregistré, cela devient un record personnel.`,
+    heavy: (weight: string) =>
+      `${weight}, presque personne ne soulève autant. Enregistré, cela devient un record personnel.`,
+    reps: (reps: number) =>
+      `${String(reps)} répétitions dans une série, c’est beaucoup. Vérifie avant que cela compte.`,
+    confirm: 'Enregistrer',
+    fix: 'Corriger',
   },
   rows: {
     warmup: (number: number) => `Échauffement ${String(number)}`,

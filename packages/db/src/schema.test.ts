@@ -1,3 +1,4 @@
+import { MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '@g7m/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { migrationFiles, startHarness, type Harness } from './testing/pglite-harness.js';
 
@@ -404,6 +405,33 @@ describe('session sets', () => {
                 'assisted', 15, 12);
       `),
     ).resolves.toBeDefined();
+  });
+
+  /**
+   * The server's limits and the phone's clamp are the same line (ADR-0182).
+   * Stricter on the server, and a set the phone saved is refused for good on
+   * upload; looser, and the CHECK stops nothing the app would not.
+   */
+  it('stores exactly what the app clamps to, and nothing past it', async () => {
+    const { rows } = await h.db.query<{ user_id: string }>(
+      `select user_id from public.session_exercises limit 1`,
+    );
+    const user = rows[0]?.user_id ?? '';
+    const insert = (key: string, weightKg: number, reps: number): Promise<unknown> =>
+      h.db.exec(`
+        insert into public.session_sets
+          (user_id, session_exercise_id, order_key, weight_kg, reps)
+        values ('${user}', '22222222-2222-2222-2222-222222222222', '${key}',
+                ${String(weightKg)}, ${String(reps)});
+      `);
+
+    await expect(insert('a4', MAX_SET_WEIGHT_KG, MAX_SET_REPS)).resolves.toBeDefined();
+    await expect(insert('a5', MAX_SET_WEIGHT_KG + 0.01, 5)).rejects.toThrow(
+      /session_sets_weight_kg_plausible/,
+    );
+    await expect(insert('a6', 100, MAX_SET_REPS + 1)).rejects.toThrow(
+      /session_sets_reps_plausible/,
+    );
   });
 });
 

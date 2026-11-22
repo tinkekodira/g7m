@@ -23,6 +23,7 @@ export * from './load.js';
 export * from './rest.js';
 export * from './warmup.js';
 export * from './dropsets.js';
+export * from './set-sanity.js';
 export * from './superset.js';
 export * from './session-time.js';
 export * from './workout-edit.js';

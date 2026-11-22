@@ -98,6 +98,19 @@ export const workout: Messages['workout'] = {
     reps: 'Reps',
     saveRow: (title: string) => `Salvar ${lower(title)}`,
     markSkipped: 'Marcar como pulada',
+    needsReps: 'Digite pelo menos 1 repetição para marcar esta série.',
+    needsTime: 'Digite pelo menos 1 segundo para marcar esta série.',
+  },
+  check: {
+    title: 'Está certo?',
+    jump: (weight: string, best: string) =>
+      `${weight} está muito acima do seu recorde de ${best}. Se registrar, vira um recorde pessoal.`,
+    heavy: (weight: string) =>
+      `${weight} é mais do que quase ninguém levanta. Se registrar, vira um recorde pessoal.`,
+    reps: (reps: number) =>
+      `${String(reps)} repetições em uma série é muito. Confira antes que conte.`,
+    confirm: 'Registrar',
+    fix: 'Corrigir',
   },
   rows: {
     warmup: (number: number) => `Aquecimento ${String(number)}`,
