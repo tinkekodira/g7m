@@ -97,6 +97,19 @@ export const workout: Messages['workout'] = {
     reps: 'Wdh.',
     saveRow: (title: string) => `${title} speichern`,
     markSkipped: 'Als übersprungen markieren',
+    needsReps: 'Gib mindestens 1 Wiederholung ein, um den Satz abzuhaken.',
+    needsTime: 'Gib mindestens 1 Sekunde ein, um den Satz abzuhaken.',
+  },
+  check: {
+    title: 'Stimmt das?',
+    jump: (weight: string, best: string) =>
+      `${weight} liegt weit über deiner Bestleistung von ${best}. Gespeichert wird es zu einem persönlichen Rekord.`,
+    heavy: (weight: string) =>
+      `${weight} hebt kaum jemand. Gespeichert wird es zu einem persönlichen Rekord.`,
+    reps: (reps: number) =>
+      `${String(reps)} Wiederholungen in einem Satz sind sehr viele. Prüf die Zahl, bevor sie zählt.`,
+    confirm: 'Speichern',
+    fix: 'Korrigieren',
   },
   rows: {
     warmup: (number: number) => `Aufwärmsatz ${String(number)}`,

@@ -3,11 +3,15 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { Button, SegmentedControl, Stepper, TextField } from '@g7m/ui';
 import {
+  MAX_SET_REPS,
+  MAX_SET_WEIGHT_KG,
   WEIGHT_FIELD_MEANING,
   afterTick,
   bestsFrom,
   canAddWeight,
+  canComplete,
   canDrop,
+  doubtAboutSet,
   canEditWorkout,
   countSets,
   dropTemplate,
@@ -33,6 +37,7 @@ import {
   weightStepKg,
   type ExerciseBests,
   type LoadType,
+  type SetDoubt,
   type SetRecord,
   type SetTemplate,
   type UnitSystem,
@@ -1297,6 +1302,19 @@ function ExerciseCard({
   const [skipped, setSkipped] = useState(false);
 
   /**
+   * What a typed weight is weighed against before it is logged (ADR-0182):
+   * the best from finished sessions, raised by anything ticked today, so a
+   * jump confirmed on one set is not asked about again on the next.
+   */
+  const bestKg = useMemo(() => {
+    const ticked = block.sets
+      .filter((set) => set.isCompleted && set.loadType !== 'assisted')
+      .map((set) => set.weightKg);
+    const top = Math.max(block.bests.maxWeightKg ?? 0, ...ticked);
+    return top > 0 ? top : null;
+  }, [block.bests.maxWeightKg, block.sets]);
+
+  /**
    * The ramp up to today's working weight.
    *
    * Read off the first working set — but off what is *in the field*, not off
@@ -1436,6 +1454,7 @@ function ExerciseCard({
                       }
                     : {})}
                   set={set}
+                  bestKg={bestKg}
                   record={records.get(set.id) ?? null}
                   exerciseName={name}
                   isTimeBased={isTimeBased}
@@ -1642,6 +1661,7 @@ function SetRow({
   unitSystem,
   busy,
   onDraftWeight,
+  bestKg,
   onComplete,
   onUncomplete,
   onSave,
@@ -1662,6 +1682,8 @@ function SetRow({
    */
   readonly onDraftWeight?: (kg: number) => void;
   readonly set: SessionSet;
+  /** The lift's heaviest so far, for the "Is that right?" question. ADR-0182. */
+  readonly bestKg: number | null;
   readonly record: SetRecord | null;
   readonly exerciseName: string;
   readonly isTimeBased: boolean;
@@ -1711,6 +1733,46 @@ function SetRow({
     weightKg: loadType === 'bodyweight' ? 0 : fromDisplayWeight(weight, unitSystem),
     reps,
     loadType,
+  };
+
+  /**
+   * A set is checked on its way to counting (ADR-0182): ticked, or saved once
+   * it already has been. A set of nothing is refused with a line saying why;
+   * a number that looks like a slipped digit is asked about, once, and logged
+   * as typed if the answer is yes. Saving a set not yet done is a draft, and
+   * goes straight through.
+   */
+  const [doubt, setDoubt] = useState<SetDoubt | null>(null);
+  /** What "Log it" does: the tick or save that was asked about, as it was. */
+  const pending = useRef<(() => void) | null>(null);
+  const [refusedEmpty, setRefusedEmpty] = useState(false);
+  // Gone as soon as there is a rep to count, without another tap.
+  const showEmpty = refusedEmpty && !canComplete(reps);
+  const counted = (then: (edit: SetEdit) => void): void => {
+    if (!canComplete(reps)) {
+      setRefusedEmpty(true);
+      return;
+    }
+    const edit = changes;
+    const found = doubtAboutSet({
+      weightKg: edit.weightKg,
+      reps: edit.reps,
+      loadType: edit.loadType,
+      isTimeBased,
+      bestKg,
+    });
+    if (found === null) {
+      then(edit);
+      return;
+    }
+    pending.current = () => {
+      then(edit);
+    };
+    setDoubt(found);
+  };
+  /** The tick on an open row: done, or — on a done set being edited — saved. */
+  const tickRow = (): void => {
+    counted(set.isCompleted ? onSave : onComplete);
   };
 
   const line = record === null ? null : describeRecord(record, exerciseName, unitSystem);
@@ -1806,7 +1868,7 @@ function SetRow({
               disabled={busy}
               onClick={() => {
                 if (set.isCompleted) onUncomplete();
-                else onComplete(changes);
+                else counted(onComplete);
               }}
               className={
                 set.isCompleted
@@ -1906,6 +1968,9 @@ function SetRow({
                     suffix={unitSystem === 'imperial' ? 'lb' : 'kg'}
                     value={weight}
                     step={stepDisplay}
+                    // The most a set can store, in the lifter's own unit, so a
+                    // field never holds a number the save would change.
+                    max={toDisplayWeight(MAX_SET_WEIGHT_KG, unitSystem).value}
                     decimals={1}
                     disabled={busy}
                     onChange={setWeight}
@@ -1920,6 +1985,7 @@ function SetRow({
                       value={Math.floor(reps / 60)}
                       step={1}
                       min={0}
+                      max={Math.floor(MAX_SET_REPS / 60)}
                       disabled={busy}
                       onChange={(minutes) => {
                         setReps(minutes * 60 + (reps % 60));
@@ -1944,6 +2010,7 @@ function SetRow({
                     value={reps}
                     step={1}
                     min={0}
+                    max={MAX_SET_REPS}
                     disabled={busy}
                     onChange={setReps}
                   />
@@ -1956,10 +2023,7 @@ function SetRow({
               aria-label={editing && set.isCompleted ? t().workout.set.saveRow(title) : tick}
               aria-pressed={set.isCompleted}
               disabled={busy}
-              onClick={() => {
-                if (set.isCompleted) onSave(changes);
-                else onComplete(changes);
-              }}
+              onClick={tickRow}
               className="flex w-tap shrink-0 items-center justify-center self-stretch rounded-control border border-strong text-2xl text-secondary active:bg-elevated"
             >
               ✓
@@ -1990,7 +2054,8 @@ function SetRow({
               type="button"
               disabled={busy}
               onClick={() => {
-                onSave(changes);
+                if (set.isCompleted) counted(onSave);
+                else onSave(changes);
               }}
               className="min-h-tap text-xs text-muted underline-offset-4 hover:underline"
             >
@@ -2007,8 +2072,49 @@ function SetRow({
           </div>
         </div>
       )}
+
+      {showEmpty && (
+        <p role="alert" className="mt-1 text-xs text-destructive">
+          {isTimeBased ? t().workout.set.needsTime : t().workout.set.needsReps}
+        </p>
+      )}
+
+      {doubt !== null && (
+        <ConfirmDialog
+          title={t().workout.check.title}
+          detail={describeDoubt(doubt, unitSystem)}
+          confirmLabel={t().workout.check.confirm}
+          cancelLabel={t().workout.check.fix}
+          tone="primary"
+          onCancel={() => {
+            pending.current = null;
+            setDoubt(null);
+          }}
+          onConfirm={() => {
+            const go = pending.current;
+            pending.current = null;
+            setDoubt(null);
+            go?.();
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/** The sentence under "Is that right?", in the lifter's own unit. */
+function describeDoubt(doubt: SetDoubt, unitSystem: UnitSystem): string {
+  switch (doubt.kind) {
+    case 'jump':
+      return t().workout.check.jump(
+        showWeight(doubt.weightKg, unitSystem),
+        showWeight(doubt.bestKg, unitSystem),
+      );
+    case 'heavy':
+      return t().workout.check.heavy(showWeight(doubt.weightKg, unitSystem));
+    case 'reps':
+      return t().workout.check.reps(doubt.reps);
+  }
 }
 
 /**

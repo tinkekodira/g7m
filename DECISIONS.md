@@ -9985,3 +9985,62 @@ native speakers. Treat corrections from native speakers as ordinary copy fixes.
 Rollout: apply `20261121120000_profile_language.sql` with `npx supabase db
 push`, then deploy `powersync/sync-rules.yaml` (it now syncs
 `profiles.language`), then release the app.
+
+---
+
+## ADR-0182 — A set holds numbers a gym can produce, and a slipped digit is asked about
+
+**Status:** accepted · **Date:** 2026-11-22
+
+An audit before the Android release found three ways a set's numbers went
+wrong, all from ordinary typing:
+
+- **A slipped zero became a record.** 1000 kg on a bench whose best was 100 was
+  ticked without a word. It became a personal record, unlocked four
+  achievements, earned a level's worth of XP and put the lifter first on every
+  friend's leaderboard by millions of kilograms. All of those read straight
+  from `session_sets`, so one typo reached everyone.
+- **A set of nothing counted.** 0 reps could be ticked. It counted as a working
+  set in the recap and the muscle map, and the next set was prefilled with
+  0 reps.
+- **The phone stored what the server refused.** `weight_kg` is
+  `numeric(6, 2)`. 10000 kg was saved on the phone, refused on upload with
+  `22003` (classed as permanent and discarded, as it should be), and then the
+  server's older value synced back over what was typed. A red "did not reach
+  the server" banner stayed until the app restarted.
+
+**Hard limits, the same on both sides.** `MAX_SET_WEIGHT_KG = 1000` and
+`MAX_SET_REPS = 3600` (`packages/core/src/set-sanity.ts`). A thousand
+kilograms is past any loaded leg press in a commercial gym, and 3600 covers an
+hour of a timed hold, since `reps` carries seconds for those. The steppers stop
+there, every write in `SessionRepository` clamps there, and migration
+`20261122120000_plausible_set_values.sql` adds matching CHECKs to
+`session_sets`. They must stay equal: a server stricter than the phone is
+exactly the refused-upload failure above, and `schema.test.ts` fails if they
+drift. The CHECKs are `not valid`, so stored rows are left alone and the push
+cannot fail on one. The phone's clamp rewrites an old out-of-range value the
+next time that set is edited.
+
+**A typo is a question, not a limit.** Ticking a set, or saving a set already
+ticked, asks "Is that right?" when the weight is more than 1.5× the lift's
+heaviest and at least 20 kg over it, or 500 kg or more with no history, or
+more than 100 reps (timed holds excepted). The heaviest counts finished
+sessions and today's ticked sets, so a jump confirmed once is not asked about
+again on the next set. "Log it" keeps exactly what was typed; "Fix it" leaves
+the set open. Assisted and plain bodyweight sets are never weighed against a
+best: more assistance is the lift getting easier, never a record. Rejected:
+refusing such numbers outright, because a real 60% jump happens, and the
+lifter, not the app, knows which it was. Also rejected: a server-side filter
+on the leaderboard, which would hide a confirmed number from friends while the
+lifter's own screens showed it.
+
+**Zero cannot be ticked.** The tick says "Enter at least 1 rep to tick this
+set" (or second, for a hold) instead, and the line goes as soon as there is
+one. Saving an unticked set is a draft and is not checked.
+
+`ConfirmDialog` gained a non-destructive tone, because a red "Log it" made the
+lifter's own set look like the mistake. Its Cancel, which was hard-coded
+English, now comes from the active language.
+
+Rollout: apply `20261122120000_plausible_set_values.sql` with
+`npx supabase db push`, then release the app. No sync-rules change.

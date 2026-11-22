@@ -1,3 +1,4 @@
+import { t } from '@g7m/i18n';
 import { useEffect, useId, useRef } from 'react';
 import { Button } from '@g7m/ui';
 
@@ -17,12 +18,22 @@ export function ConfirmDialog({
   title,
   detail,
   confirmLabel,
+  cancelLabel,
+  tone = 'danger',
   onConfirm,
   onCancel,
 }: {
   readonly title: string;
   readonly detail: string;
   readonly confirmLabel: string;
+  /** Defaults to the app's own Cancel, in whatever language it is speaking. */
+  readonly cancelLabel?: string;
+  /**
+   * Red for an answer that destroys something. A question that only checks a
+   * number before it is kept — "Is that right?" — is not a warning, and a red
+   * "Log it" would make the lifter's own set look like the mistake.
+   */
+  readonly tone?: 'danger' | 'primary';
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }) {
@@ -66,9 +77,9 @@ export function ConfirmDialog({
         {/* Cancel first in the source, so it is the one that takes focus. */}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button variant="secondary" onClick={onCancel}>
-            Cancel
+            {cancelLabel ?? t().common.cancel}
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
+          <Button variant={tone} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>
