@@ -14,6 +14,7 @@
  * See DECISIONS.md ADR-0026.
  */
 import { t } from '@g7m/i18n';
+import { isNative } from './native/shell.js';
 
 export type PersistenceState =
   /** The browser guarantees the data until the user clears it explicitly. */
@@ -72,6 +73,16 @@ async function within<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> 
 export async function ensurePersistentStorage(
   storage: StorageManager | undefined = globalThis.navigator?.storage,
   timeoutMs: number = PERSISTENCE_TIMEOUT_MS,
+  /**
+   * Running inside the Android or iOS app rather than a browser.
+   *
+   * The app's WebView keeps its data in the app's own private storage, which
+   * the system clears on uninstall or "Clear data" and not otherwise. Android's
+   * WebView still answers `persist()` with `false` — it has no prompt to ask
+   * with — and Settings used to pass that on as "Refused: this device may
+   * clear your offline data", a warning about a browser the app is not in.
+   */
+  native = false,
 ): Promise<PersistenceReport> {
   if (storage === undefined || typeof storage.persist !== 'function') {
     return { state: 'unsupported', quotaBytes: null, usageBytes: null };
@@ -97,7 +108,7 @@ export async function ensurePersistentStorage(
     // "could not check" instead of as a refusal it never made.
     const granted = await within<boolean | null>(storage.persist(), timeoutMs, null);
     if (granted === null) return { state: 'error', quotaBytes, usageBytes };
-    return { state: granted ? 'granted' : 'denied', quotaBytes, usageBytes };
+    return { state: granted || native ? 'granted' : 'denied', quotaBytes, usageBytes };
   } catch {
     return { state: 'error', quotaBytes, usageBytes };
   }
@@ -136,6 +147,6 @@ export function describePersistence(state: PersistenceState): string {
 let pending: Promise<PersistenceReport> | null = null;
 
 export function requestPersistenceOnce(): Promise<PersistenceReport> {
-  pending ??= ensurePersistentStorage();
+  pending ??= ensurePersistentStorage(undefined, PERSISTENCE_TIMEOUT_MS, isNative());
   return pending;
 }

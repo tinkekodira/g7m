@@ -20,6 +20,7 @@
 import { detectPlatform } from '../../platform.js';
 import type { Haptic } from '../haptics.js';
 import type { Theme } from '../theme.js';
+import { openLayer } from './layers.js';
 import {
   backAction,
   nativeHaptic,
@@ -135,7 +136,7 @@ export function listenForBackButton(act: (action: BackAction) => void): () => vo
   void tryNative('back button', async () => {
     const { App } = await import('@capacitor/app');
     const handle = await App.addListener('backButton', ({ canGoBack }) => {
-      act(backAction(globalThis.location.hash, canGoBack));
+      act(backAction(globalThis.location.hash, canGoBack, openLayer() !== null));
     });
     if (stopped) {
       await handle.remove();

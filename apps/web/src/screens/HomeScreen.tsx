@@ -117,7 +117,10 @@ export function HomeScreen() {
           without them, and a screen reader spells a foreign word out letter by
           letter.
         */}
-        <h1 className="min-w-0">
+        {/* Two lines' height while the profile is read — hello and a name,
+            which onboarding asks everybody for — so the name arriving does
+            not push the whole screen 26px down under a thumb. */}
+        <h1 className={cx('min-w-0', profile.loading && 'min-h-[4.625rem]')}>
           {name === null ? (
             <span
               lang={greeting.language}
@@ -152,8 +155,6 @@ export function HomeScreen() {
 
       {open !== null && <InProgress open={open} />}
 
-      <TourInvitation />
-
       <Suspense
         fallback={
           <section aria-label={t().home.thisMonth}>
@@ -186,6 +187,11 @@ export function HomeScreen() {
         </ul>
         <WriteError error={error} />
       </section>
+
+      {/* Under the ways in, not above them. Its code arrives after the first
+          paint, and above Quick access it pushed the Start tile 192px down,
+          under the tab bar, a moment after the screen appeared (ADR-0183). */}
+      <TourInvitation />
 
       {/* The heads-up ADR-0032 asked for, under the ways in: the month and
           Quick access come first, and the note leads straight to the review

@@ -3,6 +3,7 @@ import {
   describePersistence,
   ensurePersistentStorage,
   formatBytes,
+  PERSISTENCE_TIMEOUT_MS,
   type PersistenceState,
 } from './storage.js';
 
@@ -59,6 +60,16 @@ describe('ensurePersistentStorage', () => {
   it('reports a refusal as denied rather than pretending it succeeded', async () => {
     const report = await ensurePersistentStorage(fakeStorage({ persisted: false, persist: false }));
     expect(report.state).toBe('denied');
+  });
+
+  /**
+   * Android's WebView refuses every time — it has nobody to ask — while the
+   * app's data sits in app-private storage the system does not evict.
+   */
+  it('does not report the app’s own WebView refusing as a risk', async () => {
+    const storage = fakeStorage({ persisted: false, persist: false });
+    const report = await ensurePersistentStorage(storage, PERSISTENCE_TIMEOUT_MS, true);
+    expect(report.state).toBe('granted');
   });
 
   it('reports error rather than throwing when the engine throws', async () => {

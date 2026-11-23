@@ -10044,3 +10044,77 @@ English, now comes from the active language.
 
 Rollout: apply `20261122120000_plausible_set_values.sql` with
 `npx supabase db push`, then release the app. No sync-rules change.
+
+## ADR-0183 — The app behaves like an Android app on a budget Android phone
+
+**Status:** accepted · **Date:** 2026-11-23
+
+The pre-Android audit drove the production build at 393×851 with the CPU
+slowed six times, which is roughly a budget Android. Six things that were fine
+on a laptop were wrong on the phone, or did nothing where the lifter plainly
+asked for something.
+
+**The search box shows what was typed.** `ExerciseLibraryScreen` read the box's
+value back from the URL, which the router writes in a transition. On the slow
+phone each key arrived while the last was still being undone, and "bench
+press" became "bnhpress". The box now has its own state; the URL, and the list
+read from it, follow a moment later. Every filter write goes through `update`,
+which sets both, so "Clear filters" still empties the box.
+`e2e/tests/android-ux.spec.ts` types at 150 ms a key under 6× throttling, and
+fails on the old code.
+
+**Back closes the dialog on top, and leaves a workout for Home.** Android's back
+gesture went past an open dialog or sheet, and did nothing at all on the
+workout screen. Now (`backAction` in `shell-rules.ts`): an open
+`dialog[open]` or `[aria-modal="true"]` is dismissed first; on `/workout` the
+app goes Home with the workout still running (Milan's call over "do nothing"
+and "ask first"); elsewhere history, then minimise, as before. The dialog is
+dismissed the way Escape dismisses it, a `cancel` event for a native
+`<dialog>` and an Escape keydown otherwise (`lib/native/layers.ts`), because
+every dialog already handles Escape for keyboards. Rejected: a registry every
+dialog joins, which is a second list to keep in step with the first. Home is
+reached with `location.replace('#/')`, so back from Home does not walk
+straight back into the workout. Checked in the built app: the start dialog
+and the weigh-in sheet close, and the replace keeps history at its length.
+
+**Storage is not reported as at risk inside the app.** Android's WebView answers
+`persist()` with `false`, since it has no prompt to ask with, and Settings
+showed "Persistent: Refused… may clear your offline data". The app's WebView
+data is app-private storage, which the system clears on uninstall or "Clear
+data" and not otherwise, so a native build reports `granted`. A browser still
+reports exactly what it was told. Not yet seen on a device.
+
+**Home does not move under the thumb.** At first paint on the slow phone,
+Quick access moved down three times: 192 px when the tour invitation's chunk
+arrived above it, 67 px when the month cards replaced a skeleton shorter than
+they are (and missing their dots row), and 26 px when the profile's name added
+the greeting's second line. The Start tile ended up under the tab bar, and the
+first tap missed. The invitation now sits below Quick access, the skeleton and
+the card frame share `min-h-[21.25rem]` with a 24 px row for the dots, and
+the greeting keeps two lines' height while the profile is read. Measured
+after: Quick access at the same place from first paint, with the Start tile
+clear of the tab bar.
+
+**Picking an exercise with no workout running starts one.** The picker,
+reached by Back after Finish or with a workout closed as abandoned, ignored
+the tap. It now starts a blank workout (the same `startWorkout` Home uses, at
+the usual gym, without the chooser, because the lifter has already chosen
+what to do) and adds the exercise. A past workout being edited that has since
+been deleted says "That record no longer exists." instead.
+
+**Finish with nothing ticked discards.** An untouched workout was saved as an
+empty session: hidden by the calendar, but synced and kept. With no set
+ticked, warm-ups included, Finish now does what Discard does, without the
+question, because there is nothing in it to lose. There is no "workout saved"
+buzz.
+
+**A barbell lift with no history starts at the empty bar.** Onboarding says the
+date of birth is used to pick sensible starting weights, and the first squat
+was prefilled at 0 kg. `nextSetTemplate` takes a `startKg`, used only with no
+set today or last time and only for an external load. Every caller passes
+`emptyBarKg(unitSystem)`, which is 20 kg, or 45 lb stored as 20.41 kg, for a
+lift whose equipment includes `barbell`: the logger's Add set and Add round, a
+routine started, and a generated plan's first time. Milan chose this over
+rewording the onboarding line.
+
+Rollout: app release only. No migration, no sync-rules change.

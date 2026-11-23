@@ -6,6 +6,7 @@ import {
   nativeHaptic,
   statusBarBackground,
   statusBarStyle,
+  topLayer,
   wakeLockBackend,
 } from './shell-rules.js';
 
@@ -42,10 +43,41 @@ describe('the Android back button', () => {
     expect(backAction('', false)).toBe('minimize');
   });
 
-  /** A back swipe mid-set must not be a way to lose the workout screen. */
-  it('does nothing inside a workout', () => {
-    expect(backAction('#/workout', true)).toBe('ignore');
-    expect(backAction('#/workout?rest=1', false)).toBe('ignore');
+  /** The workout keeps running; Home's strip is the way back into it. */
+  it('goes Home from a workout rather than doing nothing', () => {
+    expect(backAction('#/workout', true)).toBe('home');
+    expect(backAction('#/workout?rest=1', false)).toBe('home');
+    expect(backAction('#/workout/abc-123', true)).toBe('home');
+  });
+
+  it('does not mistake a route that only starts with "workout" for one', () => {
+    expect(backAction('#/workouts', true)).toBe('back');
+  });
+
+  /** The dialog goes first, wherever it is — in a workout too. */
+  it('closes an open dialog before anything else', () => {
+    expect(backAction('#/workout', true, true)).toBe('dismiss');
+    expect(backAction('#/', false, true)).toBe('dismiss');
+    expect(backAction('#/progress', true, true)).toBe('dismiss');
+  });
+});
+
+describe('the layer back closes', () => {
+  it('is the last modal dialog, which sits in the top layer above the page', () => {
+    const sheet = { id: 'sheet', topLayer: false };
+    const dialog = { id: 'dialog', topLayer: true };
+    const later = { id: 'later', topLayer: false };
+    expect(topLayer([sheet, dialog, later])).toBe(dialog);
+  });
+
+  it('is the last one drawn with no dialog among them', () => {
+    const first = { id: 'first', topLayer: false };
+    const second = { id: 'second', topLayer: false };
+    expect(topLayer([first, second])).toBe(second);
+  });
+
+  it('is nothing with nothing open', () => {
+    expect(topLayer([])).toBeNull();
   });
 });
 

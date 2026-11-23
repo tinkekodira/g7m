@@ -11,6 +11,8 @@
  * rule is the interesting part and the query is not.
  */
 import { isTopSet, type LoadType, type SetType } from './load.js';
+import { KG_KIT, LB_KIT } from './plates.js';
+import { fromDisplayWeight, type UnitSystem } from './units.js';
 
 export interface SetTemplate {
   readonly weightKg: number;
@@ -28,6 +30,23 @@ export interface PrefillContext {
   readonly repLow: number;
   /** The exercise's natural load type — bodyweight for a pull-up. */
   readonly loadType: LoadType;
+  /**
+   * Where the load starts for an exercise never done before: the empty bar
+   * for a barbell lift (`emptyBarKg`), nothing otherwise. Used only when
+   * there is no set today or last time to go on.
+   */
+  readonly startKg?: number;
+}
+
+/**
+ * The empty bar, in kilograms, in the lifter's own unit: 20 kg, or 45 lb.
+ *
+ * A new lifter's first barbell set used to be prefilled at 0 — a weight no
+ * squat has ever been done with — while onboarding promised sensible starting
+ * weights. The bar is the one number that is right for everybody holding it.
+ */
+export function emptyBarKg(unitSystem: UnitSystem): number {
+  return unitSystem === 'imperial' ? fromDisplayWeight(LB_KIT.bar, 'imperial') : KG_KIT.bar;
 }
 
 /**
@@ -84,7 +103,9 @@ export function nextSetTemplate(context: PrefillContext): SetTemplate {
   if (openingSet !== undefined) return asWorking(openingSet);
 
   return {
-    weightKg: 0,
+    // An external load only: a pull-up's number is what is added to the body,
+    // and starting that at 20 kg would be a weighted pull-up nobody asked for.
+    weightKg: context.loadType === 'external' ? (context.startKg ?? 0) : 0,
     reps: Math.max(1, Math.round(context.repLow)),
     loadType: context.loadType,
     setType: 'working',
