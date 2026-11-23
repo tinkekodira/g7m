@@ -32,7 +32,10 @@ describe('matchLocale', () => {
 });
 
 describe('activateLocale', () => {
-  it('loads every language with its own words and catalogue', async () => {
+  // Six languages, each a dynamic import of its words and its catalogue: under
+  // a second in a run of its own, but past the 5 s default while the rest of
+  // the workspace's tests compete for the same cores.
+  it('loads every language with its own words and catalogue', { timeout: 30_000 }, async () => {
     const saves = new Set<string>();
     for (const locale of LOCALES) {
       await activateLocale(locale);

@@ -158,12 +158,20 @@ for (const units of ['metric', 'imperial']) {
     await page.screenshot({ path: info.outputPath(`added-weight-${units}.png`), fullPage: true });
     await context.setOffline(true);
     await page.getByRole('button', { name: 'Complete set 1', exact: true }).click();
+    // Set one shown done, and set two's own switch. Asked for by role alone, on
+    // a slow machine the switch found set one's, still open for the moment
+    // before its tick re-rendered it and before set two existed: the tap
+    // switched set one, and set two was then logged with the added weight it
+    // was prefilled with.
+    await expect(page.getByRole('button', { name: 'Undo set 1', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Add set', exact: true }).click();
-    await expect(page.getByRole('radio', { name: 'Added weight', exact: true })).toBeChecked();
+    const second = page.getByRole('radiogroup', { name: 'Set 2 load', exact: true });
+    await expect(second.getByRole('radio', { name: 'Added weight', exact: true })).toBeChecked();
     await expect(page.getByRole('textbox', { name: /^Added/ })).toHaveValue(
       units === 'metric' ? '10.0' : '22.0',
     );
-    await page.getByRole('radio', { name: 'Bodyweight', exact: true }).click();
+    await second.getByRole('radio', { name: 'Bodyweight', exact: true }).click();
+    await expect(second.getByRole('radio', { name: 'Bodyweight', exact: true })).toBeChecked();
     await expect(page.getByRole('textbox', { name: /^Added/ })).toHaveCount(0);
     await page.getByRole('button', { name: 'Complete set 2', exact: true }).click();
     await context.setOffline(false);
