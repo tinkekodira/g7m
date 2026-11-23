@@ -13,7 +13,6 @@ const good = {
   VITE_SUPABASE_URL: 'https://abcdefghijklm.supabase.co',
   VITE_SUPABASE_PUBLISHABLE_KEY: 'a-key-goes-here-not-this',
   VITE_POWERSYNC_URL: 'https://abcdefghijklm.powersync.journeyapps.com',
-  VITE_FEATURE_CLAUDE_GENERATOR: 'false',
 };
 
 describe('checkEnv', () => {
@@ -24,7 +23,6 @@ describe('checkEnv', () => {
       VITE_SUPABASE_URL: 'https://abcdefghijklm.supabase.co',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'a-key-goes-here-not-this',
       VITE_POWERSYNC_URL: 'https://abcdefghijklm.powersync.journeyapps.com',
-      VITE_FEATURE_CLAUDE_GENERATOR: false,
     });
   });
 
@@ -35,14 +33,6 @@ describe('checkEnv', () => {
   it('ignores everything it was not asked about', () => {
     const { env } = checkEnv({ ...good, MODE: 'production', DEV: false, PROD: true });
     expect(env?.VITE_SUPABASE_URL).toBe('https://abcdefghijklm.supabase.co');
-  });
-
-  it('reads the feature flag as a boolean, and defaults it to off', () => {
-    expect(checkEnv({ ...good, VITE_FEATURE_CLAUDE_GENERATOR: 'true' }).env).toMatchObject({
-      VITE_FEATURE_CLAUDE_GENERATOR: true,
-    });
-    const { VITE_FEATURE_CLAUDE_GENERATOR: _omitted, ...without } = good;
-    expect(checkEnv(without).env).toMatchObject({ VITE_FEATURE_CLAUDE_GENERATOR: false });
   });
 
   it('defaults the PowerSync URL to empty, since Phase 2 may not exist yet', () => {
@@ -80,12 +70,6 @@ describe('checkEnv', () => {
     expect(problems).toEqual([
       { key: 'VITE_SUPABASE_PUBLISHABLE_KEY', message: 'looks too short to be a real key' },
     ]);
-  });
-
-  it('rejects a flag that is neither true nor false', () => {
-    const { problems } = checkEnv({ ...good, VITE_FEATURE_CLAUDE_GENERATOR: 'yes' });
-    expect(problems).toHaveLength(1);
-    expect(problems[0]?.key).toBe('VITE_FEATURE_CLAUDE_GENERATOR');
   });
 
   /**

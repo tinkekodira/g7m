@@ -64,20 +64,18 @@ export class PlannerRepository {
   ) {}
 
   /**
-   * Every exercise the user could actually be asked to do.
-   *
-   * Restricted to what their equipment allows — prescribing a barbell row to
-   * somebody training at home with dumbbells is the fastest way to make a
-   * generated plan useless. A user who has recorded no equipment is treated as
-   * having a full gym rather than as having nothing, because an empty plan is
-   * a worse first impression than an aspirational one.
+   * Every exercise the user could be asked to do: the whole active strength
+   * catalogue, as if they train in a full gym. Nothing records what equipment
+   * somebody has (ADR-0185), and an empty plan is a worse first impression
+   * than an aspirational one.
    *
    * The muscle groups are those of the *primary* movers only. Stabilisers
    * belong in volume attribution, where a share of a set is the right answer,
    * and not here, where "this exercise trains your back" has to mean it.
    */
   async candidates(): Promise<PlannableExercise[]> {
-    const { userId } = resolveContext(this.context);
+    // The catalogue is shared, but a plan is still only for a signed-in user.
+    resolveContext(this.context);
 
     const rows = await this.db.getAll<RawRow>(
       `SELECT e.id, e.slug, e.name, e.mechanic, e.is_time_based, e.popularity_rank,
@@ -98,16 +96,8 @@ export class PlannerRepository {
           -- Cardio has no muscle rows and so never reaches the join above, but
           -- the plan is strength only by decision (ADR-0069), not by accident.
           AND e.cardio_kind IS NULL
-          AND NOT EXISTS (
-                SELECT 1 FROM exercise_equipment xe
-                 WHERE xe.exercise_id = e.id
-                   AND EXISTS (SELECT 1 FROM user_equipment WHERE user_id = ?)
-                   AND xe.equipment_id NOT IN (
-                         SELECT equipment_id FROM user_equipment WHERE user_id = ?)
-              )
         GROUP BY e.id
         ORDER BY e.popularity_rank ASC`,
-      [userId, userId],
     );
 
     return rows.map(toPlannable);
@@ -181,23 +171,6 @@ export class PlannerRepository {
       if (slug !== '') totals.set(slug, readNumber(row, 'sets', 0));
     }
     return totals;
-  }
-
-  /**
-   * Sessions started since `from`, which is what picks the next focus.
-   *
-   * Counts started sessions, not finished ones. Somebody mid-workout has
-   * already used today's slot, and offering them the same focus again the
-   * moment they finish would be the app losing its place.
-   */
-  async sessionCountSince(from: Date): Promise<number> {
-    const { userId } = resolveContext(this.context);
-    const row = await this.db.getOptional<RawRow>(
-      `SELECT count(*) AS sessions FROM workout_sessions
-        WHERE user_id = ? AND ${instant('started_at')} >= ${INSTANT_PARAMETER}`,
-      [userId, toTimestamp(from)],
-    );
-    return row === null ? 0 : readNumber(row, 'sessions', 0);
   }
 }
 

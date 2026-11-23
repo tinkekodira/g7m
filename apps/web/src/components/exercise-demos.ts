@@ -240,9 +240,8 @@ import backExtensionTransparentPoster from '../assets/demos/back-extension-poste
  * 2.33–2.9 s depending on the lift, and seamless: the last frame leads into
  * the first. The player takes each file's own length and assumes none.
  *
- * Unlike `equipment-art.ts` this is one entry per exercise, not per piece of
- * kit: a loop shows a movement, and two exercises on one bench are two
- * different movements. Adding one is four files in `assets/demos/` and one
+ * One entry per exercise, not per piece of kit: a loop shows a movement, and
+ * two exercises on one bench are two different movements. Adding one is four files in `assets/demos/` and one
  * entry here. The files are named after the app's slug, not 3d-models' file
  * name: its `dumbbell_bicep_curl` is this catalogue's `dumbbell-curl`, and its
  * `abductor_machine` and `adductor_machine` are `hip-abduction-machine` and

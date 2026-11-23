@@ -23,8 +23,6 @@ beforeEach(async () => {
   nextId = 0;
   await db.seed('exercises', { id: 'bench', slug: 'bench-press', name: 'Bench Press' });
   await db.seed('exercises', { id: 'squat', slug: 'back-squat', name: 'Back Squat' });
-  await db.seed('equipment', { id: 'bar', slug: 'barbell', name: 'Barbell' });
-  await db.seed('equipment', { id: 'rings', slug: 'rings', name: 'Gymnastic rings' });
 });
 
 afterEach(() => {
@@ -64,8 +62,6 @@ describe('AccountRepository.exportData', () => {
     await benchDay('me');
     await benchDay('someone-else');
     await new BodyMetricsRepository(db, context('me')).record({ weightKg: 81 });
-    await db.seed('user_equipment', { id: 'ue-1', user_id: 'me', equipment_id: 'bar' });
-    await db.seed('user_equipment', { id: 'ue-2', user_id: 'someone-else', equipment_id: 'rings' });
 
     const { tables } = await new AccountRepository(db, context('me')).exportData();
 
@@ -73,7 +69,6 @@ describe('AccountRepository.exportData', () => {
     expect(tables.session_exercises).toHaveLength(1);
     expect(tables.session_sets).toHaveLength(1);
     expect(tables.body_metrics).toHaveLength(1);
-    expect(tables.user_equipment).toHaveLength(1);
     for (const table of USER_TABLE_NAMES) {
       for (const row of tables[table]) expect(row['user_id'], table).toBe('me');
     }
@@ -117,15 +112,13 @@ describe('AccountRepository.exportData', () => {
     expect(tables.workout_sessions[0]?.['generation_metadata']).toBe('{not json');
   });
 
-  it('names the exercises and equipment the rows point at, and only those', async () => {
+  it('names the exercises the rows point at, and only those', async () => {
     await benchDay('me');
     await benchDay('someone-else');
-    await db.seed('user_equipment', { id: 'ue-1', user_id: 'me', equipment_id: 'bar' });
 
     const data = await new AccountRepository(db, context('me')).exportData();
 
     expect(data.exercises).toEqual([{ id: 'bench', slug: 'bench-press', name: 'Bench Press' }]);
-    expect(data.equipment).toEqual([{ id: 'bar', slug: 'barbell', name: 'Barbell' }]);
   });
 
   it('refuses to run without a signed-in user', () => {

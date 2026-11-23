@@ -136,8 +136,8 @@ describe('the demonstration loops', () => {
   });
 
   it('leave every other asset where it was, and precached', async () => {
-    const built = await builtName('src/assets/equipment/bench-press-hero.webp');
-    expect(built).toBe('assets/bench-press-hero-Bq3kT9xA.webp');
+    const built = await builtName('src/assets/plate-calculator/bar_20_shaft.webp');
+    expect(built).toBe('assets/bar_20_shaft-Bq3kT9xA.webp');
     expect(shouldPrecache(built)).toBe(true);
   });
 

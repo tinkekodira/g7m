@@ -23,7 +23,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { cloudFrom, transferLabels } from '../src/label-transfer.js';
+import { cloudFrom, transferLabels } from './label-transfer.js';
 import { alignToSculpt } from '../src/align.js';
 import { bareSkinForms, placeholderBodyParts } from '../src/placeholder-body.js';
 import { checkModelContract, parseBodyNode, parseMuscleNode } from '../src/node-names.js';

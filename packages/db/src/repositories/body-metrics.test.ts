@@ -98,46 +98,6 @@ describe('record', () => {
   });
 });
 
-describe('latestWeight', () => {
-  it('is null before anything is recorded', async () => {
-    expect(await metrics.latestWeight()).toBeNull();
-  });
-
-  it('is the most recent reading that has a weight in it', async () => {
-    await metrics.record({ weightKg: 82 });
-    clock = new Date('2026-09-14T10:00:00.000Z');
-    await metrics.record({ weightKg: 81 });
-
-    expect((await metrics.latestWeight())?.weightKg).toBe(81);
-  });
-
-  /**
-   * A reading that only changed the activity level has no weight in it, and
-   * returning it would read as the weight having been forgotten.
-   */
-  it('skips a later reading that recorded something else', async () => {
-    await metrics.record({ weightKg: 82 });
-    clock = new Date('2026-09-14T10:00:00.000Z');
-    await metrics.record({ activityLevel: 'active' });
-
-    expect((await metrics.latestWeight())?.weightKg).toBe(82);
-  });
-
-  it('goes by when it was measured, not the order it was entered', async () => {
-    // Backfilling last week's weigh-in must not become "the latest".
-    await metrics.record({ weightKg: 81 });
-    await metrics.record({ weightKg: 85, recordedAt: new Date('2026-08-01T10:00:00.000Z') });
-
-    expect((await metrics.latestWeight())?.weightKg).toBe(81);
-  });
-
-  it('does not read another user’s measurements', async () => {
-    await metrics.record({ weightKg: 82 });
-    const stranger = new BodyMetricsRepository(db, { userId: 'user-2' });
-    expect(await stranger.latestWeight()).toBeNull();
-  });
-});
-
 describe('between', () => {
   beforeEach(async () => {
     for (const [day, weight] of [
@@ -224,7 +184,7 @@ describe('correct', () => {
     const entry = await metrics.record({ weightKg: 820 });
     await metrics.correct(entry.id, { weightKg: 82 });
 
-    expect((await metrics.latestWeight())?.weightKg).toBe(82);
+    expect((await metrics.latest())?.weightKg).toBe(82);
     expect(await metrics.between()).toHaveLength(1);
   });
 
@@ -247,7 +207,7 @@ describe('correct', () => {
     const stranger = new BodyMetricsRepository(db, { userId: 'user-2' });
     await stranger.correct(entry.id, { weightKg: 60 });
 
-    expect((await metrics.latestWeight())?.weightKg).toBe(82);
+    expect((await metrics.latest())?.weightKg).toBe(82);
   });
 });
 
@@ -285,6 +245,6 @@ describe('when nobody is signed in', () => {
   it('refuses to read or write', async () => {
     const anonymous = new BodyMetricsRepository(db, { userId: '' });
     await expect(anonymous.record({ weightKg: 82 })).rejects.toThrow(/signed-in user/);
-    await expect(anonymous.latestWeight()).rejects.toThrow(/signed-in user/);
+    await expect(anonymous.latest()).rejects.toThrow(/signed-in user/);
   });
 });

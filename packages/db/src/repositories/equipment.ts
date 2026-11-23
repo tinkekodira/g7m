@@ -1,14 +1,5 @@
 /**
- * The equipment catalogue, and what the user actually has.
- *
- * `equipment` is reference data, read-only like the rest of the catalogue.
- * `user_equipment` is the one thing here a device may write: it is the answer
- * to "what does your gym have", and it decides what the generator is allowed
- * to prescribe.
- *
- * The writes are not here yet. They belong with the screen that collects them,
- * which is the equipment picker in Phase 4 — writing them now would be
- * guessing at an interface.
+ * The equipment catalogue: reference data, read-only like the rest of it.
  */
 import { equipmentName, intlLocale } from '@g7m/i18n';
 import type { QueryableDatabase } from './database.js';
@@ -69,21 +60,5 @@ export class EquipmentRepository {
   async bySlug(slug: string): Promise<Equipment | null> {
     const row = await this.db.getOptional<RawRow>('SELECT * FROM equipment WHERE slug = ?', [slug]);
     return row === null ? null : toEquipment(row);
-  }
-
-  /**
-   * What this user has said they have access to.
-   *
-   * An empty result is a real and common state — a new account has ticked
-   * nothing — and it is not the same as "everything". Anything filtering on it
-   * has to decide what no answer means rather than treat it as no constraint.
-   */
-  async forUser(): Promise<Equipment[]> {
-    const rows = await this.db.getAll<RawRow>(
-      `SELECT q.* FROM equipment q
-         JOIN user_equipment ue ON ue.equipment_id = q.id
-        ORDER BY q.name ASC`,
-    );
-    return rows.map(toEquipment);
   }
 }

@@ -115,14 +115,6 @@ export class MuscleRepository {
     return rows.map(toMuscle);
   }
 
-  async inGroup(muscleGroupId: string): Promise<Muscle[]> {
-    const rows = await this.db.getAll<RawRow>(
-      `SELECT * FROM muscles WHERE muscle_group_id = ? ${MUSCLE_ORDER}`,
-      [muscleGroupId],
-    );
-    return rows.map(toMuscle);
-  }
-
   async byId(id: string): Promise<Muscle | null> {
     const row = await this.db.getOptional<RawRow>('SELECT * FROM muscles WHERE id = ?', [id]);
     return row === null ? null : toMuscle(row);

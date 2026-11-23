@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BodyMetricsRepository } from './body-metrics.js';
 import { HistoryRepository } from './history.js';
 import { INSTANT_PARAMETER, instant, isoText } from './instants.js';
-import { PlannerRepository } from './planner.js';
 import type { RepositoryContext } from './database.js';
 import { startSqliteHarness, type SqliteHarness } from './testing/sqlite-harness.js';
 
@@ -109,12 +108,6 @@ describe('windows that start on the same day as a synced row', () => {
     await workout('before', '2026-09-13 21:59:59.5Z');
     const sets = await new HistoryRepository(db, context).completedSets({ from: weekStart });
     expect(sets).toEqual([]);
-  });
-
-  it('counts sessions for the planner the same way', async () => {
-    await workout('synced', '2026-09-13 23:30:00Z');
-    await workout('local', '2026-09-14T08:00:00.000Z');
-    expect(await new PlannerRepository(db, context).sessionCountSince(weekStart)).toBe(2);
   });
 
   it('keeps a weigh-in in its window', async () => {

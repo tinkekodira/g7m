@@ -58,26 +58,3 @@ describe('list', () => {
     expect(await equipment.bySlug('nope')).toBeNull();
   });
 });
-
-describe('forUser', () => {
-  it('returns only what the user has ticked', async () => {
-    await seedEquipment({ id: 'eq-barbell', slug: 'barbell', name: 'Barbell' });
-    await seedEquipment({ id: 'eq-cable', slug: 'cable-machine', name: 'Cable machine' });
-    await db.seed('user_equipment', {
-      id: 'ue-1',
-      user_id: 'user-1',
-      equipment_id: 'eq-barbell',
-      created_at: '2026-09-06T10:00:00.000Z',
-      updated_at: '2026-09-06T10:00:00.000Z',
-    });
-
-    expect((await equipment.forUser()).map((e) => e.id)).toEqual(['eq-barbell']);
-  });
-
-  it('is empty for a new account, which is not the same as everything', async () => {
-    // A fresh profile has ticked nothing. Anything filtering on this has to
-    // decide what no answer means rather than read it as no constraint.
-    await seedEquipment({ id: 'eq-barbell' });
-    expect(await equipment.forUser()).toEqual([]);
-  });
-});

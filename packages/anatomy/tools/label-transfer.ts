@@ -30,7 +30,7 @@
  *      palm, the face — takes the label that reaches it first, so the mesh has
  *      no holes for a raycast to fall through.
  */
-import type { MeshData } from './geometry/tube.js';
+import type { MeshData } from '../src/geometry/tube.js';
 
 export interface SourceCloud {
   /** Positions of every labelled point, `n * 3`. */

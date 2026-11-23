@@ -106,12 +106,4 @@ describe('narrowing the list', () => {
     expect((await muscles.selectable()).map((m) => m.id)).toEqual(['m-shown']);
     expect((await muscles.list()).map((m) => m.id).sort()).toEqual(['m-hidden', 'm-shown']);
   });
-
-  it('returns the muscles in one group, in display order', async () => {
-    await seedMuscle({ id: 'm-a', slug: 'a', muscle_group_id: 'g-chest', display_order: 2 });
-    await seedMuscle({ id: 'm-b', slug: 'b', muscle_group_id: 'g-chest', display_order: 1 });
-    await seedMuscle({ id: 'm-c', slug: 'c', muscle_group_id: 'g-back', display_order: 1 });
-
-    expect((await muscles.inGroup('g-chest')).map((m) => m.id)).toEqual(['m-b', 'm-a']);
-  });
 });

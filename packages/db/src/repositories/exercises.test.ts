@@ -8,8 +8,8 @@ import { startSqliteHarness, type SqliteHarness } from './testing/sqlite-harness
  *
  * A fake that records query strings would prove the strings were built. It
  * would not catch a wrong join, an ordering that only looks right, or the
- * `NOT EXISTS` in `availableWithUserEquipment` being subtly inverted — which
- * are the mistakes that actually happen.
+ * `NOT EXISTS` in the equipment filter being subtly inverted — which are the
+ * mistakes that actually happen.
  */
 
 let db: SqliteHarness;
@@ -282,81 +282,6 @@ describe('equipmentFor', () => {
   });
 });
 
-describe('availableWithUserEquipment', () => {
-  beforeEach(async () => {
-    await seedExercise({ id: 'pushup', name: 'Push-up', slug: 'push-up', popularity_rank: 1 });
-    await seedExercise({ id: 'squat', name: 'Squat', slug: 'squat', popularity_rank: 2 });
-    await seedExercise({ id: 'hipthrust', name: 'Hip Thrust', slug: 'ht', popularity_rank: 3 });
-
-    for (const [id, slug] of [
-      ['eq-bar', 'barbell'],
-      ['eq-bench', 'bench'],
-    ]) {
-      await db.seed('equipment', {
-        id: id ?? '',
-        slug: slug ?? '',
-        name: slug ?? '',
-        category: 'other',
-      });
-    }
-
-    // Squat needs a barbell. Hip thrust needs a barbell AND a bench.
-    await db.seed('exercise_equipment', {
-      id: 'ee-1',
-      exercise_id: 'squat',
-      equipment_id: 'eq-bar',
-      is_primary: 1,
-    });
-    await db.seed('exercise_equipment', {
-      id: 'ee-2',
-      exercise_id: 'hipthrust',
-      equipment_id: 'eq-bar',
-      is_primary: 1,
-    });
-    await db.seed('exercise_equipment', {
-      id: 'ee-3',
-      exercise_id: 'hipthrust',
-      equipment_id: 'eq-bench',
-      is_primary: 0,
-    });
-  });
-
-  it('includes anything needing no equipment at all', async () => {
-    expect((await exercises.availableWithUserEquipment()).map((e) => e.id)).toEqual(['pushup']);
-  });
-
-  /**
-   * "Every piece", not "any piece". A barbell hip thrust needs the barbell and
-   * the bench, and offering it to someone with only a barbell wastes the one
-   * trip they made to the gym.
-   */
-  it('requires every piece an exercise needs, not just one', async () => {
-    await db.seed('user_equipment', { id: 'ue-1', user_id: 'u1', equipment_id: 'eq-bar' });
-
-    const available = (await exercises.availableWithUserEquipment()).map((e) => e.id);
-    expect(available).toContain('squat');
-    expect(available, 'hip thrust needs a bench too').not.toContain('hipthrust');
-  });
-
-  it('includes it once the missing piece is added', async () => {
-    await db.seed('user_equipment', { id: 'ue-1', user_id: 'u1', equipment_id: 'eq-bar' });
-    await db.seed('user_equipment', { id: 'ue-2', user_id: 'u1', equipment_id: 'eq-bench' });
-
-    expect((await exercises.availableWithUserEquipment()).map((e) => e.id)).toEqual([
-      'pushup',
-      'squat',
-      'hipthrust',
-    ]);
-  });
-
-  it('keeps the popularity ordering', async () => {
-    await db.seed('user_equipment', { id: 'ue-1', user_id: 'u1', equipment_id: 'eq-bar' });
-    await db.seed('user_equipment', { id: 'ue-2', user_id: 'u1', equipment_id: 'eq-bench' });
-    const ranks = (await exercises.availableWithUserEquipment()).map((e) => e.popularityRank);
-    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
-  });
-});
-
 describe('filter', () => {
   /**
    * A small catalogue with the shapes that break a filter: an exercise that
@@ -490,8 +415,8 @@ describe('filter', () => {
   });
 
   it('requires every piece of equipment an exercise needs, not any', async () => {
-    // The same inversion as availableWithUserEquipment, and just as easy to
-    // write backwards: a bench press needs the bar *and* the bench.
+    // `NOT EXISTS ... NOT IN` is easy to write backwards: a bench press needs
+    // the bar *and* the bench.
     const barOnly = (await exercises.filter({ equipmentIds: ['eq-bar'] })).map((e) => e.id);
     expect(barOnly).toContain('squat');
     expect(barOnly, 'bench press needs a bench too').not.toContain('bench');
@@ -548,7 +473,7 @@ describe('filter', () => {
   });
 });
 
-describe('primaryMuscleNames', () => {
+describe('primaryMuscles, which muscle', () => {
   beforeEach(async () => {
     await db.seed('muscles', { id: 'm-pec', slug: 'pec', common_name: 'Chest' });
     await db.seed('muscles', { id: 'm-tri', slug: 'tri', common_name: 'Triceps' });
@@ -572,7 +497,7 @@ describe('primaryMuscleNames', () => {
       recruitment_weight: 1,
     });
 
-    expect((await exercises.primaryMuscleNames()).get('bench')).toBe('Chest');
+    expect((await exercises.primaryMuscles()).get('bench')?.name).toBe('Chest');
   });
 
   it('ignores secondary and stabiliser involvement', async () => {
@@ -584,13 +509,13 @@ describe('primaryMuscleNames', () => {
       recruitment_weight: 1,
     });
 
-    expect((await exercises.primaryMuscleNames()).has('curl')).toBe(false);
+    expect((await exercises.primaryMuscles()).has('curl')).toBe(false);
   });
 
   it('omits an exercise with no primary muscle rather than inventing one', async () => {
-    const names = await exercises.primaryMuscleNames();
-    expect(names.get('bench')).toBeUndefined();
-    expect(names.size).toBe(0);
+    const muscles = await exercises.primaryMuscles();
+    expect(muscles.get('bench')).toBeUndefined();
+    expect(muscles.size).toBe(0);
   });
 });
 
@@ -627,7 +552,6 @@ describe('primaryMuscles', () => {
     expect(await exercises.primaryMuscles()).toEqual(
       new Map([['bench', { name: 'Chest', groupSlug: 'chest' }]]),
     );
-    expect(await exercises.primaryMuscleNames()).toEqual(new Map([['bench', 'Chest']]));
   });
 
   it('breaks equal weights alphabetically, then by muscle ID for identical names', async () => {
