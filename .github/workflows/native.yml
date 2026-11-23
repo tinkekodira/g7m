@@ -110,9 +110,24 @@ jobs:
           VITE_POWERSYNC_URL: ${{ vars.VITE_POWERSYNC_URL }}
         run: pnpm exec vite build
 
+      # `cap sync` also deletes the source maps from the copy, through the
+      # `capacitor:copy:after` hook in apps/mobile/package.json. ADR-0187.
       - name: Copy it into the Android project
         working-directory: apps/mobile
         run: pnpm exec cap sync android
+
+      # The hook is a package.json script, so a rename would ship ~15 MB of
+      # maps again without a single error. This is what notices.
+      - name: No source maps in the APK
+        working-directory: apps/mobile/android/app/src/main/assets/public
+        run: |
+          maps=$(find . -name '*.map')
+          if [ -n "$maps" ]; then
+            echo "::error::Source maps were copied into the Android app:"
+            echo "$maps"
+            exit 1
+          fi
+          du -sh .
 
       - name: Build the APK
         working-directory: apps/mobile/android
@@ -171,6 +186,18 @@ jobs:
       - name: Copy it into the iOS project
         working-directory: apps/mobile
         run: pnpm exec cap sync ios
+
+      # Same check as Android's, for the same reason.
+      - name: No source maps in the IPA
+        working-directory: apps/mobile/ios/App/App/public
+        run: |
+          maps=$(find . -name '*.map')
+          if [ -n "$maps" ]; then
+            echo "::error::Source maps were copied into the iOS app:"
+            echo "$maps"
+            exit 1
+          fi
+          du -sh .
 
       # A real device build, with signing switched off. Signing needs a
       # certificate and a provisioning profile, which need an Apple Developer

@@ -9,6 +9,7 @@
     "assets": "capacitor-assets generate --ios --android --iosProject ios/App --androidProject android --assetPath assets --iconBackgroundColor \"#101214\" --iconBackgroundColorDark \"#101214\" --splashBackgroundColor \"#F3F5F0\" --splashBackgroundColorDark \"#202429\" && node scripts/web-icons.mjs",
     "sync": "pnpm build:web && cap sync",
     "copy": "pnpm build:web && cap copy",
+    "capacitor:copy:after": "node scripts/strip-source-maps.mjs",
     "open:ios": "cap open ios",
     "open:android": "cap open android",
     "run:ios": "pnpm sync && cap run ios",
