@@ -6,8 +6,8 @@ import { signIn } from './support/app.js';
  * The demonstration loop on an exercise's page (ADR-0102).
  *
  * Fifty-eight exercises have one (`WITH_LOOP` below); the rest do not. It plays in
- * the "How to do it" card, the MP4 in the dark theme and the transparent WebP
- * in the light one, the poster alone under reduced motion, and none of it is
+ * the "How to do it" card, as an MP4 rendered on the theme's own panel colour
+ * (ADR-0186), the poster alone under reduced motion, and none of it is
  * fetched until somebody scrolls to it.
  */
 
@@ -108,7 +108,11 @@ test('every exercise with a loop plays it', async ({ page }) => {
     const panel = page.getByRole('img', { name: `${name} demonstration` });
     await expect(panel).toBeVisible();
     const video = panel.locator('video');
-    await expect(video).toHaveAttribute('src', new RegExp(`assets/demos/${slug}-[\\w-]+\\.mp4$`));
+    // The dark theme's loop, not the light one.
+    await expect(video).toHaveAttribute(
+      'src',
+      new RegExp(`assets/demos/${slug}-(?!light-)[\\w-]+\\.mp4$`),
+    );
     await expect
       .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime), {
         message: `${name} is playing`,
@@ -215,14 +219,14 @@ test.describe('with reduced motion', () => {
     // The opaque poster, on the dark panel it was rendered for.
     await expect(panel.locator('img')).toHaveAttribute(
       'src',
-      /assets\/demos\/barbell-back-squat-poster-(?!transparent)[\w-]+\.webp$/,
+      /assets\/demos\/barbell-back-squat-poster-(?!light-)[\w-]+\.webp$/,
     );
     await expect(panel.locator('video')).toHaveCount(0);
-    // The poster is the only file asked for: no MP4, no animated WebP.
+    // The poster is the only file asked for: no MP4.
     expect(loops.filter((url) => !url.includes('-poster-'))).toEqual([]);
   });
 
-  test('in the light theme, the still is the transparent one', async ({ page }) => {
+  test('in the light theme, the still is the light one', async ({ page }) => {
     const user = await createUser('demo-still-light', { onboarded: true });
     await page.addInitScript(() => {
       localStorage.setItem('g7m.theme', 'light');
@@ -234,25 +238,41 @@ test.describe('with reduced motion', () => {
     // Not the dark first frame, which would be a dark square on the light panel.
     await expect(panel.locator('img')).toHaveAttribute(
       'src',
-      /assets\/demos\/barbell-bench-press-poster-transparent-[\w-]+\.webp$/,
+      /assets\/demos\/barbell-bench-press-poster-light-[\w-]+\.webp$/,
     );
     await expect(panel.locator('video')).toHaveCount(0);
   });
 });
 
-test('the light theme plays the transparent WebP, never the opaque MP4', async ({ page }) => {
+test('the light theme plays the loop rendered on the light panel, never the dark one', async ({
+  page,
+}) => {
   const user = await createUser('demo-light', { onboarded: true });
   await page.addInitScript(() => {
     localStorage.setItem('g7m.theme', 'light');
   });
   await signIn(page, user);
+  test.skip(
+    await page.evaluate(
+      () => document.createElement('video').canPlayType('video/mp4; codecs="avc1.64001F"') === '',
+    ),
+    'This browser cannot decode H.264.',
+  );
 
   await openHowTo(page, 'barbell-bench-press', 'Barbell Bench Press');
   const panel = page.getByRole('img', { name: 'Barbell Bench Press demonstration' });
-  await expect(panel.locator('img')).toHaveAttribute(
+  const video = panel.locator('video');
+  await expect(video).toHaveAttribute(
     'src',
-    /assets\/demos\/barbell-bench-press-[\w-]+\.webp$/,
+    /assets\/demos\/barbell-bench-press-light-[\w-]+\.mp4$/,
   );
-  await expect(panel.locator('img')).not.toHaveAttribute('src', /-poster-/);
-  await expect(panel.locator('video')).toHaveCount(0);
+  await expect(video).toHaveAttribute(
+    'poster',
+    /assets\/demos\/barbell-bench-press-poster-light-[\w-]+\.webp$/,
+  );
+  await expect
+    .poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
+    .toBeGreaterThan(0.3);
+  // No animated image: the transparent WebP is gone (ADR-0186).
+  await expect(panel.locator('img')).toHaveCount(0);
 });

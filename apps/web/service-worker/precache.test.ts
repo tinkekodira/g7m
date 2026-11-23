@@ -25,7 +25,7 @@ describe('shouldPrecache', () => {
   it('leaves the exercise demonstration loops out', () => {
     for (const file of [
       'assets/demos/barbell-back-squat-Bq3kT9xA.mp4',
-      'assets/demos/barbell-back-squat-Cw81pLmZ.webp',
+      'assets/demos/barbell-back-squat-light-Cw81pLmZ.mp4',
       'assets/demos/barbell-back-squat-poster-D0aHf2Qe.webp',
     ]) {
       expect(shouldPrecache(file), file).toBe(false);
@@ -126,7 +126,7 @@ describe('the demonstration loops', () => {
   it('are built into a folder the precache leaves out', async () => {
     for (const source of [
       'src/assets/demos/barbell-back-squat.mp4',
-      'src/assets/demos/barbell-back-squat.webp',
+      'src/assets/demos/barbell-back-squat-light.mp4',
       'src/assets/demos/barbell-back-squat-poster.webp',
     ]) {
       const built = await builtName(source);

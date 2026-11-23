@@ -10191,3 +10191,70 @@ Rollout, in this order because it is a removal: deploy
 `powersync/sync-rules.yaml` first, so that nothing queries the table, then run
 `npx supabase db push`, then release the app. Older builds still have the
 table in their local schema, and they read it as empty, the same as before.
+
+## ADR-0186 — The light theme plays an MP4 on its own panel, not a transparent WebP
+
+**Status:** accepted · **Date:** 2026-11-23 · **Phase:** Android readiness
+
+Supersedes the "MP4 on dark, WebP on light" part of ADR-0102.
+
+### Why
+
+The Android app bundles all of `dist`. Before this change `dist` was 166 MB,
+and 116 MB of that was the 58 transparent animated WebPs, which only the light
+theme played. The dark theme already played an opaque MP4 about a twentieth
+of the size. Every install carried a file per exercise that most people never
+see, since dark is the default.
+
+### What changed
+
+Each loop now ships as **two opaque MP4s and two posters**, one pair per demo
+panel:
+
+| file | rendered on | size |
+|---|---|---|
+| `<slug>.mp4`, `<slug>-poster.webp` | `#1C1C1C`, the dark `--bg-demo` | unchanged |
+| `<slug>-light.mp4`, `<slug>-poster-light.webp` | `#F5F3EE`, the light `--bg-demo` | 72–252 KB, 9–34 KB (9 MB for all 58) |
+
+The transparent WebP and the transparent poster are deleted, 116 files.
+`dist` drops from 166 MB to 62 MB, and the demo folder from 124 MB to 20 MB.
+
+The light files are made from the same lossless Cycles frames as everything
+else, not by re-encoding the WebP. `3d-models/mannequin/render_loop.py --light
+--slug <slug>` lays each PNG frame over `#F5F3EE` in Pillow (the same
+alpha-over the browser did with the WebP on the panel) and encodes it with
+libx264 at CRF 20, 15 fps, a keyframe every second, BT.709 matrix and tags,
+`+faststart`. `--post` now runs it too, so a new loop gets its light files with
+no extra step. The files are copied into the app byte for byte, as before.
+
+`demoFormat` became `demoPanel(surface)`: `'dark'` on exactly `#1c1c1c`,
+`'light'` on exactly `#f5f3ee`, and `null` on anything else, in which case
+the panel renders nothing, as when a file fails. `demoFiles(demo, panel)`
+returns the video and poster for that panel. A unit test pins **both** theme
+tokens to `DEMO_BACKGROUND`, so a token that drifts fails a test instead of
+silently losing the loop.
+
+The decoded light MP4 reads `#F4F2EE` where the panel is `#F5F3EE` (one level,
+from 4:2:0 YUV). The video fills the whole panel, so there is no edge for that
+level to show on. The contact shadow's cut at the frame edge is baked onto the
+panel colour and still lands on the panel's edge, as before.
+
+### What is lost
+
+- **Offline on the web, light theme.** The WebP was runtime-cached once seen.
+  An MP4 is fetched as range requests (206), which the worker does not store,
+  so on the website with no connection the light theme now shows no loop, the
+  same as the dark theme always has (ADR-0102's consequence). The native apps
+  bundle `dist` and are unaffected.
+- **A loop on any third surface colour.** There is none today. A new panel
+  colour needs its own render, like the light one.
+
+### Rejected
+
+- **VP9 WebM with alpha** for Android. Safari does not play WebM alpha, so the
+  iPhone would still need another file, and the transparency is not needed:
+  the loop only ever plays on its panel.
+- **Re-encoding the WebP to MP4.** It is lossy already; the PNG frames are
+  there and cost the same to encode from.
+- **Keeping the WebP for the web and leaving it out of the native build.** Two
+  asset sets and two code paths for one picture.

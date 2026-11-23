@@ -1,235 +1,235 @@
 import barbellBackSquatMp4 from '../assets/demos/barbell-back-squat.mp4';
-import barbellBackSquatWebp from '../assets/demos/barbell-back-squat.webp';
+import barbellBackSquatLightMp4 from '../assets/demos/barbell-back-squat-light.mp4';
 import barbellBackSquatPoster from '../assets/demos/barbell-back-squat-poster.webp';
-import barbellBackSquatTransparentPoster from '../assets/demos/barbell-back-squat-poster-transparent.webp';
+import barbellBackSquatLightPoster from '../assets/demos/barbell-back-squat-poster-light.webp';
 import barbellBenchPressMp4 from '../assets/demos/barbell-bench-press.mp4';
-import barbellBenchPressWebp from '../assets/demos/barbell-bench-press.webp';
+import barbellBenchPressLightMp4 from '../assets/demos/barbell-bench-press-light.mp4';
 import barbellBenchPressPoster from '../assets/demos/barbell-bench-press-poster.webp';
-import barbellBenchPressTransparentPoster from '../assets/demos/barbell-bench-press-poster-transparent.webp';
+import barbellBenchPressLightPoster from '../assets/demos/barbell-bench-press-poster-light.webp';
 import conventionalDeadliftMp4 from '../assets/demos/conventional-deadlift.mp4';
-import conventionalDeadliftWebp from '../assets/demos/conventional-deadlift.webp';
+import conventionalDeadliftLightMp4 from '../assets/demos/conventional-deadlift-light.mp4';
 import conventionalDeadliftPoster from '../assets/demos/conventional-deadlift-poster.webp';
-import conventionalDeadliftTransparentPoster from '../assets/demos/conventional-deadlift-poster-transparent.webp';
+import conventionalDeadliftLightPoster from '../assets/demos/conventional-deadlift-poster-light.webp';
 import romanianDeadliftMp4 from '../assets/demos/romanian-deadlift.mp4';
-import romanianDeadliftWebp from '../assets/demos/romanian-deadlift.webp';
+import romanianDeadliftLightMp4 from '../assets/demos/romanian-deadlift-light.mp4';
 import romanianDeadliftPoster from '../assets/demos/romanian-deadlift-poster.webp';
-import romanianDeadliftTransparentPoster from '../assets/demos/romanian-deadlift-poster-transparent.webp';
+import romanianDeadliftLightPoster from '../assets/demos/romanian-deadlift-poster-light.webp';
 import barbellRowMp4 from '../assets/demos/barbell-row.mp4';
-import barbellRowWebp from '../assets/demos/barbell-row.webp';
+import barbellRowLightMp4 from '../assets/demos/barbell-row-light.mp4';
 import barbellRowPoster from '../assets/demos/barbell-row-poster.webp';
-import barbellRowTransparentPoster from '../assets/demos/barbell-row-poster-transparent.webp';
+import barbellRowLightPoster from '../assets/demos/barbell-row-poster-light.webp';
 import barbellCurlMp4 from '../assets/demos/barbell-curl.mp4';
-import barbellCurlWebp from '../assets/demos/barbell-curl.webp';
+import barbellCurlLightMp4 from '../assets/demos/barbell-curl-light.mp4';
 import barbellCurlPoster from '../assets/demos/barbell-curl-poster.webp';
-import barbellCurlTransparentPoster from '../assets/demos/barbell-curl-poster-transparent.webp';
+import barbellCurlLightPoster from '../assets/demos/barbell-curl-poster-light.webp';
 import overheadPressMp4 from '../assets/demos/overhead-press.mp4';
-import overheadPressWebp from '../assets/demos/overhead-press.webp';
+import overheadPressLightMp4 from '../assets/demos/overhead-press-light.mp4';
 import overheadPressPoster from '../assets/demos/overhead-press-poster.webp';
-import overheadPressTransparentPoster from '../assets/demos/overhead-press-poster-transparent.webp';
+import overheadPressLightPoster from '../assets/demos/overhead-press-poster-light.webp';
 import dumbbellBenchPressMp4 from '../assets/demos/dumbbell-bench-press.mp4';
-import dumbbellBenchPressWebp from '../assets/demos/dumbbell-bench-press.webp';
+import dumbbellBenchPressLightMp4 from '../assets/demos/dumbbell-bench-press-light.mp4';
 import dumbbellBenchPressPoster from '../assets/demos/dumbbell-bench-press-poster.webp';
-import dumbbellBenchPressTransparentPoster from '../assets/demos/dumbbell-bench-press-poster-transparent.webp';
+import dumbbellBenchPressLightPoster from '../assets/demos/dumbbell-bench-press-poster-light.webp';
 import dumbbellCurlMp4 from '../assets/demos/dumbbell-curl.mp4';
-import dumbbellCurlWebp from '../assets/demos/dumbbell-curl.webp';
+import dumbbellCurlLightMp4 from '../assets/demos/dumbbell-curl-light.mp4';
 import dumbbellCurlPoster from '../assets/demos/dumbbell-curl-poster.webp';
-import dumbbellCurlTransparentPoster from '../assets/demos/dumbbell-curl-poster-transparent.webp';
+import dumbbellCurlLightPoster from '../assets/demos/dumbbell-curl-poster-light.webp';
 import lateralRaiseMp4 from '../assets/demos/lateral-raise.mp4';
-import lateralRaiseWebp from '../assets/demos/lateral-raise.webp';
+import lateralRaiseLightMp4 from '../assets/demos/lateral-raise-light.mp4';
 import lateralRaisePoster from '../assets/demos/lateral-raise-poster.webp';
-import lateralRaiseTransparentPoster from '../assets/demos/lateral-raise-poster-transparent.webp';
+import lateralRaiseLightPoster from '../assets/demos/lateral-raise-poster-light.webp';
 import pushUpMp4 from '../assets/demos/push-up.mp4';
-import pushUpWebp from '../assets/demos/push-up.webp';
+import pushUpLightMp4 from '../assets/demos/push-up-light.mp4';
 import pushUpPoster from '../assets/demos/push-up-poster.webp';
-import pushUpTransparentPoster from '../assets/demos/push-up-poster-transparent.webp';
+import pushUpLightPoster from '../assets/demos/push-up-poster-light.webp';
 import pullUpMp4 from '../assets/demos/pull-up.mp4';
-import pullUpWebp from '../assets/demos/pull-up.webp';
+import pullUpLightMp4 from '../assets/demos/pull-up-light.mp4';
 import pullUpPoster from '../assets/demos/pull-up-poster.webp';
-import pullUpTransparentPoster from '../assets/demos/pull-up-poster-transparent.webp';
+import pullUpLightPoster from '../assets/demos/pull-up-poster-light.webp';
 import chinUpMp4 from '../assets/demos/chin-up.mp4';
-import chinUpWebp from '../assets/demos/chin-up.webp';
+import chinUpLightMp4 from '../assets/demos/chin-up-light.mp4';
 import chinUpPoster from '../assets/demos/chin-up-poster.webp';
-import chinUpTransparentPoster from '../assets/demos/chin-up-poster-transparent.webp';
+import chinUpLightPoster from '../assets/demos/chin-up-poster-light.webp';
 import latPulldownMp4 from '../assets/demos/lat-pulldown.mp4';
-import latPulldownWebp from '../assets/demos/lat-pulldown.webp';
+import latPulldownLightMp4 from '../assets/demos/lat-pulldown-light.mp4';
 import latPulldownPoster from '../assets/demos/lat-pulldown-poster.webp';
-import latPulldownTransparentPoster from '../assets/demos/lat-pulldown-poster-transparent.webp';
+import latPulldownLightPoster from '../assets/demos/lat-pulldown-poster-light.webp';
 import legPressMp4 from '../assets/demos/leg-press.mp4';
-import legPressWebp from '../assets/demos/leg-press.webp';
+import legPressLightMp4 from '../assets/demos/leg-press-light.mp4';
 import legPressPoster from '../assets/demos/leg-press-poster.webp';
-import legPressTransparentPoster from '../assets/demos/leg-press-poster-transparent.webp';
+import legPressLightPoster from '../assets/demos/leg-press-poster-light.webp';
 import hammerCurlMp4 from '../assets/demos/hammer-curl.mp4';
-import hammerCurlWebp from '../assets/demos/hammer-curl.webp';
+import hammerCurlLightMp4 from '../assets/demos/hammer-curl-light.mp4';
 import hammerCurlPoster from '../assets/demos/hammer-curl-poster.webp';
-import hammerCurlTransparentPoster from '../assets/demos/hammer-curl-poster-transparent.webp';
+import hammerCurlLightPoster from '../assets/demos/hammer-curl-poster-light.webp';
 import rearDeltFlyMp4 from '../assets/demos/rear-delt-fly.mp4';
-import rearDeltFlyWebp from '../assets/demos/rear-delt-fly.webp';
+import rearDeltFlyLightMp4 from '../assets/demos/rear-delt-fly-light.mp4';
 import rearDeltFlyPoster from '../assets/demos/rear-delt-fly-poster.webp';
-import rearDeltFlyTransparentPoster from '../assets/demos/rear-delt-fly-poster-transparent.webp';
+import rearDeltFlyLightPoster from '../assets/demos/rear-delt-fly-poster-light.webp';
 import closeGripBenchPressMp4 from '../assets/demos/close-grip-bench-press.mp4';
-import closeGripBenchPressWebp from '../assets/demos/close-grip-bench-press.webp';
+import closeGripBenchPressLightMp4 from '../assets/demos/close-grip-bench-press-light.mp4';
 import closeGripBenchPressPoster from '../assets/demos/close-grip-bench-press-poster.webp';
-import closeGripBenchPressTransparentPoster from '../assets/demos/close-grip-bench-press-poster-transparent.webp';
+import closeGripBenchPressLightPoster from '../assets/demos/close-grip-bench-press-poster-light.webp';
 import inclineDumbbellPressMp4 from '../assets/demos/incline-dumbbell-press.mp4';
-import inclineDumbbellPressWebp from '../assets/demos/incline-dumbbell-press.webp';
+import inclineDumbbellPressLightMp4 from '../assets/demos/incline-dumbbell-press-light.mp4';
 import inclineDumbbellPressPoster from '../assets/demos/incline-dumbbell-press-poster.webp';
-import inclineDumbbellPressTransparentPoster from '../assets/demos/incline-dumbbell-press-poster-transparent.webp';
+import inclineDumbbellPressLightPoster from '../assets/demos/incline-dumbbell-press-poster-light.webp';
 import hangingLegRaiseMp4 from '../assets/demos/hanging-leg-raise.mp4';
-import hangingLegRaiseWebp from '../assets/demos/hanging-leg-raise.webp';
+import hangingLegRaiseLightMp4 from '../assets/demos/hanging-leg-raise-light.mp4';
 import hangingLegRaisePoster from '../assets/demos/hanging-leg-raise-poster.webp';
-import hangingLegRaiseTransparentPoster from '../assets/demos/hanging-leg-raise-poster-transparent.webp';
+import hangingLegRaiseLightPoster from '../assets/demos/hanging-leg-raise-poster-light.webp';
 import barbellFrontSquatMp4 from '../assets/demos/barbell-front-squat.mp4';
-import barbellFrontSquatWebp from '../assets/demos/barbell-front-squat.webp';
+import barbellFrontSquatLightMp4 from '../assets/demos/barbell-front-squat-light.mp4';
 import barbellFrontSquatPoster from '../assets/demos/barbell-front-squat-poster.webp';
-import barbellFrontSquatTransparentPoster from '../assets/demos/barbell-front-squat-poster-transparent.webp';
+import barbellFrontSquatLightPoster from '../assets/demos/barbell-front-squat-poster-light.webp';
 import inclineBarbellPressMp4 from '../assets/demos/incline-barbell-press.mp4';
-import inclineBarbellPressWebp from '../assets/demos/incline-barbell-press.webp';
+import inclineBarbellPressLightMp4 from '../assets/demos/incline-barbell-press-light.mp4';
 import inclineBarbellPressPoster from '../assets/demos/incline-barbell-press-poster.webp';
-import inclineBarbellPressTransparentPoster from '../assets/demos/incline-barbell-press-poster-transparent.webp';
+import inclineBarbellPressLightPoster from '../assets/demos/incline-barbell-press-poster-light.webp';
 import trapBarDeadliftMp4 from '../assets/demos/trap-bar-deadlift.mp4';
-import trapBarDeadliftWebp from '../assets/demos/trap-bar-deadlift.webp';
+import trapBarDeadliftLightMp4 from '../assets/demos/trap-bar-deadlift-light.mp4';
 import trapBarDeadliftPoster from '../assets/demos/trap-bar-deadlift-poster.webp';
-import trapBarDeadliftTransparentPoster from '../assets/demos/trap-bar-deadlift-poster-transparent.webp';
+import trapBarDeadliftLightPoster from '../assets/demos/trap-bar-deadlift-poster-light.webp';
 import gobletSquatMp4 from '../assets/demos/goblet-squat.mp4';
-import gobletSquatWebp from '../assets/demos/goblet-squat.webp';
+import gobletSquatLightMp4 from '../assets/demos/goblet-squat-light.mp4';
 import gobletSquatPoster from '../assets/demos/goblet-squat-poster.webp';
-import gobletSquatTransparentPoster from '../assets/demos/goblet-squat-poster-transparent.webp';
+import gobletSquatLightPoster from '../assets/demos/goblet-squat-poster-light.webp';
 import skullCrusherMp4 from '../assets/demos/skull-crusher.mp4';
-import skullCrusherWebp from '../assets/demos/skull-crusher.webp';
+import skullCrusherLightMp4 from '../assets/demos/skull-crusher-light.mp4';
 import skullCrusherPoster from '../assets/demos/skull-crusher-poster.webp';
-import skullCrusherTransparentPoster from '../assets/demos/skull-crusher-poster-transparent.webp';
+import skullCrusherLightPoster from '../assets/demos/skull-crusher-poster-light.webp';
 import dumbbellPulloverMp4 from '../assets/demos/dumbbell-pullover.mp4';
-import dumbbellPulloverWebp from '../assets/demos/dumbbell-pullover.webp';
+import dumbbellPulloverLightMp4 from '../assets/demos/dumbbell-pullover-light.mp4';
 import dumbbellPulloverPoster from '../assets/demos/dumbbell-pullover-poster.webp';
-import dumbbellPulloverTransparentPoster from '../assets/demos/dumbbell-pullover-poster-transparent.webp';
+import dumbbellPulloverLightPoster from '../assets/demos/dumbbell-pullover-poster-light.webp';
 import barbellHipThrustMp4 from '../assets/demos/barbell-hip-thrust.mp4';
-import barbellHipThrustWebp from '../assets/demos/barbell-hip-thrust.webp';
+import barbellHipThrustLightMp4 from '../assets/demos/barbell-hip-thrust-light.mp4';
 import barbellHipThrustPoster from '../assets/demos/barbell-hip-thrust-poster.webp';
-import barbellHipThrustTransparentPoster from '../assets/demos/barbell-hip-thrust-poster-transparent.webp';
+import barbellHipThrustLightPoster from '../assets/demos/barbell-hip-thrust-poster-light.webp';
 import bulgarianSplitSquatMp4 from '../assets/demos/bulgarian-split-squat.mp4';
-import bulgarianSplitSquatWebp from '../assets/demos/bulgarian-split-squat.webp';
+import bulgarianSplitSquatLightMp4 from '../assets/demos/bulgarian-split-squat-light.mp4';
 import bulgarianSplitSquatPoster from '../assets/demos/bulgarian-split-squat-poster.webp';
-import bulgarianSplitSquatTransparentPoster from '../assets/demos/bulgarian-split-squat-poster-transparent.webp';
+import bulgarianSplitSquatLightPoster from '../assets/demos/bulgarian-split-squat-poster-light.webp';
 import cableFlyMp4 from '../assets/demos/cable-fly.mp4';
-import cableFlyWebp from '../assets/demos/cable-fly.webp';
+import cableFlyLightMp4 from '../assets/demos/cable-fly-light.mp4';
 import cableFlyPoster from '../assets/demos/cable-fly-poster.webp';
-import cableFlyTransparentPoster from '../assets/demos/cable-fly-poster-transparent.webp';
+import cableFlyLightPoster from '../assets/demos/cable-fly-poster-light.webp';
 import cableWoodchopMp4 from '../assets/demos/cable-woodchop.mp4';
-import cableWoodchopWebp from '../assets/demos/cable-woodchop.webp';
+import cableWoodchopLightMp4 from '../assets/demos/cable-woodchop-light.mp4';
 import cableWoodchopPoster from '../assets/demos/cable-woodchop-poster.webp';
-import cableWoodchopTransparentPoster from '../assets/demos/cable-woodchop-poster-transparent.webp';
+import cableWoodchopLightPoster from '../assets/demos/cable-woodchop-poster-light.webp';
 import chestDipMp4 from '../assets/demos/chest-dip.mp4';
-import chestDipWebp from '../assets/demos/chest-dip.webp';
+import chestDipLightMp4 from '../assets/demos/chest-dip-light.mp4';
 import chestDipPoster from '../assets/demos/chest-dip-poster.webp';
-import chestDipTransparentPoster from '../assets/demos/chest-dip-poster-transparent.webp';
+import chestDipLightPoster from '../assets/demos/chest-dip-poster-light.webp';
 import facePullMp4 from '../assets/demos/face-pull.mp4';
-import facePullWebp from '../assets/demos/face-pull.webp';
+import facePullLightMp4 from '../assets/demos/face-pull-light.mp4';
 import facePullPoster from '../assets/demos/face-pull-poster.webp';
-import facePullTransparentPoster from '../assets/demos/face-pull-poster-transparent.webp';
+import facePullLightPoster from '../assets/demos/face-pull-poster-light.webp';
 import hackSquatMp4 from '../assets/demos/hack-squat.mp4';
-import hackSquatWebp from '../assets/demos/hack-squat.webp';
+import hackSquatLightMp4 from '../assets/demos/hack-squat-light.mp4';
 import hackSquatPoster from '../assets/demos/hack-squat-poster.webp';
-import hackSquatTransparentPoster from '../assets/demos/hack-squat-poster-transparent.webp';
+import hackSquatLightPoster from '../assets/demos/hack-squat-poster-light.webp';
 import plankMp4 from '../assets/demos/plank.mp4';
-import plankWebp from '../assets/demos/plank.webp';
+import plankLightMp4 from '../assets/demos/plank-light.mp4';
 import plankPoster from '../assets/demos/plank-poster.webp';
-import plankTransparentPoster from '../assets/demos/plank-poster-transparent.webp';
+import plankLightPoster from '../assets/demos/plank-poster-light.webp';
 import singleArmDumbbellRowMp4 from '../assets/demos/single-arm-dumbbell-row.mp4';
-import singleArmDumbbellRowWebp from '../assets/demos/single-arm-dumbbell-row.webp';
+import singleArmDumbbellRowLightMp4 from '../assets/demos/single-arm-dumbbell-row-light.mp4';
 import singleArmDumbbellRowPoster from '../assets/demos/single-arm-dumbbell-row-poster.webp';
-import singleArmDumbbellRowTransparentPoster from '../assets/demos/single-arm-dumbbell-row-poster-transparent.webp';
+import singleArmDumbbellRowLightPoster from '../assets/demos/single-arm-dumbbell-row-poster-light.webp';
 import standingCalfRaiseMp4 from '../assets/demos/standing-calf-raise.mp4';
-import standingCalfRaiseWebp from '../assets/demos/standing-calf-raise.webp';
+import standingCalfRaiseLightMp4 from '../assets/demos/standing-calf-raise-light.mp4';
 import standingCalfRaisePoster from '../assets/demos/standing-calf-raise-poster.webp';
-import standingCalfRaiseTransparentPoster from '../assets/demos/standing-calf-raise-poster-transparent.webp';
+import standingCalfRaiseLightPoster from '../assets/demos/standing-calf-raise-poster-light.webp';
 import straightArmPulldownMp4 from '../assets/demos/straight-arm-pulldown.mp4';
-import straightArmPulldownWebp from '../assets/demos/straight-arm-pulldown.webp';
+import straightArmPulldownLightMp4 from '../assets/demos/straight-arm-pulldown-light.mp4';
 import straightArmPulldownPoster from '../assets/demos/straight-arm-pulldown-poster.webp';
-import straightArmPulldownTransparentPoster from '../assets/demos/straight-arm-pulldown-poster-transparent.webp';
+import straightArmPulldownLightPoster from '../assets/demos/straight-arm-pulldown-poster-light.webp';
 import tricepsPushdownMp4 from '../assets/demos/triceps-pushdown.mp4';
-import tricepsPushdownWebp from '../assets/demos/triceps-pushdown.webp';
+import tricepsPushdownLightMp4 from '../assets/demos/triceps-pushdown-light.mp4';
 import tricepsPushdownPoster from '../assets/demos/triceps-pushdown-poster.webp';
-import tricepsPushdownTransparentPoster from '../assets/demos/triceps-pushdown-poster-transparent.webp';
+import tricepsPushdownLightPoster from '../assets/demos/triceps-pushdown-poster-light.webp';
 import tricepsDipMp4 from '../assets/demos/triceps-dip.mp4';
-import tricepsDipWebp from '../assets/demos/triceps-dip.webp';
+import tricepsDipLightMp4 from '../assets/demos/triceps-dip-light.mp4';
 import tricepsDipPoster from '../assets/demos/triceps-dip-poster.webp';
-import tricepsDipTransparentPoster from '../assets/demos/triceps-dip-poster-transparent.webp';
+import tricepsDipLightPoster from '../assets/demos/triceps-dip-poster-light.webp';
 import ezBarCurlMp4 from '../assets/demos/ez-bar-curl.mp4';
-import ezBarCurlWebp from '../assets/demos/ez-bar-curl.webp';
+import ezBarCurlLightMp4 from '../assets/demos/ez-bar-curl-light.mp4';
 import ezBarCurlPoster from '../assets/demos/ez-bar-curl-poster.webp';
-import ezBarCurlTransparentPoster from '../assets/demos/ez-bar-curl-poster-transparent.webp';
+import ezBarCurlLightPoster from '../assets/demos/ez-bar-curl-poster-light.webp';
 import inclineDumbbellCurlMp4 from '../assets/demos/incline-dumbbell-curl.mp4';
-import inclineDumbbellCurlWebp from '../assets/demos/incline-dumbbell-curl.webp';
+import inclineDumbbellCurlLightMp4 from '../assets/demos/incline-dumbbell-curl-light.mp4';
 import inclineDumbbellCurlPoster from '../assets/demos/incline-dumbbell-curl-poster.webp';
-import inclineDumbbellCurlTransparentPoster from '../assets/demos/incline-dumbbell-curl-poster-transparent.webp';
+import inclineDumbbellCurlLightPoster from '../assets/demos/incline-dumbbell-curl-poster-light.webp';
 import cableCurlMp4 from '../assets/demos/cable-curl.mp4';
-import cableCurlWebp from '../assets/demos/cable-curl.webp';
+import cableCurlLightMp4 from '../assets/demos/cable-curl-light.mp4';
 import cableCurlPoster from '../assets/demos/cable-curl-poster.webp';
-import cableCurlTransparentPoster from '../assets/demos/cable-curl-poster-transparent.webp';
+import cableCurlLightPoster from '../assets/demos/cable-curl-poster-light.webp';
 import cableLatPulloverMp4 from '../assets/demos/cable-lat-pullover.mp4';
-import cableLatPulloverWebp from '../assets/demos/cable-lat-pullover.webp';
+import cableLatPulloverLightMp4 from '../assets/demos/cable-lat-pullover-light.mp4';
 import cableLatPulloverPoster from '../assets/demos/cable-lat-pullover-poster.webp';
-import cableLatPulloverTransparentPoster from '../assets/demos/cable-lat-pullover-poster-transparent.webp';
+import cableLatPulloverLightPoster from '../assets/demos/cable-lat-pullover-poster-light.webp';
 import concentrationCurlMp4 from '../assets/demos/concentration-curl.mp4';
-import concentrationCurlWebp from '../assets/demos/concentration-curl.webp';
+import concentrationCurlLightMp4 from '../assets/demos/concentration-curl-light.mp4';
 import concentrationCurlPoster from '../assets/demos/concentration-curl-poster.webp';
-import concentrationCurlTransparentPoster from '../assets/demos/concentration-curl-poster-transparent.webp';
+import concentrationCurlLightPoster from '../assets/demos/concentration-curl-poster-light.webp';
 import chestSupportedDumbbellRowMp4 from '../assets/demos/chest-supported-dumbbell-row.mp4';
-import chestSupportedDumbbellRowWebp from '../assets/demos/chest-supported-dumbbell-row.webp';
+import chestSupportedDumbbellRowLightMp4 from '../assets/demos/chest-supported-dumbbell-row-light.mp4';
 import chestSupportedDumbbellRowPoster from '../assets/demos/chest-supported-dumbbell-row-poster.webp';
-import chestSupportedDumbbellRowTransparentPoster from '../assets/demos/chest-supported-dumbbell-row-poster-transparent.webp';
+import chestSupportedDumbbellRowLightPoster from '../assets/demos/chest-supported-dumbbell-row-poster-light.webp';
 import kettlebellDeadliftMp4 from '../assets/demos/kettlebell-deadlift.mp4';
-import kettlebellDeadliftWebp from '../assets/demos/kettlebell-deadlift.webp';
+import kettlebellDeadliftLightMp4 from '../assets/demos/kettlebell-deadlift-light.mp4';
 import kettlebellDeadliftPoster from '../assets/demos/kettlebell-deadlift-poster.webp';
-import kettlebellDeadliftTransparentPoster from '../assets/demos/kettlebell-deadlift-poster-transparent.webp';
+import kettlebellDeadliftLightPoster from '../assets/demos/kettlebell-deadlift-poster-light.webp';
 import kettlebellSwingMp4 from '../assets/demos/kettlebell-swing.mp4';
-import kettlebellSwingWebp from '../assets/demos/kettlebell-swing.webp';
+import kettlebellSwingLightMp4 from '../assets/demos/kettlebell-swing-light.mp4';
 import kettlebellSwingPoster from '../assets/demos/kettlebell-swing-poster.webp';
-import kettlebellSwingTransparentPoster from '../assets/demos/kettlebell-swing-poster-transparent.webp';
+import kettlebellSwingLightPoster from '../assets/demos/kettlebell-swing-poster-light.webp';
 import overheadTricepsExtensionMp4 from '../assets/demos/overhead-triceps-extension.mp4';
-import overheadTricepsExtensionWebp from '../assets/demos/overhead-triceps-extension.webp';
+import overheadTricepsExtensionLightMp4 from '../assets/demos/overhead-triceps-extension-light.mp4';
 import overheadTricepsExtensionPoster from '../assets/demos/overhead-triceps-extension-poster.webp';
-import overheadTricepsExtensionTransparentPoster from '../assets/demos/overhead-triceps-extension-poster-transparent.webp';
+import overheadTricepsExtensionLightPoster from '../assets/demos/overhead-triceps-extension-poster-light.webp';
 import machineChestPressMp4 from '../assets/demos/machine-chest-press.mp4';
-import machineChestPressWebp from '../assets/demos/machine-chest-press.webp';
+import machineChestPressLightMp4 from '../assets/demos/machine-chest-press-light.mp4';
 import machineChestPressPoster from '../assets/demos/machine-chest-press-poster.webp';
-import machineChestPressTransparentPoster from '../assets/demos/machine-chest-press-poster-transparent.webp';
+import machineChestPressLightPoster from '../assets/demos/machine-chest-press-poster-light.webp';
 import seatedRowMachineMp4 from '../assets/demos/seated-row-machine.mp4';
-import seatedRowMachineWebp from '../assets/demos/seated-row-machine.webp';
+import seatedRowMachineLightMp4 from '../assets/demos/seated-row-machine-light.mp4';
 import seatedRowMachinePoster from '../assets/demos/seated-row-machine-poster.webp';
-import seatedRowMachineTransparentPoster from '../assets/demos/seated-row-machine-poster-transparent.webp';
+import seatedRowMachineLightPoster from '../assets/demos/seated-row-machine-poster-light.webp';
 import hipAbductionMachineMp4 from '../assets/demos/hip-abduction-machine.mp4';
-import hipAbductionMachineWebp from '../assets/demos/hip-abduction-machine.webp';
+import hipAbductionMachineLightMp4 from '../assets/demos/hip-abduction-machine-light.mp4';
 import hipAbductionMachinePoster from '../assets/demos/hip-abduction-machine-poster.webp';
-import hipAbductionMachineTransparentPoster from '../assets/demos/hip-abduction-machine-poster-transparent.webp';
+import hipAbductionMachineLightPoster from '../assets/demos/hip-abduction-machine-poster-light.webp';
 import hipAdductionMachineMp4 from '../assets/demos/hip-adduction-machine.mp4';
-import hipAdductionMachineWebp from '../assets/demos/hip-adduction-machine.webp';
+import hipAdductionMachineLightMp4 from '../assets/demos/hip-adduction-machine-light.mp4';
 import hipAdductionMachinePoster from '../assets/demos/hip-adduction-machine-poster.webp';
-import hipAdductionMachineTransparentPoster from '../assets/demos/hip-adduction-machine-poster-transparent.webp';
+import hipAdductionMachineLightPoster from '../assets/demos/hip-adduction-machine-poster-light.webp';
 import pecDeckMp4 from '../assets/demos/pec-deck.mp4';
-import pecDeckWebp from '../assets/demos/pec-deck.webp';
+import pecDeckLightMp4 from '../assets/demos/pec-deck-light.mp4';
 import pecDeckPoster from '../assets/demos/pec-deck-poster.webp';
-import pecDeckTransparentPoster from '../assets/demos/pec-deck-poster-transparent.webp';
+import pecDeckLightPoster from '../assets/demos/pec-deck-poster-light.webp';
 import tBarRowMp4 from '../assets/demos/t-bar-row.mp4';
-import tBarRowWebp from '../assets/demos/t-bar-row.webp';
+import tBarRowLightMp4 from '../assets/demos/t-bar-row-light.mp4';
 import tBarRowPoster from '../assets/demos/t-bar-row-poster.webp';
-import tBarRowTransparentPoster from '../assets/demos/t-bar-row-poster-transparent.webp';
+import tBarRowLightPoster from '../assets/demos/t-bar-row-poster-light.webp';
 import legExtensionMp4 from '../assets/demos/leg-extension.mp4';
-import legExtensionWebp from '../assets/demos/leg-extension.webp';
+import legExtensionLightMp4 from '../assets/demos/leg-extension-light.mp4';
 import legExtensionPoster from '../assets/demos/leg-extension-poster.webp';
-import legExtensionTransparentPoster from '../assets/demos/leg-extension-poster-transparent.webp';
+import legExtensionLightPoster from '../assets/demos/leg-extension-poster-light.webp';
 import seatedLegCurlMp4 from '../assets/demos/seated-leg-curl.mp4';
-import seatedLegCurlWebp from '../assets/demos/seated-leg-curl.webp';
+import seatedLegCurlLightMp4 from '../assets/demos/seated-leg-curl-light.mp4';
 import seatedLegCurlPoster from '../assets/demos/seated-leg-curl-poster.webp';
-import seatedLegCurlTransparentPoster from '../assets/demos/seated-leg-curl-poster-transparent.webp';
+import seatedLegCurlLightPoster from '../assets/demos/seated-leg-curl-poster-light.webp';
 import lyingLegCurlMp4 from '../assets/demos/lying-leg-curl.mp4';
-import lyingLegCurlWebp from '../assets/demos/lying-leg-curl.webp';
+import lyingLegCurlLightMp4 from '../assets/demos/lying-leg-curl-light.mp4';
 import lyingLegCurlPoster from '../assets/demos/lying-leg-curl-poster.webp';
-import lyingLegCurlTransparentPoster from '../assets/demos/lying-leg-curl-poster-transparent.webp';
+import lyingLegCurlLightPoster from '../assets/demos/lying-leg-curl-poster-light.webp';
 import backExtensionMp4 from '../assets/demos/back-extension.mp4';
-import backExtensionWebp from '../assets/demos/back-extension.webp';
+import backExtensionLightMp4 from '../assets/demos/back-extension-light.mp4';
 import backExtensionPoster from '../assets/demos/back-extension-poster.webp';
-import backExtensionTransparentPoster from '../assets/demos/back-extension-poster-transparent.webp';
+import backExtensionLightPoster from '../assets/demos/back-extension-poster-light.webp';
 
 /**
  * The demonstration loops, by exercise slug: a clay mannequin doing one rep in
@@ -241,7 +241,8 @@ import backExtensionTransparentPoster from '../assets/demos/back-extension-poste
  * the first. The player takes each file's own length and assumes none.
  *
  * One entry per exercise, not per piece of kit: a loop shows a movement, and
- * two exercises on one bench are two different movements. Adding one is four files in `assets/demos/` and one
+ * two exercises on one bench are two different movements. Adding one is four
+ * files in `assets/demos/` (a loop and a poster for each panel) and one
  * entry here. The files are named after the app's slug, not 3d-models' file
  * name: its `dumbbell_bicep_curl` is this catalogue's `dumbbell-curl`, and its
  * `abductor_machine` and `adductor_machine` are `hip-abduction-machine` and
@@ -253,366 +254,366 @@ import backExtensionTransparentPoster from '../assets/demos/back-extension-poste
  * scrolls one into view, never at install.
  */
 export interface ExerciseDemo {
-  /** H.264, 720px square, opaque on `DEMO_MP4_BACKGROUND`. 80–210 KB. */
+  /** H.264, 720px square, opaque on the dark panel, `DEMO_BACKGROUND.dark`. 80–270 KB. */
   readonly mp4: string;
-  /** Animated WebP, 720px square, transparent with a contact shadow. 0.9–3.0 MB. */
-  readonly webp: string;
-  /** The first frame, opaque on `DEMO_MP4_BACKGROUND`. 10–30 KB. */
+  /** The same loop, opaque on the light panel, `DEMO_BACKGROUND.light`. 70–260 KB. */
+  readonly lightMp4: string;
+  /** The first frame on the dark panel. 10–30 KB. */
   readonly poster: string;
-  /** The same first frame, transparent with the contact shadow. 25–90 KB. */
-  readonly transparentPoster: string;
+  /** The first frame on the light panel. 10–35 KB. */
+  readonly lightPoster: string;
 }
 
 const DEMOS: Readonly<Record<string, ExerciseDemo>> = {
   'barbell-back-squat': {
     mp4: barbellBackSquatMp4,
-    webp: barbellBackSquatWebp,
+    lightMp4: barbellBackSquatLightMp4,
     poster: barbellBackSquatPoster,
-    transparentPoster: barbellBackSquatTransparentPoster,
+    lightPoster: barbellBackSquatLightPoster,
   },
   'barbell-bench-press': {
     mp4: barbellBenchPressMp4,
-    webp: barbellBenchPressWebp,
+    lightMp4: barbellBenchPressLightMp4,
     poster: barbellBenchPressPoster,
-    transparentPoster: barbellBenchPressTransparentPoster,
+    lightPoster: barbellBenchPressLightPoster,
   },
   'conventional-deadlift': {
     mp4: conventionalDeadliftMp4,
-    webp: conventionalDeadliftWebp,
+    lightMp4: conventionalDeadliftLightMp4,
     poster: conventionalDeadliftPoster,
-    transparentPoster: conventionalDeadliftTransparentPoster,
+    lightPoster: conventionalDeadliftLightPoster,
   },
   'romanian-deadlift': {
     mp4: romanianDeadliftMp4,
-    webp: romanianDeadliftWebp,
+    lightMp4: romanianDeadliftLightMp4,
     poster: romanianDeadliftPoster,
-    transparentPoster: romanianDeadliftTransparentPoster,
+    lightPoster: romanianDeadliftLightPoster,
   },
   'barbell-row': {
     mp4: barbellRowMp4,
-    webp: barbellRowWebp,
+    lightMp4: barbellRowLightMp4,
     poster: barbellRowPoster,
-    transparentPoster: barbellRowTransparentPoster,
+    lightPoster: barbellRowLightPoster,
   },
   'barbell-curl': {
     mp4: barbellCurlMp4,
-    webp: barbellCurlWebp,
+    lightMp4: barbellCurlLightMp4,
     poster: barbellCurlPoster,
-    transparentPoster: barbellCurlTransparentPoster,
+    lightPoster: barbellCurlLightPoster,
   },
   'overhead-press': {
     mp4: overheadPressMp4,
-    webp: overheadPressWebp,
+    lightMp4: overheadPressLightMp4,
     poster: overheadPressPoster,
-    transparentPoster: overheadPressTransparentPoster,
+    lightPoster: overheadPressLightPoster,
   },
   'dumbbell-bench-press': {
     mp4: dumbbellBenchPressMp4,
-    webp: dumbbellBenchPressWebp,
+    lightMp4: dumbbellBenchPressLightMp4,
     poster: dumbbellBenchPressPoster,
-    transparentPoster: dumbbellBenchPressTransparentPoster,
+    lightPoster: dumbbellBenchPressLightPoster,
   },
   'dumbbell-curl': {
     mp4: dumbbellCurlMp4,
-    webp: dumbbellCurlWebp,
+    lightMp4: dumbbellCurlLightMp4,
     poster: dumbbellCurlPoster,
-    transparentPoster: dumbbellCurlTransparentPoster,
+    lightPoster: dumbbellCurlLightPoster,
   },
   'lateral-raise': {
     mp4: lateralRaiseMp4,
-    webp: lateralRaiseWebp,
+    lightMp4: lateralRaiseLightMp4,
     poster: lateralRaisePoster,
-    transparentPoster: lateralRaiseTransparentPoster,
+    lightPoster: lateralRaiseLightPoster,
   },
   'push-up': {
     mp4: pushUpMp4,
-    webp: pushUpWebp,
+    lightMp4: pushUpLightMp4,
     poster: pushUpPoster,
-    transparentPoster: pushUpTransparentPoster,
+    lightPoster: pushUpLightPoster,
   },
   'pull-up': {
     mp4: pullUpMp4,
-    webp: pullUpWebp,
+    lightMp4: pullUpLightMp4,
     poster: pullUpPoster,
-    transparentPoster: pullUpTransparentPoster,
+    lightPoster: pullUpLightPoster,
   },
   'chin-up': {
     mp4: chinUpMp4,
-    webp: chinUpWebp,
+    lightMp4: chinUpLightMp4,
     poster: chinUpPoster,
-    transparentPoster: chinUpTransparentPoster,
+    lightPoster: chinUpLightPoster,
   },
   'lat-pulldown': {
     mp4: latPulldownMp4,
-    webp: latPulldownWebp,
+    lightMp4: latPulldownLightMp4,
     poster: latPulldownPoster,
-    transparentPoster: latPulldownTransparentPoster,
+    lightPoster: latPulldownLightPoster,
   },
   'leg-press': {
     mp4: legPressMp4,
-    webp: legPressWebp,
+    lightMp4: legPressLightMp4,
     poster: legPressPoster,
-    transparentPoster: legPressTransparentPoster,
+    lightPoster: legPressLightPoster,
   },
   'hammer-curl': {
     mp4: hammerCurlMp4,
-    webp: hammerCurlWebp,
+    lightMp4: hammerCurlLightMp4,
     poster: hammerCurlPoster,
-    transparentPoster: hammerCurlTransparentPoster,
+    lightPoster: hammerCurlLightPoster,
   },
   'rear-delt-fly': {
     mp4: rearDeltFlyMp4,
-    webp: rearDeltFlyWebp,
+    lightMp4: rearDeltFlyLightMp4,
     poster: rearDeltFlyPoster,
-    transparentPoster: rearDeltFlyTransparentPoster,
+    lightPoster: rearDeltFlyLightPoster,
   },
   'close-grip-bench-press': {
     mp4: closeGripBenchPressMp4,
-    webp: closeGripBenchPressWebp,
+    lightMp4: closeGripBenchPressLightMp4,
     poster: closeGripBenchPressPoster,
-    transparentPoster: closeGripBenchPressTransparentPoster,
+    lightPoster: closeGripBenchPressLightPoster,
   },
   'incline-dumbbell-press': {
     mp4: inclineDumbbellPressMp4,
-    webp: inclineDumbbellPressWebp,
+    lightMp4: inclineDumbbellPressLightMp4,
     poster: inclineDumbbellPressPoster,
-    transparentPoster: inclineDumbbellPressTransparentPoster,
+    lightPoster: inclineDumbbellPressLightPoster,
   },
   'hanging-leg-raise': {
     mp4: hangingLegRaiseMp4,
-    webp: hangingLegRaiseWebp,
+    lightMp4: hangingLegRaiseLightMp4,
     poster: hangingLegRaisePoster,
-    transparentPoster: hangingLegRaiseTransparentPoster,
+    lightPoster: hangingLegRaiseLightPoster,
   },
   'barbell-front-squat': {
     mp4: barbellFrontSquatMp4,
-    webp: barbellFrontSquatWebp,
+    lightMp4: barbellFrontSquatLightMp4,
     poster: barbellFrontSquatPoster,
-    transparentPoster: barbellFrontSquatTransparentPoster,
+    lightPoster: barbellFrontSquatLightPoster,
   },
   'incline-barbell-press': {
     mp4: inclineBarbellPressMp4,
-    webp: inclineBarbellPressWebp,
+    lightMp4: inclineBarbellPressLightMp4,
     poster: inclineBarbellPressPoster,
-    transparentPoster: inclineBarbellPressTransparentPoster,
+    lightPoster: inclineBarbellPressLightPoster,
   },
   'trap-bar-deadlift': {
     mp4: trapBarDeadliftMp4,
-    webp: trapBarDeadliftWebp,
+    lightMp4: trapBarDeadliftLightMp4,
     poster: trapBarDeadliftPoster,
-    transparentPoster: trapBarDeadliftTransparentPoster,
+    lightPoster: trapBarDeadliftLightPoster,
   },
   'goblet-squat': {
     mp4: gobletSquatMp4,
-    webp: gobletSquatWebp,
+    lightMp4: gobletSquatLightMp4,
     poster: gobletSquatPoster,
-    transparentPoster: gobletSquatTransparentPoster,
+    lightPoster: gobletSquatLightPoster,
   },
   'skull-crusher': {
     mp4: skullCrusherMp4,
-    webp: skullCrusherWebp,
+    lightMp4: skullCrusherLightMp4,
     poster: skullCrusherPoster,
-    transparentPoster: skullCrusherTransparentPoster,
+    lightPoster: skullCrusherLightPoster,
   },
   'dumbbell-pullover': {
     mp4: dumbbellPulloverMp4,
-    webp: dumbbellPulloverWebp,
+    lightMp4: dumbbellPulloverLightMp4,
     poster: dumbbellPulloverPoster,
-    transparentPoster: dumbbellPulloverTransparentPoster,
+    lightPoster: dumbbellPulloverLightPoster,
   },
   'barbell-hip-thrust': {
     mp4: barbellHipThrustMp4,
-    webp: barbellHipThrustWebp,
+    lightMp4: barbellHipThrustLightMp4,
     poster: barbellHipThrustPoster,
-    transparentPoster: barbellHipThrustTransparentPoster,
+    lightPoster: barbellHipThrustLightPoster,
   },
   'bulgarian-split-squat': {
     mp4: bulgarianSplitSquatMp4,
-    webp: bulgarianSplitSquatWebp,
+    lightMp4: bulgarianSplitSquatLightMp4,
     poster: bulgarianSplitSquatPoster,
-    transparentPoster: bulgarianSplitSquatTransparentPoster,
+    lightPoster: bulgarianSplitSquatLightPoster,
   },
   'cable-fly': {
     mp4: cableFlyMp4,
-    webp: cableFlyWebp,
+    lightMp4: cableFlyLightMp4,
     poster: cableFlyPoster,
-    transparentPoster: cableFlyTransparentPoster,
+    lightPoster: cableFlyLightPoster,
   },
   'cable-woodchop': {
     mp4: cableWoodchopMp4,
-    webp: cableWoodchopWebp,
+    lightMp4: cableWoodchopLightMp4,
     poster: cableWoodchopPoster,
-    transparentPoster: cableWoodchopTransparentPoster,
+    lightPoster: cableWoodchopLightPoster,
   },
   // Two dips, two loops: this one leans forward over the bars, and the
   // triceps dip's stays upright.
   'chest-dip': {
     mp4: chestDipMp4,
-    webp: chestDipWebp,
+    lightMp4: chestDipLightMp4,
     poster: chestDipPoster,
-    transparentPoster: chestDipTransparentPoster,
+    lightPoster: chestDipLightPoster,
   },
   'face-pull': {
     mp4: facePullMp4,
-    webp: facePullWebp,
+    lightMp4: facePullLightMp4,
     poster: facePullPoster,
-    transparentPoster: facePullTransparentPoster,
+    lightPoster: facePullLightPoster,
   },
   'hack-squat': {
     mp4: hackSquatMp4,
-    webp: hackSquatWebp,
+    lightMp4: hackSquatLightMp4,
     poster: hackSquatPoster,
-    transparentPoster: hackSquatTransparentPoster,
+    lightPoster: hackSquatLightPoster,
   },
   plank: {
     mp4: plankMp4,
-    webp: plankWebp,
+    lightMp4: plankLightMp4,
     poster: plankPoster,
-    transparentPoster: plankTransparentPoster,
+    lightPoster: plankLightPoster,
   },
   'single-arm-dumbbell-row': {
     mp4: singleArmDumbbellRowMp4,
-    webp: singleArmDumbbellRowWebp,
+    lightMp4: singleArmDumbbellRowLightMp4,
     poster: singleArmDumbbellRowPoster,
-    transparentPoster: singleArmDumbbellRowTransparentPoster,
+    lightPoster: singleArmDumbbellRowLightPoster,
   },
   'standing-calf-raise': {
     mp4: standingCalfRaiseMp4,
-    webp: standingCalfRaiseWebp,
+    lightMp4: standingCalfRaiseLightMp4,
     poster: standingCalfRaisePoster,
-    transparentPoster: standingCalfRaiseTransparentPoster,
+    lightPoster: standingCalfRaiseLightPoster,
   },
   'straight-arm-pulldown': {
     mp4: straightArmPulldownMp4,
-    webp: straightArmPulldownWebp,
+    lightMp4: straightArmPulldownLightMp4,
     poster: straightArmPulldownPoster,
-    transparentPoster: straightArmPulldownTransparentPoster,
+    lightPoster: straightArmPulldownLightPoster,
   },
   'triceps-pushdown': {
     mp4: tricepsPushdownMp4,
-    webp: tricepsPushdownWebp,
+    lightMp4: tricepsPushdownLightMp4,
     poster: tricepsPushdownPoster,
-    transparentPoster: tricepsPushdownTransparentPoster,
+    lightPoster: tricepsPushdownLightPoster,
   },
   'triceps-dip': {
     mp4: tricepsDipMp4,
-    webp: tricepsDipWebp,
+    lightMp4: tricepsDipLightMp4,
     poster: tricepsDipPoster,
-    transparentPoster: tricepsDipTransparentPoster,
+    lightPoster: tricepsDipLightPoster,
   },
   'ez-bar-curl': {
     mp4: ezBarCurlMp4,
-    webp: ezBarCurlWebp,
+    lightMp4: ezBarCurlLightMp4,
     poster: ezBarCurlPoster,
-    transparentPoster: ezBarCurlTransparentPoster,
+    lightPoster: ezBarCurlLightPoster,
   },
   'incline-dumbbell-curl': {
     mp4: inclineDumbbellCurlMp4,
-    webp: inclineDumbbellCurlWebp,
+    lightMp4: inclineDumbbellCurlLightMp4,
     poster: inclineDumbbellCurlPoster,
-    transparentPoster: inclineDumbbellCurlTransparentPoster,
+    lightPoster: inclineDumbbellCurlLightPoster,
   },
   'cable-curl': {
     mp4: cableCurlMp4,
-    webp: cableCurlWebp,
+    lightMp4: cableCurlLightMp4,
     poster: cableCurlPoster,
-    transparentPoster: cableCurlTransparentPoster,
+    lightPoster: cableCurlLightPoster,
   },
   'cable-lat-pullover': {
     mp4: cableLatPulloverMp4,
-    webp: cableLatPulloverWebp,
+    lightMp4: cableLatPulloverLightMp4,
     poster: cableLatPulloverPoster,
-    transparentPoster: cableLatPulloverTransparentPoster,
+    lightPoster: cableLatPulloverLightPoster,
   },
   'concentration-curl': {
     mp4: concentrationCurlMp4,
-    webp: concentrationCurlWebp,
+    lightMp4: concentrationCurlLightMp4,
     poster: concentrationCurlPoster,
-    transparentPoster: concentrationCurlTransparentPoster,
+    lightPoster: concentrationCurlLightPoster,
   },
   'chest-supported-dumbbell-row': {
     mp4: chestSupportedDumbbellRowMp4,
-    webp: chestSupportedDumbbellRowWebp,
+    lightMp4: chestSupportedDumbbellRowLightMp4,
     poster: chestSupportedDumbbellRowPoster,
-    transparentPoster: chestSupportedDumbbellRowTransparentPoster,
+    lightPoster: chestSupportedDumbbellRowLightPoster,
   },
   'kettlebell-deadlift': {
     mp4: kettlebellDeadliftMp4,
-    webp: kettlebellDeadliftWebp,
+    lightMp4: kettlebellDeadliftLightMp4,
     poster: kettlebellDeadliftPoster,
-    transparentPoster: kettlebellDeadliftTransparentPoster,
+    lightPoster: kettlebellDeadliftLightPoster,
   },
   'kettlebell-swing': {
     mp4: kettlebellSwingMp4,
-    webp: kettlebellSwingWebp,
+    lightMp4: kettlebellSwingLightMp4,
     poster: kettlebellSwingPoster,
-    transparentPoster: kettlebellSwingTransparentPoster,
+    lightPoster: kettlebellSwingLightPoster,
   },
   'overhead-triceps-extension': {
     mp4: overheadTricepsExtensionMp4,
-    webp: overheadTricepsExtensionWebp,
+    lightMp4: overheadTricepsExtensionLightMp4,
     poster: overheadTricepsExtensionPoster,
-    transparentPoster: overheadTricepsExtensionTransparentPoster,
+    lightPoster: overheadTricepsExtensionLightPoster,
   },
   'machine-chest-press': {
     mp4: machineChestPressMp4,
-    webp: machineChestPressWebp,
+    lightMp4: machineChestPressLightMp4,
     poster: machineChestPressPoster,
-    transparentPoster: machineChestPressTransparentPoster,
+    lightPoster: machineChestPressLightPoster,
   },
   'seated-row-machine': {
     mp4: seatedRowMachineMp4,
-    webp: seatedRowMachineWebp,
+    lightMp4: seatedRowMachineLightMp4,
     poster: seatedRowMachinePoster,
-    transparentPoster: seatedRowMachineTransparentPoster,
+    lightPoster: seatedRowMachineLightPoster,
   },
   'hip-abduction-machine': {
     mp4: hipAbductionMachineMp4,
-    webp: hipAbductionMachineWebp,
+    lightMp4: hipAbductionMachineLightMp4,
     poster: hipAbductionMachinePoster,
-    transparentPoster: hipAbductionMachineTransparentPoster,
+    lightPoster: hipAbductionMachineLightPoster,
   },
   'hip-adduction-machine': {
     mp4: hipAdductionMachineMp4,
-    webp: hipAdductionMachineWebp,
+    lightMp4: hipAdductionMachineLightMp4,
     poster: hipAdductionMachinePoster,
-    transparentPoster: hipAdductionMachineTransparentPoster,
+    lightPoster: hipAdductionMachineLightPoster,
   },
   'pec-deck': {
     mp4: pecDeckMp4,
-    webp: pecDeckWebp,
+    lightMp4: pecDeckLightMp4,
     poster: pecDeckPoster,
-    transparentPoster: pecDeckTransparentPoster,
+    lightPoster: pecDeckLightPoster,
   },
   't-bar-row': {
     mp4: tBarRowMp4,
-    webp: tBarRowWebp,
+    lightMp4: tBarRowLightMp4,
     poster: tBarRowPoster,
-    transparentPoster: tBarRowTransparentPoster,
+    lightPoster: tBarRowLightPoster,
   },
   'leg-extension': {
     mp4: legExtensionMp4,
-    webp: legExtensionWebp,
+    lightMp4: legExtensionLightMp4,
     poster: legExtensionPoster,
-    transparentPoster: legExtensionTransparentPoster,
+    lightPoster: legExtensionLightPoster,
   },
   'seated-leg-curl': {
     mp4: seatedLegCurlMp4,
-    webp: seatedLegCurlWebp,
+    lightMp4: seatedLegCurlLightMp4,
     poster: seatedLegCurlPoster,
-    transparentPoster: seatedLegCurlTransparentPoster,
+    lightPoster: seatedLegCurlLightPoster,
   },
   'lying-leg-curl': {
     mp4: lyingLegCurlMp4,
-    webp: lyingLegCurlWebp,
+    lightMp4: lyingLegCurlLightMp4,
     poster: lyingLegCurlPoster,
-    transparentPoster: lyingLegCurlTransparentPoster,
+    lightPoster: lyingLegCurlLightPoster,
   },
   'back-extension': {
     mp4: backExtensionMp4,
-    webp: backExtensionWebp,
+    lightMp4: backExtensionLightMp4,
     poster: backExtensionPoster,
-    transparentPoster: backExtensionTransparentPoster,
+    lightPoster: backExtensionLightPoster,
   },
 };
 
@@ -622,42 +623,48 @@ export function exerciseDemo(slug: string): ExerciseDemo | null {
 }
 
 /**
- * What the MP4 and the poster are rendered on: `UI_BG` in 3d-models'
- * render_common, the icon contact sheet's background.
+ * The colours the loops are rendered on: the dark panel is `UI_BG` in
+ * 3d-models' render_common, the light one `LIGHT_BG` in mannequin's
+ * render_loop. Each loop ships once per panel, opaque on that colour.
  */
-export const DEMO_MP4_BACKGROUND = '#1c1c1c';
+export const DEMO_BACKGROUND = { dark: '#1c1c1c', light: '#f5f3ee' } as const;
 
-export type DemoFormat = 'mp4' | 'webp';
+export type DemoPanel = keyof typeof DEMO_BACKGROUND;
 
 /**
- * Which file to play on a surface of this colour.
+ * Which set of files belongs on a surface of this colour, or null if no loop
+ * was rendered on it.
  *
- * The MP4 is about a twelfth of the WebP's size, but it is opaque. On any
- * colour but its own its background shows as a square, so it plays only on an
- * exact match and the transparent WebP plays everywhere else. Exact, because
+ * Every file is opaque. On any colour but its own, its background would show
+ * as a square, so a set is chosen only on an exact match. Exact, because
  * near-black differences of a few levels show as a visible edge on an OLED
- * phone.
+ * phone. With no match the panel shows nothing, the way a file that fails
+ * does: the steps are the real instructions.
  */
-export function demoFormat(surface: string): DemoFormat {
-  return surface.trim().toLowerCase() === DEMO_MP4_BACKGROUND ? 'mp4' : 'webp';
+export function demoPanel(surface: string): DemoPanel | null {
+  const colour = surface.trim().toLowerCase();
+  if (colour === DEMO_BACKGROUND.dark) return 'dark';
+  if (colour === DEMO_BACKGROUND.light) return 'light';
+  return null;
 }
 
-export type DemoView = DemoFormat | 'poster';
-
-/**
- * What the player shows: a loop in the right format, or the still frame when
- * the system asks for reduced motion. A figure squatting on repeat is exactly
- * the motion that setting is there to stop, so it gets the still.
- */
-export function demoView(format: DemoFormat, reducedMotion: boolean): DemoView {
-  return reducedMotion ? 'poster' : format;
+/** The loop and its first frame for this panel. */
+export function demoFiles(
+  demo: ExerciseDemo,
+  panel: DemoPanel,
+): { readonly video: string; readonly poster: string } {
+  return panel === 'dark'
+    ? { video: demo.mp4, poster: demo.poster }
+    : { video: demo.lightMp4, poster: demo.lightPoster };
 }
 
+export type DemoView = 'video' | 'poster';
+
 /**
- * The still, by the same rule as the loop: the opaque poster where the MP4
- * would play, and the transparent one everywhere else, so the still is never
- * a dark square on a light panel.
+ * What the player shows: the loop, or the still frame when the system asks
+ * for reduced motion. A figure squatting on repeat is exactly the motion that
+ * setting is there to stop, so it gets the still.
  */
-export function demoPoster(demo: ExerciseDemo, format: DemoFormat): string {
-  return format === 'mp4' ? demo.poster : demo.transparentPoster;
+export function demoView(reducedMotion: boolean): DemoView {
+  return reducedMotion ? 'poster' : 'video';
 }

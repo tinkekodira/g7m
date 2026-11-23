@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { colorTokens, lightColorTokens } from '@g7m/ui';
-import {
-  DEMO_MP4_BACKGROUND,
-  demoFormat,
-  demoPoster,
-  demoView,
-  exerciseDemo,
-} from './exercise-demos.js';
+import { DEMO_BACKGROUND, demoFiles, demoPanel, demoView, exerciseDemo } from './exercise-demos.js';
 
 /** Every exercise with a loop, by the catalogue's slug. */
 const WITH_LOOP = [
@@ -76,9 +70,9 @@ describe('exerciseDemo', () => {
       const demo = exerciseDemo(slug);
       expect(demo, slug).not.toBeNull();
       expect(demo?.mp4).toMatch(new RegExp(`/${slug}\\.mp4$`));
-      expect(demo?.webp).toMatch(new RegExp(`/${slug}\\.webp$`));
+      expect(demo?.lightMp4).toMatch(new RegExp(`/${slug}-light\\.mp4$`));
       expect(demo?.poster).toMatch(new RegExp(`/${slug}-poster\\.webp$`));
-      expect(demo?.transparentPoster).toMatch(new RegExp(`/${slug}-poster-transparent\\.webp$`));
+      expect(demo?.lightPoster).toMatch(new RegExp(`/${slug}-poster-light\\.webp$`));
     }
   });
 
@@ -88,9 +82,7 @@ describe('exerciseDemo', () => {
       import.meta.glob('../assets/demos/*', { query: '?url', eager: true }),
     );
     const slugs = new Set(
-      files.map((file) =>
-        (file.split('/').pop() ?? file).replace(/(-poster(-transparent)?)?\.\w+$/, ''),
-      ),
+      files.map((file) => (file.split('/').pop() ?? file).replace(/(-poster)?(-light)?\.\w+$/, '')),
     );
     expect([...slugs].sort()).toEqual([...WITH_LOOP].sort());
     expect(files).toHaveLength(WITH_LOOP.length * 4);
@@ -107,19 +99,19 @@ describe('exerciseDemo', () => {
   it('gives the two dips different loops', () => {
     // The chest dip leans forward over the bars and the triceps dip stays
     // upright, so one file on both pages would show the wrong exercise on one.
-    expect(exerciseDemo('triceps-dip')?.webp).not.toBe(exerciseDemo('chest-dip')?.webp);
+    expect(exerciseDemo('triceps-dip')?.mp4).not.toBe(exerciseDemo('chest-dip')?.mp4);
   });
 
   it('gives the abductor and the adductor different loops', () => {
     // One machine, opposite directions.
-    expect(exerciseDemo('hip-abduction-machine')?.webp).not.toBe(
-      exerciseDemo('hip-adduction-machine')?.webp,
+    expect(exerciseDemo('hip-abduction-machine')?.mp4).not.toBe(
+      exerciseDemo('hip-adduction-machine')?.mp4,
     );
   });
 
   it('gives the hammer curl its own loop, not the supinated curl', () => {
     // Same dumbbells, different grip: two movements, two loops.
-    expect(exerciseDemo('hammer-curl')?.webp).not.toBe(exerciseDemo('dumbbell-curl')?.webp);
+    expect(exerciseDemo('hammer-curl')?.mp4).not.toBe(exerciseDemo('dumbbell-curl')?.mp4);
   });
 
   it('matches on the slug, not the display name', () => {
@@ -127,51 +119,51 @@ describe('exerciseDemo', () => {
   });
 });
 
-describe('demoFormat', () => {
-  it('plays the MP4 on the exact colour it was rendered on, in any case', () => {
-    expect(demoFormat('#1C1C1C')).toBe('mp4');
-    expect(demoFormat('#1c1c1c')).toBe('mp4');
+describe('demoPanel', () => {
+  it('chooses a set only on the exact colour it was rendered on, in any case', () => {
+    expect(demoPanel('#1C1C1C')).toBe('dark');
+    expect(demoPanel('#1c1c1c')).toBe('dark');
+    expect(demoPanel('#F5F3EE')).toBe('light');
+    expect(demoPanel(' #f5f3ee ')).toBe('light');
   });
 
-  it('plays the transparent WebP on anything else', () => {
+  it('chooses nothing on any other colour, where an opaque file shows its square', () => {
     // The dark page and card are both within a few levels of the render
     // background, which is exactly the case that shows a faint square.
-    for (const surface of ['#1f1e1d', '#262624', '#1c1c1d', '#ffffff', '#f5f3ee']) {
-      expect(demoFormat(surface), surface).toBe('webp');
+    for (const surface of ['#1f1e1d', '#262624', '#1c1c1d', '#ffffff', '#f5f3ef']) {
+      expect(demoPanel(surface), surface).toBeNull();
     }
   });
 
-  it('plays the MP4 in the dark theme and the WebP in the light one', () => {
-    // The panel's token is what makes the dark theme an MP4 surface. If it
-    // drifts by a level, every dark-theme view silently becomes a 2.5 MB WebP.
-    expect(colorTokens['bg-demo']).toBe(DEMO_MP4_BACKGROUND);
-    expect(demoFormat(colorTokens['bg-demo'])).toBe('mp4');
-    expect(demoFormat(lightColorTokens['bg-demo'])).toBe('webp');
+  it('pins both theme panels to the colours the loops are rendered on', () => {
+    // If a token drifts by a level, that theme loses its loop: this test says
+    // so instead of the panel quietly going empty.
+    expect(colorTokens['bg-demo']).toBe(DEMO_BACKGROUND.dark);
+    expect(lightColorTokens['bg-demo']).toBe(DEMO_BACKGROUND.light);
+    expect(demoPanel(colorTokens['bg-demo'])).toBe('dark');
+    expect(demoPanel(lightColorTokens['bg-demo'])).toBe('light');
+  });
+});
+
+describe('demoFiles', () => {
+  const demo = exerciseDemo('barbell-back-squat');
+  if (demo === null) throw new Error('The back squat has no loop.');
+
+  it('gives the dark loop and poster on the dark panel', () => {
+    expect(demoFiles(demo, 'dark')).toEqual({ video: demo.mp4, poster: demo.poster });
+  });
+
+  it('gives the light loop and poster on the light panel, never a dark square', () => {
+    expect(demoFiles(demo, 'light')).toEqual({ video: demo.lightMp4, poster: demo.lightPoster });
   });
 });
 
 describe('demoView', () => {
   it('shows the poster, and no loop, when reduced motion is asked for', () => {
-    expect(demoView('mp4', true)).toBe('poster');
-    expect(demoView('webp', true)).toBe('poster');
+    expect(demoView(true)).toBe('poster');
   });
 
-  it('plays the chosen format otherwise', () => {
-    expect(demoView('mp4', false)).toBe('mp4');
-    expect(demoView('webp', false)).toBe('webp');
-  });
-});
-
-describe('demoPoster', () => {
-  const demo = exerciseDemo('barbell-back-squat');
-  if (demo === null) throw new Error('The back squat has no loop.');
-
-  it('gives the opaque poster on the colour it was rendered on', () => {
-    expect(demoPoster(demo, demoFormat(colorTokens['bg-demo']))).toBe(demo.poster);
-  });
-
-  it('gives the transparent one anywhere else, so it is never a dark square', () => {
-    expect(demoPoster(demo, demoFormat(lightColorTokens['bg-demo']))).toBe(demo.transparentPoster);
-    expect(demoPoster(demo, 'webp')).toBe(demo.transparentPoster);
+  it('plays the loop otherwise', () => {
+    expect(demoView(false)).toBe('video');
   });
 });

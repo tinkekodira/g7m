@@ -4,8 +4,8 @@ import { colorTokens, lightColorTokens } from '@g7m/ui';
 import { useReducedMotion } from '../lib/use-reduced-motion.js';
 import { useThemeStore } from '../lib/use-theme.js';
 import {
-  demoFormat,
-  demoPoster,
+  demoFiles,
+  demoPanel,
   demoView,
   exerciseDemo,
   type ExerciseDemo as Demo,
@@ -18,17 +18,19 @@ import {
  * ## The panel
  *
  * The loop plays in a square of its own, `bg-demo`, rather than straight on the
- * card. No surface in the app is the `#1C1C1C` the loops are rendered on: the
- * graphite card and page differ from that rendered colour. So the panel is
- * that colour in the dark theme, and the MP4 fills it with no edge. In the
- * light theme the panel keeps its original media colour and the transparent WebP plays on
- * it. The panel also gives the WebP somewhere to end: its contact shadow is
- * cut off at the frame's bottom and left edges, and on a bare card that cut
- * would be a hard line.
+ * card. No card or page in the app is the colour a loop is rendered on, so
+ * the panel is: `#1C1C1C` in the dark theme and `#F5F3EE` in the light one.
+ * Each loop ships as one opaque MP4 per panel, and it fills its panel with no
+ * edge. The panel also hides the cut in the contact shadow at the frame's
+ * bottom and left edges, which on a bare card would be a hard line.
  *
- * Which file plays is decided from the panel's colour (`demoFormat`), not from
+ * Until ADR-0186 the light theme played a transparent animated WebP, about
+ * twenty times the MP4's size. The 58 of them were 116 MB of a 166 MB build,
+ * and the Android app bundles the whole build.
+ *
+ * Which file plays is decided from the panel's colour (`demoPanel`), not from
  * the theme's name, so a change to either token cannot put an opaque video on
- * the wrong background.
+ * the wrong background. A colour with no loop rendered on it shows nothing.
  *
  * ## Being a good citizen
  *
@@ -36,11 +38,8 @@ import {
  *   screen. The MP4 then loads its poster and enough of itself to start. The
  *   service worker never precaches these (ADR-0102).
  * - **Off screen or tab hidden.** The video pauses, and plays again when it
- *   comes back. An animated WebP cannot be paused, so it is taken out of the
- *   page instead. The loop is seamless, so starting again from the top looks
- *   the same as resuming.
- * - **Reduced motion.** The first frame as a still, and no loop: the opaque
- *   poster on the dark panel, the transparent one on the light panel.
+ *   comes back.
+ * - **Reduced motion.** The panel's first frame as a still, and no loop.
  * - **A file that fails.** The panel goes and the page is as it was before
  *   loops existed. There is no error state: the steps beside it are the
  *   real instructions, and a missing loop takes nothing away from them.
@@ -74,9 +73,10 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
   }, [near]);
 
   const surface = theme === 'light' ? lightColorTokens['bg-demo'] : colorTokens['bg-demo'];
-  const format = demoFormat(surface);
-  const view = demoView(format, reducedMotion || paused);
-  const playing = view === 'mp4' && onScreen && tabVisible;
+  const panel = demoPanel(surface);
+  const files = panel === null ? null : demoFiles(demo, panel);
+  const view = demoView(reducedMotion || paused);
+  const playing = view === 'video' && onScreen && tabVisible;
 
   useEffect(() => {
     const element = video.current;
@@ -89,9 +89,9 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
       // Also cancels `autoPlay` for a video that mounted just below the fold.
       element.pause();
     }
-  }, [playing, reached]);
+  }, [playing, reached, files?.video]);
 
-  if (failed) return null;
+  if (failed || files === null) return null;
   const fail = () => {
     setFailed(true);
   };
@@ -109,7 +109,7 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
       >
         {reached && view === 'poster' && (
           <img
-            src={demoPoster(demo, format)}
+            src={files.poster}
             alt=""
             width={720}
             height={720}
@@ -117,28 +117,19 @@ function DemoPlayer({ demo, name }: { readonly demo: Demo; readonly name: string
             className="size-full object-contain"
           />
         )}
-        {reached && view === 'mp4' && (
+        {reached && view === 'video' && (
           <video
+            // A theme switch swaps the file: a fresh element loads and plays it.
+            key={files.video}
             ref={video}
-            src={demo.mp4}
-            poster={demo.poster}
+            src={files.video}
+            poster={files.poster}
             muted
             loop
             playsInline
             autoPlay
             preload="metadata"
             aria-hidden
-            onError={fail}
-            className="size-full object-contain"
-          />
-        )}
-        {view === 'webp' && near && tabVisible && (
-          <img
-            src={demo.webp}
-            alt=""
-            width={720}
-            height={720}
-            decoding="async"
             onError={fail}
             className="size-full object-contain"
           />
