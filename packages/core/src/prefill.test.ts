@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { hasBeatenPrevious, nextSetTemplate, previousSetAt, type SetTemplate } from './prefill.js';
+import {
+  emptyBarKg,
+  hasBeatenPrevious,
+  nextSetTemplate,
+  previousSetAt,
+  type SetTemplate,
+} from './prefill.js';
+import { kgToLb } from './units.js';
 
 function template(over: Partial<SetTemplate> = {}): SetTemplate {
   return { weightKg: 100, reps: 5, loadType: 'external', setType: 'working', ...over };
@@ -153,6 +160,27 @@ describe('nextSetTemplate', () => {
 
     it('never proposes a set of zero reps', () => {
       expect(nextSetTemplate({ ...EMPTY, repLow: 0 }).reps).toBe(1);
+    });
+
+    /** A first squat at 0 kg was a weight nobody has ever squatted with. */
+    it('starts a barbell lift at the empty bar', () => {
+      expect(nextSetTemplate({ ...EMPTY, startKg: emptyBarKg('metric') }).weightKg).toBe(20);
+      // 45 lb, stored in kilograms at storage precision, reads back as 45.
+      expect(emptyBarKg('imperial')).toBe(20.41);
+      expect(kgToLb(emptyBarKg('imperial'))).toBeCloseTo(45, 1);
+    });
+
+    it('puts no bar on a bodyweight lift', () => {
+      expect(nextSetTemplate({ ...EMPTY, loadType: 'bodyweight_plus', startKg: 20 }).weightKg).toBe(
+        0,
+      );
+    });
+
+    it('never lets the bar override history', () => {
+      const previous = [template({ weightKg: 60 })];
+      expect(nextSetTemplate({ ...EMPTY, previous, startKg: 20 }).weightKg).toBe(60);
+      const current = [template({ weightKg: 40 })];
+      expect(nextSetTemplate({ ...EMPTY, current, startKg: 20 }).weightKg).toBe(40);
     });
   });
 });

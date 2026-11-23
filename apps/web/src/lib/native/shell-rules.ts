@@ -57,20 +57,46 @@ export function statusBarBackground(theme: Theme): string {
 /**
  * What Android's back gesture means here.
  *
- * - **In a workout**, nothing. The workout is somewhere you are *in*, with a
- *   header link and Finish as the ways out; a back swipe mid-set that threw
- *   away the screen would be the same mistake the tab bar is hidden to avoid.
+ * - **With a dialog or sheet open**, close it, the way Escape does. Before,
+ *   back went past it to the screen underneath — or, in a workout, did
+ *   nothing at all with the dialog still up.
+ * - **In a workout**, go Home and leave the workout running. It is still
+ *   there, one tap away in the strip at the top of Home. Doing nothing made
+ *   the gesture every other Android app answers feel broken; going back
+ *   through history could land on the exercise picker the workout came from.
  * - **Anywhere with somewhere to go back to**, the browser's own history,
  *   which is what the back arrow in every other screen does.
  * - **At the top of the app**, put it in the background, as Android's own
  *   apps do. Not exit: killing the process would drop a queued upload.
  */
-export type BackAction = 'ignore' | 'back' | 'minimize';
+export type BackAction = 'dismiss' | 'home' | 'back' | 'minimize';
 
-export function backAction(hash: string, canGoBack: boolean): BackAction {
+export function backAction(hash: string, canGoBack: boolean, layerOpen = false): BackAction {
+  if (layerOpen) return 'dismiss';
   const route = hash.replace(/^#/, '').split('?')[0] ?? '/';
-  if (route.startsWith('/workout')) return 'ignore';
+  if (route === '/workout' || route.startsWith('/workout/')) return 'home';
   return canGoBack ? 'back' : 'minimize';
+}
+
+/**
+ * What the back gesture closes: an open dialog, or anything marked modal.
+ *
+ * Every one of them already closes on Escape — a native `<dialog>` through
+ * its `cancel` event, the rest through a keydown handler — because that is
+ * what a keyboard needs. Back sends the same, so there is no second list of
+ * dialogs to keep in step with the first.
+ */
+export const LAYER_SELECTOR = 'dialog[open], [aria-modal="true"]';
+
+/**
+ * The top one, when more than one is open.
+ *
+ * A modal `<dialog>` is in the top layer, above everything in the page
+ * however late it arrived, so the last of those wins; otherwise the last in
+ * document order, which is the one drawn on top.
+ */
+export function topLayer<T extends { readonly topLayer: boolean }>(open: readonly T[]): T | null {
+  return open.findLast((layer) => layer.topLayer) ?? open.at(-1) ?? null;
 }
 
 /**

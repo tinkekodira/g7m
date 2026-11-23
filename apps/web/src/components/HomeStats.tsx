@@ -270,7 +270,7 @@ function StatCard({
       to={to}
       aria-label={label}
       className={cx(
-        'relative isolate flex min-h-[18.5rem] w-full flex-col overflow-hidden rounded-sheet border border-subtle bg-surface p-4',
+        'relative isolate flex min-h-[21.25rem] w-full flex-col overflow-hidden rounded-sheet border border-subtle bg-surface p-4',
         'transition-transform duration-150 ease-out select-none active:scale-[0.985]',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
       )}

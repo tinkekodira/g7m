@@ -45,6 +45,17 @@ export function ExerciseLibraryScreen() {
   const { write, busy, error: writeError } = useWrite();
   const filters = readFilters(params);
   const [equipmentOpen, setEquipmentOpen] = useState(filters.equipment.length > 0);
+  /**
+   * What is in the search box, held here as well as in the URL.
+   *
+   * The URL is written through the router, which navigates in a transition,
+   * and a box that reads its value back from the URL is put back to the old
+   * text until that transition lands. On a fast phone nobody sees it. On a
+   * budget Android, typing "bench press" left "nhs" in the box: each key
+   * arrived while the last one was still being undone. The box shows what
+   * was typed; the list follows the URL a moment later.
+   */
+  const [query, setQuery] = useState(filters.query);
 
   /**
    * Reached from "Add an exercise" inside a workout.
@@ -87,6 +98,8 @@ export function ExerciseLibraryScreen() {
    * "deadlift" backwards before it left the screen.
    */
   const update = (next: LibraryFilters): void => {
+    // Every write goes through here, so "Clear filters" empties the box too.
+    setQuery(next.query);
     const written = writeFilters(next);
     // Carried across every filter change. Without this, typing one character
     // into the search box drops you out of add mode and back into browsing,
@@ -97,12 +110,32 @@ export function ExerciseLibraryScreen() {
     setParams(written, { replace: true });
   };
 
+  /**
+   * The workout a picked exercise goes into.
+   *
+   * With none running — the workout finished on another tab, closed as
+   * abandoned, or this screen reached by Back after Finish — the pick starts
+   * one rather than doing nothing. A tap that silently did nothing was the
+   * one answer that could not be right: the lifter asked for this exercise
+   * in a workout, and the only workout to put it in is a new one.
+   */
+  const [gone, setGone] = useState(false);
+  const targetSession = async () => {
+    const session = await write(async (r) => {
+      if (sessionId !== null) return r.sessions.byId(sessionId);
+      const { startWorkout } = await import('../lib/db/start-workout.js');
+      return (await startWorkout(r, null)).session;
+    });
+    // A past workout being edited, deleted since on another phone: there is
+    // nothing to add to, and saying so beats a button that does nothing.
+    setGone(session === null && sessionId !== null);
+    return session;
+  };
+
   const addToWorkout = (exercise: Exercise): void => {
     void (async () => {
-      const session = await write((r) =>
-        sessionId === null ? r.sessions.active() : r.sessions.byId(sessionId),
-      );
-      if (session == null) return;
+      const session = await targetSession();
+      if (session === null) return;
       const entry = await write((r) => r.sessions.addExercise(session.id, exercise.id));
       // The entry just created, handed back so the workout can scroll to it.
       // It used to be discarded here, and the workout reopened at the top — on
@@ -147,10 +180,8 @@ export function ExerciseLibraryScreen() {
         await navigate(`/routines/${routineId}`);
         return;
       }
-      const session = await write((r) =>
-        sessionId === null ? r.sessions.active() : r.sessions.byId(sessionId),
-      );
-      if (session == null) return;
+      const session = await targetSession();
+      if (session === null) return;
       const entries = await write((r) =>
         r.sessions.addExercises(
           session.id,
@@ -259,6 +290,7 @@ export function ExerciseLibraryScreen() {
   }, [adding, results.data, usage.data, filters.query]);
   const error =
     writeError ??
+    (gone ? t().app.serverErrors.gone : null) ??
     taxonomy.error ??
     results.error ??
     progress.error ??
@@ -311,7 +343,7 @@ export function ExerciseLibraryScreen() {
         autoCapitalize="none"
         autoCorrect="off"
         placeholder={t().library.searchPlaceholder}
-        value={filters.query}
+        value={query}
         onChange={(event) => {
           update({ ...filters, query: event.target.value });
         }}

@@ -12,7 +12,11 @@ import { LoadingRegion } from './LoadingRegion.js';
 export function StatSkeleton() {
   return (
     <LoadingRegion label={t().app.loadingStates.thisMonth}>
-      <div className="skeleton-card flex min-h-[18.5rem] flex-col">
+      {/* The card's own height (`min-h` in HomeStats' frame — keep them equal)
+          and, under it, the row its dots sit in. Shorter than the real thing,
+          it pushed Quick access 67px down as the cards arrived, under a thumb
+          already on its way to Start. */}
+      <div className="skeleton-card flex min-h-[21.25rem] flex-col">
         <div className="flex items-start gap-3">
           <Skeleton className="size-10 rounded-card" />
           <div className="flex-1 space-y-2 pt-1">
@@ -24,6 +28,7 @@ export function StatSkeleton() {
         <Skeleton className="mt-4 flex-1 rounded-card" />
         <Skeleton className="mt-4 h-[3.25rem] rounded-card" />
       </div>
+      <div aria-hidden className="h-6" />
     </LoadingRegion>
   );
 }

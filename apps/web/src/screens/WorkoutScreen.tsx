@@ -16,6 +16,7 @@ import {
   countSets,
   dropTemplate,
   dropsOf,
+  emptyBarKg,
   finalTopSet,
   isTopSet,
   roundRestSeconds,
@@ -526,13 +527,19 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
     }
     if (finishing.current) return;
     finishing.current = true;
+    // Nothing ticked, not even a warm-up, is a workout that never happened.
+    // Finishing it used to save an empty session: hidden by the calendar,
+    // but synced, counted and kept for ever. It goes the way Discard goes,
+    // without the question — there is nothing in it to lose.
+    const ticked = blocks.some((block) => block.sets.some((set) => set.isCompleted));
     void write(async (r) => {
-      await r.sessions.finish(session.id);
+      if (ticked) await r.sessions.finish(session.id);
+      else await r.sessions.discard(session.id);
       return true;
     }).then((saved) => {
       finishing.current = false;
       if (saved !== true) return;
-      buzz('success');
+      if (ticked) buzz('success');
       const didWork = blocks.some((block) =>
         block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
       );
@@ -701,6 +708,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
                 previous: block.previous,
                 repLow: block.exercise?.defaultRepLow ?? 8,
                 loadType: block.loadType,
+                startKg: block.barbell ? emptyBarKg(unitSystem) : 0,
               }),
             ),
           );
@@ -879,6 +887,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
                       previous: member.previous,
                       repLow: member.exercise?.defaultRepLow ?? 8,
                       loadType: member.loadType,
+                      startKg: member.barbell ? emptyBarKg(unitSystem) : 0,
                     }),
                   );
                 }

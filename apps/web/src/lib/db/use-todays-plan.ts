@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import {
   chooseFocus,
   compatiblePair,
+  emptyBarKg,
   FOCUS_LABELS,
   planSession,
   prescriptionFor,
@@ -198,9 +199,18 @@ export async function startPlannedWorkout(
   }
 
   for (const { exercise, id: slotId } of slots) {
+    // A first time has no number to suggest. A barbell lift still has one
+    // that is right for everybody: the empty bar.
+    const barbell =
+      exercise.suggestedKg === null &&
+      exercise.loadType === 'external' &&
+      (await repositories.exercises.equipmentFor(exercise.exerciseId)).some(
+        (item) => item.slug === 'barbell',
+      );
+    const weightKg = exercise.suggestedKg ?? (barbell ? emptyBarKg(profile.unitSystem) : 0);
     for (let index = 0; index < exercise.sets; index++) {
       await repositories.sessions.addSet(slotId, {
-        weightKg: exercise.suggestedKg ?? 0,
+        weightKg,
         reps: exercise.repLow,
         loadType: exercise.loadType,
         setType: 'working',

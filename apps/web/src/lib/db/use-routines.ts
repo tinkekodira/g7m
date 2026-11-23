@@ -6,7 +6,13 @@
  * progress.
  */
 import { t } from '@g7m/i18n';
-import { loadTypeForEquipment, nextSetTemplate, workoutUnits, type SetTemplate } from '@g7m/core';
+import {
+  emptyBarKg,
+  loadTypeForEquipment,
+  nextSetTemplate,
+  workoutUnits,
+  type SetTemplate,
+} from '@g7m/core';
 import type { Routine, RoutineDetail, RoutineExercise, WorkoutSession } from '@g7m/db';
 import { useCatalogue } from './use-catalogue.js';
 import type { Repositories } from './repositories.js';
@@ -125,12 +131,15 @@ async function writeMovements(
     }
   }
 
+  // The empty bar is a different number in pounds (45 lb, not 20 kg).
+  const unitSystem = (await repositories.profile.current())?.unitSystem ?? 'metric';
   for (const { movement, id: slotId } of slots) {
     const [previous, equipment] = await Promise.all([
       repositories.sessions.lastPerformance(movement.exerciseId, sessionId),
       repositories.exercises.equipmentFor(movement.exerciseId),
     ]);
     const loadType = loadTypeForEquipment(equipment);
+    const barbell = equipment.some((item) => item.slug === 'barbell');
 
     // Built one at a time through the same prefill the logger uses, so an
     // ascending scheme comes back ascending rather than flattened to one
@@ -142,6 +151,7 @@ async function writeMovements(
         previous,
         repLow: movement.targetRepLow,
         loadType,
+        startKg: barbell ? emptyBarKg(unitSystem) : 0,
       });
       await repositories.sessions.addSet(slotId, {
         weightKg: template.weightKg,
