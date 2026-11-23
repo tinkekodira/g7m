@@ -37,6 +37,12 @@ pnpm --filter @g7m/mobile run:android   # sync, then build and run on a device o
 `sync` runs the web build first on purpose. Copying a stale `dist/` into a
 native project and then debugging the resulting behaviour is a bad afternoon.
 
+Every `cap copy` and `cap sync` then deletes the `.map` files from the copy
+(the `capacitor:copy:after` hook, `scripts/strip-source-maps.mjs`). The web
+build keeps them for measuring bundle size; the app has no use for ~14 MB
+nobody opens. To debug the app's JavaScript readably, use the web build.
+See [ADR-0187](../../DECISIONS.md#adr-0187--source-maps-stay-in-the-web-build-and-out-of-the-app).
+
 ### An APK without a toolchain
 
 Every push builds a debug APK: **Actions → Native apps → the run → Artifacts →
