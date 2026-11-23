@@ -10258,3 +10258,50 @@ panel colour and still lands on the panel's edge, as before.
   there and cost the same to encode from.
 - **Keeping the WebP for the web and leaving it out of the native build.** Two
   asset sets and two code paths for one picture.
+
+## ADR-0187 — Source maps stay in the web build and out of the app
+
+**Status:** accepted · **Date:** 2026-11-23 · **Phase:** Android readiness
+
+### Why
+
+`vite.config.ts` builds with `sourcemap: true`, and Capacitor copies all of
+`dist` into the Android and iOS projects. So every install carried 124 `.map`
+files, 13.9 MB of the 62 MB copy, which only a debugger ever opens. The
+service worker already leaves them out of its precache for that reason
+(`service-worker/precache.ts`); the native copy did not.
+
+The web build keeps them. They are how bundle size is measured, attributing
+every byte of a chunk to its module (ADR-0078).
+
+### What changed
+
+`apps/mobile/package.json` has a `capacitor:copy:after` script, which the
+Capacitor CLI runs after every `cap copy` and `cap sync`, for each platform.
+It runs `scripts/strip-source-maps.mjs`, which deletes every `.map` under that
+platform's `public/` folder and prints how many it removed. If the folder is
+missing it fails instead of passing quietly, since that means Capacitor moved
+it and the maps would ship again.
+
+The Android copy went from 62 MB to 48 MB. Both `native.yml` jobs gain a step
+after `cap sync` that fails if any `.map` is left, so renaming the hook breaks
+the build instead of silently growing the app.
+
+### What is lost
+
+Debugging the app over `chrome://inspect` or Safari shows the minified code,
+and DevTools warns that it could not load the source map: the bundles still
+end in a `sourceMappingURL` comment. The comment is left alone on purpose,
+since editing built files after the service worker's manifest was computed
+from them is a worse risk than a console warning. For readable code, reproduce
+on the web build. There is no crash reporter that would have used the maps.
+
+### Rejected
+
+- **An env flag that turns `sourcemap` off for the native build.** Every path
+  to the APK (`pnpm sync`, `pnpm copy`, `run:android`, both CI jobs, a manual
+  `vite build` then `cap sync`) would have to set it, and forgetting it fails
+  silently. The hook runs wherever `cap copy` runs.
+- **`sourcemap: 'hidden'` everywhere.** It removes the comment but still writes
+  the files, so it would need the deletion anyway, and the web build would
+  lose its link from bundle to map.
