@@ -31,7 +31,6 @@ const REFERENCE_TABLES = [
 
 const USER_TABLES = [
   'profiles',
-  'user_equipment',
   'routines',
   'routine_exercises',
   'workout_sessions',
@@ -570,8 +569,6 @@ describe('deleting your own account', () => {
     const user = await h.createUser(email);
     const bench = `(select id from public.exercises where slug = 'barbell-bench-press')`;
     await h.db.exec(`
-      insert into public.user_equipment (user_id, equipment_id)
-      values ('${user}', (select id from public.equipment where slug = 'barbell'));
       insert into public.body_metrics (user_id, weight_kg) values ('${user}', 80);
       insert into public.training_goals (user_id, goal, days_per_week)
       values ('${user}', 'get_stronger', 3);

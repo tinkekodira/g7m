@@ -135,19 +135,12 @@ describe('candidates', () => {
   });
 
   /**
-   * An empty equipment list means "I have not told you", not "I own nothing".
-   * A plan with no exercises in it is a worse first impression than an
+   * Nothing records what equipment somebody has, so the plan assumes a full
+   * gym. A plan with no exercises in it is a worse first impression than an
    * aspirational one.
    */
-  it('offers everything when the user has recorded no equipment', async () => {
+  it('offers every active strength exercise, whatever it needs', async () => {
     expect(await planner.candidates()).toHaveLength(3);
-  });
-
-  it('offers only what the user can actually lift with', async () => {
-    await db.seed('user_equipment', { id: 'ue-1', user_id: USER, equipment_id: 'eq-db' });
-
-    const ids = (await planner.candidates()).map((entry) => entry.id);
-    expect(ids).toEqual(['db-press']);
   });
 
   it('leaves out a retired exercise', async () => {
@@ -370,33 +363,6 @@ describe('setsByGroupSince', () => {
 
   it('is empty rather than null when nothing has been done', async () => {
     expect(await planner.setsByGroupSince(WEEK_START)).toEqual(new Map());
-  });
-});
-
-describe('sessionCountSince', () => {
-  it('is zero for a fresh week', async () => {
-    expect(await planner.sessionCountSince(WEEK_START)).toBe(0);
-  });
-
-  /**
-   * Started, not finished. Somebody mid-workout has used today's slot, and
-   * offering the same focus again the moment they finish would be the app
-   * losing its place.
-   */
-  it('counts a session that is still in progress', async () => {
-    await logSession('s1', 'bench', '2026-09-08T10:00:00.000Z', [[80, 8]], { finished: false });
-    expect(await planner.sessionCountSince(WEEK_START)).toBe(1);
-  });
-
-  it('does not count last week', async () => {
-    await logSession('s1', 'bench', '2026-09-01T10:00:00.000Z', [[80, 8]]);
-    expect(await planner.sessionCountSince(WEEK_START)).toBe(0);
-  });
-
-  it('does not count another user’s sessions', async () => {
-    await logSession('s1', 'bench', '2026-09-08T10:00:00.000Z', [[80, 8]]);
-    const stranger = new PlannerRepository(db, { userId: 'user-2' });
-    expect(await stranger.sessionCountSince(WEEK_START)).toBe(0);
   });
 });
 

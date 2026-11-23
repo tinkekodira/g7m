@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cloudFrom, transferLabels, type SourceCloud, type TargetMesh } from './label-transfer.js';
-import type { MeshData } from './geometry/tube.js';
+import type { MeshData } from '../src/geometry/tube.js';
 
 function mesh(positions: number[], tendon?: number[]): MeshData {
   return {

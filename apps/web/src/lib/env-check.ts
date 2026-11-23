@@ -5,7 +5,7 @@
  * boundary the app crosses. This one is the exception, for a reason that is
  * about the phone rather than about validation: Zod was 76 KB of the entry
  * chunk — the bytes every user downloads before anything appears — and the
- * whole of its job here is four strings that are baked into the bundle at
+ * whole of its job here is three strings that are baked into the bundle at
  * build time and never change afterwards. A schema library earns its size
  * where the data is untrusted, variable and complicated. None of those is true
  * of `import.meta.env`.
@@ -14,7 +14,7 @@
  * schema checked and produce the same message, and unlike the schema they are
  * covered by tests, because a pure function taking a plain object is something
  * a Node test runner can call. When a real boundary arrives — a response from
- * the Claude generator, say — Zod belongs there, imported by the screen that
+ * a server function, say — Zod belongs there, imported by the screen that
  * parses it rather than by the app's first line.
  *
  * Everything here is public by design: it is compiled into the bundle and
@@ -26,8 +26,6 @@ export interface Env {
   readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
   /** Phase 2. Empty until a PowerSync instance exists. */
   readonly VITE_POWERSYNC_URL: string;
-  /** Phase 6, layer 2. Off until the Edge Function exists. */
-  readonly VITE_FEATURE_CLAUDE_GENERATOR: boolean;
 }
 
 /** The shortest a publishable key could plausibly be. */
@@ -106,11 +104,6 @@ export function checkEnv(raw: Record<string, unknown>): {
     problems.push({ key: 'VITE_POWERSYNC_URL', message: 'must be a URL, or left empty' });
   }
 
-  const generator = text(raw, 'VITE_FEATURE_CLAUDE_GENERATOR');
-  if (generator !== null && generator !== 'true' && generator !== 'false') {
-    problems.push({ key: 'VITE_FEATURE_CLAUDE_GENERATOR', message: "must be 'true' or 'false'" });
-  }
-
   if (problems.length > 0) return { env: null, problems };
 
   return {
@@ -119,7 +112,6 @@ export function checkEnv(raw: Record<string, unknown>): {
       VITE_SUPABASE_URL: url ?? '',
       VITE_SUPABASE_PUBLISHABLE_KEY: key ?? '',
       VITE_POWERSYNC_URL: powersync ?? '',
-      VITE_FEATURE_CLAUDE_GENERATOR: generator === 'true',
     },
     problems: [],
   };

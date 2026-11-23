@@ -350,10 +350,9 @@ export class ExerciseRepository {
     }
 
     if (criteria.equipmentIds !== undefined) {
-      // `NOT EXISTS ... NOT IN` is "every requirement is met", the same shape
-      // as availableWithUserEquipment and inverted just as easily. An empty
-      // set has no `NOT IN ()` to write, and means the exercise must need
-      // nothing at all.
+      // `NOT EXISTS ... NOT IN` is "every requirement is met", and inverted
+      // easily. An empty set has no `NOT IN ()` to write, and means the
+      // exercise must need nothing at all.
       conditions.push(
         criteria.equipmentIds.length === 0
           ? `NOT EXISTS (SELECT 1 FROM exercise_equipment ee WHERE ee.exercise_id = e.id)`
@@ -408,18 +407,13 @@ export class ExerciseRepository {
   }
 
   /**
-   * The muscle each exercise trains hardest, by exercise id.
+   * The muscle each exercise trains hardest, and its group, by exercise id.
    *
-   * One query for the whole list, because the library shows a muscle under
-   * every name and fifty round trips to render one screen is how an offline
-   * app ends up feeling slower than an online one.
+   * One local read for the whole list, independent of the active filters,
+   * because the library shows a muscle under every name and fifty round trips
+   * to render one screen is how an offline app ends up feeling slower than an
+   * online one.
    */
-  async primaryMuscleNames(): Promise<ReadonlyMap<string, string>> {
-    const muscles = await this.primaryMuscles();
-    return new Map([...muscles].map(([id, muscle]) => [id, muscle.name]));
-  }
-
-  /** One local read for the whole list, independent of the active filters. */
   async primaryMuscles(): Promise<ReadonlyMap<string, PrimaryMuscle>> {
     const rows = await this.db.getAll<RawRow>(
       `SELECT em.exercise_id, m.slug AS muscle_slug, m.common_name, mg.slug AS group_slug
@@ -587,27 +581,5 @@ export class ExerciseRepository {
       category: readString(row, 'category', 'other'),
       isPrimary: readBoolean(row, 'is_primary'),
     }));
-  }
-
-  /**
-   * Only what the user's gym can do.
-   *
-   * An exercise is available when every piece of equipment it needs is in
-   * `user_equipment`. "Every", not "any": a barbell hip thrust needs the
-   * barbell *and* the bench, and offering it to someone with only a barbell
-   * wastes the one trip they made to the gym.
-   */
-  async availableWithUserEquipment(): Promise<Exercise[]> {
-    const rows = await this.db.getAll<RawRow>(
-      `SELECT e.* FROM exercises e
-        WHERE e.is_active = 1
-          AND NOT EXISTS (
-            SELECT 1 FROM exercise_equipment ee
-             WHERE ee.exercise_id = e.id
-               AND ee.equipment_id NOT IN (SELECT equipment_id FROM user_equipment)
-          )
-        ${LIST_ORDER_ALIASED}`,
-    );
-    return rows.map(toExercise);
   }
 }

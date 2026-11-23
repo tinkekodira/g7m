@@ -130,8 +130,7 @@ and WebView2 on Windows. WebGL and pointer events work in all four, which is
 what makes the 3D body viable everywhere without a rewrite.
 
 The app costs nothing to run: no paid APIs, and no calls to a language model.
-A Claude-written plan is designed in (Phase 6) and switched off
-(`VITE_FEATURE_CLAUDE_GENERATOR=false`); the plan you get is the rules engine's.
+The plan you get is the rules engine's.
 
 ---
 

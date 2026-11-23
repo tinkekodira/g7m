@@ -10144,3 +10144,50 @@ drawn just before the switch. The same run under the same throttle passes
 10 out of 10.
 
 Rollout: app release only. No migration, no sync-rules change.
+
+## ADR-0185 — Code nothing calls is deleted, and `user_equipment` with it
+
+**Status:** accepted · **Date:** 2026-11-23
+
+The pre-Android audit traced every import and every repository method, and
+found code that only its own tests reached. It ships in the APK, is synced to
+every phone, or both, so it goes.
+
+**`user_equipment` is dropped.** It was the first schema's "my gym has this"
+list. No screen ever wrote to it, so every device synced an empty table,
+exported it, and joined it in the planner's `candidates()`. That clause
+filtered only when the user had a row, so it never filtered. Gyms (ADR-0178)
+answer "where am I lifting" in another way. Removed: the table (migration
+`20261123120000_drop_user_equipment.sql`), its sync rule, the local schema
+entry, `EquipmentRepository.forUser`, `ExerciseRepository
+.availableWithUserEquipment`, the planner clause, and its place in the export.
+The export also loses `reference.equipment`, which listed only that table's
+equipment. The file stays at version 1: no importer exists, and both fields
+were always empty. Milan chose to drop the table.
+
+**`personal_records` stays.** It is just as empty, but ADR-0043 kept it on
+purpose for a possible records timeline, and Milan kept it again.
+
+**The rest:**
+
+- `equipment-art.ts` and its 75 images (3.4 MB) in `assets/equipment/`, which
+  nothing has imported since #210 and #218.
+- Repository methods only tests called: `BodyMetricsRepository.latestWeight`,
+  `ExerciseRepository.primaryMuscleNames` (its cases now test
+  `primaryMuscles`), `MuscleRepository.inGroup`, and
+  `PlannerRepository.sessionCountSince`.
+- `VITE_FEATURE_CLAUDE_GENERATOR`: checked at startup and never read, and no
+  generator exists to switch on. It goes from `env-check.ts`, `.env.example`
+  (with the `ANTHROPIC_API_KEY` secret note) and the README.
+- `packages/anatomy/src/label-transfer.ts` moves to `packages/anatomy/tools/`.
+  Only the model-building tool uses it, so it does not belong in the package
+  the app imports.
+- The Capacitor template's `ExampleUnitTest` and `ExampleInstrumentedTest`.
+
+Left alone: about 200 exports used only in their own file or by tests. Each is
+small, and removing them is churn, not weight.
+
+Rollout, in this order because it is a removal: deploy
+`powersync/sync-rules.yaml` first, so that nothing queries the table, then run
+`npx supabase db push`, then release the app. Older builds still have the
+table in their local schema, and they read it as empty, the same as before.

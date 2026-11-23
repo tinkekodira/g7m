@@ -65,9 +65,6 @@ bucket_definitions:
         workout_recommendations, achievements_seen, favourite_exercises, multiple_gyms,
         language, created_at, updated_at FROM profiles WHERE user_id = bucket.user_id
       - >-
-        SELECT id, user_id, equipment_id, created_at, updated_at FROM user_equipment WHERE
-        user_id = bucket.user_id
-      - >-
         SELECT id, user_id, name, notes, last_performed_at, created_at, updated_at FROM routines
         WHERE user_id = bucket.user_id
       - >-

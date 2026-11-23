@@ -224,16 +224,6 @@ const gyms = new Table(
   { indexes: { by_order: ['order_key'] } },
 );
 
-const userEquipment = new Table(
-  {
-    user_id: column.text,
-    equipment_id: column.text,
-    created_at: column.text,
-    updated_at: column.text,
-  },
-  { indexes: { by_equipment: ['equipment_id'] } },
-);
-
 const routines = new Table(
   {
     user_id: column.text,
@@ -430,7 +420,6 @@ export const AppSchema = new Schema({
   exercise_equipment: exerciseEquipment,
   exercise_muscles: exerciseMuscles,
   profiles,
-  user_equipment: userEquipment,
   routines,
   routine_exercises: routineExercises,
   workout_sessions: workoutSessions,

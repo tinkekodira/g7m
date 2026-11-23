@@ -218,25 +218,6 @@ export class BodyMetricsRepository {
   }
 
   /**
-   * The most recent measurement that carries a weight.
-   *
-   * Not simply the most recent row: a reading that recorded only a change of
-   * activity level has no weight in it, and returning it would read as the
-   * weight having been forgotten.
-   */
-  async latestWeight(): Promise<BodyMetric | null> {
-    const { userId } = resolveContext(this.context);
-    const row = await this.db.getOptional<RawRow>(
-      `SELECT * FROM body_metrics
-        WHERE user_id = ? AND weight_kg IS NOT NULL
-        ORDER BY ${instant('recorded_at')} DESC, id DESC
-        LIMIT 1`,
-      [userId],
-    );
-    return row === null ? null : toMetric(row);
-  }
-
-  /**
    * The single most recent reading, whatever it happens to contain.
    *
    * Not a merge of the latest value of each field. If height was recorded

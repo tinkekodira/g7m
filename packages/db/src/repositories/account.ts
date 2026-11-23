@@ -16,7 +16,7 @@
  * a completed set reads `1` and a generated workout's metadata is a string of
  * escaped JSON; both are turned back into what Postgres holds. And every
  * workout refers to its exercises by id, which means nothing outside the app,
- * so the exercises and equipment the rows mention travel with it, by name.
+ * so the exercises the rows mention travel with it, by name.
  */
 import { AppSchema, isReferenceTable } from '../schema/app-schema.js';
 import {
@@ -40,7 +40,6 @@ export const USER_TABLE_NAMES = [
   'profiles',
   'body_metrics',
   'training_goals',
-  'user_equipment',
   'gyms',
   'workout_sessions',
   'session_exercises',
@@ -93,7 +92,6 @@ export interface ExportReference {
 export interface ExportedData {
   readonly tables: Readonly<Record<UserTableName, readonly ExportRow[]>>;
   readonly exercises: readonly ExportReference[];
-  readonly equipment: readonly ExportReference[];
 }
 
 /** Who the file belongs to, from the sign-in rather than the database. */
@@ -122,7 +120,6 @@ export interface AccountExport {
   readonly data: ExportedData['tables'];
   readonly reference: {
     readonly exercises: readonly ExportReference[];
-    readonly equipment: readonly ExportReference[];
   };
 }
 
@@ -164,14 +161,7 @@ export class AccountRepository {
         ORDER BY name, id`,
       [this.ctx.userId, this.ctx.userId, this.ctx.userId],
     );
-    const equipment = await this.db.getAll<ExportReference>(
-      `SELECT id, slug, name FROM equipment
-        WHERE id IN (SELECT equipment_id FROM user_equipment WHERE user_id = ?)
-        ORDER BY name, id`,
-      [this.ctx.userId],
-    );
-
-    return { tables, exercises, equipment };
+    return { tables, exercises };
   }
 }
 
@@ -189,7 +179,7 @@ export function buildAccountExport(input: {
     account: input.account,
     device: input.device,
     data: input.data.tables,
-    reference: { exercises: input.data.exercises, equipment: input.data.equipment },
+    reference: { exercises: input.data.exercises },
   };
 }
 
