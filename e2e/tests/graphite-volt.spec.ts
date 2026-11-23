@@ -93,6 +93,11 @@ for (const theme of ['dark', 'light'] as const) {
       );
       await expectFits(page);
       await dismissAchievementBanner(page);
+      // The checks above leave the page scrolled down past the month cards.
+      // The swipe is about the cards' horizontal snap, so they go back on
+      // screen first. Since the cards grew to their skeleton's height
+      // (ADR-0183), the second card no longer stayed in view by luck.
+      await page.evaluate(() => window.scrollTo(0, 0));
       await page
         .locator('[aria-roledescription="carousel"][aria-label="This month"]')
         .evaluate((track) => {
