@@ -1,3 +1,35 @@
+# Four tests that failed on main before the Android work (Batch E)
+
+Found in the pre-Android audit, 2026-11-23; each one was made to fail on
+purpose before it was fixed.
+
+- **`profile-and-progress.spec.ts`, the chart's previous week.** The seed put
+  the workout at "a week ago today, midday" using Postgres `now()`, which is
+  UTC. The chart counts weeks in the phone's local time. Just after midnight on
+  a Monday in Europe, UTC still says Sunday, and the workout landed two weeks
+  back. CI runs in UTC and never saw it. Forced with `timezoneId: 'Etc/GMT+12'`
+  while UTC was Monday morning: red. The seed now takes the date from the
+  browser (`page.evaluate`).
+- **`signup-refresh.spec.ts`, added bodyweight load.** After "Complete set 1"
+  and "Add set", the test asked for the "Bodyweight" radio by role alone. On a
+  slow machine that found set one's switch, still open before its tick
+  re-rendered it and before set two existed, so set two was logged with the
+  added weight it had been prefilled with. Under 8× CPU throttling: 1 run in 6
+  red. The test now waits for "Undo set 1" and uses the `Set 2 load` group:
+  10 out of 10.
+- **`gyms.spec.ts`, a machine at the other gym.** A real race in the app:
+  "Add set" just after a gym switch prefilled from a torn frame with no
+  history. Fixed in the app, see ADR-0184. Under 8× throttling: 2 in 10 red
+  before, 10 out of 10 after.
+- **`packages/i18n/src/locales.test.ts`, every language loads.** Six dynamic
+  imports take under a second alone, but went past Vitest's 5 s default under
+  the full workspace run. The test now has its own 30 s limit.
+
+How to tell next time: if a test fails only under the full suite, slow the
+CPU (`Emulation.setCPUThrottlingRate` through a CDP session) and repeat it
+(`--repeat-each 10`) until it fails on purpose. A date that depends on the time
+zone fails only near midnight, so force a time zone instead of waiting.
+
 # Red "Browser tests" were the suite running out of time, not flaky tests
 
 From late October, many End-to-end runs failed in `workout-upgrade.spec.ts`

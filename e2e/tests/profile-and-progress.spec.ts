@@ -212,12 +212,20 @@ test('the chart steps back through weeks with its arrows, or a swipe, and stays 
 }) => {
   const user = await createUser('chart-back', { onboarded: true });
   // A workout a week ago today, at midday: always last week, whatever the
-  // weekday, and far from midnight in any time zone the tests run in.
+  // weekday. "Today" and "midday" are the phone's, read from the browser: the
+  // chart buckets weeks in local time, and the database's `now()` is UTC, so
+  // just after midnight on a Monday in Europe it still says Sunday and put
+  // this workout two weeks back.
+  const midday = await page.evaluate(() => {
+    const day = new Date();
+    day.setDate(day.getDate() - 7);
+    day.setHours(12, 0, 0, 0);
+    return day.toISOString();
+  });
   await sql(
     `with s as (
        insert into public.workout_sessions (user_id, started_at, ended_at)
-       values ($1, date_trunc('day', now()) - interval '7 days' + interval '12 hours',
-                   date_trunc('day', now()) - interval '7 days' + interval '13 hours')
+       values ($1, $2::timestamptz, $2::timestamptz + interval '1 hour')
        returning id
      ), se as (
        insert into public.session_exercises (user_id, session_id, exercise_id, order_key)
@@ -229,9 +237,9 @@ test('the chart steps back through weeks with its arrows, or a swipe, and stays 
        (user_id, session_exercise_id, order_key, set_type, load_type, weight_kg, reps,
         is_completed, completed_at)
      select $1, se.id, 'a0', 'working', 'external', 60, 8, true,
-            date_trunc('day', now()) - interval '7 days' + interval '12 hours 30 minutes'
+            $2::timestamptz + interval '30 minutes'
        from se`,
-    [user.id],
+    [user.id, midday],
   );
   await signIn(page, user);
   await openTab(page, 'Progress');

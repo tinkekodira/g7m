@@ -45,6 +45,7 @@ import {
 } from '@g7m/core';
 import type { Exercise, Profile, SessionExercise, SessionSet, WorkoutSession } from '@g7m/db';
 import { useCatalogue, useWrite } from '../lib/db/use-catalogue.js';
+import type { Repositories } from '../lib/db/repositories.js';
 import { WorkoutSkeleton } from '../components/RouteSkeleton.js';
 import { useWorkoutStart } from '../lib/use-workout-start.js';
 import { useWakeLock } from '../lib/use-wake-lock.js';
@@ -588,6 +589,27 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
   };
 
   /**
+   * The set "Add set" puts on the bar: last time's numbers, read at the tap.
+   *
+   * Not `block.previous`, which is the screen as last drawn. Just after the gym
+   * changes, that can still be the other gym's history — or none: the screen's
+   * reads are separate statements, and one that landed either side of the
+   * switch drew no history and no "first time here" either. A machine set then
+   * started at 0 kg, though this gym's last was 90 (ADR-0179).
+   */
+  const nextSetFor = async (
+    r: Repositories,
+    block: ExerciseBlock,
+  ): Promise<ReturnType<typeof nextSetTemplate>> =>
+    nextSetTemplate({
+      current: block.sets,
+      previous: await r.sessions.lastPerformance(block.entry.exerciseId, session.id),
+      repLow: block.exercise?.defaultRepLow ?? 8,
+      loadType: block.loadType,
+      startKg: block.barbell ? emptyBarKg(unitSystem) : 0,
+    });
+
+  /**
    * What happens after a tick: the buzz, and the rest — or, in a superset, the
    * next exercise.
    *
@@ -700,18 +722,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
         unitSystem={unitSystem}
         busy={busy}
         onAddSet={() => {
-          void write((r) =>
-            r.sessions.addSet(
-              block.entry.id,
-              nextSetTemplate({
-                current: block.sets,
-                previous: block.previous,
-                repLow: block.exercise?.defaultRepLow ?? 8,
-                loadType: block.loadType,
-                startKg: block.barbell ? emptyBarKg(unitSystem) : 0,
-              }),
-            ),
-          );
+          void write(async (r) => r.sessions.addSet(block.entry.id, await nextSetFor(r, block)));
         }}
         onWarmUp={(sets) => {
           void write((r) => r.sessions.prependSets(block.entry.id, sets));
@@ -880,16 +891,7 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
               // next round is ready before the rest is over.
               void write(async (r) => {
                 for (const member of unit.members) {
-                  await r.sessions.addSet(
-                    member.entry.id,
-                    nextSetTemplate({
-                      current: member.sets,
-                      previous: member.previous,
-                      repLow: member.exercise?.defaultRepLow ?? 8,
-                      loadType: member.loadType,
-                      startKg: member.barbell ? emptyBarKg(unitSystem) : 0,
-                    }),
-                  );
+                  await r.sessions.addSet(member.entry.id, await nextSetFor(r, member));
                 }
               });
             }}

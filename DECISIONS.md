@@ -10118,3 +10118,29 @@ routine started, and a generated plan's first time. Milan chose this over
 rewording the onboarding line.
 
 Rollout: app release only. No migration, no sync-rules change.
+
+## ADR-0184 — "Add set" reads last time when it is tapped, not from the screen
+
+**Status:** accepted · **Date:** 2026-11-23
+
+`gyms.spec.ts` ("a machine starts fresh at the other gym…") failed now and
+then on main. Slowed eight times it failed 2 runs in 10, and the screenshot
+showed why: just after the gym was switched to Iron Works, "Add set" put
+0 kg × 8 on the lat pulldown although the row above said "Last: 90kg × 8".
+
+The workout screen reads each exercise's history and its gym in separate
+statements (`lastPerformance`, then `lastPerformanceElsewhere`, each looking
+up the session's gym itself). A gym switch that lands between them draws one
+frame with no history and no "first time on this machine here" either, and
+"Add set" built its prefill from that frame's `block.previous`. On a budget
+phone the frame lasts long enough for a thumb.
+
+Add set and a superset's Add round now read `lastPerformance` inside the write,
+at the tap (`nextSetFor` in `WorkoutScreen.tsx`), so the prefill always follows
+the gym the workout is at by then. The "Last:" hints still read from the
+screen, and come right on the next draw. Rejected: wrapping the screen's reads
+in one read transaction, which fixes the torn frame but not a tap on a frame
+drawn just before the switch. The same run under the same throttle passes
+10 out of 10.
+
+Rollout: app release only. No migration, no sync-rules change.
