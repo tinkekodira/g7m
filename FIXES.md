@@ -1,3 +1,27 @@
+# The tour's first stop lost the workout card when Home was slow
+
+Seen on PR #237's CI, 2026-11-23: `app-tour.spec.ts`, "tour tolerates blocked
+preference storage…", failed twice in a row with the spotlight 0 px tall and
+the tour card over the top of the screen. Main passed the same app code hours
+before.
+
+A real race in the app. Until Home has read the open workout, the "workout"
+stop is the Start a workout tile in Quick access, and the tour scrolled that
+into view. Once the workout was read, the Continue card at the top took over
+`data-tour="workout"` and the tile went away, but the tour only ever scrolled
+once, so its target was now off the top of the screen. `TourOverlay` now
+remembers which element it scrolled to and scrolls again when the target is a
+different one.
+
+A new test makes it happen on purpose: the tour is open on the Start tile when
+a second tab starts a workout (the tabs share the local database). Red on the
+old code 2 out of 2, green 3 out of 3. A server insert was tried first and is
+not a way to do this: the open page did not hear of it within 15 s.
+
+How to tell next time: a spotlight with no height and a card pinned to the top
+means the target moved after the tour scrolled. Check whether the target
+element was replaced, not just moved.
+
 # Four tests that failed on main before the Android work (Batch E)
 
 Found in the pre-Android audit, 2026-11-23; each one was made to fail on

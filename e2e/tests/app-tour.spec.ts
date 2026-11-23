@@ -151,6 +151,29 @@ test('cached tour can be replayed offline including the Friends stop', async ({
   await expect(page.locator('[data-tour-home]')).toBeFocused();
 });
 
+// The workout stop is the Start tile in Quick access until the open workout
+// has been read, then the Continue card at the top. CI hit this by chance
+// when Home was slow; here the workout arrives mid-tour on purpose.
+test('the spotlight follows the workout stop when a workout in progress appears', async ({
+  page,
+  context,
+}) => {
+  const user = await createUser('tour-late-workout', { onboarded: true });
+  await signIn(page, user);
+  await page.getByRole('button', { name: 'Take a quick tour' }).click();
+  await expect(page.getByRole('dialog', { name: titles[0], exact: true })).toBeVisible();
+  await checkPlacement(page);
+  // A second tab shares the local database, so the first tab's Home hears of
+  // the workout at once — no round trip through the server.
+  const other = await context.newPage();
+  await other.goto('/#/');
+  await other.getByRole('button', { name: /^Start a workout/ }).click();
+  await other.getByRole('button', { name: 'Start a blank workout', exact: true }).click();
+  await expect(other.getByRole('button', { name: 'Finish workout', exact: true })).toBeVisible();
+  await expect(page.locator('[data-tour="workout"]')).toContainText('Continue your workout');
+  await checkPlacement(page);
+});
+
 test('tour tolerates blocked preference storage and preserves a workout already in progress', async ({
   page,
 }) => {

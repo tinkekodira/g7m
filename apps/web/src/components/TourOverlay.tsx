@@ -68,7 +68,11 @@ export default function TourOverlay() {
     heading.current?.focus();
     setPlacement(null);
     let target: HTMLElement | null = null;
-    let scrolled = false;
+    // The element scrolled into view, not just whether one was: on Home the
+    // workout stop starts as the Start tile in Quick access and becomes the
+    // Continue card at the top once the open workout has been read. Scrolling
+    // once would leave the spotlight on a card off the top of the screen.
+    let scrolledTo: HTMLElement | null = null;
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
@@ -82,8 +86,8 @@ export default function TourOverlay() {
         const width = window.innerWidth;
         const cardHeight = card.current.getBoundingClientRect().height;
         const rect = target.getBoundingClientRect();
-        if (!scrolled) {
-          scrolled = true;
+        if (scrolledTo !== target) {
+          scrolledTo = target;
           // Leave room for the explanation, including on short phone screens.
           window.scrollBy({
             top: rect.top - Math.max(20, (height - cardHeight - rect.height - 48) / 2),
@@ -118,7 +122,7 @@ export default function TourOverlay() {
     const resize = new ResizeObserver(update);
     if (card.current) resize.observe(card.current);
     const resized = () => {
-      scrolled = false;
+      scrolledTo = null;
       update();
     };
     window.addEventListener('resize', resized);
