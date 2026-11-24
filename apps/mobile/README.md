@@ -1,6 +1,6 @@
 # @g7m/mobile
 
-Capacitor 7 shell for iOS and Android. Deliberately thin: native
+Capacitor 8 shell for iOS and Android. Deliberately thin: native
 configuration, icons, splash screens and plugin registration. No application
 code — that is `apps/web`, built and copied in.
 
@@ -21,8 +21,14 @@ What the shell adds, beyond running the same bundle
 
 | Target | Needs |
 | --- | --- |
-| Android | JDK 21, Android SDK 35. Android Studio brings both. |
-| iOS | macOS, Xcode 16+, CocoaPods. **Cannot be built on Windows.** |
+| Any | Node 22+ (`.nvmrc` pins the version CI uses). |
+| Android | JDK 21, Android SDK 36 (Android 16). Android Studio Otter (2025.2.1) or newer brings both. The app runs on Android 7.0 (API 24) and up. |
+| iOS | macOS, Xcode 26+, CocoaPods. **Cannot be built on Windows.** |
+
+Google Play only accepts apps that target a recent Android version, and App
+Store uploads need a recent Xcode. That is why the shell is on Capacitor 8:
+it targets API 36 and needs Xcode 26
+([ADR-0188](../../DECISIONS.md#adr-0188--capacitor-8-android-16-api-36-and-xcode-26)).
 
 ## Commands
 

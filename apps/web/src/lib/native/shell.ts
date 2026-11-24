@@ -92,8 +92,11 @@ export async function nativeBuzz(kind: Haptic): Promise<boolean> {
  * The status bar, in the theme the app is in.
  *
  * On iOS the WebView draws under it, so only the text colour is ours to set.
- * On Android the bar is its own strip and is painted to match the background,
- * so the app does not end in a black band at the top.
+ * On Android 14 and older the bar is its own strip and is painted to match the
+ * background, so the app does not end in a black band at the top. Android 15+
+ * draws the app edge to edge (enforced from Android 16, targetSdk 36), the
+ * colour call does nothing there, and the page shows through the bar instead,
+ * kept clear by the safe-area padding in styles.css.
  */
 export async function applyNativeChrome(theme: Theme): Promise<void> {
   const platform = nativePlatform();
