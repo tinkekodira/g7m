@@ -50,8 +50,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
-      # Capacitor 7 builds against JDK 21. The runner ships several; this
-      # pins the one Gradle uses rather than inheriting whatever is default.
+      # Capacitor 8 (AGP 8.13, compileSdk 36) builds against JDK 21. The runner
+      # ships several; this pins the one Gradle uses rather than inheriting
+      # whatever is default.
       - name: Install Java
         uses: actions/setup-java@v5
         with:
@@ -144,11 +145,24 @@ jobs:
 
   ios:
     name: iOS (unsigned IPA)
-    runs-on: macos-15
+    # Capacitor 8 needs Xcode 26, and so does an App Store upload. macos-26
+    # has it as the default; macos-15 still defaults to Xcode 16.
+    runs-on: macos-26
     timeout-minutes: 35
 
     steps:
       - uses: actions/checkout@v7
+
+      # The runner image picks the default Xcode, and images change under us.
+      # Fail here, with a reason, rather than deep inside xcodebuild.
+      - name: Check for Xcode 26 or newer
+        run: |
+          xcodebuild -version
+          major=$(xcodebuild -version | sed -n 's/^Xcode \([0-9]*\).*/\1/p')
+          if [ "${major:-0}" -lt 26 ]; then
+            echo "::error::Capacitor 8 needs Xcode 26+, this runner has Xcode $major."
+            exit 1
+          fi
 
       - name: Install pnpm
         uses: pnpm/action-setup@v5

@@ -117,7 +117,7 @@ decision log is where it has been interpreted.
 | 3D | three.js via `@react-three/fiber` + `@react-three/drei`, loaded only when a body is on screen |
 | Client state | Zustand — UI state only |
 | Routing | React Router, [`HashRouter`](./DECISIONS.md#adr-0034--hashrouter-mounted-inside-the-auth-gate-with-filters-in-the-url) |
-| Mobile shell | Capacitor 7 — Android; iPhone ships as a [Home Screen web app](./DECISIONS.md#adr-0026--ios-ships-as-a-home-screen-web-app-and-the-spike-resolves-to-keep-powersync) |
+| Mobile shell | [Capacitor 8](./DECISIONS.md#adr-0188--capacitor-8-android-16-api-36-and-xcode-26) — Android; iPhone ships as a [Home Screen web app](./DECISIONS.md#adr-0026--ios-ships-as-a-home-screen-web-app-and-the-spike-resolves-to-keep-powersync) |
 | Desktop shell | Tauri 2 — Windows, macOS |
 | Backend | Supabase (Postgres, Auth, Storage), Frankfurt |
 | Local database | SQLite in the browser (wa-sqlite on OPFS), with a [hand-written schema](./DECISIONS.md#adr-0028--the-local-schema-is-hand-written-powersync-not-drizzle-and-a-test-stops-it-drifting) |

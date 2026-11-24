@@ -40,11 +40,12 @@ const config: CapacitorConfig = {
     /**
      * The WebView shrinks when the keyboard opens, so the set being typed
      * stays above it rather than under it. `native` is the smoothest of the
-     * iOS modes; on Android the same is done with the full-screen flag.
+     * iOS modes. On Android, Capacitor 8's built-in SystemBars plugin pads
+     * the WebView for the keyboard itself; `resizeOnFullScreen` would resize
+     * it a second time, and SystemBars warns at startup when it is set.
      */
     Keyboard: {
       resize: KeyboardResize.Native,
-      resizeOnFullScreen: true,
     },
   },
 

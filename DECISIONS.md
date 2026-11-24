@@ -10305,3 +10305,60 @@ on the web build. There is no crash reporter that would have used the maps.
 - **`sourcemap: 'hidden'` everywhere.** It removes the comment but still writes
   the files, so it would need the deletion anyway, and the web build would
   lose its link from bundle to map.
+
+## ADR-0188 — Capacitor 8: Android 16 (API 36) and Xcode 26
+
+**Status:** accepted · **Date:** 2026-11-24 · **Phase:** Android readiness · **Amends:** ADR-0074
+
+### Why
+
+Google Play only accepts new apps and updates that target a recent Android
+version, now Android 16 (API 36). Capacitor 7 targets API 35. App Store
+uploads need Xcode 26. Capacitor 8 targets API 36 and needs Xcode 26, so the
+upgrade covers both stores at once.
+
+### What changed
+
+- **Packages.** Every `@capacitor/*` package and
+  `@capacitor-community/keep-awake` moved to their 8.x versions, at the same
+  version in `apps/mobile` and `apps/web`. `@capacitor/assets` (only the icon
+  generator) stays at 3.x.
+- **Android.** `compileSdk` and `targetSdk` are 36 and `minSdk` is 24 (Android
+  7.0). AndroidX moved to the versions in Capacitor's guide. AGP is 8.13.0,
+  google-services 4.4.4 and Gradle 8.14.3, still the `-bin` zip with its
+  checksum pinned. `density` was added to the activity's `configChanges`, so a
+  display-size change no longer reloads the WebView. `namespace`, `compileSdk`
+  and `ignoreAssetsPattern` use `=` assignment, because Gradle deprecated the
+  space form.
+- **iOS.** The deployment target stays 17.0 (Capacitor 8's floor is 15, ours
+  is OPFS, ADR-0026), and CocoaPods stays. The app adopted the UIScene
+  lifecycle, as `cap migrate` does for 8.5+: there is a new `SceneDelegate.swift`,
+  `Info.plist` gained a `UIApplicationSceneManifest`, and `AppDelegate`
+  returns that scene configuration. All three match Capacitor 8.6's own
+  template. Apple makes the scene lifecycle mandatory for apps built with the
+  SDK after iOS 26. The `g7m://auth-callback` URL now arrives through
+  `SceneDelegate`, which passes it to the same `appUrlOpen` listener, so the web
+  code is unchanged.
+- **Keyboard.** `Keyboard.resizeOnFullScreen` is gone from
+  `capacitor.config.ts`. Capacitor 8's built-in SystemBars plugin pads the
+  WebView for the system bars and the keyboard on Android, warns at startup if
+  that flag is set, and with it set the WebView would be resized twice.
+- **Status bar on Android.** From Android 16 the app is always edge to edge.
+  `StatusBar.setBackgroundColor` does nothing there, and the page shows through
+  the bar, kept clear by `viewport-fit=cover` and the `env(safe-area-inset-*)`
+  padding already in `styles.css`. On Android 14 and older the call still
+  paints the bar, so it stays.
+- **CI.** The iOS job runs on `macos-26`, which defaults to Xcode 26
+  (`macos-15` defaults to Xcode 16.4), and a first step fails if Xcode is
+  older than 26. The Android jobs already used JDK 21.
+
+### What to know
+
+- On Android 16, an app targeting API 36 cannot lock its orientation on large
+  screens (600 dp and wider, so tablets and unfolded foldables). The manifest's
+  `screenOrientation="portrait"` still holds on phones.
+- `cap migrate` warns that it is not meant for monorepos. It ran anyway, and
+  three of its side effects were reverted: reformatting `Info.plist`, which
+  dropped its comments; rewriting `apps/mobile/package.json`, which bumped
+  `sharp`; and running its own `pnpm update`. Its Gradle wrapper step failed and
+  was redone by hand with `./gradlew wrapper`.
