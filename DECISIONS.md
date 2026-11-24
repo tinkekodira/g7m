@@ -10362,3 +10362,61 @@ upgrade covers both stores at once.
   dropped its comments; rewriting `apps/mobile/package.json`, which bumped
   `sharp`; and running its own `pnpm update`. Its Gradle wrapper step failed and
   was redone by hand with `./gradlew wrapper`.
+
+## ADR-0189 — Public privacy policy and account-deletion pages, above the auth gate
+
+**Status:** accepted · **Date:** 2026-11-24 · **Phase:** Android readiness · **Amends:** ADR-0034
+
+### Why
+
+Both app stores need a public privacy policy URL, and Google Play also needs a
+public page where somebody can ask for their account and data to be deleted
+without installing the app. Both have to open from a cold visit: signed out,
+possibly offline, on GitHub Pages.
+
+### What was decided
+
+- **Two hash routes, `#/privacy` and `#/delete-account`, matched above the
+  auth gate.** The router only exists for a signed-in user (ADR-0034), so the
+  pages are picked out of `location.hash` in `AppContent` before the session
+  is even read (`lib/public-pages.ts`). They render the same signed in, signed
+  out, while the session loads, and offline. The matcher is exact, so an auth
+  callback in the fragment (`#access_token=…`) is never claimed.
+- **Hash URLs, not paths.** GitHub Pages has no rewrites, so `/g7m/privacy` is
+  a 404 before any JavaScript runs. A `404.html` that redirects would still
+  answer the store's first request with a 404 status, and a stub
+  `privacy/index.html` would be worse: the service worker's shell handler
+  caches whatever document a navigation returns as `index.html`, so visiting
+  the stub would replace the app's shell with the stub offline. `/g7m/#/privacy`
+  is `index.html` from the server and from the worker, so it needs neither.
+  The store URLs are `https://tinkekodira.github.io/g7m/#/privacy` and
+  `https://tinkekodira.github.io/g7m/#/delete-account`.
+- **Links are plain `href`s, never `navigate()`.** The HashRouter changes the
+  URL with `pushState`, which fires no event; a followed link fires
+  `hashchange`, which is what `usePublicPage` listens to. Leaving a page goes
+  back to `#/settings` signed in, or `#/` signed out.
+- **The text is data, written from the code.** `packages/i18n/src/legal/`
+  holds the policy and the deletion page in all six languages, typed against
+  one shape and checked by a test for the same sections, the owner's details
+  and the services named. It is a chunk per language rather than part of
+  `Messages`, because English `Messages` ships in the entry bundle and these
+  pages are long and rarely opened. The details only the owner knows —
+  name, address, contact email, Supabase's backup retention — are
+  placeholders in `legal/details.ts`, one place for all languages.
+- **The deletion page links to `#/settings?section=delete-account`.** Settings
+  scrolls the delete panel into view and holds it there for up to two seconds
+  while the panels above fill in, letting go as soon as the person scrolls.
+  A signed-out visitor gets the sign-in form first; the destination stays in
+  the URL, so email sign-in lands on the panel.
+- **Linked from the sign-in screen and the foot of Settings,** as two small
+  links that are deliberately not a `<nav>`: the tab bar is the screen's one
+  navigation landmark.
+
+### Facts the policy rests on
+
+Supabase is in `eu-central-1` (Frankfurt) per `supabase projects list`.
+PowerSync's instance resolves to AWS `eu-west-1` (Ireland) addresses; confirm
+the region in the PowerSync dashboard. The code has no analytics, advertising,
+crash-reporting or tracking SDKs and sets no cookies. Every user table
+references `auth.users` `on delete cascade`, so `delete_my_account()` removes
+all of it in one transaction (ADR-0065).

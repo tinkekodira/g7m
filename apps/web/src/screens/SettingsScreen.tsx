@@ -42,6 +42,9 @@ import { PlatePicker } from '../components/PlatePicker.js';
 import { GymSettings } from '../components/GymSettings.js';
 import { LanguageSelect } from '../components/LanguagePicker.js';
 import { switchLanguage } from '../lib/language.js';
+import { useSearchParams } from 'react-router';
+import { LegalLinks } from '../components/LegalLinks.js';
+import { DELETE_ACCOUNT_SECTION } from '../lib/public-pages.js';
 import {
   BellIcon,
   ClockIcon,
@@ -93,6 +96,8 @@ interface AccountSnapshot {
 }
 
 export function SettingsScreen() {
+  useScrollToRequestedSection();
+
   return (
     <main className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 px-4 pt-safe-top pb-safe-bottom">
       <header className="pt-6">
@@ -135,10 +140,62 @@ export function SettingsScreen() {
         <DeleteAccount />
       </Group>
 
-      <footer className="py-4 text-xs text-muted">{t().settings.disclaimer}</footer>
+      <footer className="flex flex-col gap-2 py-4">
+        <LegalLinks />
+        <p className="text-xs text-muted">{t().settings.disclaimer}</p>
+      </footer>
     </main>
   );
 }
+
+/**
+ * `?section=delete-account` opens Settings at the delete panel, which is the
+ * last thing on a long page. The public account-deletion page links here, so
+ * "Settings → Delete account" is one tap after signing in rather than a
+ * scroll past everything else. ADR-0189.
+ *
+ * An effect, not a layout effect: `TabLayout` scrolls every new screen to
+ * its top in a layout effect, and this has to land after that.
+ *
+ * One scroll is not enough. The panels above fill in as their reads arrive —
+ * the account's counts, sync, storage — and each pushes the delete panel
+ * further down, so a single jump landed a screen and a half short of it. So
+ * the panel is held in view while the page settles, and let go the moment the
+ * person scrolls or touches anything themselves, or after two seconds.
+ * Instant rather than smooth: an animation chasing a moving target is worse.
+ */
+function useScrollToRequestedSection(): void {
+  const [params] = useSearchParams();
+  const section = params.get('section');
+
+  useEffect(() => {
+    if (section !== DELETE_ACCOUNT_SECTION) return;
+    const panel = document.getElementById(DELETE_ACCOUNT_SECTION);
+    if (panel === null) return;
+
+    const hold = () => {
+      panel.scrollIntoView({ block: 'center' });
+    };
+    hold();
+    panel.focus({ preventScroll: true });
+
+    const observer = new ResizeObserver(hold);
+    observer.observe(document.body);
+    const release = () => {
+      observer.disconnect();
+      clearTimeout(timer);
+      for (const event of RELEASE_EVENTS) globalThis.removeEventListener(event, release);
+    };
+    const timer = setTimeout(release, 2_000);
+    for (const event of RELEASE_EVENTS) {
+      globalThis.addEventListener(event, release, { passive: true, once: true });
+    }
+    return release;
+  }, [section]);
+}
+
+/** Anything that says the person has taken over the scrolling. */
+const RELEASE_EVENTS = ['wheel', 'touchstart', 'keydown', 'pointerdown'] as const;
 
 /**
  * Which language the app speaks. ADR-0181.
@@ -1024,8 +1081,16 @@ function DeleteAccount() {
   const confirmed = confirmsDeletion(typed);
 
   return (
-    <section className="rounded-sheet border border-danger/40 bg-surface p-4">
-      <h3 className="mb-3 flex items-center gap-3 text-lg font-semibold text-primary">
+    <section
+      id={DELETE_ACCOUNT_SECTION}
+      tabIndex={-1}
+      aria-labelledby={`${DELETE_ACCOUNT_SECTION}-title`}
+      className="rounded-sheet border border-danger/40 bg-surface p-4 outline-none"
+    >
+      <h3
+        id={`${DELETE_ACCOUNT_SECTION}-title`}
+        className="mb-3 flex items-center gap-3 text-lg font-semibold text-primary"
+      >
         <span
           aria-hidden
           className="flex size-8 shrink-0 items-center justify-center rounded-card bg-danger/10 text-destructive"
