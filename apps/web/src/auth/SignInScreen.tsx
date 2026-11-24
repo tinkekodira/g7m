@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, TextField, cx } from '@g7m/ui';
 import { useAuthStore } from './auth-store.js';
 import { LanguageSelect } from '../components/LanguagePicker.js';
+import { LegalLinks } from '../components/LegalLinks.js';
 import { switchLanguage } from '../lib/language.js';
 
 type Mode = 'sign-in' | 'sign-up' | 'reset';
@@ -237,6 +238,9 @@ export function SignInScreen() {
           )}
         </>
       )}
+
+      {/* What happens to an account's data, readable before there is one. */}
+      <LegalLinks className="justify-center" />
     </main>
   );
 }

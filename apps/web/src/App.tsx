@@ -19,6 +19,7 @@ import { lazyScreen, preloadWhenIdle } from './lib/lazy-screen.js';
 import { usePresence } from './lib/friends/use-presence.js';
 import { switchLanguage, useLanguageStore } from './lib/language.js';
 import { useWorkoutPresence } from './lib/friends/use-workout-presence.js';
+import { usePublicPage } from './lib/public-pages.js';
 
 /**
  * Every screen but Home, in a file of its own. ADR-0078.
@@ -89,6 +90,10 @@ const FriendRoutineScreen = lazyScreen(
   () => import('./screens/FriendRoutineScreen.js'),
   'FriendRoutineScreen',
 );
+/** The privacy policy and account deletion, outside the auth gate. ADR-0189. */
+const LegalScreen = lazy(() =>
+  import('./screens/LegalScreen.js').then((m) => ({ default: m.LegalScreen })),
+);
 
 /**
  * The screens worth having ready before they are asked for: the four other
@@ -152,6 +157,7 @@ function AppContent() {
   // reads its words — and the catalogue its translations — afresh. Sync and
   // the session sit above this line and carry on undisturbed. ADR-0181.
   const locale = useLanguageStore((s) => s.locale);
+  const publicPage = usePublicPage();
 
   // Returning the unsubscribe matters: StrictMode runs this twice in
   // development, and a leaked listener means every auth event handled twice.
@@ -202,6 +208,20 @@ function AppContent() {
     };
   }, [status, startSync, stopSync]);
 
+  // Before the session is known, and whatever it turns out to be: the stores
+  // link here, and a reviewer must see the page, not a sign-in form or a
+  // skeleton waiting on a network that may not be there. ADR-0189.
+  if (publicPage !== null) {
+    return (
+      <Fragment key={locale}>
+        <Suspense fallback={<ScreenFallback />}>
+          <LegalScreen page={publicPage} />
+        </Suspense>
+        <UpdateBanner />
+      </Fragment>
+    );
+  }
+
   if (status === 'loading') {
     return <StartupSkeleton />;
   }
@@ -228,7 +248,8 @@ function AppContent() {
 }
 
 /**
- * Every route in the app, all of them behind the auth gate.
+ * Every route in the app behind the auth gate — which is all of them but the
+ * privacy policy and account deletion, matched above it (ADR-0189).
  *
  * `HashRouter` rather than `BrowserRouter`, for two independent reasons that
  * happen to agree — the WebView custom schemes from ADR-0013 and the relative

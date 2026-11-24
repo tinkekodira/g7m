@@ -7,6 +7,7 @@ import { core } from './core.js';
 import { friends } from './friends.js';
 import { history } from './history.js';
 import { home } from './home.js';
+import { legal } from './legal.js';
 import { library } from './library.js';
 import { onboarding } from './onboarding.js';
 import { profile } from './profile.js';
@@ -25,6 +26,7 @@ export const de: Messages = {
   friends,
   history,
   home,
+  legal,
   library,
   onboarding,
   profile,
