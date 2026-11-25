@@ -390,7 +390,7 @@ function FriendCard({
             </div>
             {workingOut && (
               <span className="workout-status inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/25 bg-accent-subtle px-2 py-0.5 text-[11px] leading-4 font-semibold text-accent">
-                <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                <span aria-hidden className="workout-status-dot size-1.5 rounded-full bg-current" />
                 {t().friends.card.workingOut}
               </span>
             )}

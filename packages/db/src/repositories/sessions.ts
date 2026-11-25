@@ -24,7 +24,10 @@
  */
 import {
   EMPTY_BOUT,
+  MAX_PAST_WORKOUT_MINUTES,
   canEditWorkout,
+  pastWorkoutStamps,
+  validPastWorkoutMinutes,
   clampSetReps,
   clampSetWeightKg,
   initialOrderKeys,
@@ -408,6 +411,76 @@ export class SessionRepository {
       'UPDATE workout_sessions SET ended_at = ?, updated_at = ? WHERE id = ? AND user_id = ?',
       [at, toTimestamp(now()), sessionId, userId],
     );
+  }
+
+  /**
+   * When a workout logged afterwards happened, and how long it took.
+   *
+   * Only for a finished `past` workout, and allowed after the two-hour edit
+   * window: that window guards what was lifted, and a past workout's window
+   * closed on the day it happened, before anyone could say what time it was.
+   * The day stays the day it was logged on. The completed sets are re-stamped
+   * across the window (`pastWorkoutStamps`), which is how every duration
+   * reader, here and on the server, learns the length without a new column.
+   */
+  async setPastTime(sessionId: string, startedAt: Date, minutes: number): Promise<void> {
+    const { userId, now } = resolveContext(this.context);
+    const session = await this.byId(sessionId);
+    if (session === null) throw new Error(`No session ${sessionId} on this device.`);
+    if (session.source !== 'past' || session.endedAt === null) {
+      throw new Error('Only a finished workout logged afterwards takes a time.');
+    }
+    if (!validPastWorkoutMinutes(minutes)) {
+      throw new Error(`A workout takes 1 to ${String(MAX_PAST_WORKOUT_MINUTES)} minutes.`);
+    }
+    const before = session.startedAt;
+    if (
+      Number.isNaN(startedAt.getTime()) ||
+      startedAt.getFullYear() !== before.getFullYear() ||
+      startedAt.getMonth() !== before.getMonth() ||
+      startedAt.getDate() !== before.getDate()
+    ) {
+      throw new Error('A past workout keeps the day it was logged on.');
+    }
+
+    const rows = await this.db.getAll<RawRow>(
+      `SELECT ss.id, ss.set_type, ss.duration_seconds
+         FROM session_sets ss
+         JOIN session_exercises se ON se.id = ss.session_exercise_id
+        WHERE se.session_id = ? AND ss.user_id = ? AND ss.is_completed = 1
+        ORDER BY se.order_key ASC, ss.order_key ASC`,
+      [sessionId, userId],
+    );
+    const stamps = pastWorkoutStamps(
+      rows.map((row) => ({
+        setType: readString(row, 'set_type', 'working'),
+        durationSeconds: readOptionalNumber(row, 'duration_seconds'),
+      })),
+      startedAt,
+      minutes,
+    );
+    const at = toTimestamp(now());
+    await this.db.writeTransaction(async (tx) => {
+      await tx.execute(
+        `UPDATE workout_sessions SET started_at = ?, ended_at = ?, updated_at = ?
+          WHERE id = ? AND user_id = ?`,
+        [
+          toTimestamp(startedAt),
+          toTimestamp(new Date(startedAt.getTime() + minutes * 60_000)),
+          at,
+          sessionId,
+          userId,
+        ],
+      );
+      for (const [index, row] of rows.entries()) {
+        const stamp = stamps[index];
+        if (stamp === undefined) continue;
+        await tx.execute(
+          'UPDATE session_sets SET completed_at = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+          [toTimestamp(stamp), at, readString(row, 'id', ''), userId],
+        );
+      }
+    });
   }
 
   /**

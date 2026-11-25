@@ -125,11 +125,19 @@ export function buildWorkoutRecap(input: {
           times.push(new Date(set.completedAt.getTime() - seconds * 1000));
       }
     }
+  // A workout logged afterwards has no clock of its own. Its time is the one
+  // the lifter gave it (ADR-0193), which ends it after it starts and spreads
+  // its sets across it (`pastWorkoutStamps`); until then it ends where it
+  // starts, and a bout's own length is not the workout's.
+  const given = !input.backdated || input.endedAt.getTime() > input.startedAt.getTime();
+  const minutes = given ? trainingMinutes(times) : null;
   return {
     elapsedSeconds: input.backdated
-      ? null
+      ? minutes === null
+        ? null
+        : minutes * 60
       : Math.max(0, Math.floor((input.endedAt.getTime() - input.startedAt.getTime()) / 1000)),
-    trainingMinutes: input.backdated ? null : trainingMinutes(times),
+    trainingMinutes: minutes,
     exercises: new Set(
       input.blocks
         .filter((b) => b.sets.some((s) => s.isCompleted && s.setType !== 'warmup'))

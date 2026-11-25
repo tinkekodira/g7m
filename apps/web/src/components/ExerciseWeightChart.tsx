@@ -13,23 +13,34 @@ function describeWeight(point: ExerciseWeightPoint, units: UnitSystem): string {
   return `${sign}${formatNumber(value)} ${unit}`;
 }
 
-/** A non-interactive preview inside the row's existing link. */
+/** A non-interactive preview: in a picker row, on an exercise's page, on a recap card. */
 export function ExerciseWeightChart({
   points,
   unitSystem,
   cardio,
   compact = false,
+  wide = false,
+  decorative = false,
 }: {
   readonly points: readonly ExerciseWeightPoint[];
   readonly unitSystem: UnitSystem;
   readonly cardio: boolean;
   /** Recap cards already show the best set, so only the sparkline is needed. */
   readonly compact?: boolean;
+  /** A full-width line, for an exercise's own page rather than a row. */
+  readonly wide?: boolean;
+  /**
+   * Inside a button, whose children are presentational: the dated history
+   * would become one long button name. Screen readers get the latest weight
+   * and the caption instead.
+   */
+  readonly decorative?: boolean;
 }) {
   const gradientId = useId();
   const latest = points.at(-1);
   const values = points.map((point) => point.weightKg);
-  const plot = linePointsWithin(values, niceRange(values, 5), 100, 34).map(({ x, y }) => ({
+  const width = wide ? 300 : 100;
+  const plot = linePointsWithin(values, niceRange(values, 5), width, 34).map(({ x, y }) => ({
     x: x + 7,
     y: y + 7,
   }));
@@ -66,14 +77,18 @@ export function ExerciseWeightChart({
   const summary =
     latest === undefined ? (cardio ? words.cardio : words.none) : words.summary(caption, history);
 
-  return (
-    <span className="exercise-weight-chart" role="img" aria-label={summary}>
+  const latestText = latest === undefined ? '—' : describeWeight(latest, unitSystem);
+  const chart = (
+    <span
+      className={`exercise-weight-chart${wide ? ' exercise-weight-chart-wide' : ''}`}
+      {...(decorative ? { 'aria-hidden': true } : { role: 'img', 'aria-label': summary })}
+    >
       {!compact && (
         <span aria-hidden="true" className="numeric text-sm font-medium text-primary">
-          {latest === undefined ? '—' : describeWeight(latest, unitSystem)}
+          {latestText}
         </span>
       )}
-      <svg viewBox="0 0 114 48" aria-hidden="true" focusable="false">
+      <svg viewBox={`0 0 ${String(width + 14)} 48`} aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
@@ -120,7 +135,7 @@ export function ExerciseWeightChart({
             />
           </>
         ) : (
-          <line x1="7" x2="107" y1="35" y2="35" stroke="var(--border-subtle)" />
+          <line x1="7" x2={width + 7} y1="35" y2="35" stroke="var(--border-subtle)" />
         )}
       </svg>
       {!compact && (
@@ -129,5 +144,14 @@ export function ExerciseWeightChart({
         </span>
       )}
     </span>
+  );
+  if (!decorative) return chart;
+  return (
+    <>
+      {chart}
+      <span className="sr-only">
+        {latest === undefined ? `, ${caption}` : `, ${latestText}, ${caption}`}
+      </span>
+    </>
   );
 }

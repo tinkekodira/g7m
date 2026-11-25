@@ -90,8 +90,43 @@ describe('workout recap facts', () => {
     expect(recap.volume.volumeKg).toBe(1000);
     expect(recap.comparisons).toHaveLength(1);
   });
+  it('reads a backdated workout’s time from its sets, once the lifter has given one', () => {
+    const recap = buildWorkoutRecap(
+      input({
+        backdated: true,
+        blocks: [
+          block('bench', [
+            set('a'),
+            set('b', { completedAt: new Date(START.getTime() + 56 * 60_000) }),
+          ]),
+        ],
+      }),
+    );
+    expect(recap.elapsedSeconds).toBe(56 * 60);
+    expect(recap.trainingMinutes).toBe(56);
+
+    // Not given yet: it ends where it starts, and spread stamps alone (a
+    // bout's own length) are not the workout's time.
+    const untimed = buildWorkoutRecap(
+      input({
+        backdated: true,
+        endedAt: START,
+        blocks: [
+          block('bench', [
+            set('a'),
+            set('b', { completedAt: new Date(START.getTime() + 30 * 60_000) }),
+          ]),
+        ],
+      }),
+    );
+    expect(untimed.elapsedSeconds).toBeNull();
+    expect(untimed.trainingMinutes).toBeNull();
+  });
   it('does not invent clocks for backdated, one-set or invalid-timestamp sessions', () => {
-    const recap = buildWorkoutRecap(input({ backdated: true }));
+    // Logged afterwards, every set shares the day's one instant.
+    const recap = buildWorkoutRecap(
+      input({ backdated: true, blocks: [block('bench', [set('a'), set('b')])] }),
+    );
     expect(recap.elapsedSeconds).toBeNull();
     expect(recap.trainingMinutes).toBeNull();
     expect(

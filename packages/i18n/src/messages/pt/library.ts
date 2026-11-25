@@ -65,6 +65,7 @@ export const library: Messages['library'] = {
     notRecorded: 'Não registrado para este exercício.',
     howTo: 'Como fazer',
     mistakes: 'Erros comuns',
+    recentWeights: 'Seus pesos recentes',
     equipment: 'Equipamento',
     noEquipment: 'Nada.',
     whatYouLog: 'O que você registra',

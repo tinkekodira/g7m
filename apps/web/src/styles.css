@@ -736,6 +736,27 @@ html:has(.app-tour-dialog[open]) .rise {
   line-height: 1.5;
 }
 
+/* On an exercise's own page the line has the full width to itself. */
+.exercise-recent-weights .exercise-weight-chart-wide {
+  gap: 4px;
+  border-left: 0;
+  padding-left: 0;
+}
+
+.exercise-recent-weights .exercise-weight-chart-wide > :first-child {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+}
+
+.exercise-recent-weights .exercise-weight-chart-wide svg {
+  height: auto;
+}
+
+.exercise-recent-weights .exercise-weight-chart-wide .exercise-weight-caption {
+  font-size: 12px;
+}
+
 @media (min-width: 400px) {
   .browse-exercise-progress {
     grid-template-columns: 56px minmax(0, 1fr) 110px;
@@ -1119,7 +1140,8 @@ textarea,
   /* Without the native look the value sits at the top of the box, where
      every other field centres its text. Centred both ways: as a flex item,
      and by a line as tall as the field inside its 1px border. */
-  input[type='date'] {
+  input[type='date'],
+  input[type='time'] {
     -webkit-appearance: none;
     appearance: none;
     display: flex;
@@ -1128,29 +1150,44 @@ textarea,
     line-height: calc(var(--spacing-tap) - 2px);
   }
 
-  input[type='date']::-webkit-date-and-time-value {
+  input[type='date']::-webkit-date-and-time-value,
+  input[type='time']::-webkit-date-and-time-value {
     margin: 0;
     text-align: left;
   }
 }
-/* A quiet breathing label; text remains legible throughout the pulse. */
+/* A slight heartbeat: the label swells a touch, its halo brightens and the dot
+   pings. Transform and opacity only, so nothing repaints per frame; the text
+   never drops below full legibility. */
 @keyframes workout-status-breathe {
   0%,
   100% {
-    opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.9;
+    transform: scale(1.04);
   }
 }
 
 @keyframes workout-status-border-breathe {
   0%,
   100% {
-    opacity: 0.1;
+    opacity: 0.15;
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.85;
+  }
+}
+
+@keyframes workout-status-dot-ping {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
   }
 }
 
@@ -1158,18 +1195,31 @@ textarea,
   .workout-status {
     position: relative;
     pointer-events: none;
-    animation: workout-status-breathe 5.6s ease-in-out infinite;
+    animation: workout-status-breathe 2.4s ease-in-out infinite;
   }
 
-  /* Fade a faint, fixed halo instead of repainting a shadow every frame. */
+  /* Fade a fixed halo instead of repainting a shadow every frame. */
   .workout-status::before {
     content: '';
     position: absolute;
     inset: -1px;
-    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
     border-radius: inherit;
-    box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 14%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent);
     pointer-events: none;
-    animation: workout-status-border-breathe 5.6s ease-in-out infinite;
+    animation: workout-status-border-breathe 2.4s ease-in-out infinite;
+  }
+
+  .workout-status-dot {
+    position: relative;
+  }
+
+  .workout-status-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: currentColor;
+    animation: workout-status-dot-ping 2.4s ease-out infinite;
   }
 }

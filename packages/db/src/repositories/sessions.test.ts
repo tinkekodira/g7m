@@ -659,6 +659,73 @@ describe('a workout logged afterwards', () => {
     );
   });
 
+  describe('given a time afterwards', () => {
+    /** 17:30 local on the logged day, whatever zone the tests run in. */
+    function evening(): Date {
+      const at = new Date(THURSDAY_NOON);
+      at.setHours(17, 30, 0, 0);
+      return at;
+    }
+
+    async function loggedPast(): Promise<{ id: string; sets: string[] }> {
+      const session = await sessions.start({ source: 'past', startedAt: THURSDAY_NOON });
+      const entry = await sessions.addExercise(session.id, 'bench');
+      const warmup = await sessions.addSet(entry.id, template({ setType: 'warmup' }));
+      const first = await sessions.addSet(entry.id, template());
+      const second = await sessions.addSet(entry.id, template());
+      const skipped = await sessions.addSet(entry.id, template());
+      for (const set of [warmup, first, second]) await sessions.completeSet(set.id);
+      await sessions.finish(session.id);
+      return { id: session.id, sets: [warmup.id, first.id, second.id, skipped.id] };
+    }
+
+    it('moves the start and end, and spreads the sets across them', async () => {
+      const { id, sets } = await loggedPast();
+      // Days later, long after the two-hour edit window closed.
+      clock = new Date('2026-09-06T10:00:00.000Z');
+      await sessions.setPastTime(id, evening(), 56);
+
+      const end = new Date(evening().getTime() + 56 * 60_000).toISOString();
+      const session = await sessions.byId(id);
+      expect(session?.startedAt.toISOString()).toBe(evening().toISOString());
+      expect(session?.endedAt?.toISOString()).toBe(end);
+      const [warmup, first, second, skipped] = await Promise.all(sets.map((s) => rawSet(s)));
+      expect(first?.completed_at).toBe(evening().toISOString());
+      expect(second?.completed_at).toBe(end);
+      expect(warmup?.completed_at).toBe(first?.completed_at);
+      // A set never done stays not done: the server's CHECK pairs the two.
+      expect(skipped?.completed_at).toBeNull();
+      expect(skipped?.is_completed).toBe(0);
+    });
+
+    it('can be corrected, and keeps the day it was logged on', async () => {
+      const { id } = await loggedPast();
+      await sessions.setPastTime(id, evening(), 56);
+      const morning = new Date(evening());
+      morning.setHours(7, 0, 0, 0);
+      await sessions.setPastTime(id, morning, 40);
+      expect((await sessions.byId(id))?.startedAt.toISOString()).toBe(morning.toISOString());
+
+      const nextDay = new Date(evening());
+      nextDay.setDate(nextDay.getDate() + 1);
+      await expect(sessions.setPastTime(id, nextDay, 40)).rejects.toThrow(/day/);
+    });
+
+    it('refuses a live workout, an open one, and an impossible length', async () => {
+      const { id } = await loggedPast();
+      await expect(sessions.setPastTime(id, evening(), 0)).rejects.toThrow(/minutes/);
+      await expect(sessions.setPastTime(id, evening(), 601)).rejects.toThrow(/minutes/);
+
+      const open = await sessions.start({ source: 'past', startedAt: THURSDAY_NOON });
+      await expect(sessions.setPastTime(open.id, evening(), 30)).rejects.toThrow(/finished/);
+      await sessions.finish(open.id);
+
+      const live = await sessions.start();
+      await sessions.finish(live.id);
+      await expect(sessions.setPastTime(live.id, clock, 30)).rejects.toThrow(/afterwards/);
+    });
+  });
+
   it('leaves a live workout’s clocks alone', async () => {
     const session = await sessions.start();
     const entry = await sessions.addExercise(session.id, 'bench');

@@ -482,8 +482,10 @@ function DayWorkouts({
                 <span className="flex shrink-0 items-baseline gap-2">
                   <span className="numeric text-xs text-muted">
                     {/* A workout logged afterwards has a day and no time of
-                        day; its noon start is a placeholder, not a fact. */}
-                    {workout.source === 'past'
+                        day until the lifter gives it one (ADR-0193); its noon
+                        start is a placeholder, not a fact. */}
+                    {workout.source === 'past' &&
+                    (workout.endedAt?.getTime() ?? 0) <= workout.startedAt.getTime()
                       ? t().history.calendar.loggedAfterwards
                       : formatTime(workout.startedAt, {
                           hour: 'numeric',
