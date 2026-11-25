@@ -10445,3 +10445,41 @@ takes no automatic backups, so "backups expire within 7 days" was not true.
   Moving to a paid plan or enabling point-in-time recovery makes this untrue —
   the note in `legal/details.ts` says which sentences to rewrite.
 - **`legal.test.ts` now fails on any `[PLACEHOLDER]`** left in any language.
+
+## ADR-0191 — Android release builds: an upload key from secrets, the version from package.json
+
+**Status:** accepted · **Date:** 2026-11-25 · **Phase:** Android readiness
+
+### Why
+
+Google Play takes a signed Android App Bundle (AAB) whose `versionCode` is
+higher than the last upload's. CI only made a debug APK, `build.gradle` said
+`versionCode 1` / `versionName "1.0"` whatever the app's real version, and the
+release workflow built the web app without the Supabase and PowerSync
+addresses, so a tagged build could not have signed anyone in.
+
+### What was decided
+
+- **One version, in `apps/web/package.json`.** It is what the app already
+  shows (`__APP_VERSION__`). `app/build.gradle` reads it: `versionName` is the
+  version, `versionCode` is `major × 1,000,000 + minor × 1,000 + patch`, so a
+  higher version is always a higher code. A version that does not fit fails
+  the build rather than producing a code that might go backwards.
+- **An upload key, never in the repository.** The release build type signs with
+  it when `G7M_UPLOAD_STORE_FILE` and its three companions are set — from the
+  environment in CI, or `~/.gradle/gradle.properties` locally — and is
+  unsigned otherwise. Play App Signing holds the real app key. `*.jks` and
+  `*.keystore` are ignored.
+- **Tags build the Play bundle.** `release.yml` decodes the key from the
+  `ANDROID_UPLOAD_KEYSTORE_BASE64` secret, runs `bundleRelease`, checks the
+  bundle is signed with `jarsigner`, and uploads it alongside the debug APK.
+  Without the secret it warns and builds the APK only — a tag must not fail for
+  want of a key (the reason iOS is still absent there).
+- **One preparation for both workflows.** The steps before Gradle (Java,
+  Gradle, dependencies, anatomy model, web build with the backend variables,
+  `cap sync`, the source-map check) moved into
+  `.github/actions/android-web`, used by `native.yml` and `release.yml`, so
+  a release is built as its pull request was. Every pull request now also
+  runs an unsigned `bundleRelease`, so the release configuration is checked
+  before a tag rather than on it.
+- Steps for the owner: `docs/android-release.md`.

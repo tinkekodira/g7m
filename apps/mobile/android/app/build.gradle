@@ -1,4 +1,23 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
+
+// The version the app shows (`__APP_VERSION__`, apps/web/vite.config.ts) is the
+// one the stores see: one number to bump, in apps/web/package.json. ADR-0191.
+def appVersion = new JsonSlurper().parse(file('../../../web/package.json')).version as String
+def versionParts = appVersion.replaceFirst(/[-+].*$/, '').tokenize('.').collect { it as int }
+if (versionParts.size() != 3 || versionParts[1] > 999 || versionParts[2] > 999) {
+    throw new GradleException("apps/web/package.json version '${appVersion}' is not major.minor.patch with minor and patch below 1000")
+}
+// Play refuses an upload whose versionCode is not higher than the last one.
+// 1.2.3 -> 1002003: every higher version is a higher code.
+def appVersionCode = versionParts[0] * 1_000_000 + versionParts[1] * 1_000 + versionParts[2]
+
+// The upload key signs release builds, Play re-signs them with the app key.
+// From the environment in CI, or ~/.gradle/gradle.properties on a computer —
+// never from the repository. Without it a release build is simply unsigned.
+def signingValue = { String name -> System.getenv(name) ?: project.findProperty(name) }
+def uploadStoreFile = signingValue('G7M_UPLOAD_STORE_FILE')
 
 android {
     namespace = "app.g7m.trainer"
@@ -7,8 +26,8 @@ android {
         applicationId "app.g7m.trainer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +35,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (uploadStoreFile) {
+            upload {
+                storeFile file(uploadStoreFile)
+                storePassword signingValue('G7M_UPLOAD_STORE_PASSWORD')
+                keyAlias signingValue('G7M_UPLOAD_KEY_ALIAS')
+                keyPassword signingValue('G7M_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadStoreFile) {
+                signingConfig signingConfigs.upload
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
