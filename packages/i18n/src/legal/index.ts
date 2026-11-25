@@ -28,11 +28,5 @@ export async function loadLegalText(locale: Locale): Promise<LegalText> {
   }
 }
 
-export {
-  BACKUP_RETENTION,
-  CONTACT_EMAIL,
-  CONTROLLER_ADDRESS,
-  CONTROLLER_NAME,
-  LEGAL_UPDATED,
-} from './details.js';
+export { CONTACT_EMAIL, CONTROLLER_NAME, LEGAL_UPDATED } from './details.js';
 export type { DeletionLabels, LegalBlock, LegalSection, LegalTerm, LegalText } from './types.js';

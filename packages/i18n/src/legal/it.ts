@@ -1,5 +1,5 @@
 /** Informativa sulla privacy ed eliminazione dell'account, in italiano. Tradotto da `en.ts`. ADR-0189. */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -27,7 +27,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Chi è responsabile',
         blocks: [
-          `g7m è sviluppata da ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Croazia, titolare del trattamento dei tuoi dati personali ai sensi del Regolamento generale sulla protezione dei dati (GDPR). Scrivi a ${CONTACT_EMAIL} per qualsiasi domanda su questa informativa.`,
+          `g7m è sviluppata da ${CONTROLLER_NAME}, in Croazia, titolare del trattamento dei tuoi dati personali ai sensi del Regolamento generale sulla protezione dei dati (GDPR). Scrivi a ${CONTACT_EMAIL} per qualsiasi domanda su questa informativa.`,
           'Questa informativa riguarda la web app g7m e le app g7m per Android e iOS, che sono la stessa app.',
         ],
       },
@@ -163,7 +163,7 @@ export const legal: LegalText = {
             list: [
               'L’account e tutto ciò che contiene: finché non lo elimini. Gli account non vengono eliminati per inattività.',
               'Quando elimini l’account, viene rimosso subito dal database, tutto in un solo passaggio, e da PowerSync insieme a esso. Gli altri tuoi dispositivi cancellano la loro copia alla prossima sincronizzazione o al prossimo accesso di qualcuno su di essi.',
-              `I backup di Supabase scadono secondo il proprio calendario, entro ${BACKUP_RETENTION}.`,
+              'Il database non ha backup (usa il piano gratuito di Supabase, che non ne fa), quindi di un account eliminato non resta lì alcuna copia.',
               'Feedback: finché non elimini l’account, o prima, una volta gestito.',
               'Log tecnici: conservati da ciascun servizio per poco tempo, di solito pochi giorni.',
               'Sul tuo dispositivo: finché non esci (se non resta nulla da caricare) o elimini l’account. Anche cancellare i dati del sito o disinstallare l’app li rimuove.',
@@ -257,7 +257,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Nulla nel database attivo. I backup di Supabase scadono entro ${BACKUP_RETENTION}, e non si ripristinano account da essi.`,
+              'Nulla nel database, né in un backup: g7m non conserva backup del database, quindi un account eliminato non può essere ripristinato.',
               'I brevi log tecnici dei servizi (indirizzi IP e orari) scadono da soli, di solito in pochi giorni.',
               'Se l’hai chiesto via email, conserviamo quell’email per il tempo necessario a dimostrare che la richiesta è stata gestita.',
               'I file scaricati con «I tuoi dati» restano dove li hai salvati.',

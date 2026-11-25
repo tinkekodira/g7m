@@ -1,5 +1,5 @@
 /** Datenschutzerklärung und Kontolöschung, auf Deutsch. Übersetzt aus `en.ts`. ADR-0189. */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -27,7 +27,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Wer verantwortlich ist',
         blocks: [
-          `g7m wird von ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Kroatien, entwickelt. Diese Person ist Verantwortliche im Sinne der EU-Datenschutz-Grundverordnung (DSGVO). Schreib an ${CONTACT_EMAIL}, wenn du Fragen zu dieser Erklärung hast.`,
+          `g7m wird von ${CONTROLLER_NAME} in Kroatien entwickelt. Diese Person ist Verantwortliche im Sinne der EU-Datenschutz-Grundverordnung (DSGVO). Schreib an ${CONTACT_EMAIL}, wenn du Fragen zu dieser Erklärung hast.`,
           'Diese Erklärung gilt für die g7m-Web-App und die g7m-Apps für Android und iOS, die dieselbe App sind.',
         ],
       },
@@ -164,7 +164,7 @@ export const legal: LegalText = {
             list: [
               'Dein Konto mit allem darin: bis du es löschst. Konten werden nicht wegen Inaktivität gelöscht.',
               'Wenn du dein Konto löschst, wird es sofort und vollständig in einem Schritt aus der Datenbank entfernt, und mit ihr aus PowerSync. Deine anderen Geräte entfernen ihre Kopie, wenn sie das nächste Mal synchronisieren oder sich dort jemand anmeldet.',
-              `Datenbank-Backups bei Supabase laufen nach ihrem eigenen Zeitplan ab, innerhalb von ${BACKUP_RETENTION}.`,
+              'Die Datenbank wird nicht gesichert (sie läuft im kostenlosen Tarif von Supabase, der keine Backups anlegt), daher bleibt von einem gelöschten Konto dort keine Kopie zurück.',
               'Feedback: bis du dein Konto löschst, oder früher, sobald es erledigt ist.',
               'Technische Protokolle: von jedem Dienst kurz aufbewahrt, meist einige Tage.',
               'Auf deinem Gerät: bis du dich abmeldest (wenn nichts mehr auf den Upload wartet) oder das Konto löschst. Auch das Löschen der Websitedaten oder das Deinstallieren der App entfernt sie.',
@@ -258,7 +258,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Nichts in der laufenden Datenbank. Die Backups von Supabase laufen innerhalb von ${BACKUP_RETENTION} ab, und Konten werden daraus nicht wiederhergestellt.`,
+              'Nichts in der Datenbank und kein Backup davon: g7m bewahrt keine Datenbank-Backups auf, ein gelöschtes Konto lässt sich also nicht wiederherstellen.',
               'Die kurzen technischen Protokolle der Dienste (IP-Adressen und Zeitpunkte) laufen von selbst ab, meist innerhalb weniger Tage.',
               'Wenn du per E-Mail gefragt hast, bewahren wir diese E-Mail so lange auf, wie wir belegen müssen, dass die Anfrage erledigt wurde.',
               'Dateien, die du mit „Deine Daten“ heruntergeladen hast, bleiben dort, wo du sie gespeichert hast.',

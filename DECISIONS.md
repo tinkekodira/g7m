@@ -10420,3 +10420,28 @@ the region in the PowerSync dashboard. The code has no analytics, advertising,
 crash-reporting or tracking SDKs and sets no cookies. Every user table
 references `auth.users` `on delete cascade`, so `delete_my_account()` removes
 all of it in one transaction (ADR-0065).
+
+## ADR-0190 — The privacy policy names no postal address and promises no backups
+
+**Status:** accepted · **Date:** 2026-11-25 · **Phase:** Android readiness · **Amends:** ADR-0189
+
+### Why
+
+ADR-0189 left the owner's details as placeholders. Filling them in raised two
+problems: the only postal address is the owner's home, which the policy would
+publish to the open web, and the backup retention was a phrase in English
+(`'7 days'`) pasted into all six languages, so the German page read
+"innerhalb von 7 days". The project is also on Supabase's free plan, which
+takes no automatic backups, so "backups expire within 7 days" was not true.
+
+### What was decided
+
+- **No postal address.** GDPR Art. 13 asks for the controller's identity and
+  contact details; the name, the country and the contact email meet that. The
+  policy says "made by <name>, in Croatia". `CONTROLLER_ADDRESS` is gone.
+- **"No backups" in each language's own words.** `BACKUP_RETENTION` is gone;
+  the `retention` and `kept` sentences now say the database is not backed up
+  (free plan), so a deleted account leaves no copy and cannot be restored.
+  Moving to a paid plan or enabling point-in-time recovery makes this untrue —
+  the note in `legal/details.ts` says which sentences to rewrite.
+- **`legal.test.ts` now fails on any `[PLACEHOLDER]`** left in any language.

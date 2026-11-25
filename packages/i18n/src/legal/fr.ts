@@ -1,5 +1,5 @@
 /** Politique de confidentialité et suppression du compte, en français. Traduit de `en.ts`. ADR-0189. */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -27,7 +27,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Qui est responsable',
         blocks: [
-          `g7m est développé par ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Croatie, responsable du traitement de tes données personnelles au sens du Règlement général sur la protection des données (RGPD). Écris à ${CONTACT_EMAIL} pour toute question sur cette politique.`,
+          `g7m est développé par ${CONTROLLER_NAME}, en Croatie, responsable du traitement de tes données personnelles au sens du Règlement général sur la protection des données (RGPD). Écris à ${CONTACT_EMAIL} pour toute question sur cette politique.`,
           'Cette politique couvre l’application web g7m et les applications g7m pour Android et iOS, qui sont la même application.',
         ],
       },
@@ -164,7 +164,7 @@ export const legal: LegalText = {
             list: [
               'Ton compte et tout son contenu : jusqu’à ce que tu le supprimes. Les comptes ne sont pas supprimés pour inactivité.',
               'Quand tu supprimes ton compte, il est retiré de la base de données immédiatement, en une seule fois, et de PowerSync avec elle. Tes autres appareils effacent leur copie à leur prochaine synchronisation ou à la prochaine connexion de quelqu’un sur eux.',
-              `Les sauvegardes de Supabase expirent selon leur propre calendrier, dans un délai de ${BACKUP_RETENTION}.`,
+              'La base de données n’est pas sauvegardée (elle utilise l’offre gratuite de Supabase, qui ne fait pas de sauvegardes) : il n’y reste donc aucune copie d’un compte supprimé.',
               'Avis : jusqu’à la suppression de ton compte, ou plus tôt une fois traités.',
               'Journaux techniques : conservés peu de temps par chaque service, généralement quelques jours.',
               'Sur ton appareil : jusqu’à ce que tu te déconnectes (s’il ne reste rien à envoyer) ou supprimes le compte. Effacer les données du site ou désinstaller l’application les supprime aussi.',
@@ -258,7 +258,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Rien dans la base de données active. Les sauvegardes de Supabase expirent dans un délai de ${BACKUP_RETENTION}, et aucun compte n’est restauré à partir d’elles.`,
+              'Rien dans la base de données, ni dans une sauvegarde : g7m ne conserve pas de sauvegardes de la base de données, un compte supprimé ne peut donc pas être restauré.',
               'Les courts journaux techniques des services (adresses IP et horaires) expirent d’eux-mêmes, généralement en quelques jours.',
               'Si tu as fait la demande par e-mail, nous gardons cet e-mail le temps nécessaire pour prouver que la demande a été traitée.',
               'Les fichiers téléchargés avec « Tes données » restent là où tu les as enregistrés.',

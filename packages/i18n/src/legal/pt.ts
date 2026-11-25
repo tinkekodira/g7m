@@ -1,5 +1,5 @@
 /** Política de privacidade e exclusão da conta, em português. Traduzido de `en.ts`. ADR-0189. */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -27,7 +27,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Quem é o responsável',
         blocks: [
-          `O g7m é feito por ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Croácia, controlador dos seus dados pessoais nos termos do Regulamento Geral sobre a Proteção de Dados da UE (RGPD). Escreva para ${CONTACT_EMAIL} sobre qualquer ponto desta política.`,
+          `O g7m é feito por ${CONTROLLER_NAME}, na Croácia, controlador dos seus dados pessoais nos termos do Regulamento Geral sobre a Proteção de Dados da UE (RGPD). Escreva para ${CONTACT_EMAIL} sobre qualquer ponto desta política.`,
           'Esta política cobre o app web do g7m e os apps do g7m para Android e iOS, que são o mesmo app.',
         ],
       },
@@ -163,7 +163,7 @@ export const legal: LegalText = {
             list: [
               'Sua conta e tudo nela: até você excluir a conta. Contas não são excluídas por inatividade.',
               'Quando você exclui sua conta, ela é removida do banco de dados na hora, tudo de uma vez, e do PowerSync junto. Seus outros dispositivos apagam a cópia deles na próxima sincronização ou na próxima vez que alguém entrar neles.',
-              `Os backups do Supabase expiram no próprio cronograma, em até ${BACKUP_RETENTION}.`,
+              'O banco de dados não tem backups (ele usa o plano gratuito do Supabase, que não faz backups), então não fica nenhuma cópia de uma conta excluída ali.',
               'Feedback: até você excluir sua conta, ou antes, depois de tratado.',
               'Registros técnicos: guardados por cada serviço por pouco tempo, geralmente dias.',
               'No seu dispositivo: até você sair (quando não houver nada esperando para enviar) ou excluir a conta. Limpar os dados do site ou desinstalar o app também os remove.',
@@ -257,7 +257,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Nada no banco de dados ativo. Os backups do Supabase expiram em até ${BACKUP_RETENTION}, e nenhuma conta é restaurada a partir deles.`,
+              'Nada no banco de dados, nem em backup: o g7m não guarda backups do banco de dados, então uma conta excluída não pode ser restaurada.',
               'Os registros técnicos curtos dos serviços (endereços IP e horários) expiram sozinhos, geralmente em poucos dias.',
               'Se você pediu por e-mail, guardamos esse e-mail pelo tempo necessário para mostrar que o pedido foi atendido.',
               'Os arquivos que você baixou com “Seus dados” continuam onde você os salvou.',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LOCALES } from '../locales.js';
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_NAME, loadLegalText } from './index.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME, loadLegalText } from './index.js';
 import type { LegalBlock, LegalText } from './types.js';
 
 /**
@@ -54,7 +54,8 @@ describe('legal text', () => {
       const all = wholeText(text);
       expect(all, locale).toContain(CONTACT_EMAIL);
       expect(all, locale).toContain(CONTROLLER_NAME);
-      expect(all, locale).toContain(BACKUP_RETENTION);
+      // No "[YOUR NAME]"-style placeholder survives into a published page.
+      expect(all, locale).not.toMatch(/\[[A-Z ]+\]/);
       expect(text.deletion.byEmail.body, locale).toContain(CONTACT_EMAIL);
 
       // The in-app steps name the app's own controls, in its own words.
