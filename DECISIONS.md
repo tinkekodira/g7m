@@ -10483,3 +10483,29 @@ addresses, so a tagged build could not have signed anyone in.
   runs an unsigned `bundleRelease`, so the release configuration is checked
   before a tag rather than on it.
 - Steps for the owner: `docs/android-release.md`.
+
+## ADR-0192 — No Android backup or phone-to-phone transfer of the app's data
+
+**Status:** accepted · **Date:** 2026-11-25 · **Phase:** Android readiness
+
+### Why
+
+The manifest said `android:allowBackup="true"`, so Android copied the app's
+data dir to the user's Google Drive and onto a new phone. That dir is the
+WebView's storage: the Supabase session (a login restored on a device nobody
+signed in on) and the PowerSync database with its upload queue and sync
+checkpoint (an old snapshot that, restored, believes it is current and could
+upload stale rows again).
+
+### What was decided
+
+- **Nothing is backed up or transferred.** `allowBackup="false"` and
+  `fullBackupContent="false"` for Android 11 and older; on Android 12+ those
+  only stop cloud backup, so `dataExtractionRules`
+  (`res/xml/data_extraction_rules.xml`) excludes every domain from both
+  `cloud-backup` and `device-transfer`.
+- **The cost:** a new phone starts signed out and empty, then syncs everything
+  down on sign-in. Only sets logged offline and never synced are lost with
+  the old phone — the same as uninstalling.
+- Checked in the built APK with `aapt2 dump xmltree`; Android lint reports
+  no backup issue.
