@@ -4,6 +4,8 @@ import { canEditWorkout, type RecapRewards } from '@g7m/core';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { loadWorkoutRecap } from '../lib/db/workout-recap.js';
 import { WorkoutRecap } from '../components/WorkoutRecap.js';
+import { PastTimeButton } from '../components/PastTimeSheet.js';
+import { givenPastTime, pastTimeable } from '../lib/past-time.js';
 import { LevelUpCelebration } from '../components/LevelUpCelebration.js';
 import { SessionBody } from '../components/SessionBody.js';
 import { HeaderLink } from '../components/HeaderLink.js';
@@ -92,6 +94,18 @@ export function SessionDetailScreen() {
                   {t().history.session.recap}
                 </HeaderLink>
               </div>
+              {/* Where the calendar's "Open the workout" lands (ADR-0194). */}
+              {pastTimeable(data.session.source, data.recap.sets, data.recap.cardioSeconds) && (
+                <PastTimeButton
+                  sessionId={sessionId}
+                  day={data.session.startedAt}
+                  given={givenPastTime(
+                    data.session.startedAt,
+                    data.session.endedAt,
+                    data.recap.trainingMinutes,
+                  )}
+                />
+              )}
               <SessionBody
                 startedAt={data.session.startedAt}
                 bodyweightKg={data.session.bodyweightKg}

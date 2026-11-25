@@ -96,3 +96,85 @@ for (const viewport of [
     expect(new Date(session?.last ?? '').toISOString()).toBe(end);
   });
 }
+
+/**
+ * Where the lifter actually looks (ADR-0194): the Past workout screen while
+ * logging, and the workout's page from the calendar afterwards.
+ */
+test('the time can be given while logging, and changed from the calendar', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const user = await createUser('past-time-logging', { onboarded: true });
+  await signIn(page, user);
+
+  await page.getByRole('link', { name: /Calendar/ }).click();
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (yesterday.getMonth() !== new Date().getMonth()) {
+    await page.getByRole('button', { name: /Previous month/ }).click();
+  }
+  const title = yesterday.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  await page.getByRole('button', { name: new RegExp(`^${title},`) }).click();
+  await page.getByRole('button', { name: /Log a workout for this day/ }).click();
+  await expect(page.getByText('Past workout')).toBeVisible();
+
+  // Under the gym, before anything is logged.
+  await page.getByRole('button', { name: 'Add the time' }).click();
+  const sheet = page.getByRole('dialog', { name: 'When was this workout?' });
+  await sheet.getByLabel('Started at').fill('07:15');
+  await sheet.getByLabel('How long (minutes)').fill('45');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  const row = page.getByRole('button', { name: /^Change the time: .*45 min$/ });
+  await expect(row).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('logging.png') });
+
+  // Kept across a reload while the workout is still open.
+  await page.reload();
+  await expect(row).toBeVisible();
+
+  await page.getByRole('link', { name: '+ Add an exercise' }).click();
+  await page.getByLabel('Search').fill('Barbell Bench Press');
+  await page.getByRole('button', { name: /^Barbell Bench Press/ }).click();
+  await logSet(page, 1, '70', '5');
+  await logSet(page, 2, '70', '5');
+  await page.getByRole('button', { name: 'Finish workout' }).click();
+
+  // Applied on Finish: the recap already has it.
+  await expect(page.getByRole('heading', { name: 'Workout saved', exact: true })).toBeVisible();
+  await expect(page.getByText('45:00', { exact: true })).toBeVisible();
+  await expect(page.getByText('Not recorded', { exact: true })).toBeHidden();
+  await page.getByRole('link', { name: /^(Done|Continue)$/ }).click();
+  await expect(page.getByText(/45 min/)).toBeVisible();
+
+  // From the calendar: the workout's page offers to change it.
+  await page.getByRole('link', { name: /Open the workout/ }).click();
+  await page.getByRole('button', { name: 'Change the time' }).click();
+  await expect(sheet.getByLabel('Started at')).toHaveValue('07:15');
+  await expect(sheet.getByLabel('How long (minutes)')).toHaveValue('45');
+  await sheet.getByLabel('How long (minutes)').fill('50');
+  await sheet.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(sheet).toBeHidden();
+  // The page reads the new length at once.
+  await expect(page.getByText('50 min', { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('details.png') });
+
+  const start = new Date(yesterday);
+  start.setHours(7, 15, 0, 0);
+  const end = new Date(start.getTime() + 50 * 60_000).toISOString();
+  const [session] = await eventually(
+    () =>
+      sql<{ started: string; ended: string }>(
+        `select started_at as started, ended_at as ended
+           from public.workout_sessions where user_id = $1`,
+        [user.id],
+      ),
+    (rows) => rows.length === 1 && new Date(rows[0]?.ended ?? 0).toISOString() === end,
+  );
+  expect(new Date(session?.started ?? '').toISOString()).toBe(start.toISOString());
+});

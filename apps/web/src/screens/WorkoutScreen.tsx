@@ -68,6 +68,8 @@ import { ElapsedTime } from '../components/ElapsedTime.js';
 import { GymSwitcher } from '../components/GymSwitcher.js';
 import { FloatingHome } from '../components/FloatingHome.js';
 import { ArrowUpIcon, PinIcon, StopwatchIcon } from '../components/icons.js';
+import { PendingPastTimeRow } from '../components/PastTimeSheet.js';
+import { clearPendingPastTime, readPendingPastTime } from '../lib/pending-past-time.js';
 import { RemoveExerciseButton } from '../components/RemoveExerciseButton.js';
 import { UndoToast } from '../components/UndoToast.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
@@ -533,13 +535,26 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
     // but synced, counted and kept for ever. It goes the way Discard goes,
     // without the question — there is nothing in it to lose.
     const ticked = blocks.some((block) => block.sets.some((set) => set.isCompleted));
+    // A past workout's time given while it was logged lands once it has an
+    // end to hold it (ADR-0194).
+    const pendingTime = session.source === 'past' ? readPendingPastTime(session.id) : null;
     void write(async (r) => {
-      if (ticked) await r.sessions.finish(session.id);
-      else await r.sessions.discard(session.id);
+      if (ticked) {
+        await r.sessions.finish(session.id);
+        if (pendingTime !== null) {
+          try {
+            await r.sessions.setPastTime(session.id, pendingTime.start, pendingTime.minutes);
+          } catch (cause: unknown) {
+            // The workout is saved; its time can still be given on the recap.
+            console.warn('Could not apply the past workout time', cause);
+          }
+        }
+      } else await r.sessions.discard(session.id);
       return true;
     }).then((saved) => {
       finishing.current = false;
       if (saved !== true) return;
+      clearPendingPastTime(session.id);
       if (ticked) buzz('success');
       const didWork = blocks.some((block) =>
         block.sets.some((set) => set.isCompleted && set.setType !== 'warmup'),
@@ -812,6 +827,10 @@ function WorkoutEditor({ sessionId }: { readonly sessionId: string | undefined }
             )}
           </p>
           <GymSwitcher sessionId={session.id} gymId={session.gymId} />
+          {/* A past workout's time, given while it is logged (ADR-0194). */}
+          {session.source === 'past' && !editing && (
+            <PendingPastTimeRow sessionId={session.id} day={session.startedAt} />
+          )}
         </div>
         {editing ? (
           <HeaderLink to={`/progress/session/${session.id}/details`}>{t().common.done}</HeaderLink>

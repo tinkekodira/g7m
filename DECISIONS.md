@@ -10545,3 +10545,24 @@ leaderboard or in challenges (server rule from ADR-0156 unchanged), and
 time-of-day achievements still skip past workouts.
 
 No migration and no sync-rule change.
+
+---
+
+## ADR-0194 — A past workout's time is given where it is logged and looked at
+
+**Status:** accepted · **Date:** 2026-11-25 · **Amends:** ADR-0193
+
+ADR-0193 offered the time only on the recap shown right after Finish. Logging
+from the calendar, nobody found it: the Past workout screen had no time, and
+the calendar's "Open the workout" leads to the details page, not the recap.
+
+The time is now offered in all three places. On the **Past workout** screen it
+sits under the gym ("Add the time", then "7:15 · 45 min"). That workout is
+still open and has no end to hold a length, so the time is kept on the device
+(`localStorage`, keyed by session, surviving a reload) and applied by
+`setPastTime` the moment Finish saves it; a failure there leaves the workout
+saved and the time still offered on the recap. On the **details page** and the
+**recap** it is written straight to the finished workout. The sheet renders on
+`document.body`, so one button works inside the recap's transformed carousel.
+
+No migration and no sync-rule change.
