@@ -8,7 +8,7 @@
  * deletion in `20260913180000_delete_account.sql`. When one of those changes
  * what is collected or kept, this changes with it. ADR-0189.
  */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -35,7 +35,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Who is responsible',
         blocks: [
-          `g7m is made by ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Croatia, who is the controller of your personal data under the EU General Data Protection Regulation (GDPR). Write to ${CONTACT_EMAIL} about anything in this policy.`,
+          `g7m is made by ${CONTROLLER_NAME}, in Croatia, who is the controller of your personal data under the EU General Data Protection Regulation (GDPR). Write to ${CONTACT_EMAIL} about anything in this policy.`,
           'This policy covers the g7m web app and the g7m apps for Android and iOS, which are the same app.',
         ],
       },
@@ -171,7 +171,7 @@ export const legal: LegalText = {
             list: [
               'Your account and everything in it: until you delete the account. Accounts are not deleted for being inactive.',
               'When you delete your account, it is removed from the database at once, all of it in one step, and from PowerSync with it. Your other devices remove their copy when they next sync or the next time anyone signs in on them.',
-              `Database backups kept by Supabase expire on their own schedule, within ${BACKUP_RETENTION}.`,
+              'The database is not backed up (it runs on Supabase’s free plan, which takes no backups), so a deleted account leaves no copy behind there.',
               'Feedback: until you delete your account, or sooner once it has been dealt with.',
               'Technical logs: kept by each service for a short period, usually days.',
               'On your device: until you sign out (when nothing is still waiting to upload) or delete the account. Clearing the site’s data or uninstalling the app removes it too.',
@@ -265,7 +265,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Nothing in the live database. Supabase’s backups of it expire within ${BACKUP_RETENTION}, and accounts are not restored from them.`,
+              'Nothing in the database, and no backup of it: g7m keeps no database backups, so a deleted account cannot be restored.',
               'The services’ short technical logs (IP addresses and request times) expire on their own, usually within days.',
               'If you asked by email, we keep that email for as long as we need to show the request was handled.',
               'Files you downloaded with “Your data” stay wherever you saved them.',

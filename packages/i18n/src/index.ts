@@ -28,9 +28,7 @@ export {
 export type { CatalogueText, ExerciseText } from './catalogue/types.js';
 export type { Messages } from './messages/en/index.js';
 export {
-  BACKUP_RETENTION,
   CONTACT_EMAIL,
-  CONTROLLER_ADDRESS,
   CONTROLLER_NAME,
   LEGAL_UPDATED,
   loadLegalText,

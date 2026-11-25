@@ -1,5 +1,5 @@
 /** Política de privacidad y eliminación de la cuenta, en español. Traducido de `en.ts`. ADR-0189. */
-import { BACKUP_RETENTION, CONTACT_EMAIL, CONTROLLER_ADDRESS, CONTROLLER_NAME } from './details.js';
+import { CONTACT_EMAIL, CONTROLLER_NAME } from './details.js';
 import type { LegalText } from './types.js';
 
 export const legal: LegalText = {
@@ -27,7 +27,7 @@ export const legal: LegalText = {
         id: 'who',
         heading: 'Quién es responsable',
         blocks: [
-          `g7m lo desarrolla ${CONTROLLER_NAME}, ${CONTROLLER_ADDRESS}, Croacia, responsable del tratamiento de tus datos personales según el Reglamento General de Protección de Datos de la UE (RGPD). Escribe a ${CONTACT_EMAIL} para cualquier duda sobre esta política.`,
+          `g7m lo desarrolla ${CONTROLLER_NAME}, en Croacia, responsable del tratamiento de tus datos personales según el Reglamento General de Protección de Datos de la UE (RGPD). Escribe a ${CONTACT_EMAIL} para cualquier duda sobre esta política.`,
           'Esta política cubre la app web de g7m y las apps de g7m para Android e iOS, que son la misma app.',
         ],
       },
@@ -164,7 +164,7 @@ export const legal: LegalText = {
             list: [
               'Tu cuenta y todo su contenido: hasta que elimines la cuenta. Las cuentas no se eliminan por inactividad.',
               'Cuando eliminas tu cuenta, se borra de la base de datos al instante, toda de una vez, y de PowerSync con ella. Tus otros dispositivos borran su copia la próxima vez que se sincronicen o que alguien inicie sesión en ellos.',
-              `Las copias de seguridad de Supabase caducan según su propio calendario, en un plazo de ${BACKUP_RETENTION}.`,
+              'La base de datos no tiene copias de seguridad (funciona con el plan gratuito de Supabase, que no las hace), así que de una cuenta eliminada no queda ninguna copia allí.',
               'Comentarios: hasta que elimines tu cuenta, o antes si ya se han atendido.',
               'Registros técnicos: cada servicio los guarda poco tiempo, normalmente días.',
               'En tu dispositivo: hasta que cierres sesión (si no queda nada por subir) o elimines la cuenta. Borrar los datos del sitio o desinstalar la app también los elimina.',
@@ -258,7 +258,7 @@ export const legal: LegalText = {
         blocks: [
           {
             list: [
-              `Nada en la base de datos activa. Las copias de seguridad de Supabase caducan en un plazo de ${BACKUP_RETENTION}, y no se restauran cuentas desde ellas.`,
+              'Nada en la base de datos, ni en copias de seguridad: g7m no guarda copias de seguridad de la base de datos, así que una cuenta eliminada no se puede recuperar.',
               'Los registros técnicos breves de los servicios (direcciones IP y horas) caducan solos, normalmente en pocos días.',
               'Si lo pediste por correo, guardamos ese correo el tiempo necesario para demostrar que se atendió la solicitud.',
               'Los archivos que descargaste con «Tus datos» siguen donde los guardaste.',
