@@ -1,10 +1,13 @@
-import { t } from '@g7m/i18n';
+import { formatTime, t } from '@g7m/i18n';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { validPastWorkoutMinutes } from '@g7m/core';
 import { Button, TextField, cx } from '@g7m/ui';
 import { useWrite } from '../lib/db/use-catalogue.js';
 import { useKeyboardInset } from '../lib/use-keyboard-inset.js';
+import { readPendingPastTime, writePendingPastTime } from '../lib/pending-past-time.js';
 import { ClockIcon } from './icons.js';
+import type { PastTime } from '../lib/past-time.js';
 
 /** "18:05", the value a time field takes. */
 function clockValue(date: Date): string {
@@ -14,21 +17,28 @@ function clockValue(date: Date): string {
 /**
  * When a workout logged afterwards happened (ADR-0193).
  *
- * From the recap, which is where "Workout time: Not recorded" is read. A
- * bottom sheet like the weigh-in, lifted over the iOS keyboard. The day is
- * fixed: only the time of day and the length are asked for.
+ * Offered where a past workout is looked at: while it is being logged, on its
+ * page from the calendar, and on its recap. A bottom sheet like the weigh-in,
+ * lifted over the iOS keyboard. The day is fixed: only the time of day and
+ * the length are asked for.
  */
 export function PastTimeSheet({
   sessionId,
   day,
-  known,
+  given,
+  onSave,
   onClose,
 }: {
   readonly sessionId: string;
-  /** The session's start: its date is kept, its time only shown if `known`. */
+  /** The session's start: only its date is used. */
   readonly day: Date;
-  /** The minutes already given, or null while the time is still unrecorded. */
-  readonly known: number | null;
+  /** The time already given, shown for correcting, or null for none yet. */
+  readonly given: PastTime | null;
+  /**
+   * Instead of writing the finished workout: the one still being logged keeps
+   * the time until Finish (`pending-past-time.ts`), having no end to hold it.
+   */
+  readonly onSave?: (time: PastTime) => void;
   readonly onClose: () => void;
 }) {
   const headingId = useId();
@@ -36,8 +46,8 @@ export function PastTimeSheet({
   const { write, busy, error } = useWrite();
   const keyboard = useKeyboardInset();
   const panel = useRef<HTMLElement>(null);
-  const [start, setStart] = useState(known === null ? '' : clockValue(day));
-  const [minutes, setMinutes] = useState(known === null ? '' : String(known));
+  const [start, setStart] = useState(given === null ? '' : clockValue(given.start));
+  const [minutes, setMinutes] = useState(given === null ? '' : String(given.minutes));
   const [problem, setProblem] = useState<{ field: 'start' | 'minutes'; text: string } | null>(null);
 
   // The dialog, not a field: focusing a time field on iOS opens its wheel
@@ -70,6 +80,11 @@ export function PastTimeSheet({
     }
     const at = new Date(day);
     at.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    if (onSave !== undefined) {
+      onSave({ start: at, minutes: length });
+      onClose();
+      return;
+    }
     const saved = await write(async (r) => {
       await r.sessions.setPastTime(sessionId, at, length);
       return true;
@@ -77,7 +92,9 @@ export function PastTimeSheet({
     if (saved === true) onClose();
   }
 
-  return (
+  // On the body: the recap's carousel transforms its cards, and a fixed
+  // sheet inside a transformed card would be pinned to the card instead.
+  return createPortal(
     <div
       className="fixed inset-0 z-40 flex items-end justify-center"
       style={keyboard > 0 ? { bottom: keyboard } : undefined}
@@ -168,6 +185,103 @@ export function PastTimeSheet({
           </Button>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
+  );
+}
+
+/** "17:30 · 56 min", or the invitation to give one. */
+function describe(time: PastTime | null): string {
+  return time === null
+    ? t().history.recap.addTime
+    : `${formatTime(time.start, { hour: 'numeric', minute: '2-digit' })} · ${t().progress.minutes(time.minutes)}`;
+}
+
+const LINK =
+  'inline-flex min-h-tap items-center gap-1.5 self-start rounded-control text-sm font-medium text-accent focus-visible:outline-2 focus-visible:outline-accent';
+
+/**
+ * A finished past workout's time, written straight to it: on its recap and
+ * on its page from the calendar.
+ */
+export function PastTimeButton({
+  sessionId,
+  day,
+  given,
+}: {
+  readonly sessionId: string;
+  readonly day: Date;
+  readonly given: PastTime | null;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+        className={`past-time-button ${LINK}`}
+      >
+        <ClockIcon className="size-4" />
+        {given === null ? t().history.recap.addTime : t().history.recap.changeTime}
+      </button>
+      {open && (
+        <PastTimeSheet
+          sessionId={sessionId}
+          day={day}
+          given={given}
+          onClose={() => {
+            setOpen(false);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The time of a past workout still being logged, under its gym: kept on the
+ * device and applied when it is finished (`pending-past-time.ts`).
+ */
+export function PendingPastTimeRow({
+  sessionId,
+  day,
+}: {
+  readonly sessionId: string;
+  readonly day: Date;
+}) {
+  const [time, setTime] = useState(() => readPendingPastTime(sessionId));
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+        aria-label={
+          time === null ? undefined : `${t().history.recap.changeTime}: ${describe(time)}`
+        }
+        className={`past-time-pending numeric ${LINK}`}
+      >
+        <ClockIcon className="size-4" />
+        {describe(time)}
+      </button>
+      {open && (
+        <PastTimeSheet
+          sessionId={sessionId}
+          day={day}
+          given={time}
+          onSave={(next) => {
+            writePendingPastTime(sessionId, next);
+            setTime(next);
+          }}
+          onClose={() => {
+            setOpen(false);
+          }}
+        />
+      )}
+    </>
   );
 }
