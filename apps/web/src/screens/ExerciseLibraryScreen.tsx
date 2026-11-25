@@ -252,8 +252,10 @@ export function ExerciseLibraryScreen() {
   });
 
   // One history read for the list, independent of search and filter changes.
-  const progress = useCatalogue(`library-progress:${String(picking)}`, async (repositories) => {
-    if (picking) return null;
+  // Only while adding to a workout: that is where "how is this lift going?"
+  // decides what to do next. Browsing shows it on the exercise's own page.
+  const progress = useCatalogue(`library-progress:${String(adding)}`, async (repositories) => {
+    if (!adding) return null;
     const [sets, profile] = await Promise.all([
       repositories.history.completedSets(),
       repositories.profile.current(),
@@ -299,7 +301,7 @@ export function ExerciseLibraryScreen() {
   const loading =
     results.data === null ||
     taxonomy.loading ||
-    (!picking && progress.loading) ||
+    (adding && (progress.loading || progress.data === null)) ||
     (adding && recommendationData.loading) ||
     (adding && (usage.loading || usage.data === null)) ||
     !ready;
@@ -415,7 +417,7 @@ export function ExerciseLibraryScreen() {
           {error}
         </p>
       ) : loading ? (
-        <ExerciseRowsSkeleton charts={!picking} />
+        <ExerciseRowsSkeleton charts={adding} />
       ) : (
         <>
           <p className="text-sm text-secondary" aria-live="polite">
@@ -426,7 +428,7 @@ export function ExerciseLibraryScreen() {
               {filters.query.trim() !== '' ? t().library.bestMatches : t().library.mostUsed}
             </p>
           )}
-          {!picking && exercises.length > 0 && (
+          {adding && exercises.length > 0 && (
             <p className="-mt-2 text-xs text-muted">{t().library.chartKey}</p>
           )}
 
@@ -465,7 +467,7 @@ export function ExerciseLibraryScreen() {
                     // A treadmill has no sets to alternate with anything.
                     busy={busy || (superset && exercise.cardioKind !== null)}
                     selecting={superset}
-                    progress={progress.data?.points.get(exercise.id) ?? []}
+                    progress={adding ? (progress.data?.points.get(exercise.id) ?? []) : null}
                     unitSystem={progress.data?.unitSystem ?? 'metric'}
                   />
                 </li>
@@ -517,7 +519,8 @@ function ExerciseRow({
   readonly picked?: number | null;
   /** Taps pick rather than add, so the row says whether it is picked. */
   readonly selecting?: boolean;
-  readonly progress: readonly ExerciseWeightPoint[];
+  /** Recent weights, shown while adding to a workout; null hides the chart. */
+  readonly progress: readonly ExerciseWeightPoint[] | null;
   readonly unitSystem: UnitSystem;
 }) {
   const detail = (
@@ -566,19 +569,29 @@ function ExerciseRow({
         onClick={onAdd}
         {...(selecting ? { 'aria-pressed': picked !== null } : {})}
         style={tint}
-        className={`browse-exercise-row muscle-wash flex min-h-tap w-full items-center gap-3 rounded-card px-4 py-3 text-left active:bg-elevated disabled:opacity-60 ${
-          picked !== null ? 'bg-accent-subtle ring-2 ring-accent' : 'bg-surface'
-        }`}
+        className={`browse-exercise-row muscle-wash min-h-tap w-full rounded-card text-left active:bg-elevated disabled:opacity-60 ${
+          progress !== null ? 'browse-exercise-progress' : 'flex items-center gap-3 px-4 py-3'
+        } ${picked !== null ? 'bg-accent-subtle ring-2 ring-accent' : 'bg-surface'}`}
       >
         {body}
-        {/* The order it will be done in, which is the order it was picked. */}
-        {picked !== null && (
+        {/* The order it will be done in, which is the order it was picked.
+            In the chart's column when there is one, so the row keeps its shape. */}
+        {picked !== null ? (
           <span
             aria-hidden
-            className="numeric ml-auto flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-on-accent"
+            className="numeric ml-auto flex size-8 shrink-0 items-center justify-center justify-self-end rounded-full bg-accent text-sm font-bold text-on-accent"
           >
             {picked}
           </span>
+        ) : (
+          progress !== null && (
+            <ExerciseWeightChart
+              points={progress}
+              unitSystem={unitSystem}
+              cardio={exercise.cardioKind !== null}
+              decorative
+            />
+          )
         )}
       </button>
     );
@@ -588,14 +601,9 @@ function ExerciseRow({
     <Link
       to={`/exercises/${exercise.slug}`}
       style={tint}
-      className="browse-exercise-row browse-exercise-progress muscle-wash min-h-tap rounded-card bg-surface active:bg-elevated"
+      className="browse-exercise-row muscle-wash flex min-h-tap items-center gap-3 rounded-card bg-surface px-4 py-3 active:bg-elevated"
     >
       {body}
-      <ExerciseWeightChart
-        points={progress}
-        unitSystem={unitSystem}
-        cardio={exercise.cardioKind !== null}
-      />
     </Link>
   );
 }

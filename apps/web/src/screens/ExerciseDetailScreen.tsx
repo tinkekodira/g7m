@@ -5,9 +5,11 @@ import { heatColour } from '@g7m/anatomy';
 import {
   BOUT_FIELDS,
   CURRENT_STRENGTH_WEEKS,
+  exerciseWeightProgress,
   strengthEstimate,
   toDisplayWeight,
   type CardioKind,
+  type ExerciseWeightPoint,
   type OneRepMaxReading,
   type Sex,
   type StrengthEstimate,
@@ -17,6 +19,7 @@ import type { Exercise, MuscleRole } from '@g7m/db';
 import { ExerciseDemo } from '../components/ExerciseDemo.js';
 import { ExerciseHero } from '../components/ExerciseHero.js';
 import { ExerciseCueIcon } from '../components/ExerciseCueIcon.js';
+import { ExerciseWeightChart } from '../components/ExerciseWeightChart.js';
 import ExerciseMuscleBody from '../components/ExerciseMuscleBody.js';
 import { FavouriteButton } from '../components/Favourite.js';
 import { exerciseDemo } from '../components/exercise-demos.js';
@@ -54,6 +57,8 @@ export function ExerciseDetailScreen() {
         ? null
         : strengthEstimate(setsAtGym(sets, scopesIn(sets)[0] ?? null), now),
       unitSystem,
+      // The same recent-weights line the workout's exercise picker shows.
+      weights: exerciseWeightProgress(sets).get(exercise.id) ?? [],
       muscles: involvement.map((entry): Involvement => {
         const muscle = muscleById.get(entry.muscleId);
         return {
@@ -89,6 +94,7 @@ export function ExerciseDetailScreen() {
           muscles={data.muscles}
           equipment={data.equipment}
           strength={data.strength}
+          weights={data.weights}
           unitSystem={data.unitSystem}
           now={now}
           sex={data.sex}
@@ -121,6 +127,7 @@ function ExerciseDetail({
   muscles,
   equipment,
   strength,
+  weights,
   unitSystem,
   now,
   sex,
@@ -130,6 +137,7 @@ function ExerciseDetail({
   readonly muscles: readonly Involvement[];
   readonly equipment: readonly { readonly equipmentId: string; readonly name: string }[];
   readonly strength: StrengthEstimate | null;
+  readonly weights: readonly ExerciseWeightPoint[];
   readonly unitSystem: UnitSystem;
   readonly now: Date;
   readonly sex: Sex | null;
@@ -277,6 +285,16 @@ function ExerciseDetail({
             ))}
           </ol>
         </section>
+      )}
+
+      {/* After the demo: how to do it, then how it has been going. */}
+      {exercise.cardioKind === null && (
+        <Section title={t().library.detail.recentWeights}>
+          <div className="exercise-recent-weights rounded-card bg-surface p-4">
+            <ExerciseWeightChart points={weights} unitSystem={unitSystem} cardio={false} wide />
+          </div>
+          {weights.length > 0 && <p className="mt-2 text-xs text-muted">{t().library.chartKey}</p>}
+        </Section>
       )}
 
       {exercise.commonMistakes.length > 0 && (

@@ -57,7 +57,16 @@ async function seedHistory(userId: string): Promise<void> {
   }
 }
 
-const bench = (page: Page) => page.getByRole('link', { name: /^Barbell Bench Press/ });
+/** A row in "Add an exercise": the button's name ends with its latest weight. */
+const pick = (page: Page, name: string) =>
+  page.getByRole('button', { name: new RegExp(`^${name}`) });
+const benchPick = (page: Page) => pick(page, 'Barbell Bench Press');
+
+/** The picker a workout's "+ Add an exercise" opens; a pick starts the workout. */
+async function openPicker(page: Page): Promise<void> {
+  await page.goto('/#/exercises?add=1');
+  await expect(page.getByRole('heading', { name: 'Add an exercise' })).toBeVisible();
+}
 
 for (const theme of ['dark', 'light'] as const) {
   test(`recent weight charts: ${theme}, phone and desktop`, async ({ page }, testInfo) => {
@@ -66,49 +75,73 @@ for (const theme of ['dark', 'light'] as const) {
     await seedHistory(user.id);
     await signIn(page, user);
     await waitForCatalogue(page);
-    await page.goto('/#/exercises');
-    const chart = bench(page).getByRole('img');
-    await expect(chart).toContainText('75 kg');
-    await expect(chart).toContainText('Last 6 sessions');
-    await expect(chart).toHaveAttribute('aria-label', /50 kg.*55 kg.*60 kg.*65 kg.*70 kg.*75 kg/);
-    await expect(chart).not.toHaveAttribute('aria-label', /200 kg|300 kg|40 kg|45 kg/);
-    await expect(page.getByRole('link', { name: /^Pull-Up / }).getByRole('img')).toContainText(
-      '+10 kg',
-    );
-    await expect(page.getByRole('link', { name: /^Push-Up / }).getByRole('img')).toContainText(
-      'BW',
-    );
-    await expect(page.getByRole('link', { name: /^Chin-Up / }).getByRole('img')).toHaveAttribute(
-      'aria-label',
-      /−20 kg assistance/,
-    );
-    await expect(page.getByRole('link', { name: /^Treadmill / }).getByRole('img')).toContainText(
-      'No weight data',
-    );
-    const empty = page.getByRole('link', { name: /^Barbell Back Squat/ }).getByRole('img');
-    await expect(empty).toContainText('Not logged yet');
-    await expect(empty.locator('circle, polyline')).toHaveCount(0);
 
-    // Favourites keep the reference's exercised rows together for visual review.
-    await expect(page.getByText('From your past training', { exact: true })).toBeHidden();
-    for (const width of [390, 320, 1280]) {
-      await page.setViewportSize({ width, height: 1000 });
-      await bench(page).scrollIntoViewIfNeeded();
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      );
-      expect(await bench(page).evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-      await page.screenshot({ path: testInfo.outputPath(`charts-${String(width)}.png`) });
-    }
-    await bench(page).focus();
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Shift+Tab');
-    await expect(bench(page)).toBeFocused();
-    await expect(bench(page)).toHaveCSS('outline-style', 'solid');
-    await page.keyboard.press('Enter');
+    // Browsing lists exercises without charts; the chart is on each one's page.
+    await page.goto('/#/exercises');
+    const browseBench = page.getByRole('link', { name: /^Barbell Bench Press/ });
+    await expect(browseBench).toBeVisible();
+    // (Its favourite star is an svg too; the chart is what must be gone.)
+    await expect(browseBench.locator('.exercise-weight-chart')).toHaveCount(0);
+    await expect(page.getByText(/Weight per workout/)).toBeHidden();
+    await browseBench.click();
     await expect(
       page.getByRole('heading', { name: 'Barbell Bench Press', exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your recent weights' })).toBeVisible();
+    const detail = page.getByRole('img', { name: /^Weight progress/ });
+    await expect(detail).toContainText('75 kg');
+    await expect(detail).toContainText('Last 6 sessions');
+    await expect(detail).toHaveAttribute('aria-label', /50 kg.*55 kg.*60 kg.*65 kg.*70 kg.*75 kg/);
+    await expect(detail).not.toHaveAttribute('aria-label', /200 kg|300 kg|40 kg|45 kg/);
+    // After the demo and its steps.
+    const order = await page.evaluate(() => {
+      const titles = Array.from(
+        document.querySelectorAll<HTMLHeadingElement>('h2'),
+        (h): string => h.textContent ?? '',
+      );
+      return [titles.indexOf('How to do it'), titles.indexOf('Your recent weights')];
+    });
+    expect(order[0]).toBeGreaterThanOrEqual(0);
+    expect(order[1]).toBeGreaterThan(order[0] ?? 0);
+    for (const width of [390, 320, 1280]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await detail.scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: testInfo.outputPath(`detail-${String(width)}.png`) });
+    }
+
+    // Mid-workout, every row in the picker carries its line.
+    await page.setViewportSize({ width: 390, height: 1000 });
+    await openPicker(page);
+    await expect(page.getByText(/Weight per workout/)).toBeVisible();
+    await expect(benchPick(page)).toHaveAccessibleName(/75 kg, Last 6 sessions$/);
+    await expect(benchPick(page).locator('svg polyline')).toHaveCount(1);
+    await expect(pick(page, 'Pull-Up ')).toHaveAccessibleName(/\+10 kg, 1 session$/);
+    await expect(pick(page, 'Push-Up ')).toHaveAccessibleName(/BW, 1 session$/);
+    await expect(pick(page, 'Chin-Up ')).toHaveAccessibleName(/−20 kg, 1 session$/);
+    await page.getByLabel('Search').fill('treadmill');
+    await expect(pick(page, 'Treadmill')).toHaveAccessibleName(/No weight data$/);
+    await page.getByLabel('Search').fill('');
+    const empty = pick(page, 'Barbell Back Squat');
+    await expect(empty).toHaveAccessibleName(/Not logged yet$/);
+    await expect(empty.locator('circle, polyline')).toHaveCount(0);
+
+    for (const width of [390, 320, 1280]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await benchPick(page).scrollIntoViewIfNeeded();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      expect(await benchPick(page).evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
+        true,
+      );
+      await page.screenshot({ path: testInfo.outputPath(`picker-${String(width)}.png`) });
+    }
+    await benchPick(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Barbell Bench Press' })).toBeVisible();
   });
 }
 
@@ -130,30 +163,31 @@ test('charts update offline after finishing, convert units, and stay private acr
   await context.setOffline(true);
   await startWith(page, 'Barbell Bench Press');
   await logSet(page, 1, '80', '8');
-  await page.goto('/#/exercises');
-  await expect(bench(page).getByRole('img')).toContainText('Not logged yet');
+  await page.goto('/#/exercises/barbell-bench-press');
+  await expect(page.getByRole('img', { name: /^No weight history/ })).toBeVisible();
   await page.goto('/#/workout');
   await finishWorkout(page);
-  await page.goto('/#/exercises');
-  await expect(bench(page).getByRole('img')).toContainText('80 kg');
-  await expect(bench(page).getByRole('img')).toContainText('1 session');
-  await expect(bench(page).locator('polyline')).toHaveCount(0);
-  await page.getByLabel('Search').fill('bench');
-  await expect(bench(page).getByRole('img')).toContainText('80 kg');
+  await page.goto('/#/exercises/barbell-bench-press');
+  const detail = page.getByRole('img', { name: /^Weight progress/ });
+  await expect(detail).toContainText('80 kg');
+  await expect(detail).toContainText('1 session');
+  await expect(detail.locator('polyline')).toHaveCount(0);
+  await openPicker(page);
+  await expect(benchPick(page)).toHaveAccessibleName(/80 kg, 1 session$/);
   await openTab(page, 'Settings');
   await page.getByRole('radio', { name: 'Pounds' }).click();
-  await page.goto('/#/exercises');
-  await expect(bench(page).getByRole('img')).toContainText('176.4 lb');
+  await openPicker(page);
+  await expect(benchPick(page)).toHaveAccessibleName(/176\.4 lb, 1 session$/);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(bench(page).locator('svg animate')).toHaveCount(0);
+  await expect(benchPick(page).locator('svg animate')).toHaveCount(0);
   await context.setOffline(false);
   // Offline cold reload is a separately documented test-build issue (FIXES.md).
   // Verify persisted units online; all chart reads and the finish above were offline.
   await page.reload();
-  await expect(bench(page).getByRole('img')).toContainText('176.4 lb');
+  await expect(benchPick(page)).toHaveAccessibleName(/176\.4 lb, 1 session$/);
   await signOut(page);
   await signIn(page, other);
   await waitForCatalogue(page);
-  await page.goto('/#/exercises');
-  await expect(bench(page).getByRole('img')).toContainText('Not logged yet');
+  await page.goto('/#/exercises/barbell-bench-press');
+  await expect(page.getByRole('img', { name: /^No weight history/ })).toBeVisible();
 });

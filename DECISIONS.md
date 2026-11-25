@@ -10509,3 +10509,39 @@ upload stale rows again).
   the old phone — the same as uninstalling.
 - Checked in the built APK with `aapt2 dump xmltree`; Android lint reports
   no backup issue.
+
+---
+
+## ADR-0193 — A pulsing "Working out", charts where they decide, and a past workout's time
+
+**Status:** accepted · **Date:** 2026-11-25 · **Amends:** ADR-0061, ADR-0170
+
+**Working out pulses.** ADR-0170's 5.6-second fade to 90% opacity was too faint
+to notice. The Friends label now swells to 104% and back every 2.4 s, its halo
+brightens with it and the dot pings outward. Transform and opacity only, still
+off under reduced motion.
+
+**Recent-weight charts move.** Browse exercises no longer draws a chart per
+row; each exercise's page shows a full-width one ("Your recent weights") after
+How to do it. The picker a workout's "+ Add an exercise" opens draws them
+instead, because that is where how a lift is going decides what to do next.
+Picker rows are buttons, whose children are presentational, so the chart is
+hidden there and the button's name ends with the latest weight and its caption
+rather than the whole dated history. The routine picker stays chartless.
+
+**A past workout can be given its time.** The recap of a workout logged
+afterwards offers "Add the time": start time on its own day and minutes
+(1–600). Every duration reader — calendar, progress, recap, a friend's view,
+the server's summaries — measures first counted set to last, so instead of a
+new column the repository re-stamps the completed sets across the window
+(`pastWorkoutStamps`: counted sets evenly, timed ones no earlier than their own
+length, warm-ups at the set they lead into) and sets `started_at` and
+`ended_at`. It is allowed past the two-hour edit window, which guards what was
+lifted and closed for a past workout on its own day. A past workout whose end
+is after its start counts as timed: the recap shows its time and the calendar
+its start instead of "Logged afterwards". One untimed set has no span to hold,
+so the recap does not offer it. Past minutes still do not count on the friends
+leaderboard or in challenges (server rule from ADR-0156 unchanged), and
+time-of-day achievements still skip past workouts.
+
+No migration and no sync-rule change.

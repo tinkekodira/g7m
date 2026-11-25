@@ -64,6 +64,7 @@ export const library = {
     notRecorded: 'Not recorded for this exercise.',
     howTo: 'How to do it',
     mistakes: 'Common mistakes',
+    recentWeights: 'Your recent weights',
     equipment: 'Equipment',
     noEquipment: 'Nothing at all.',
     whatYouLog: 'What you log',
