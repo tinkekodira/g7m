@@ -44,35 +44,80 @@ jobs:
           retention-days: 14
 
   android:
-    name: Android (unsigned debug)
+    name: Android (Play bundle + debug APK)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v7
+
+      # The same preparation as every pull request's Android check, including
+      # the backend addresses — without them the app could not sign anyone in.
+      - name: Prepare the Android project
+        uses: ./.github/actions/android-web
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
+          anatomy-model-url: ${{ secrets.ANATOMY_MODEL_URL }}
+          supabase-url: ${{ vars.VITE_SUPABASE_URL }}
+          supabase-publishable-key: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          powersync-url: ${{ vars.VITE_POWERSYNC_URL }}
 
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: '21'
+      # The upload key, from four secrets (docs/android-release.md). Play
+      # re-signs with the app key it holds, so this one only proves the upload
+      # came from us. Without it the tag still yields the debug APK, and says
+      # why there is no bundle, rather than failing every tag. ADR-0191.
+      - name: Upload key
+        id: key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::No ANDROID_UPLOAD_KEYSTORE_BASE64 secret, so no Play bundle. See docs/android-release.md."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "present=true" >> "$GITHUB_OUTPUT"
 
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @g7m/mobile sync
-
-      - name: Assemble debug APK
+      - name: Build the debug APK
         working-directory: apps/mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew --no-daemon assembleDebug
 
-      - uses: actions/upload-artifact@v7
+      - name: Build the signed Play bundle
+        if: steps.key.outputs.present == 'true'
+        working-directory: apps/mobile/android
+        env:
+          G7M_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload.jks
+          G7M_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          G7M_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          G7M_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon bundleRelease
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          # An unsigned bundle is refused by Play only after the upload; say so here.
+          verify=$(jarsigner -verify "$bundle")
+          echo "$verify"
+          grep -q 'jar verified' <<< "$verify"
+          version=$(node -p "require('../../web/package.json').version")
+          echo "Play bundle for version $version: $(du -h "$bundle" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the Play bundle
+        if: steps.key.outputs.present == 'true'
+        uses: actions/upload-artifact@v7
         with:
-          name: android-debug-apk
-          path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
+          name: g7m-android-play-bundle
+          path: apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Upload the debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: g7m-android-debug
+          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+      - name: Remove the upload key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
 
   # iOS is deliberately absent. It needs an Apple Developer account, a signing
   # certificate and a provisioning profile in repository secrets, none of which

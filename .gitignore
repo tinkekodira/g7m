@@ -63,3 +63,7 @@ packages/anatomy/assets/licensed/
 # pipeline: the pre-commit hook refuses a raw .glb anywhere, and this stops one
 # being staged in the first place.
 apps/web/public/anatomy/
+
+# Android signing keys, wherever they end up. docs/android-release.md
+*.jks
+*.keystore

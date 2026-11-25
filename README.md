@@ -286,9 +286,11 @@ has that upload refused and discarded.
    Without the secret the build uses the generated body instead. The link
    expires; when it does, create a new one and replace the secret.
 
-**Native builds** — Tauri for Windows and macOS, and an unsigned Android debug
-APK — run on tag pushes (`v*`) or by hand from the Actions tab. They are slow
-and burn runner minutes, so they never run on a pull request.
+**Native builds** — Tauri for Windows and macOS, and for Android a signed Play
+bundle plus a debug APK — run on tag pushes (`v*`) or by hand from the Actions
+tab. They are slow and burn runner minutes, so they never run on a pull
+request. How to sign and ship an Android release:
+[docs/android-release.md](./docs/android-release.md).
 
 ---
 
