@@ -561,7 +561,7 @@ function CardioFigure({
   return (
     <div className={cx('min-w-0 px-3 first:pl-0', !last && 'border-r border-subtle/70')}>
       <p className="text-xs leading-4 text-muted">{label}</p>
-      <p className="numeric mt-1 truncate text-lg leading-6 font-bold text-primary">{value}</p>
+      <p className="numeric mt-1 truncate text-lg leading-6 font-semibold text-primary">{value}</p>
       {unit !== undefined && <p className="text-xs text-muted">{unit}</p>}
     </div>
   );
@@ -671,9 +671,7 @@ function SessionRow({ summary, now }: { readonly summary: SessionSummary; readon
     >
       <span className="flex size-12 shrink-0 flex-col items-center justify-center rounded-card bg-base/60 leading-none">
         <span className="numeric text-base font-semibold text-primary">{tile.day}</span>
-        <span className="mt-0.5 text-[10px] font-medium tracking-wide text-muted">
-          {tile.month}
-        </span>
+        <span className="mt-0.5 text-xs leading-4 text-muted">{tile.month}</span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-medium text-primary">

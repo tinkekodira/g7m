@@ -10569,33 +10569,23 @@ No migration and no sync-rule change.
 
 ---
 
-## ADR-0195 — Home, polished: names lead, weight steps down, one button shape
+## ADR-0196 — Progress, polished: lighter figures, no uppercase labels
 
-**Status:** accepted · **Date:** 2026-11-26 · **Amends:** ADR-0120, ADR-0125
+**Status:** accepted · **Date:** 2026-11-26 · **Amends:** ADR-0124
 
-A cleanup pass over Home with nothing added, removed or moved. The month cards
-stay the screen's one rich moment, and the chrome around them is quieter.
+The same cleanup as Home (ADR-0195), on Progress and the shared parts it is
+built from. Nothing is added, removed or moved.
 
-- **The card's name is its title.** Each month card used to lead with "This
-  month" in large type and put what told the cards apart ("Personal records",
-  "Muscle groups"…) in a small uppercase label. Now the name is the title and
-  the period is a quiet line under it. The first-workout card follows suit:
-  month name, then "Your month".
-- **No uppercase tracked labels.** The month cards, "Today's workout" and the
-  in-progress strip use sentence case.
-- **Hierarchy from size, not weight.** Home's 700s are now 600: the greeting
-  name, card figures, lift weights, the ring centre and the plan title. The
-  plan title also steps down from 31 to 25px, so "Get a plan built for you"
-  fits on one line.
-- **No boxes inside boxes.** The record tiles keep their fill and lose their
-  borders.
-- **One button shape.** The plan card's and first-workout card's buttons use
-  the control radius every other button uses, not pills.
-- **One icon size.** Quick-access icons are 20px in a 40px box, like the card
-  headers, and the tiles are 112px tall instead of 128px, which removes the
-  empty band between icon and title.
-
-`StatValue`, the activity card's figures, is shared with Progress and Profile
-and keeps its weight; changing it is for a pass over those screens.
+- **`StatValue` is 600, its units 500.** The shared figure was 700 with 600
+  units. It draws the numbers on Progress, Home's activity card, Profile,
+  Friends and Metrics, so they all step down together and keep matching.
+  Cardio's three figures follow.
+- **`Panel`'s small label is sentence case** (`text-sm`, muted) instead of
+  11px uppercase with wide tracking. The review card, Profile's personal
+  records and Friends' empty state use it too.
+- **The review note on Home** labels itself in sentence case as well.
+- **Recent workouts' date tiles say "Nov"**, as the locale writes the short
+  month, not "NOV". `dateTile` no longer upper-cases, which was also wrong for
+  locales whose short months are not meant to be capitals.
 
 No migration and no sync-rule change.

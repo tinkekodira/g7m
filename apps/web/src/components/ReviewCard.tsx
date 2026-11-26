@@ -169,9 +169,7 @@ export function ReviewNudge({
         <span className={`size-2 rounded-full ${DOT_CLASSES[headline.tone]}`} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-          {t().review.card.title}
-        </span>
+        <span className="block text-xs leading-4 text-muted">{t().review.card.title}</span>
         <span className="block text-sm leading-5 font-medium text-primary">{headline.heading}</span>
       </span>
       <ChevronRightIcon aria-hidden className="size-4 shrink-0 text-muted" />
