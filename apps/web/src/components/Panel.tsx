@@ -18,7 +18,7 @@ export function Panel({
   label,
   children,
 }: {
-  /** The small uppercase line over the title. Left out when the title says it all. */
+  /** The small line over the title. Left out when the title says it all. */
   readonly eyebrow?: string;
   /** The title, as the section's heading. Or `header` instead, with `label`. */
   readonly title?: ReactNode;
@@ -53,11 +53,7 @@ export function Panel({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {header}
-          {eyebrow !== undefined && (
-            <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-              {eyebrow}
-            </p>
-          )}
+          {eyebrow !== undefined && <p className="text-sm leading-5 text-muted">{eyebrow}</p>}
           {title !== undefined && (
             <h2 id={heading} className="text-lg leading-6 font-semibold text-primary">
               {title}

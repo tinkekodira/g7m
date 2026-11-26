@@ -27,7 +27,7 @@ export function StatValue({
   );
 
   return (
-    <span className={`numeric block font-bold whitespace-nowrap text-primary ${size}`}>
+    <span className={`numeric block font-semibold whitespace-nowrap text-primary ${size}`}>
       {pairs.length === 0
         ? text
         : [
@@ -37,7 +37,7 @@ export function StatValue({
                 {index > 0 && ' '}
                 {number}
                 {unit !== '' && (
-                  <span className="ml-px text-sm font-semibold whitespace-pre text-muted">
+                  <span className="ml-px text-sm font-medium whitespace-pre text-muted">
                     {spacedUnit}
                   </span>
                 )}
