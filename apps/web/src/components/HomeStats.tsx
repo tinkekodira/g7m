@@ -248,8 +248,8 @@ function StatCard({
   to,
   label,
   icon: Icon,
-  eyebrow,
-  title,
+  name,
+  period,
   figure,
   insight,
   children,
@@ -259,8 +259,10 @@ function StatCard({
   /** The card read aloud, in one sentence: what a screen reader announces for the link. */
   readonly label: string;
   readonly icon: ComponentType<IconProps>;
-  readonly eyebrow: string;
-  readonly title: string;
+  /** What the card counts: its title. */
+  readonly name: string;
+  /** The stretch of time it covers, said quietly under the name. */
+  readonly period: string;
   readonly figure: ReactNode;
   readonly insight: Insight;
   readonly children: ReactNode;
@@ -282,11 +284,12 @@ function StatCard({
         >
           <Icon className="size-5" />
         </span>
+        {/* What the card counts is the title; the period it covers is the
+            quiet line under it. Every card covers the same month, so leading
+            with "This month" four times over told the cards apart by nothing. */}
         <div className="min-w-0 flex-1 pt-0.5">
-          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-            {eyebrow}
-          </p>
-          <p className="text-lg leading-6 font-semibold text-primary">{title}</p>
+          <p className="truncate text-lg leading-6 font-semibold text-primary">{name}</p>
+          <p className="text-sm leading-5 text-muted">{period}</p>
         </div>
         <div className="shrink-0 pt-0.5 text-right">{figure}</div>
       </div>
@@ -302,7 +305,7 @@ function StatCard({
 function Figure({ value, caption }: { readonly value: string; readonly caption: string }) {
   return (
     <>
-      <span className="numeric block text-2xl leading-7 font-bold text-primary">{value}</span>
+      <span className="numeric block text-2xl leading-7 font-semibold text-primary">{value}</span>
       <span className="block text-xs text-muted">{caption}</span>
     </>
   );
@@ -322,8 +325,8 @@ function WorkoutsCard({ stats, motion }: { readonly stats: MonthStats; readonly 
       to={DESTINATIONS.workouts}
       label={t().home.cards.workoutsLabel(total, insight.heading, insight.detail)}
       icon={TrendIcon}
-      eyebrow={t().home.cards.yourWorkouts}
-      title={t().home.thisMonth}
+      name={t().home.cards.yourWorkouts}
+      period={t().home.thisMonth}
       figure={<Figure value={String(shown)} caption={t().home.cards.completed} />}
       insight={insight}
     >
@@ -364,8 +367,8 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
         insight.detail,
       )}
       icon={BodyIcon}
-      eyebrow={t().home.cards.muscles}
-      title={t().home.thisMonth}
+      name={t().home.cards.muscles}
+      period={t().home.thisMonth}
       figure={<Figure value={String(trained)} caption={t().home.cards.groups(trained)} />}
       insight={insight}
     >
@@ -385,7 +388,7 @@ function MusclesCard({ stats, motion }: { readonly stats: MonthStats; readonly m
           }
           center={
             <>
-              <span className="numeric text-2xl leading-7 font-bold text-primary">{sets}</span>
+              <span className="numeric text-2xl leading-7 font-semibold text-primary">{sets}</span>
               <span className="text-xs text-muted">
                 {t().home.cards.setsWord(stats.regionSets)}
               </span>
@@ -457,8 +460,8 @@ function ActivityCard({
         insight.detail,
       )}
       icon={FlameIcon}
-      eyebrow={t().home.cards.strengthActivity}
-      title={t().home.thisMonth}
+      name={t().home.cards.strengthActivity}
+      period={t().home.thisMonth}
       figure={
         first ? (
           <span className="block text-xs leading-4 font-medium text-secondary">
@@ -517,8 +520,8 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
       to={DESTINATIONS.records}
       label={t().home.cards.recordsLabel(records.newBests, insight.heading, insight.detail)}
       icon={TrophyIcon}
-      eyebrow={t().home.cards.records}
-      title={t().home.thisMonth}
+      name={t().home.cards.records}
+      period={t().home.thisMonth}
       figure={<Figure value={String(count)} caption={t().home.cards.newBests(records.newBests)} />}
       insight={insight}
     >
@@ -537,9 +540,11 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
               return (
                 <li
                   key={liftKey(lift)}
+                  // A fill, not a frame: four bordered boxes inside a bordered
+                  // card read as a grid of forms rather than four numbers.
                   className={cx(
-                    'min-w-0 rounded-card border px-3 py-2',
-                    lift.isRecord ? 'border-subtle bg-accent/10' : 'border-subtle/70 bg-base/50',
+                    'min-w-0 rounded-card px-3 py-2',
+                    lift.isRecord ? 'bg-accent/10' : 'bg-base/50',
                   )}
                 >
                   <span className="block truncate text-xs leading-4 text-muted">
@@ -549,7 +554,7 @@ function RecordsCard({ home, motion }: { readonly home: HomeStats; readonly moti
                       gymNames?.get(lift.gymScope) !== undefined &&
                       ` · ${gymNames.get(lift.gymScope) ?? ''}`}
                   </span>
-                  <span className="numeric block text-lg leading-6 font-bold text-primary">
+                  <span className="numeric block text-lg leading-6 font-semibold text-primary">
                     {String(best.value)}
                     <span className="ml-0.5 text-xs font-semibold text-muted">{best.unit}</span>
                   </span>
@@ -688,12 +693,10 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
           <TrendIcon className="size-5" />
         </span>
         <div className="min-w-0 flex-1 pt-0.5">
-          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-            {t().home.cards.yourMonth}
-          </p>
           <p className="text-lg leading-6 font-semibold text-primary">
             {monthName(stats.month.start)}
           </p>
+          <p className="text-sm leading-5 text-muted">{t().home.cards.yourMonth}</p>
         </div>
       </div>
 
@@ -727,7 +730,9 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
         ))}
       </div>
 
-      <h2 className="mt-5 text-xl leading-7 font-bold text-primary">{t().home.cards.firstTitle}</h2>
+      <h2 className="mt-5 text-xl leading-7 font-semibold text-primary">
+        {t().home.cards.firstTitle}
+      </h2>
       <p className="mt-1 text-sm text-secondary">{t().home.cards.firstBody}</p>
       <Link
         to="/workout"
@@ -735,7 +740,7 @@ function FirstWorkoutCard({ stats }: { readonly stats: MonthStats }) {
           buzz('tick');
         }}
         className={cx(
-          'mt-4 inline-flex min-h-12 items-center gap-2 rounded-full border border-subtle bg-elevated pr-6 pl-5 text-base font-medium text-primary select-none',
+          'mt-4 inline-flex min-h-12 items-center gap-2 rounded-control border border-subtle bg-elevated pr-6 pl-5 text-base font-medium text-primary select-none',
           'transition-[background-color,transform] duration-150 hover:border-strong active:scale-[0.97] active:bg-surface',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
         )}
