@@ -10569,6 +10569,25 @@ No migration and no sync-rule change.
 
 ---
 
+## ADR-0197 — Profile, polished: sentence-case labels, the accent for what is pressed
+
+**Status:** accepted · **Date:** 2026-11-26 · **Amends:** ADR-0126
+
+The same cleanup as Home (ADR-0195) and Progress (ADR-0196), on Profile and
+the profile cards a friend's page shares. Nothing is added, removed or moved,
+and the best-lift podium is untouched.
+
+- **No uppercase tracked labels.** "Level", "Your goal", "Trained most" and
+  "Worth adding" are sentence case. The two in-card headings are `text-sm`,
+  medium, secondary, so they still read as headings.
+- **700 → 600** on the name, a worded figure and the best-lift count.
+- **The accent is for what is pressed and what is earned.** It stays on the
+  level bar, the goal's Choose/Change and the podium. The "Trained most"
+  muscles become neutral chips, and the routines row takes the neutral icon
+  mark Home's tiles use.
+- **One button shape.** Edit and the goal's Choose/Change use the control
+  radius, not pills.
+- **"Losses", not "Loses"**, in the challenge record.
 ## ADR-0196 — Progress, polished: lighter figures, no uppercase labels
 
 **Status:** accepted · **Date:** 2026-11-26 · **Amends:** ADR-0124

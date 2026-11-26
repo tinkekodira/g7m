@@ -22,12 +22,12 @@ import { LoadingRegion } from './LoadingRegion.js';
  * friend's (ADR-0117). Each takes its data rather than reading it, because
  * yours comes from this phone and a friend's from the server.
  *
- * In Home's shell (ADR-0126): the large corner, labels in Home's small
- * capitals, and the best lifts as the one hero card, the place Home's
+ * In Home's shell (ADR-0126): the large corner, quiet sentence-case labels
+ * (ADR-0197), and the best lifts as the one hero card, the place Home's
  * records card leads to.
  */
 
-const EYEBROW = 'text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase';
+const EYEBROW = 'text-sm leading-5 font-medium text-secondary';
 
 /**
  * Loaded on demand, as on Learn. three.js is the largest thing the app ships,
@@ -223,7 +223,7 @@ export function TrainingBodyCard({
                 {heat.top.map((muscle) => (
                   <li
                     key={muscle.slug}
-                    className="rounded-full bg-accent/15 px-3 py-1.5 text-sm font-medium text-accent"
+                    className="rounded-full bg-elevated px-3 py-1.5 text-sm text-primary"
                   >
                     {muscle.name}
                   </li>
@@ -276,7 +276,7 @@ export function BestLiftsCard({
         lifts !== null &&
         lifts.length > 0 && (
           <>
-            <span className="numeric block text-2xl leading-7 font-bold text-primary">
+            <span className="numeric block text-2xl leading-7 font-semibold text-primary">
               {lifts.length}
             </span>
             <span className="block text-xs text-muted">{t().profile.exercises(lifts.length)}</span>

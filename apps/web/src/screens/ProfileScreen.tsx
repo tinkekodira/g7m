@@ -138,7 +138,7 @@ export function ProfileScreen() {
         <h1 className="text-2xl font-semibold text-primary">{t().profile.title}</h1>
         <Link
           to="/you"
-          className="inline-flex min-h-tap items-center gap-2 rounded-full border border-subtle bg-elevated px-4 text-sm font-medium text-primary active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="inline-flex min-h-tap items-center gap-2 rounded-control border border-subtle bg-elevated px-4 text-sm font-medium text-primary active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <PencilIcon className="size-4" />
           {t().profile.edit}
@@ -166,7 +166,7 @@ export function ProfileScreen() {
           <div className="flex items-center gap-4">
             <Avatar name={name} size="lg" />
             <div className="flex min-w-0 items-center gap-2">
-              <p className="truncate text-2xl leading-8 font-bold text-primary">
+              <p className="truncate text-2xl leading-8 font-semibold text-primary">
                 {fullName ?? t().profile.addName}
               </p>
               {profile.data?.country != null && (
@@ -247,7 +247,7 @@ export function ProfileScreen() {
                       ) : /\d/.test(tile.value) ? (
                         <StatValue text={tile.value} size="text-xl leading-7" />
                       ) : (
-                        <span className="block truncate text-lg leading-7 font-bold text-primary">
+                        <span className="block truncate text-lg leading-7 font-semibold text-primary">
                           {tile.value}
                         </span>
                       )}
@@ -348,9 +348,7 @@ function LevelLine() {
     <div className="rise mt-5">
       <div className="flex items-baseline justify-between gap-3">
         <p className="flex items-baseline gap-2">
-          <span className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-            {t().profile.level}
-          </span>
+          <span className="text-sm leading-5 text-muted">{t().profile.level}</span>
           <span className="numeric text-lg leading-6 font-semibold text-primary">{level}</span>
         </p>
         <p className="numeric text-xs text-muted">
@@ -396,7 +394,7 @@ function RoutinesLink() {
       viewTransition
       className="flex min-h-tap w-full items-center gap-3 rounded-sheet border border-subtle bg-surface px-4 py-3 text-left transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-card bg-accent/15 text-accent">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-card bg-elevated text-secondary">
         <ClipboardIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -457,15 +455,13 @@ function GoalCard({
         <TargetIcon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
-          {t().profile.yourGoal}
-        </span>
+        <span className="block text-xs leading-4 text-muted">{t().profile.yourGoal}</span>
         <span className="block text-base leading-6 font-semibold text-primary">
           {line?.title ?? t().profile.chooseGoal}
         </span>
         <span className="block text-xs text-muted">{line?.detail ?? t().profile.goalDecides}</span>
       </span>
-      <span className="shrink-0 rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-on-accent">
+      <span className="shrink-0 rounded-control bg-accent px-3 py-1.5 text-sm font-medium text-on-accent">
         {goal === null ? t().profile.choose : t().profile.change}
       </span>
     </Link>
@@ -493,7 +489,7 @@ function TrainingBody({ now }: { readonly now: Date }) {
       emptyText={t().profile.trainingEmpty(HEATMAP_WEEKS)}
     >
       <div>
-        <h3 className="mb-2 text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">
+        <h3 className="mb-2 text-sm leading-5 font-medium text-secondary">
           {t().profile.worthAdding}
         </h3>
         {neglected.loading && neglected.data === null ? (
