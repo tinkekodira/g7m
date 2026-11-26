@@ -125,7 +125,7 @@ export function HomeScreen() {
             <span
               lang={greeting.language}
               dir={greeting.direction}
-              className="block text-3xl font-bold text-primary"
+              className="block text-3xl font-semibold text-primary"
             >
               {greeting.text}
             </span>
@@ -138,7 +138,7 @@ export function HomeScreen() {
               >
                 {greeting.text},
               </span>
-              <span className="block truncate text-3xl font-bold text-primary">{name}</span>
+              <span className="block truncate text-3xl font-semibold text-primary">{name}</span>
             </>
           )}
         </h1>
@@ -237,7 +237,7 @@ function InProgress({ open }: { readonly open: OpenSessionSummary }) {
         <PlayIcon className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] leading-4 font-semibold tracking-[0.08em] text-on-accent uppercase">
+        <span className="block text-xs leading-4 font-medium text-on-accent">
           {open.stale ? t().home.stillOpen : t().home.inProgress}
         </span>
         <span className="block truncate text-base leading-6 font-semibold text-on-accent">
@@ -324,7 +324,7 @@ function TodayCard({
         <LoadingRegion label={t().home.today.working} className="mt-2">
           <Skeleton className="h-7 w-40" />
           <Skeleton className="mt-2 h-4 w-2/3" />
-          <Skeleton className="mt-4 h-12 w-40 rounded-full" />
+          <Skeleton className="mt-4 h-12 w-40" />
         </LoadingRegion>
       </PlanCard>
     );
@@ -444,14 +444,11 @@ function PlanCard({
       aria-labelledby={heading}
       className="relative isolate overflow-hidden rounded-sheet border border-subtle bg-surface p-4"
     >
-      <p
-        id={title === undefined ? heading : undefined}
-        className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-secondary uppercase"
-      >
+      <p id={title === undefined ? heading : undefined} className="text-sm leading-5 text-muted">
         {label}
       </p>
       {title !== undefined && (
-        <h2 id={heading} className="mt-1 text-2xl leading-8 font-bold text-primary">
+        <h2 id={heading} className="text-xl leading-7 font-semibold text-primary">
           {title}
         </h2>
       )}
@@ -469,13 +466,14 @@ function Actions({ children }: { readonly children: ReactNode }) {
 }
 
 /**
- * The card's buttons: pill-shaped, so they read as the one press the card
- * exists for. Written out rather than passed to `Button` as overrides — two
+ * The card's buttons, on the control radius every other button in the app
+ * uses (the tour's included), so the card does not bring a second shape onto
+ * the screen. Written out rather than passed to `Button` as overrides — two
  * radius utilities on one element are decided by stylesheet order, not by
  * which was written last.
  */
 const ACTION = cx(
-  'inline-flex min-h-12 items-center gap-2 rounded-full px-5 text-base font-medium select-none',
+  'inline-flex min-h-12 items-center gap-2 rounded-control px-5 text-base font-medium select-none',
   'transition-[background-color,transform] duration-150 active:scale-[0.97]',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 );
@@ -589,7 +587,7 @@ function QuickTile({
 }: Tile & { readonly onStart?: () => void; readonly busy?: boolean }) {
   const accented = tone === 'accent';
   const className = cx(
-    'flex h-full min-h-32 w-full flex-col justify-between gap-4 rounded-card border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50',
+    'flex h-full min-h-28 w-full flex-col justify-between gap-4 rounded-card border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50',
     accented
       ? 'border-accent bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-pressed'
       : 'border-subtle bg-surface text-primary hover:border-strong active:bg-elevated',
@@ -598,9 +596,9 @@ function QuickTile({
     <>
       <span
         aria-hidden
-        className={cx('flex size-11 items-center justify-center rounded-control', TILE_TONES[tone])}
+        className={cx('flex size-10 items-center justify-center rounded-control', TILE_TONES[tone])}
       >
-        <Icon className="size-6" />
+        <Icon className="size-5" />
       </span>
       <span>
         <span
