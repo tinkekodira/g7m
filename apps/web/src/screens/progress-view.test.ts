@@ -145,7 +145,7 @@ describe('sinceLine', () => {
 
 describe('dateTile', () => {
   it('is the day over a short month', () => {
-    expect(dateTile(local(2026, 9, 12))).toEqual({ day: '12', month: 'SEP' });
+    expect(dateTile(local(2026, 9, 12))).toEqual({ day: '12', month: 'Sep' });
   });
 });
 

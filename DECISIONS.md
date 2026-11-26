@@ -10566,3 +10566,26 @@ saved and the time still offered on the recap. On the **details page** and the
 `document.body`, so one button works inside the recap's transformed carousel.
 
 No migration and no sync-rule change.
+
+---
+
+## ADR-0196 — Progress, polished: lighter figures, no uppercase labels
+
+**Status:** accepted · **Date:** 2026-11-26 · **Amends:** ADR-0124
+
+The same cleanup as Home (ADR-0195), on Progress and the shared parts it is
+built from. Nothing is added, removed or moved.
+
+- **`StatValue` is 600, its units 500.** The shared figure was 700 with 600
+  units. It draws the numbers on Progress, Home's activity card, Profile,
+  Friends and Metrics, so they all step down together and keep matching.
+  Cardio's three figures follow.
+- **`Panel`'s small label is sentence case** (`text-sm`, muted) instead of
+  11px uppercase with wide tracking. The review card, Profile's personal
+  records and Friends' empty state use it too.
+- **The review note on Home** labels itself in sentence case as well.
+- **Recent workouts' date tiles say "Nov"**, as the locale writes the short
+  month, not "NOV". `dateTile` no longer upper-cases, which was also wrong for
+  locales whose short months are not meant to be capitals.
+
+No migration and no sync-rule change.

@@ -333,7 +333,7 @@ export function sinceLine(firstAt: Date | null): ComparisonLine | null {
   };
 }
 
-/** The date tile beside a workout in the list: "12" over "SEP". */
+/** The date tile beside a workout in the list: "12" over "Sep", as the locale writes it. */
 export function dateTile(date: Date): { readonly day: string; readonly month: string } {
-  return { day: String(date.getDate()), month: monthShort(date).toUpperCase() };
+  return { day: String(date.getDate()), month: monthShort(date) };
 }
