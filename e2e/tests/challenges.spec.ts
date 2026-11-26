@@ -133,7 +133,7 @@ test('a final result: popup, direct card, profile record and explicit acknowledg
   await openTab(page, 'Profile');
   const record = page.getByRole('region', { name: 'Challenge record', exact: true });
   await expect(record.getByText('1 Wins', { exact: true })).toBeVisible();
-  await expect(record.getByText('0 Loses', { exact: true })).toBeVisible();
+  await expect(record.getByText('0 Losses', { exact: true })).toBeVisible();
   await expect(record.getByText('0 Draws', { exact: true })).toBeVisible();
   await expect(record.getByRole('link')).toHaveCount(0);
   await expect(record.getByRole('button')).toHaveCount(0);
@@ -266,7 +266,7 @@ test('the profile record is compact, non-interactive and recovers from a missing
   await openTab(page, 'Profile');
   const record = page.getByRole('region', { name: 'Challenge record', exact: true });
   await expect(record.getByText('— Wins', { exact: true })).toBeVisible();
-  await expect(record.getByText('— Loses', { exact: true })).toBeVisible();
+  await expect(record.getByText('— Losses', { exact: true })).toBeVisible();
   await expect(record.getByText('— Draws', { exact: true })).toBeVisible();
   await expect(record.getByText(/unavailable/i)).toBeAttached();
   await expect(page.getByText(/schema cache/)).toHaveCount(0);
@@ -282,7 +282,7 @@ test('the profile record is compact, non-interactive and recovers from a missing
       theme,
     );
     await expectToken(record.getByText('0 Wins', { exact: true }), 'color', 'success');
-    await expectToken(record.getByText('0 Loses', { exact: true }), 'color', 'text-danger');
+    await expectToken(record.getByText('0 Losses', { exact: true }), 'color', 'text-danger');
     await expectToken(record.getByText('21 Draws', { exact: true }), 'color', 'text-muted');
     await expect.poll(async () => (await record.boundingBox())!.height).toBeLessThan(90);
     await record.screenshot({ path: testInfo.outputPath(`record-phone-${theme}.png`) });

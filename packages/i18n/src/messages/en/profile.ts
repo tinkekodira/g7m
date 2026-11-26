@@ -92,7 +92,7 @@ export const profile = {
   challengeRecord: {
     title: 'Challenge record',
     wins: (count: string) => `${count} Wins`,
-    losses: (count: string) => `${count} Loses`,
+    losses: (count: string) => `${count} Losses`,
     draws: (count: string) => `${count} Draws`,
     offline: 'Connect to load your challenge record.',
     unavailable: 'Challenge record unavailable. Retrying automatically.',
